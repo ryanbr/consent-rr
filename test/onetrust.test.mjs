@@ -310,6 +310,30 @@ describe('page integration', ( ) => {
         assert.ok(cookies(win).has('OptanonAlertBoxClosed'));
     });
 
+    it('puts the key back when the page clears it while booting', async ( ) => {
+        const win = run(reject);
+        assert.equal(win.localStorage.getItem('cookieChoiceMade'), 'true');
+        // A site that wipes storage on boot, or writes its own value over ours.
+        win.localStorage.removeItem('cookieChoiceMade');
+        win.localStorage.setItem('cookieChoiceMade', 'false');
+        await settle(60);
+        assert.equal(win.localStorage.getItem('cookieChoiceMade'), 'true');
+    });
+
+    it('records the choice even when cookies throw', ( ) => {
+        const win = run(reject, fixture, w => {
+            Object.defineProperty(w.document, 'cookie', {
+                configurable: true,
+                get( ) { throw new Error('no'); },
+                set( ) { throw new Error('no'); },
+            });
+        });
+        // The writes do not depend on each other.
+        assert.equal(win.localStorage.getItem('cookieChoiceMade'), 'true');
+        assert.equal(win.OnetrustActiveGroups, ',C0001,');
+        assert.equal(typeof win.__tcfapi, 'function');
+    });
+
     it('records the choice even when the document fights back', ( ) => {
         const win = run(reject, fixture, w => {
             w.document.querySelectorAll = ( ) => {

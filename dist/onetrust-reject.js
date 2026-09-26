@@ -138,7 +138,9 @@ function consentRROneTrust(mode, installTcf) {
     const writeSiteChoice = ( ) => {
         for ( const key of siteChoiceKeys ) {
             try {
-                w.localStorage.setItem(key, 'true');
+                const storage = w.localStorage;
+                if ( storage.getItem(key) === 'true' ) { continue; }
+                storage.setItem(key, 'true');
             } catch(ex) {
             }
         }
@@ -213,9 +215,16 @@ function consentRROneTrust(mode, installTcf) {
         activateGatedTags();
         return active;
     };
+    const safeScan = ( ) => {
+        try {
+            return scan();
+        } catch(ex) {
+        }
+        return setGlobals();
+    };
     const scanDeferred = ( ) => {
         if ( scanTimer !== undefined ) { return; }
-        scanTimer = w.setTimeout(scan, 100);
+        scanTimer = w.setTimeout(safeScan, 100);
     };
     const domainData = ( ) => {
         const consented = new Set(consentedIds());
@@ -372,7 +381,8 @@ function consentRROneTrust(mode, installTcf) {
         w.dispatchEvent(event);
     };
     const onReady = ( ) => {
-        const active = scan();
+        writeSiteChoice();
+        const active = safeScan();
         executeOptanonWrapper();
         pushGroupsUpdated(active);
         dispatchGroupsUpdated();
@@ -386,9 +396,12 @@ function consentRROneTrust(mode, installTcf) {
         }, 250);
     };
     w.OneTrust = w.Optanon = Object.assign({}, preset, api);
-    const active = scan();
-    writeConsentCookies();
     writeSiteChoice();
+    const active = safeScan();
+    try {
+        writeConsentCookies();
+    } catch(ex) {
+    }
     if ( typeof installTcf === 'function' ) {
         const tcString = installTcf(accept);
         if ( typeof tcString === 'string' && tcString !== '' ) {
@@ -407,6 +420,9 @@ function consentRROneTrust(mode, installTcf) {
         doc.addEventListener('DOMContentLoaded', onReady, { once: true });
     } else {
         w.setTimeout(onReady, 0);
+    }
+    if ( doc.readyState !== 'complete' ) {
+        w.addEventListener('load', writeSiteChoice, { once: true });
     }
     if ( typeof console === 'object' && typeof console.info === 'function' ) {
         console.info(

@@ -199,12 +199,16 @@ function consentRROneTrust(mode, installTcf) {
     // choice was made, not which way it went, so both resources set it.
     const siteChoiceKeys = [ 'cookieChoiceMade' ];
 
-    // localStorage throws outright when storage is blocked, and a page that
-    // re-prompts is a far smaller problem than a stub that died half installed.
+    // Called more than once on purpose: a page that clears storage while
+    // booting, or writes its own value over ours, would otherwise win. Storage
+    // throws outright when it is blocked, and a page that re-prompts is a far
+    // smaller problem than a stub that died half installed.
     const writeSiteChoice = ( ) => {
         for ( const key of siteChoiceKeys ) {
             try {
-                w.localStorage.setItem(key, 'true');
+                const storage = w.localStorage;
+                if ( storage.getItem(key) === 'true' ) { continue; }
+                storage.setItem(key, 'true');
             } catch(ex) {
             }
         }
@@ -505,6 +509,7 @@ function consentRROneTrust(mode, installTcf) {
     };
 
     const onReady = ( ) => {
+        writeSiteChoice();
         const active = safeScan();
         executeOptanonWrapper();
         pushGroupsUpdated(active);
@@ -525,9 +530,15 @@ function consentRROneTrust(mode, installTcf) {
 
     w.OneTrust = w.Optanon = Object.assign({}, preset, api);
 
-    const active = safeScan();
-    writeConsentCookies();
+    // Independent of each other by design: whichever of these a page manages to
+    // break, the rest still land. The site's own key goes first, being the
+    // cheapest and the one a page is most likely to re-check later.
     writeSiteChoice();
+    const active = safeScan();
+    try {
+        writeConsentCookies();
+    } catch(ex) {
+    }
 
     // The IAB layer, for a resource that carries one. eupubconsent-v2 is the
     // cookie OneTrust keeps the publisher TC string in.
@@ -552,6 +563,11 @@ function consentRROneTrust(mode, installTcf) {
         doc.addEventListener('DOMContentLoaded', onReady, { once: true });
     } else {
         w.setTimeout(onReady, 0);
+    }
+
+    // Last word, after anything the page does while loading.
+    if ( doc.readyState !== 'complete' ) {
+        w.addEventListener('load', writeSiteChoice, { once: true });
     }
 
     // Said once, at the end, so it reports what actually went in. A page is
