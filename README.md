@@ -123,6 +123,20 @@ reproduced.
   either; a real acceptance lists some 600 of them, which is Google's own global
   list rather than anything a replacement can derive, and missing it costs ads
   rather than breaking a page.
+- **The IAB layer goes in whether or not the tenant had one.** Plenty of
+  OneTrust tenants run with the IAB module off and write no `eupubconsent-v2` at
+  all, and a replacement cannot tell which, since that lives in domain data it
+  never fetches. So those pages get a CMP where they had none, and anything
+  probing `window.__tcfapi` - Google's ad stack, mostly - starts taking TCF into
+  account. On reject that is the conservative direction, non-personalised or
+  limited ads; on accept it grants. It goes in unconditionally because the
+  alternative fails worse: a site that gates its player on `__tcfapi` never
+  starts without one, with no banner left to click.
+- Category sets are tenant-specific - one site defines `C0001` to `C0004` plus an
+  IAB stack group, another only `C0001`, `C0002` and `C0004` - so the cookie
+  carries `C0001` to `C0005` plus whatever the page's own class names mention.
+  Deliberately a superset: a site asking about a category its tenant never
+  defined still gets an answer rather than nothing.
 - Sites commonly keep their own record of the choice beside OneTrust's and
   re-prompt until it is set, so both resources set `localStorage`
   `cookieChoiceMade` to `true` - the `cookiechoices.js` convention, which
