@@ -52,3 +52,18 @@
 ! themselves, which set localStorage cookieChoiceMade. A site using some other
 ! key of its own needs a per-site rule here:
 !   example.com##+js(set-local-storage-item, cookieConsentGiven, true)
+
+! -----------------------------------------------------------------------------
+! Injected instead of redirected.
+!
+! Where a tag manager loads OneTrust, there is no request to redirect: uBO's own
+! lists already neuter googletagmanager.com/gtm.js, so the container never runs
+! and otSDKStub.js is never asked for. The resources double as scriptlets, which
+! is the way in on those sites. Injected, they also run at document_start, ahead
+! of any gate the page puts on window.__tcfapi - nowtv.com.tr gives its own gate
+! about 2.5 seconds before it gives up and leaves the player uninitialised.
+!
+! Only ever per site: injecting on every site would run a OneTrust stub on pages
+! that have no OneTrust.
+! -----------------------------------------------------------------------------
+nowtv.com.tr##+js(onetrust-reject.js)

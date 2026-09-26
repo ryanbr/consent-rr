@@ -40,6 +40,16 @@ behind a category (embedded players, maps) rather than behind the banner.
 2. **Filters.** Paste [`filters/onetrust.txt`](filters/onetrust.txt) into
    *My filters*, or host it and subscribe via *Import*.
 
+Redirecting the SDK's own request is the usual way in, but where a tag manager
+loads OneTrust there is no request to redirect - uBO's lists neuter
+`googletagmanager.com/gtm.js`, so the container never runs and `otSDKStub.js` is
+never asked for. The same resources inject as scriptlets, which also puts them
+at `document_start`:
+
+```
+example.com##+js(onetrust-reject.js)
+```
+
 Check it took: each resource announces itself on load, so the console on a
 OneTrust site shows a line like
 
