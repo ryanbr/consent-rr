@@ -58,7 +58,7 @@ Check it took: each resource announces itself on load, so the console on a
 OneTrust site shows a line like
 
 ```
-[consent-rr] onetrust-reject 1.0.0 groups=,C0001, tcf=refused
+[consent-rr] onetrust-reject 1.1.0 groups=,C0001, tcf=refused
 ```
 
 and `OneTrust.consentRR` reports the same mode and version.
