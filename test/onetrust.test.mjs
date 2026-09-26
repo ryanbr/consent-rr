@@ -101,6 +101,37 @@ describe('reject', ( ) => {
         assert.equal(win.Optanon, win.OneTrust);
     });
 
+    it('still inserts a script the page asks for under C0001', ( ) => {
+        const win = run(reject);
+        const insert = (url, group, options) => win.OneTrust.InsertScript(
+            url, 'body', undefined, options, group
+        );
+        insert('https://cdn.example/necessary.js', 'C0001');
+        insert('https://cdn.example/tracker.js', 'C0004');
+        insert('https://cdn.example/both.js', 'C0001,C0004');
+        insert('https://cdn.example/forced.js', 'C0004', { ignoreGroupCheck: true });
+        assert.deepEqual(
+            Array.from(win.document.querySelectorAll('body script'), el => el.src),
+            [ 'https://cdn.example/necessary.js', 'https://cdn.example/forced.js' ]
+        );
+    });
+
+    it('inserts the markup it is handed, not an element named by it', ( ) => {
+        const win = run(reject);
+        let called = 0;
+        win.OneTrust.InsertHtml(
+            '<b id="inserted">notice</b>',
+            '#content',
+            ( ) => { called += 1; },
+            { deleteSelectorContent: true },
+            'C0001'
+        );
+        const target = win.document.querySelector('#content');
+        assert.equal(target.textContent, 'notice');
+        assert.ok(target.querySelector('#inserted'));
+        assert.equal(called, 1);
+    });
+
     it('describes the categories as inactive in GetDomainData()', ( ) => {
         const data = run(reject).OneTrust.GetDomainData();
         assert.equal(data.ShowAlertNotice, false);
@@ -230,6 +261,16 @@ describe('page integration', ( ) => {
         });
         assert.equal(win.dataLayer.length, 3);
         assert.equal(win.dataLayer[1].event, 'OneTrustLoaded');
+    });
+
+    it('adds the banner SDK\'s data layer entry once consent is announced', async ( ) => {
+        const win = run(reject);
+        await settle();
+        assert.deepEqual(
+            JSON.parse(JSON.stringify(win.dataLayer)).map(e => e.event),
+            [ 'OneTrustLoaded', 'OptanonLoaded', 'OneTrustGroupsUpdated' ]
+        );
+        assert.equal(win.dataLayer[2].OnetrustActiveGroups, ',C0001,');
     });
 
     it('keeps properties the page preset on window.OneTrust', ( ) => {

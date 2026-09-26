@@ -113,6 +113,17 @@ function consentRROneTrust(mode) {
 
     /**************************************************************************/
 
+    const pushGroupsUpdated = active => {
+        if ( Array.isArray(w.dataLayer) === false ) { return; }
+        try {
+            w.dataLayer.push({
+                event: 'OneTrustGroupsUpdated',
+                OnetrustActiveGroups: active,
+            });
+        } catch(ex) {
+        }
+    };
+
     const readCookie = name => {
         for ( const cookie of String(doc.cookie).split(';') ) {
             const pos = cookie.indexOf('=');
@@ -159,16 +170,18 @@ function consentRROneTrust(mode) {
             groups.push(id + ':' + (consented.has(id) ? '1' : '0'));
         }
         const now = new Date();
+        const gpc = w.navigator.globalPrivacyControl === true ? '1' : '0';
         const params = new URLSearchParams();
-        params.set('isGpcEnabled', '0');
+        params.set('isGpcEnabled', accept ? '0' : gpc);
         params.set('datestamp', now.toString());
         params.set('version', previous.get('version') || '202501.1.0');
-        params.set('browserGpcFlag', '0');
+        params.set('browserGpcFlag', gpc);
         params.set('isIABGlobal', 'false');
         params.set('hosts', '');
         params.set('genVendors', '');
         params.set('consentId', previous.get('consentId') || randomConsentId());
         params.set('interactionCount', '1');
+        params.set('isAnonUser', '1');
         params.set('landingPath', 'NotLandingPage');
         params.set('groups', groups.join(','));
         params.set('AwaitingReconsent', 'false');
@@ -286,6 +299,26 @@ function consentRROneTrust(mode) {
         };
     };
 
+    // Mirrors canInsertForGroup(): a tag goes in when every category it names
+    // is consented, and options.ignoreGroupCheck skips the check outright. A
+    // call naming no category has nothing to check, so it follows the mode.
+    const mayInsert = (groupId, options) => {
+        if ( typeof options === 'object' && options !== null &&
+            options.ignoreGroupCheck === true )
+        {
+            return true;
+        }
+        const requested = Array.isArray(groupId)
+            ? groupId.map(String)
+            : String(groupId === undefined || groupId === null ? '' : groupId)
+                .split(',')
+                .map(id => id.trim())
+                .filter(id => id !== '');
+        if ( requested.length === 0 ) { return accept; }
+        const consented = new Set(consentedIds());
+        return requested.every(id => consented.has(id));
+    };
+
     const querySelector = selector => {
         if ( typeof selector !== 'string' || selector === '' ) { return null; }
         try {
@@ -296,9 +329,10 @@ function consentRROneTrust(mode) {
     };
 
     const insertScript = (url, selector, callback, options, groupId, isAsync) => {
-        if ( accept !== true ) { return; }
+        if ( mayInsert(groupId, options) === false ) { return; }
         if ( typeof url !== 'string' || url === '' ) { return; }
-        const target = querySelector(selector) || doc.body;
+        const target = querySelector(selector) ||
+            doc.body || doc.head || doc.documentElement;
         if ( target === null ) { return; }
         const script = doc.createElement('script');
         if ( typeof callback === 'function' ) {
@@ -309,19 +343,24 @@ function consentRROneTrust(mode) {
         target.appendChild(script);
     };
 
-    const insertHtml = (element, selector, callback, options, groupId) => {
-        if ( accept !== true ) { return; }
-        const source = typeof element === 'string'
-            ? doc.getElementById(element) || querySelector(element)
-            : null;
+    const insertHtml = (content, selector, callback, options, groupId) => {
+        if ( mayInsert(groupId, options) === false ) { return; }
         const target = querySelector(selector);
-        if ( source === null || target === null ) { return; }
+        if ( target === null ) { return; }
         if ( typeof options === 'object' && options !== null &&
-            options.deleteSelectorContent )
+            options.deleteSelectorContent === true )
         {
             target.textContent = '';
         }
-        target.appendChild(source.cloneNode(true));
+        if ( content instanceof w.Node ) {
+            target.appendChild(content);
+        } else if ( typeof content === 'string' && content !== '' ) {
+            try {
+                target.insertAdjacentHTML('beforeend', content);
+            } catch(ex) {
+                return;
+            }
+        }
         if ( typeof callback === 'function' ) {
             try {
                 callback();
@@ -363,7 +402,7 @@ function consentRROneTrust(mode) {
         SetAlertBoxClosed: noopfn,
         IsAlertBoxClosed: nooptruefn,
         IsAlertBoxClosedAndValid: nooptruefn,
-        IsVendorServiceEnabled: ( ) => accept,
+        IsVendorServiceEnabled: ( ) => false,
         GetDomainData: domainData,
         OnConsentChanged: onConsentChanged,
         InsertScript: insertScript,
@@ -374,7 +413,8 @@ function consentRROneTrust(mode) {
         // on a region this stub made up.
         getGeolocationData: ( ) => ({ country: '', state: '' }),
         setGeoLocation: noopfn,
-        useGeoLocationService: false,
+        // The SDK's own default is true.
+        useGeoLocationService: true,
         changeLanguage: noopfn,
         getDataSubjectId: noopstrfn,
         getDSDefaultIdentifier: noopstrfn,
@@ -419,8 +459,9 @@ function consentRROneTrust(mode) {
     };
 
     const onReady = ( ) => {
-        scan();
+        const active = scan();
         executeOptanonWrapper();
+        pushGroupsUpdated(active);
         dispatchGroupsUpdated();
         if ( wrapperDone ) { return; }
         // OptanonWrapper is often declared later than the SDK tag - a deferred

@@ -61,7 +61,11 @@ reproduced.
   "Banner - Allow All", `2` its "Banner - Reject All"). An existing `consentId`
   is reused so a site does not see a brand new visitor on every page load.
 - `dataLayer` seeded or pushed with the SDK's own `OneTrustLoaded` /
-  `OptanonLoaded` events, so GTM triggers still fire.
+  `OptanonLoaded` events, plus the `OneTrustGroupsUpdated` entry the banner half
+  adds once consent is announced, so GTM triggers still fire.
+- `InsertScript()` and `InsertHtml()` gated per category the way
+  `canInsertForGroup()` is, so a strictly-necessary insert still goes in while
+  everything else is refused, and `options.ignoreGroupCheck` still overrides.
 - `window.OptanonWrapper()` called once, and kept looked-for a few seconds
   because pages often declare it after the SDK tag.
 - `OneTrustGroupsUpdated` dispatched on `window` with the granted ids.
