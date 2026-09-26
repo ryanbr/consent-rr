@@ -48,10 +48,7 @@
 /otBannerSdk.js$script,redirect=noopjs
 /OtAutoBlock.js$script,redirect=noopjs
 
-! -----------------------------------------------------------------------------
-! Site keys. Some sites record the choice themselves, outside OneTrust, and
-! re-prompt or gate content until their own key is set - cookieChoiceMade is a
-! cookiechoices.js convention, nothing to do with OneTrust, which never touches
-! it. Keys like these belong here, not in a resource that emulates OneTrust.
-! -----------------------------------------------------------------------------
-nowtv.com.tr##+js(set-local-storage-item, cookieChoiceMade, true)
+! Sites that keep their own record of the choice are handled by the resources
+! themselves, which set localStorage cookieChoiceMade. A site using some other
+! key of its own needs a per-site rule here:
+!   example.com##+js(set-local-storage-item, cookieConsentGiven, true)

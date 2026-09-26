@@ -132,6 +132,15 @@ function consentRROneTrust(mode, installTcf) {
         writeCookie('OptanonConsent', params.toString());
         writeCookie('OptanonAlertBoxClosed', now.toISOString());
     };
+    const siteChoiceKeys = [ 'cookieChoiceMade' ];
+    const writeSiteChoice = ( ) => {
+        for ( const key of siteChoiceKeys ) {
+            try {
+                w.localStorage.setItem(key, 'true');
+            } catch(ex) {
+            }
+        }
+    };
     const bannerSelectors = [
         '#onetrust-consent-sdk',
         '#onetrust-banner-sdk',
@@ -377,6 +386,7 @@ function consentRROneTrust(mode, installTcf) {
     w.OneTrust = w.Optanon = Object.assign({}, preset, api);
     const active = scan();
     writeConsentCookies();
+    writeSiteChoice();
     if ( typeof installTcf === 'function' ) {
         const tcString = installTcf(accept);
         if ( typeof tcString === 'string' && tcString !== '' ) {

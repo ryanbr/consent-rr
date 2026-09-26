@@ -96,10 +96,12 @@ reproduced.
 - The TC string names no jurisdiction (`publisherCC` is `AA`), because a
   replacement has no geolocation to go on. Consent language is read off the
   page's `lang`.
-- **Some sites keep their own record of the choice**, outside OneTrust, and
-  re-prompt or gate content until their own key is set. That is a per-site
-  filter with `set-local-storage-item`, not something a OneTrust emulation
-  should guess at; `filters/onetrust.txt` has a worked example.
+- Sites commonly keep their own record of the choice beside OneTrust's and
+  re-prompt until it is set, so both resources set `localStorage`
+  `cookieChoiceMade` to `true` - the `cookiechoices.js` convention, which
+  OneTrust itself never touches. The key records that a choice was made, not
+  which way it went. A site using some other key needs a per-site
+  `set-local-storage-item` rule; `filters/onetrust.txt` shows the form.
 - **`consent.onetrust` is never dispatched.** `OnConsentChanged()` registers a
   real listener, but consent never *changes* here — exactly like a return visit
   whose choice is already stored. A site that only initialises from that event

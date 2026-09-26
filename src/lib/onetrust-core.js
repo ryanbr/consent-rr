@@ -190,6 +190,23 @@ function consentRROneTrust(mode, installTcf) {
         writeCookie('OptanonAlertBoxClosed', now.toISOString());
     };
 
+    // Sites commonly keep their own record of the choice beside OneTrust's and
+    // re-prompt until it is set. cookieChoiceMade is the cookiechoices.js
+    // convention; OneTrust itself never touches it. The key records that a
+    // choice was made, not which way it went, so both resources set it.
+    const siteChoiceKeys = [ 'cookieChoiceMade' ];
+
+    // localStorage throws outright when storage is blocked, and a page that
+    // re-prompts is a far smaller problem than a stub that died half installed.
+    const writeSiteChoice = ( ) => {
+        for ( const key of siteChoiceKeys ) {
+            try {
+                w.localStorage.setItem(key, 'true');
+            } catch(ex) {
+            }
+        }
+    };
+
     /**************************************************************************/
 
     // The banner can be server-rendered, and OtAutoBlock.js can have put the
@@ -495,6 +512,7 @@ function consentRROneTrust(mode, installTcf) {
 
     const active = scan();
     writeConsentCookies();
+    writeSiteChoice();
 
     // The IAB layer, for a resource that carries one. eupubconsent-v2 is the
     // cookie OneTrust keeps the publisher TC string in.

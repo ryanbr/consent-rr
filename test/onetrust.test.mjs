@@ -289,6 +289,26 @@ describe('page integration', ( ) => {
         assert.equal(win.dataLayer[2].OnetrustActiveGroups, ',C0001,');
     });
 
+    it('records that a choice was made where the site keeps its own key', ( ) => {
+        for ( const code of [ reject, accept ] ) {
+            const win = run(code);
+            assert.equal(win.localStorage.getItem('cookieChoiceMade'), 'true');
+        }
+    });
+
+    it('installs anyway when storage is blocked', ( ) => {
+        const win = run(reject, fixture, w => {
+            Object.defineProperty(w, 'localStorage', {
+                configurable: true,
+                get( ) { throw new Error('blocked'); },
+            });
+        });
+        // Everything that does not depend on storage still has to be in place.
+        assert.equal(win.OnetrustActiveGroups, ',C0001,');
+        assert.equal(win.OneTrust.IsAlertBoxClosed(), true);
+        assert.ok(cookies(win).has('OptanonAlertBoxClosed'));
+    });
+
     it('keeps properties the page preset on window.OneTrust', ( ) => {
         const win = run(reject, fixture, w => {
             w.OneTrust = { geolocationResponse: { countryCode: 'GB' } };
