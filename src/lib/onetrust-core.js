@@ -240,14 +240,28 @@ function consentRROneTrust(mode, installTcf) {
         parent.removeChild(node);
     };
 
+    // reactivateTag() asks canInsertForGroup() about each tag's own categories,
+    // so a tag gated on nothing but C0001 is revived even by a reject-all. Only
+    // the categories decide, never the mode.
+    const mayRevive = node => {
+        const match = reCategoryClass.exec(node.getAttribute('class') || '');
+        if ( match === null ) { return accept; }
+        const ids = match[1].split(/[-,]/).filter(id => id !== '');
+        if ( ids.length === 0 ) { return accept; }
+        const consented = new Set(consentedIds());
+        return ids.every(id => consented.has(id));
+    };
+
     const activateGatedTags = ( ) => {
         for ( const node of doc.querySelectorAll(categorySelector) ) {
             if ( node.tagName === 'SCRIPT' ) { continue; }
             if ( node.hasAttribute('data-src') === false ) { continue; }
+            if ( mayRevive(node) === false ) { continue; }
             reactivateSrcTag(node);
         }
         for ( const node of doc.querySelectorAll(scriptSelector) ) {
             if ( node.getAttribute('type') !== 'text/plain' ) { continue; }
+            if ( mayRevive(node) === false ) { continue; }
             reactivateScriptTag(node);
         }
     };
@@ -264,7 +278,7 @@ function consentRROneTrust(mode, installTcf) {
         collectGroupIds();
         const active = setGlobals();
         removeBanner();
-        if ( accept ) { activateGatedTags(); }
+        activateGatedTags();
         return active;
     };
 
@@ -485,7 +499,7 @@ function consentRROneTrust(mode, installTcf) {
     // The IAB layer, for a resource that carries one. eupubconsent-v2 is the
     // cookie OneTrust keeps the publisher TC string in.
     if ( typeof installTcf === 'function' ) {
-        const tcString = installTcf();
+        const tcString = installTcf(accept);
         if ( typeof tcString === 'string' && tcString !== '' ) {
             writeCookie('eupubconsent-v2', tcString);
         }

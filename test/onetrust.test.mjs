@@ -46,8 +46,8 @@ describe('resources file', ( ) => {
     });
 
     it('selects its mode, and both carry the IAB layer', ( ) => {
-        assert.ok(accept.includes("consentRROneTrust('accept', consentRRTcfGranted)"));
-        assert.ok(reject.includes("consentRROneTrust('reject', consentRRTcfGranted)"));
+        assert.ok(accept.includes("consentRROneTrust('accept', consentRRTcf)"));
+        assert.ok(reject.includes("consentRROneTrust('reject', consentRRTcf)"));
         for ( const code of [ accept, reject ] ) {
             assert.ok(code.includes('__tcfapi'));
         }
@@ -92,6 +92,21 @@ describe('reject', ( ) => {
         assert.equal(doc.getElementById('gated-frame').hasAttribute('src'), false);
         assert.ok(doc.getElementById('gated-frame').hasAttribute('data-src'));
         assert.equal(doc.getElementById('gated-img').hasAttribute('src'), false);
+    });
+
+    it('revives a tag gated on nothing but C0001', ( ) => {
+        const doc = run(reject, '<html><head>' +
+            '<script id="necessary" type="text/plain" class="optanon-category-C0001">window.ok = 1;</script>' +
+            '<script id="targeting" type="text/plain" class="optanon-category-C0004" src="https://t.example/t.js"></script>' +
+            '<script id="mixed" type="text/plain" class="optanon-category-C0001-C0004" src="https://m.example/m.js"></script>' +
+            '</head><body><iframe id="player" class="optanon-category-C0001" data-src="https://player.example/e"></iframe>' +
+            '</body></html>').document;
+        // Consented, so the SDK would bring these back even on a reject-all.
+        assert.equal(doc.getElementById('necessary').getAttribute('type'), 'text/javascript');
+        assert.equal(doc.getElementById('player').getAttribute('src'), 'https://player.example/e');
+        // Not consented: parked, and a tag naming both stays parked.
+        assert.equal(doc.getElementById('targeting').getAttribute('type'), 'text/plain');
+        assert.equal(doc.getElementById('mixed').getAttribute('type'), 'text/plain');
     });
 
     it('answers the questions a page asks before showing its own notice', ( ) => {
@@ -309,7 +324,7 @@ describe('tcf', ( ) => {
         return data;
     };
 
-    it('encodes a TC string the IAB decoder reads as consent', ( ) => {
+    it('encodes a TC string the IAB decoder reads as a refusal', ( ) => {
         const win = run(reject, '<html lang="de"><body><p id="content">x');
         const decoded = TCString.decode(getTCData(win).tcString);
         const on = vector => {
@@ -318,48 +333,47 @@ describe('tcf', ( ) => {
             return ids;
         };
         assert.equal(decoded.version, 2);
-        assert.equal(decoded.policyVersion, 4);
+        assert.equal(decoded.policyVersion, 5);
         assert.equal(decoded.cmpId, 28);
         assert.equal(decoded.isServiceSpecific, true);
         // Taken off the page rather than assumed.
         assert.equal(decoded.consentLanguage, 'DE');
-        assert.deepEqual(on(decoded.purposeConsents),
-            [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ]);
-        assert.deepEqual(on(decoded.purposeLegitimateInterests),
-            [ 2, 7, 8, 9, 10, 11 ]);
-        assert.deepEqual(on(decoded.specialFeatureOptins), [ 1, 2 ]);
-        // Granted as one range rather than a bit per vendor.
-        assert.equal(decoded.vendorConsents.size, 1500);
-        assert.equal(decoded.vendorConsents.has(1), true);
-        assert.equal(decoded.vendorConsents.has(755), true);
-        assert.equal(decoded.vendorConsents.has(1500), true);
-        assert.equal(decoded.vendorConsents.has(1501), false);
+        // Nothing consented, as a real reject-all writes.
+        assert.deepEqual(on(decoded.purposeConsents), []);
+        assert.deepEqual(on(decoded.purposeLegitimateInterests), []);
+        assert.deepEqual(on(decoded.specialFeatureOptins), []);
+        assert.equal(decoded.vendorConsents.size, 0);
+        // Legitimate interest is left alone: refusing does not object to it.
         assert.equal(decoded.vendorLegitimateInterests.size, 1500);
+        assert.equal(decoded.vendorLegitimateInterests.has(755), true);
+        assert.equal(decoded.vendorLegitimateInterests.has(1501), false);
         assert.deepEqual(decoded.publisherRestrictions.getRestrictions(), []);
     });
 
-    it('reports the same consent in the tcData object', ( ) => {
+    it('reports the same refusal in the tcData object', ( ) => {
         const data = getTCData(run(reject));
         assert.equal(data.gdprApplies, true);
         assert.equal(data.eventStatus, 'tcloaded');
         assert.equal(data.cmpStatus, 'loaded');
-        assert.equal(Object.values(data.purpose.consents).includes(false), false);
+        assert.equal(Object.values(data.purpose.consents).includes(true), false);
         assert.equal(Object.keys(data.purpose.consents).length, 11);
-        assert.equal(data.vendor.consents[755], true);
-        assert.equal(data.specialFeatureOptins[1], true);
+        assert.equal(Object.keys(data.vendor.consents).length, 0);
+        assert.equal(data.vendor.legitimateInterests[755], true);
+        assert.equal(data.specialFeatureOptins[1], false);
     });
 
-    // The split is the point: a refusal here only asks vendors to police
-    // themselves, and costs the page its player when they do. uBO blocks their
-    // requests regardless.
-    it('grants TCF while OneTrust itself stays refused', ( ) => {
-        const win = run(reject);
-        assert.equal(win.OnetrustActiveGroups, ',C0001,');
-        assert.equal(win.OneTrust.GetDomainData().Groups
-            .find(group => group.CustomGroupId === 'C0004').Status, 'inactive');
-        const groups = (consentParams(win).get('groups') || '').split(',');
-        assert.ok(groups.includes('C0004:0'));
-        assert.equal(getTCData(win).purpose.consents[4], true);
+    it('is stable for the day rather than unique per page load', ( ) => {
+        const decoded = TCString.decode(getTCData(run(reject)).tcString);
+        // Rounded to midday UTC, as real CMPs write it.
+        assert.ok(decoded.created.toISOString().endsWith('T12:00:00.000Z'));
+        assert.equal(
+            decoded.created.toISOString(),
+            decoded.lastUpdated.toISOString()
+        );
+        assert.equal(
+            getTCData(run(reject)).tcString,
+            getTCData(run(reject)).tcString
+        );
     });
 
     it('answers ping as a loaded CMP', ( ) => {
@@ -445,10 +459,14 @@ describe('tcf', ( ) => {
         }
     );
 
-    it('answers vendors from the accept resource as well', ( ) => {
+    it('grants from the accept resource, where consent is the decision', ( ) => {
         const win = run(accept);
         assert.equal(typeof win.__tcfapi, 'function');
-        assert.equal(getTCData(win).purpose.consents[4], true);
+        const data = getTCData(win);
+        assert.equal(data.purpose.consents[4], true);
+        assert.equal(data.vendor.consents[755], true);
+        const decoded = TCString.decode(data.tcString);
+        assert.equal(decoded.vendorConsents.size, 1500);
         assert.ok(win.document.querySelector('iframe[name="__tcfapiLocator"]'));
     });
 });

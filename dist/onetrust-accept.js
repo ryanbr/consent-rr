@@ -169,14 +169,24 @@ function consentRROneTrust(mode, installTcf) {
         parent.appendChild(clone);
         parent.removeChild(node);
     };
+    const mayRevive = node => {
+        const match = reCategoryClass.exec(node.getAttribute('class') || '');
+        if ( match === null ) { return accept; }
+        const ids = match[1].split(/[-,]/).filter(id => id !== '');
+        if ( ids.length === 0 ) { return accept; }
+        const consented = new Set(consentedIds());
+        return ids.every(id => consented.has(id));
+    };
     const activateGatedTags = ( ) => {
         for ( const node of doc.querySelectorAll(categorySelector) ) {
             if ( node.tagName === 'SCRIPT' ) { continue; }
             if ( node.hasAttribute('data-src') === false ) { continue; }
+            if ( mayRevive(node) === false ) { continue; }
             reactivateSrcTag(node);
         }
         for ( const node of doc.querySelectorAll(scriptSelector) ) {
             if ( node.getAttribute('type') !== 'text/plain' ) { continue; }
+            if ( mayRevive(node) === false ) { continue; }
             reactivateScriptTag(node);
         }
     };
@@ -189,7 +199,7 @@ function consentRROneTrust(mode, installTcf) {
         collectGroupIds();
         const active = setGlobals();
         removeBanner();
-        if ( accept ) { activateGatedTags(); }
+        activateGatedTags();
         return active;
     };
     const scanDeferred = ( ) => {
@@ -368,7 +378,7 @@ function consentRROneTrust(mode, installTcf) {
     const active = scan();
     writeConsentCookies();
     if ( typeof installTcf === 'function' ) {
-        const tcString = installTcf();
+        const tcString = installTcf(accept);
         if ( typeof tcString === 'string' && tcString !== '' ) {
             writeCookie('eupubconsent-v2', tcString);
         }
@@ -387,15 +397,15 @@ function consentRROneTrust(mode, installTcf) {
         w.setTimeout(onReady, 0);
     }
 }
-function consentRRTcfGranted() {
+function consentRRTcf(grant) {
     const w = window;
     const doc = w.document;
     const B64 =
         'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
     const CMP_ID = 28;              // OneTrust's own IAB CMP id
     const CMP_VERSION = 1;
-    const POLICY_VERSION = 4;       // TCF v2.2
-    const VENDOR_LIST_VERSION = 0;  // no global vendor list was used
+    const POLICY_VERSION = 5;       // as a real reject-all writes
+    const VENDOR_LIST_VERSION = 178;
     const VENDOR_MAX = 1500;
     const PURPOSES = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ];
     const PURPOSES_LI = [ 2, 7, 8, 9, 10, 11 ];
@@ -435,7 +445,10 @@ function consentRRTcfGranted() {
             push(1, 16);            // from
             push(VENDOR_MAX, 16);   // to
         };
-        const deciseconds = Math.floor(Date.now() / 100);
+        const now = new Date();
+        const deciseconds = Math.floor(Date.UTC(
+            now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12
+        ) / 100);
         push(2, 6);                 // TC string version
         push(deciseconds, 36);      // created
         push(deciseconds, 36);      // last updated
@@ -447,13 +460,18 @@ function consentRRTcfGranted() {
         push(POLICY_VERSION, 6);
         push(1, 1);                 // service specific, not global
         push(0, 1);                 // standard stacks and texts
-        pushFlags(SPECIAL_FEATURES, 12);
-        pushFlags(PURPOSES, 24);
-        pushFlags(PURPOSES_LI, 24);
+        pushFlags(grant ? SPECIAL_FEATURES : [], 12);
+        pushFlags(grant ? PURPOSES : [], 24);
+        pushFlags(grant ? PURPOSES_LI : [], 24);
         push(0, 1);                 // purpose one treatment
         pushLetters('AA');          // publisher country: none claimed
-        pushVendorRange();          // vendor consents
-        pushVendorRange();          // vendor legitimate interests
+        if ( grant ) {
+            pushVendorRange();      // vendor consents
+        } else {
+            push(0, 16);            // no vendor consents at all
+            push(0, 1);
+        }
+        pushVendorRange();          // vendor legitimate interests, left intact
         push(0, 12);                // publisher restrictions: none
         let stream = chunks.join('');
         while ( stream.length % 6 !== 0 ) { stream += '0'; }
@@ -476,10 +494,11 @@ function consentRRTcfGranted() {
         for ( let id = 1; id <= count; id++ ) { out[id] = true; }
         return out;
     };
-    const purposeConsents = flags(PURPOSES, 11);
-    const purposeLegitimateInterests = flags(PURPOSES_LI, 11);
-    const specialFeatureOptins = flags(SPECIAL_FEATURES, 2);
-    const vendorConsents = range(VENDOR_MAX);
+    const purposeConsents = flags(grant ? PURPOSES : [], 11);
+    const purposeLegitimateInterests = flags(grant ? PURPOSES_LI : [], 11);
+    const specialFeatureOptins = flags(grant ? SPECIAL_FEATURES : [], 2);
+    const vendorConsents = grant ? range(VENDOR_MAX) : {};
+    const vendorLegitimateInterests = range(VENDOR_MAX);
     const tcData = listenerId => {
         const data = {
             tcString,
@@ -504,7 +523,7 @@ function consentRRTcfGranted() {
             },
             vendor: {
                 consents: vendorConsents,
-                legitimateInterests: vendorConsents,
+                legitimateInterests: vendorLegitimateInterests,
             },
             specialFeatureOptins,
             publisher: {
@@ -633,5 +652,5 @@ function consentRRTcfGranted() {
     });
     return tcString;
 }
-    consentRROneTrust('accept', consentRRTcfGranted);
+    consentRROneTrust('accept', consentRRTcf);
 })();

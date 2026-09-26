@@ -10,19 +10,20 @@
     postMessage bridge wherever a tenant has the IAB module on, so a
     replacement that leaves them out hangs every vendor waiting on the CMP.
 
-    This answers TCF vendors with consent while OneTrust's own state and cookies
-    stay on whatever the resource decided. That split is deliberate. A refusal
-    here is what stops a video player or DRM SDK from ever starting - it gates
-    itself on the TCF answer, gives up, and the page is left broken with no
-    banner to click. uBlock Origin is still blocking those vendors' requests at
-    the network layer, which is where a refusal actually bites; a TCF "no" only
-    asks them to police themselves, and costs the page dearly when they do.
+    The answer follows the resource: reject refuses, accept grants.
 
-    Tested on a site where an all-denied string left the player dead.
+    Shapes and values are taken from a TC string a real OneTrust reject-all
+    wrote: policy version 5, and consents all zero while vendor legitimate
+    interests stay intact - rejecting does not object to legitimate interest,
+    which needs a separate action. That real string grants nothing and sites
+    work under it, so nothing is claimed on the visitor's behalf here either.
+
+    Timestamps are rounded to midday UTC, as real CMPs do, so the string is
+    stable for a day instead of unique per page load.
 
 */
 
-function consentRRTcfGranted() {
+function consentRRTcf(grant) {
     const w = window;
     const doc = w.document;
 
@@ -30,8 +31,8 @@ function consentRRTcfGranted() {
         'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
     const CMP_ID = 28;              // OneTrust's own IAB CMP id
     const CMP_VERSION = 1;
-    const POLICY_VERSION = 4;       // TCF v2.2
-    const VENDOR_LIST_VERSION = 0;  // no global vendor list was used
+    const POLICY_VERSION = 5;       // as a real reject-all writes
+    const VENDOR_LIST_VERSION = 178;
     // Vendor ids are granted as one range. The list runs to roughly 1400, so
     // this covers every vendor in it and leaves room above.
     const VENDOR_MAX = 1500;
@@ -79,7 +80,10 @@ function consentRRTcfGranted() {
             push(1, 16);            // from
             push(VENDOR_MAX, 16);   // to
         };
-        const deciseconds = Math.floor(Date.now() / 100);
+        const now = new Date();
+        const deciseconds = Math.floor(Date.UTC(
+            now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12
+        ) / 100);
         push(2, 6);                 // TC string version
         push(deciseconds, 36);      // created
         push(deciseconds, 36);      // last updated
@@ -91,13 +95,18 @@ function consentRRTcfGranted() {
         push(POLICY_VERSION, 6);
         push(1, 1);                 // service specific, not global
         push(0, 1);                 // standard stacks and texts
-        pushFlags(SPECIAL_FEATURES, 12);
-        pushFlags(PURPOSES, 24);
-        pushFlags(PURPOSES_LI, 24);
+        pushFlags(grant ? SPECIAL_FEATURES : [], 12);
+        pushFlags(grant ? PURPOSES : [], 24);
+        pushFlags(grant ? PURPOSES_LI : [], 24);
         push(0, 1);                 // purpose one treatment
         pushLetters('AA');          // publisher country: none claimed
-        pushVendorRange();          // vendor consents
-        pushVendorRange();          // vendor legitimate interests
+        if ( grant ) {
+            pushVendorRange();      // vendor consents
+        } else {
+            push(0, 16);            // no vendor consents at all
+            push(0, 1);
+        }
+        pushVendorRange();          // vendor legitimate interests, left intact
         push(0, 12);                // publisher restrictions: none
         let stream = chunks.join('');
         while ( stream.length % 6 !== 0 ) { stream += '0'; }
@@ -126,10 +135,11 @@ function consentRRTcfGranted() {
 
     // Built once: a vendor object runs to a few hundred entries and every
     // getTCData answer shares it.
-    const purposeConsents = flags(PURPOSES, 11);
-    const purposeLegitimateInterests = flags(PURPOSES_LI, 11);
-    const specialFeatureOptins = flags(SPECIAL_FEATURES, 2);
-    const vendorConsents = range(VENDOR_MAX);
+    const purposeConsents = flags(grant ? PURPOSES : [], 11);
+    const purposeLegitimateInterests = flags(grant ? PURPOSES_LI : [], 11);
+    const specialFeatureOptins = flags(grant ? SPECIAL_FEATURES : [], 2);
+    const vendorConsents = grant ? range(VENDOR_MAX) : {};
+    const vendorLegitimateInterests = range(VENDOR_MAX);
 
     const tcData = listenerId => {
         const data = {
@@ -155,7 +165,7 @@ function consentRRTcfGranted() {
             },
             vendor: {
                 consents: vendorConsents,
-                legitimateInterests: vendorConsents,
+                legitimateInterests: vendorLegitimateInterests,
             },
             specialFeatureOptins,
             publisher: {

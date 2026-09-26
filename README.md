@@ -76,26 +76,30 @@ reproduced.
   `removeEventListener`), the `__tcfapiLocator` frame and the `postMessage`
   bridge framed vendors use, calls a page stub parked on `__tcfapi.a` answered,
   and the TC string stored in `eupubconsent-v2`.
-- In accept mode, both halves of the SDK's `substitutePlainTextScriptTags()`:
-  a `script[type="text/plain"]` gated on a category is replaced by a live copy
-  of itself, and a tag carrying `data-src` gets its `src` back. Categories are
-  read from `optanon-category-*` and `ot-vscat-*` class names, including ids the
-  site invented, and a `MutationObserver` keeps handling tags added later.
+- Both halves of the SDK's `substitutePlainTextScriptTags()`: a
+  `script[type="text/plain"]` gated on a category is replaced by a live copy of
+  itself, and a tag carrying `data-src` gets its `src` back. As in
+  `reactivateTag()`, only the tag's own categories decide, never the mode - so a
+  tag gated on nothing but `C0001` is revived by reject too, while one naming
+  `C0004` as well stays parked. Categories are read from `optanon-category-*`
+  and `ot-vscat-*` class names, including ids the site invented, and a
+  `MutationObserver` keeps handling tags added later.
 
 ### Deliberate gaps
 
-- **TCF is answered with consent, in both resources, including reject.** This
-  looks contradictory and is deliberate. A TCF refusal does not stop a vendor;
-  it asks the vendor to stop itself, and a video player or DRM SDK that gates on
-  the answer simply never starts - leaving a broken page with no banner to
-  click. Tested: an all-denied string killed the player on a live site. uBlock
-  Origin is meanwhile blocking those vendors' requests at the network layer,
-  where a refusal actually bites. So OneTrust's own state and cookies carry the
-  decision, and the IAB layer says yes.
-- The TC string names no jurisdiction (`publisherCC` is `AA`) and no global
-  vendor list (`vendorListVersion` is `0`), because a replacement has neither to
-  hand. Consent language is read off the page's `lang`. Vendor ids are granted
-  as one range up to 1500, which covers the list with room above it.
+- **The TC string follows the resource**, and its shape is copied from one a
+  real OneTrust reject-all wrote: consents all zero, but vendor *legitimate
+  interests* left intact, because refusing does not object to legitimate
+  interest - that needs a separate action. Policy version 5, and timestamps
+  rounded to midday UTC so the string is stable for a day rather than unique per
+  page load. Vendor ids are handled as one range to 1500 instead of a bit each.
+- The TC string names no jurisdiction (`publisherCC` is `AA`), because a
+  replacement has no geolocation to go on. Consent language is read off the
+  page's `lang`.
+- **Some sites keep their own record of the choice**, outside OneTrust, and
+  re-prompt or gate content until their own key is set. That is a per-site
+  filter with `set-local-storage-item`, not something a OneTrust emulation
+  should guess at; `filters/onetrust.txt` has a worked example.
 - **`consent.onetrust` is never dispatched.** `OnConsentChanged()` registers a
   real listener, but consent never *changes* here — exactly like a return visit
   whose choice is already stored. A site that only initialises from that event
@@ -134,7 +138,7 @@ Tests run the built files in jsdom, parsed with the same rules uBO applies and
 joined the way uBO joins several `userResourcesLocation` URLs. The TC string is
 not taken on trust: `@iabtcf/core`, the IAB reference implementation, decodes it
 and the tests assert which purposes, special features and vendor ranges come
-back - including that OneTrust stays refused while TCF reads as consent.
+back, in both directions.
 
 ## License
 
