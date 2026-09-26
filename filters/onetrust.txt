@@ -67,3 +67,8 @@
 ! that have no OneTrust.
 ! -----------------------------------------------------------------------------
 nowtv.com.tr##+js(onetrust-reject.js)
+
+! And the key on its own, with uBO's own scriptlet. Independent of whether the
+! resources above are installed or still cached from an older copy, so it is the
+! one that works today - the injected resource sets the same key once it runs.
+nowtv.com.tr##+js(set-local-storage-item, cookieChoiceMade, true)
