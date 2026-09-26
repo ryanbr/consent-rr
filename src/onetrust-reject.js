@@ -20,12 +20,14 @@
 
     Stands in for OneTrust's otSDKStub.js. The page sees a visitor who has
     already turned everything but C0001 down: no banner, no re-prompt, and
-    tags parked behind a category stay parked.
+    tags parked behind a category stay parked. IAB TCF vendors are answered
+    too, with a TC string that grants nothing.
 
 */
 
 (function() {
     'use strict';
     // @include lib/onetrust-core.js
-    consentRROneTrust('reject');
+    // @include lib/onetrust-tcf.js
+    consentRROneTrust('reject', consentRRTcfDenied);
 })();

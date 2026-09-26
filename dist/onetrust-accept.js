@@ -6,7 +6,7 @@
 // comment to JavaScript. uBO drops these "//" lines when it parses.
 (function() {
     'use strict';
-function consentRROneTrust(mode) {
+function consentRROneTrust(mode, installTcf) {
     const w = window;
     const doc = w.document;
     const accept = mode === 'accept';
@@ -367,6 +367,12 @@ function consentRROneTrust(mode) {
     w.OneTrust = w.Optanon = Object.assign({}, preset, api);
     const active = scan();
     writeConsentCookies();
+    if ( typeof installTcf === 'function' ) {
+        const tcString = installTcf();
+        if ( typeof tcString === 'string' && tcString !== '' ) {
+            writeCookie('eupubconsent-v2', tcString);
+        }
+    }
     pushDataLayer(active);
     try {
         new MutationObserver(scanDeferred).observe(doc.documentElement || doc, {

@@ -13,7 +13,7 @@ Currently covered: **OneTrust** (and its CookiePro tier).
 
 | Resource | What the page sees |
 | --- | --- |
-| `onetrust-reject.js` | A stored *reject all*: `C0001` on, everything else off. Tags parked behind a category stay parked. |
+| `onetrust-reject.js` | A stored *reject all*: `C0001` on, everything else off. Tags parked behind a category stay parked, and IAB TCF vendors are answered with a TC string that grants nothing. |
 | `onetrust-accept.js` | A stored *accept all*: every category on, and tags parked behind one are switched back on. |
 
 Pick `reject` as the default. `accept` is for sites that put the content itself
@@ -71,6 +71,11 @@ reproduced.
 - `OneTrustGroupsUpdated` dispatched on `window` with the granted ids.
 - Server-rendered banner markup (`#onetrust-consent-sdk` and friends) removed,
   as it arrives.
+- In reject mode, the IAB layer the SDK installs when a tenant enables it:
+  `window.__tcfapi` (`ping`, `getTCData`, `getInAppTCData`, `addEventListener`,
+  `removeEventListener`), the `__tcfapiLocator` frame and the `postMessage`
+  bridge framed vendors use, calls a page stub parked on `__tcfapi.a` answered,
+  and the TC string stored in `eupubconsent-v2`.
 - In accept mode, both halves of the SDK's `substitutePlainTextScriptTags()`:
   a `script[type="text/plain"]` gated on a category is replaced by a live copy
   of itself, and a tag carrying `data-src` gets its `src` back. Categories are
@@ -79,10 +84,14 @@ reproduced.
 
 ### Deliberate gaps
 
-- **No IAB TCF.** `otSDKStub.js` installs `window.__tcfapi` and the
-  `__tcfapiLocator` frame when the IAB module is switched on. A stub cannot
-  produce a valid TC string, so TCF sites are out of scope; don't redirect the
-  stub there.
+- **No IAB TCF on the accept side.** A refusal is encodable honestly - every
+  purpose, special feature and vendor bit is zero, and no vendor list is needed
+  to say no. Claiming consent *for* vendors would mean inventing agreements
+  nobody gave, so `onetrust-accept.js` ships no `__tcfapi` at all. A site that
+  needs TCF consent to function is one to leave to the real SDK.
+- The TC string names no jurisdiction (`publisherCC` is `AA`) and no global
+  vendor list (`vendorListVersion` is `0`), because a replacement has neither to
+  hand. Consent language is read off the page's `lang`.
 - **`consent.onetrust` is never dispatched.** `OnConsentChanged()` registers a
   real listener, but consent never *changes* here — exactly like a return visit
   whose choice is already stored. A site that only initialises from that event
@@ -118,7 +127,9 @@ because uBO encodes a user resource with `btoa()`. Sources may not use template
 literals, since the stripping is line-based.
 
 Tests run the built files in jsdom, parsed with the same rules uBO applies and
-joined the way uBO joins several `userResourcesLocation` URLs.
+joined the way uBO joins several `userResourcesLocation` URLs. The TC string is
+not taken on trust: `@iabtcf/core` decodes it and the test asserts every
+purpose, special feature and vendor vector comes back empty.
 
 ## License
 

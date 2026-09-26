@@ -26,7 +26,7 @@
 
 */
 
-function consentRROneTrust(mode) {
+function consentRROneTrust(mode, installTcf) {
     const w = window;
     const doc = w.document;
     const accept = mode === 'accept';
@@ -481,6 +481,16 @@ function consentRROneTrust(mode) {
 
     const active = scan();
     writeConsentCookies();
+
+    // The IAB layer, for a resource that carries one. eupubconsent-v2 is the
+    // cookie OneTrust keeps the publisher TC string in.
+    if ( typeof installTcf === 'function' ) {
+        const tcString = installTcf();
+        if ( typeof tcString === 'string' && tcString !== '' ) {
+            writeCookie('eupubconsent-v2', tcString);
+        }
+    }
+
     pushDataLayer(active);
 
     try {

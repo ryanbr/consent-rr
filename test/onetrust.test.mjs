@@ -7,6 +7,7 @@
 */
 
 import { strict as assert } from 'node:assert';
+import { TCString } from '@iabtcf/core';
 import { before, describe, it } from 'node:test';
 import {
     consentParams, cookies, fixture, loadResources, run, settle,
@@ -44,12 +45,11 @@ describe('resources file', ( ) => {
         }
     });
 
-    it('differs only in the mode it selects', ( ) => {
-        assert.notEqual(accept, reject);
+    it('selects its mode, and only reject carries the IAB layer', ( ) => {
         assert.ok(accept.includes("consentRROneTrust('accept')"));
-        assert.ok(reject.includes("consentRROneTrust('reject')"));
-        const strip = code => code.replace(/consentRROneTrust\('[a-z]+'\)/, '');
-        assert.equal(strip(accept), strip(reject));
+        assert.ok(reject.includes("consentRROneTrust('reject', consentRRTcfDenied)"));
+        assert.equal(accept.includes('__tcfapi'), false);
+        assert.ok(reject.includes('__tcfapi'));
     });
 });
 
@@ -297,4 +297,142 @@ describe('page integration', ( ) => {
         win.dispatchEvent(new win.CustomEvent('consent.onetrust', { detail: [] }));
         assert.equal(fired, 1);
     });
+});
+
+/******************************************************************************/
+
+describe('tcf', ( ) => {
+    const getTCData = win => {
+        let data;
+        win.__tcfapi('getTCData', 2, d => { data = d; });
+        return data;
+    };
+
+    it('encodes a TC string the IAB decoder reads as granting nothing', ( ) => {
+        const win = run(reject, '<html lang="de"><body><p id="content">x');
+        const decoded = TCString.decode(getTCData(win).tcString);
+        const set = vector => {
+            let count = 0;
+            vector.forEach(value => { if ( value ) { count += 1; } });
+            return count;
+        };
+        assert.equal(decoded.version, 2);
+        assert.equal(decoded.policyVersion, 4);
+        assert.equal(decoded.cmpId, 28);
+        assert.equal(decoded.isServiceSpecific, true);
+        // Taken off the page rather than assumed.
+        assert.equal(decoded.consentLanguage, 'DE');
+        assert.equal(set(decoded.purposeConsents), 0);
+        assert.equal(set(decoded.purposeLegitimateInterests), 0);
+        assert.equal(set(decoded.specialFeatureOptins), 0);
+        assert.equal(decoded.vendorConsents.size, 0);
+        assert.equal(decoded.vendorLegitimateInterests.size, 0);
+        assert.deepEqual(decoded.publisherRestrictions.getRestrictions(), []);
+    });
+
+    it('reports every purpose refused in the tcData object too', ( ) => {
+        const data = getTCData(run(reject));
+        assert.equal(data.gdprApplies, true);
+        assert.equal(data.eventStatus, 'tcloaded');
+        assert.equal(data.cmpStatus, 'loaded');
+        assert.equal(Object.values(data.purpose.consents).includes(true), false);
+        assert.equal(Object.keys(data.purpose.consents).length, 11);
+        assert.equal(Object.keys(data.vendor.consents).length, 0);
+        assert.equal(Object.values(data.specialFeatureOptins).includes(true), false);
+    });
+
+    it('answers ping as a loaded CMP', ( ) => {
+        let ping;
+        run(reject).__tcfapi('ping', 2, data => { ping = data; });
+        assert.equal(ping.cmpLoaded, true);
+        assert.equal(ping.cmpStatus, 'loaded');
+        assert.equal(ping.displayStatus, 'hidden');
+        assert.equal(ping.apiVersion, '2.2');
+        assert.equal(ping.cmpId, 28);
+    });
+
+    it('serves and drops event listeners', ( ) => {
+        const win = run(reject);
+        const seen = [];
+        win.__tcfapi('addEventListener', 2, data => { seen.push(data); });
+        assert.equal(seen.length, 1);
+        assert.equal(seen[0].eventStatus, 'tcloaded');
+        const listenerId = seen[0].listenerId;
+        assert.equal(typeof listenerId, 'number');
+        let removed;
+        win.__tcfapi('removeEventListener', 2, ok => { removed = ok; }, listenerId);
+        assert.equal(removed, true);
+        win.__tcfapi('removeEventListener', 2, ok => { removed = ok; }, listenerId);
+        assert.equal(removed, false);
+    });
+
+    it('refuses a command or version it does not implement', ( ) => {
+        const win = run(reject);
+        const answers = [];
+        const collect = (value, success) => { answers.push([ value, success ]); };
+        win.__tcfapi('getVendorList', 2, collect);
+        win.__tcfapi('ping', 1, collect);
+        assert.deepEqual(answers, [ [ null, false ], [ null, false ] ]);
+    });
+
+    it('answers calls a stub parked on __tcfapi.a before it loaded', ( ) => {
+        let answered;
+        run(reject, fixture, w => {
+            const stub = function() {};
+            stub.a = [ [ 'ping', 2, data => { answered = data; } ] ];
+            w.__tcfapi = stub;
+        });
+        assert.equal(answered.cmpStatus, 'loaded');
+    });
+
+    it('answers a framed vendor over postMessage', ( ) => {
+        const win = run(reject);
+        const replies = [];
+        const source = { postMessage(response) { replies.push(response); } };
+        const post = data => {
+            const event = new win.MessageEvent('message', {
+                data,
+                origin: 'https://vendor.example',
+            });
+            // jsdom will not take a stand-in window as the event source.
+            Object.defineProperty(event, 'source', { value: source });
+            win.dispatchEvent(event);
+        };
+        post({ __tcfapiCall: { command: 'ping', version: 2, callId: 'call-1' } });
+        assert.equal(replies.length, 1);
+        assert.equal(replies[0].__tcfapiReturn.callId, 'call-1');
+        assert.equal(replies[0].__tcfapiReturn.success, true);
+        assert.equal(replies[0].__tcfapiReturn.returnValue.cmpStatus, 'loaded');
+        // A vendor that sends JSON gets JSON back.
+        post(JSON.stringify({
+            __tcfapiCall: { command: 'getTCData', version: 2, callId: 2 },
+        }));
+        assert.equal(typeof replies[1], 'string');
+        assert.equal(JSON.parse(replies[1]).__tcfapiReturn.callId, 2);
+    });
+
+    it('puts the TC string in eupubconsent-v2 and a locator frame in the page',
+        ( ) => {
+            const win = run(reject);
+            assert.equal(
+                cookies(win).get('eupubconsent-v2'),
+                getTCData(win).tcString
+            );
+            assert.ok(
+                win.document.querySelector('iframe[name="__tcfapiLocator"]')
+            );
+        }
+    );
+
+    it('is absent from the accept resource, which claims nothing for vendors',
+        ( ) => {
+            const win = run(accept);
+            assert.equal(win.__tcfapi, undefined);
+            assert.equal(cookies(win).has('eupubconsent-v2'), false);
+            assert.equal(
+                win.document.querySelector('iframe[name="__tcfapiLocator"]'),
+                null
+            );
+        }
+    );
 });
