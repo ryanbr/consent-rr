@@ -36,7 +36,10 @@
 ! The stub above is what asks for these, so they are only reached when something
 ! unblocks the stub itself. OtAutoBlock.js is the part that parks third-party
 ! tags at type="text/plain"; neutering it leaves them to load on their own,
-! which is what the accept-all resource would have done anyway.
+! which is what the accept-all resource would have done anyway. otTCF.js is the
+! IAB module, pulled in by otBannerSdk.js rather than by the stub: it carries the
+! real __tcfapi, its own postMessage bridge and its own locator frame, so letting
+! it run alongside the resource would give the page two CMPs answering.
 !
 ! Where another list excepts the stub for a site, a plain redirect loses to that
 ! exception - uBO only consults the block-important realm once an exception has
@@ -46,6 +49,7 @@
 ! replayed, but its two data layer load events fire twice.
 ! -----------------------------------------------------------------------------
 /otBannerSdk.js$script,redirect=noopjs
+/otTCF.js$script,redirect=noopjs
 /OtAutoBlock.js$script,redirect=noopjs
 
 ! Sites that keep their own record of the choice are handled by the resources
