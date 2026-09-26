@@ -11,31 +11,39 @@
 ! either one on its own, or both. See the README.
 !
 ! uBlock Origin only (the MV2 extension). uBO Lite cannot load user resources.
+!
+! Matched by filename rather than by host and path, because none of the three
+! are fixed: the stub rewrites its own URL for migrated tenants, to
+! /scripttemplates/new/scripttemplates/otSDKStub.js or an old/ equivalent;
+! OneTrust serves it from regional CDNs as well as cdn.cookielaw.org and
+! cookiepro.com; and some sites proxy it first-party. Host-anchored rules on
+! /scripttemplates/otSDKStub.js miss all three - checked against uBO's own
+! filtering engine, not assumed.
 
 ! -----------------------------------------------------------------------------
-! Reject all - C0001 only, everything else off.
+! Reject all - C0001 only, everything else off, and IAB TCF vendors told no.
 ! -----------------------------------------------------------------------------
-||cdn.cookielaw.org/scripttemplates/otSDKStub.js$script,redirect=onetrust-reject.js
-||cookie-cdn.cookiepro.com/scripttemplates/otSDKStub.js$script,redirect=onetrust-reject.js
-||cdn.cookiepro.com/scripttemplates/otSDKStub.js$script,redirect=onetrust-reject.js
-||optanon.blob.core.windows.net/*/otSDKStub.js$script,redirect=onetrust-reject.js
+/otSDKStub.js$script,redirect=onetrust-reject.js
 
 ! -----------------------------------------------------------------------------
 ! Accept all - for sites that hide content behind a category rather than behind
-! the banner. A higher redirect priority beats the reject rule above, so add a
+! the banner. The higher redirect priority beats the reject rule above, so add a
 ! domain here instead of excepting it.
 ! -----------------------------------------------------------------------------
-! ||cdn.cookielaw.org/scripttemplates/otSDKStub.js$script,redirect=onetrust-accept.js:10,domain=example.com
+! /otSDKStub.js$script,redirect=onetrust-accept.js:10,domain=example.com
 
 ! -----------------------------------------------------------------------------
-! The stub above never asks for these, so they only matter when a page hardcodes
-! them. OtAutoBlock.js is the part that parks third-party tags at
-! type="text/plain"; neutering it leaves them to load on their own, which is
-! what the accept-all resource would have done anyway.
+! The stub above is what asks for these, so they are only reached when something
+! unblocks the stub itself. OtAutoBlock.js is the part that parks third-party
+! tags at type="text/plain"; neutering it leaves them to load on their own,
+! which is what the accept-all resource would have done anyway.
+!
+! Where another list excepts the stub for a site, a plain redirect loses to that
+! exception - uBO only consults the block-important realm once an exception has
+! matched. Intercepting one step later, at the banner SDK, needs `important`:
+!   /otBannerSdk.js$script,redirect=onetrust-reject.js,important,domain=example.com
+! The real stub will have run by then, and the stub's parked __tcfapi calls are
+! replayed, but its two data layer load events fire twice.
 ! -----------------------------------------------------------------------------
-||cdn.cookielaw.org/scripttemplates/*/otBannerSdk.js$script,redirect=noopjs
-||cookie-cdn.cookiepro.com/scripttemplates/*/otBannerSdk.js$script,redirect=noopjs
-||cdn.cookiepro.com/scripttemplates/*/otBannerSdk.js$script,redirect=noopjs
-||cdn.cookielaw.org/consent/*/OtAutoBlock.js$script,redirect=noopjs
-||cookie-cdn.cookiepro.com/consent/*/OtAutoBlock.js$script,redirect=noopjs
-||cdn.cookiepro.com/consent/*/OtAutoBlock.js$script,redirect=noopjs
+/otBannerSdk.js$script,redirect=noopjs
+/OtAutoBlock.js$script,redirect=noopjs
