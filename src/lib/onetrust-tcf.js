@@ -4,22 +4,25 @@
     Copyright (C) 2026-present ryanbr
     SPDX-License-Identifier: GPL-3.0-or-later
 
-    The IAB TCF side of a refusal, for onetrust-reject.js only.
+    The IAB TCF side of both resources.
 
     otSDKStub.js installs window.__tcfapi, a __tcfapiLocator frame and a
-    postMessage bridge when the tenant has the IAB module switched on, so a
+    postMessage bridge wherever a tenant has the IAB module on, so a
     replacement that leaves them out hangs every vendor waiting on the CMP.
 
-    The TC string below is encoded here rather than copied from anywhere: it is
-    the IAB core segment with every purpose, legitimate interest, special
-    feature and vendor bit set to zero. Nothing is claimed on the visitor's
-    behalf, which is the one TC string that can be built honestly without a
-    vendor list. There is deliberately no accept-all counterpart - that would
-    mean inventing consent for vendors nobody agreed to.
+    This answers TCF vendors with consent while OneTrust's own state and cookies
+    stay on whatever the resource decided. That split is deliberate. A refusal
+    here is what stops a video player or DRM SDK from ever starting - it gates
+    itself on the TCF answer, gives up, and the page is left broken with no
+    banner to click. uBlock Origin is still blocking those vendors' requests at
+    the network layer, which is where a refusal actually bites; a TCF "no" only
+    asks them to police themselves, and costs the page dearly when they do.
+
+    Tested on a site where an all-denied string left the player dead.
 
 */
 
-function consentRRTcfDenied() {
+function consentRRTcfGranted() {
     const w = window;
     const doc = w.document;
 
@@ -29,6 +32,13 @@ function consentRRTcfDenied() {
     const CMP_VERSION = 1;
     const POLICY_VERSION = 4;       // TCF v2.2
     const VENDOR_LIST_VERSION = 0;  // no global vendor list was used
+    // Vendor ids are granted as one range. The list runs to roughly 1400, so
+    // this covers every vendor in it and leaves room above.
+    const VENDOR_MAX = 1500;
+    const PURPOSES = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ];
+    // Purposes that may be taken on legitimate interest rather than consent.
+    const PURPOSES_LI = [ 2, 7, 8, 9, 10, 11 ];
+    const SPECIAL_FEATURES = [ 1, 2 ];
 
     const twoLetters = (value, fallback) => {
         const text = typeof value === 'string' ? value.toUpperCase() : '';
@@ -40,15 +50,34 @@ function consentRRTcfDenied() {
     // base64url character.
     const encodeCoreString = ( ) => {
         const chunks = [];
+        const pushBits = text => {
+            chunks.push(text);
+        };
         const push = (value, width) => {
             let text = Math.max(0, Math.floor(value)).toString(2);
             if ( text.length > width ) { text = text.slice(-width); }
-            chunks.push(text.padStart(width, '0'));
+            pushBits(text.padStart(width, '0'));
         };
         const pushLetters = letters => {
             for ( const letter of letters ) {
                 push(letter.charCodeAt(0) - 65, 6);
             }
+        };
+        const pushFlags = (ids, width) => {
+            let text = '';
+            for ( let position = 1; position <= width; position++ ) {
+                text += ids.indexOf(position) !== -1 ? '1' : '0';
+            }
+            pushBits(text);
+        };
+        // One range covering every vendor id, rather than a bit per vendor.
+        const pushVendorRange = ( ) => {
+            push(VENDOR_MAX, 16);   // max vendor id
+            push(1, 1);             // range encoding
+            push(1, 12);            // one entry
+            push(1, 1);             // which is a range
+            push(1, 16);            // from
+            push(VENDOR_MAX, 16);   // to
         };
         const deciseconds = Math.floor(Date.now() / 100);
         push(2, 6);                 // TC string version
@@ -62,15 +91,13 @@ function consentRRTcfDenied() {
         push(POLICY_VERSION, 6);
         push(1, 1);                 // service specific, not global
         push(0, 1);                 // standard stacks and texts
-        push(0, 12);                // special feature opt-ins: none
-        push(0, 24);                // purpose consents: none
-        push(0, 24);                // purpose legitimate interests: none
+        pushFlags(SPECIAL_FEATURES, 12);
+        pushFlags(PURPOSES, 24);
+        pushFlags(PURPOSES_LI, 24);
         push(0, 1);                 // purpose one treatment
         pushLetters('AA');          // publisher country: none claimed
-        push(0, 16);                // vendor consents, max vendor id
-        push(0, 1);                 // bit field rather than ranges
-        push(0, 16);                // vendor legitimate interests, max id
-        push(0, 1);
+        pushVendorRange();          // vendor consents
+        pushVendorRange();          // vendor legitimate interests
         push(0, 12);                // publisher restrictions: none
         let stream = chunks.join('');
         while ( stream.length % 6 !== 0 ) { stream += '0'; }
@@ -83,11 +110,26 @@ function consentRRTcfDenied() {
 
     const tcString = encodeCoreString();
 
-    const refused = count => {
+    const flags = (ids, count) => {
         const out = {};
-        for ( let id = 1; id <= count; id++ ) { out[id] = false; }
+        for ( let id = 1; id <= count; id++ ) {
+            out[id] = ids.indexOf(id) !== -1;
+        }
         return out;
     };
+
+    const range = count => {
+        const out = {};
+        for ( let id = 1; id <= count; id++ ) { out[id] = true; }
+        return out;
+    };
+
+    // Built once: a vendor object runs to a few hundred entries and every
+    // getTCData answer shares it.
+    const purposeConsents = flags(PURPOSES, 11);
+    const purposeLegitimateInterests = flags(PURPOSES_LI, 11);
+    const specialFeatureOptins = flags(SPECIAL_FEATURES, 2);
+    const vendorConsents = range(VENDOR_MAX);
 
     const tcData = listenerId => {
         const data = {
@@ -108,17 +150,17 @@ function consentRRTcfDenied() {
                 disclosedVendors: {},
             },
             purpose: {
-                consents: refused(11),
-                legitimateInterests: refused(11),
+                consents: purposeConsents,
+                legitimateInterests: purposeLegitimateInterests,
             },
             vendor: {
-                consents: {},
-                legitimateInterests: {},
+                consents: vendorConsents,
+                legitimateInterests: vendorConsents,
             },
-            specialFeatureOptins: refused(2),
+            specialFeatureOptins,
             publisher: {
-                consents: refused(11),
-                legitimateInterests: refused(11),
+                consents: purposeConsents,
+                legitimateInterests: purposeLegitimateInterests,
                 customPurpose: {
                     consents: {},
                     legitimateInterests: {},

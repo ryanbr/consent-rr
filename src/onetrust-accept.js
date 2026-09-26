@@ -20,12 +20,14 @@
 
     Stands in for OneTrust's otSDKStub.js. The page sees a visitor who has
     already accepted every category: no banner, no re-prompt, and tags parked
-    behind a category are switched back on.
+    behind a category are switched back on. IAB TCF vendors are answered with
+    consent as well. See lib/onetrust-tcf.js.
 
 */
 
 (function() {
     'use strict';
     // @include lib/onetrust-core.js
-    consentRROneTrust('accept');
+    // @include lib/onetrust-tcf.js
+    consentRROneTrust('accept', consentRRTcfGranted);
 })();

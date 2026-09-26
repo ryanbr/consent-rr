@@ -13,7 +13,7 @@ Currently covered: **OneTrust** (and its CookiePro tier).
 
 | Resource | What the page sees |
 | --- | --- |
-| `onetrust-reject.js` | A stored *reject all*: `C0001` on, everything else off. Tags parked behind a category stay parked, and IAB TCF vendors are answered with a TC string that grants nothing. |
+| `onetrust-reject.js` | A stored *reject all*: `C0001` on, everything else off. Tags parked behind a category stay parked. |
 | `onetrust-accept.js` | A stored *accept all*: every category on, and tags parked behind one are switched back on. |
 
 Pick `reject` as the default. `accept` is for sites that put the content itself
@@ -71,8 +71,8 @@ reproduced.
 - `OneTrustGroupsUpdated` dispatched on `window` with the granted ids.
 - Server-rendered banner markup (`#onetrust-consent-sdk` and friends) removed,
   as it arrives.
-- In reject mode, the IAB layer the SDK installs when a tenant enables it:
-  `window.__tcfapi` (`ping`, `getTCData`, `getInAppTCData`, `addEventListener`,
+- The IAB layer the SDK installs when a tenant enables it: `window.__tcfapi`
+  (`ping`, `getTCData`, `getInAppTCData`, `addEventListener`,
   `removeEventListener`), the `__tcfapiLocator` frame and the `postMessage`
   bridge framed vendors use, calls a page stub parked on `__tcfapi.a` answered,
   and the TC string stored in `eupubconsent-v2`.
@@ -84,14 +84,18 @@ reproduced.
 
 ### Deliberate gaps
 
-- **No IAB TCF on the accept side.** A refusal is encodable honestly - every
-  purpose, special feature and vendor bit is zero, and no vendor list is needed
-  to say no. Claiming consent *for* vendors would mean inventing agreements
-  nobody gave, so `onetrust-accept.js` ships no `__tcfapi` at all. A site that
-  needs TCF consent to function is one to leave to the real SDK.
+- **TCF is answered with consent, in both resources, including reject.** This
+  looks contradictory and is deliberate. A TCF refusal does not stop a vendor;
+  it asks the vendor to stop itself, and a video player or DRM SDK that gates on
+  the answer simply never starts - leaving a broken page with no banner to
+  click. Tested: an all-denied string killed the player on a live site. uBlock
+  Origin is meanwhile blocking those vendors' requests at the network layer,
+  where a refusal actually bites. So OneTrust's own state and cookies carry the
+  decision, and the IAB layer says yes.
 - The TC string names no jurisdiction (`publisherCC` is `AA`) and no global
   vendor list (`vendorListVersion` is `0`), because a replacement has neither to
-  hand. Consent language is read off the page's `lang`.
+  hand. Consent language is read off the page's `lang`. Vendor ids are granted
+  as one range up to 1500, which covers the list with room above it.
 - **`consent.onetrust` is never dispatched.** `OnConsentChanged()` registers a
   real listener, but consent never *changes* here — exactly like a return visit
   whose choice is already stored. A site that only initialises from that event
@@ -128,8 +132,9 @@ literals, since the stripping is line-based.
 
 Tests run the built files in jsdom, parsed with the same rules uBO applies and
 joined the way uBO joins several `userResourcesLocation` URLs. The TC string is
-not taken on trust: `@iabtcf/core` decodes it and the test asserts every
-purpose, special feature and vendor vector comes back empty.
+not taken on trust: `@iabtcf/core`, the IAB reference implementation, decodes it
+and the tests assert which purposes, special features and vendor ranges come
+back - including that OneTrust stays refused while TCF reads as consent.
 
 ## License
 

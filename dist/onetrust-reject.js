@@ -387,7 +387,7 @@ function consentRROneTrust(mode, installTcf) {
         w.setTimeout(onReady, 0);
     }
 }
-function consentRRTcfDenied() {
+function consentRRTcfGranted() {
     const w = window;
     const doc = w.document;
     const B64 =
@@ -396,6 +396,10 @@ function consentRRTcfDenied() {
     const CMP_VERSION = 1;
     const POLICY_VERSION = 4;       // TCF v2.2
     const VENDOR_LIST_VERSION = 0;  // no global vendor list was used
+    const VENDOR_MAX = 1500;
+    const PURPOSES = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ];
+    const PURPOSES_LI = [ 2, 7, 8, 9, 10, 11 ];
+    const SPECIAL_FEATURES = [ 1, 2 ];
     const twoLetters = (value, fallback) => {
         const text = typeof value === 'string' ? value.toUpperCase() : '';
         const match = /[A-Z]{2}/.exec(text);
@@ -403,15 +407,33 @@ function consentRRTcfDenied() {
     };
     const encodeCoreString = ( ) => {
         const chunks = [];
+        const pushBits = text => {
+            chunks.push(text);
+        };
         const push = (value, width) => {
             let text = Math.max(0, Math.floor(value)).toString(2);
             if ( text.length > width ) { text = text.slice(-width); }
-            chunks.push(text.padStart(width, '0'));
+            pushBits(text.padStart(width, '0'));
         };
         const pushLetters = letters => {
             for ( const letter of letters ) {
                 push(letter.charCodeAt(0) - 65, 6);
             }
+        };
+        const pushFlags = (ids, width) => {
+            let text = '';
+            for ( let position = 1; position <= width; position++ ) {
+                text += ids.indexOf(position) !== -1 ? '1' : '0';
+            }
+            pushBits(text);
+        };
+        const pushVendorRange = ( ) => {
+            push(VENDOR_MAX, 16);   // max vendor id
+            push(1, 1);             // range encoding
+            push(1, 12);            // one entry
+            push(1, 1);             // which is a range
+            push(1, 16);            // from
+            push(VENDOR_MAX, 16);   // to
         };
         const deciseconds = Math.floor(Date.now() / 100);
         push(2, 6);                 // TC string version
@@ -425,15 +447,13 @@ function consentRRTcfDenied() {
         push(POLICY_VERSION, 6);
         push(1, 1);                 // service specific, not global
         push(0, 1);                 // standard stacks and texts
-        push(0, 12);                // special feature opt-ins: none
-        push(0, 24);                // purpose consents: none
-        push(0, 24);                // purpose legitimate interests: none
+        pushFlags(SPECIAL_FEATURES, 12);
+        pushFlags(PURPOSES, 24);
+        pushFlags(PURPOSES_LI, 24);
         push(0, 1);                 // purpose one treatment
         pushLetters('AA');          // publisher country: none claimed
-        push(0, 16);                // vendor consents, max vendor id
-        push(0, 1);                 // bit field rather than ranges
-        push(0, 16);                // vendor legitimate interests, max id
-        push(0, 1);
+        pushVendorRange();          // vendor consents
+        pushVendorRange();          // vendor legitimate interests
         push(0, 12);                // publisher restrictions: none
         let stream = chunks.join('');
         while ( stream.length % 6 !== 0 ) { stream += '0'; }
@@ -444,11 +464,22 @@ function consentRRTcfDenied() {
         return out;
     };
     const tcString = encodeCoreString();
-    const refused = count => {
+    const flags = (ids, count) => {
         const out = {};
-        for ( let id = 1; id <= count; id++ ) { out[id] = false; }
+        for ( let id = 1; id <= count; id++ ) {
+            out[id] = ids.indexOf(id) !== -1;
+        }
         return out;
     };
+    const range = count => {
+        const out = {};
+        for ( let id = 1; id <= count; id++ ) { out[id] = true; }
+        return out;
+    };
+    const purposeConsents = flags(PURPOSES, 11);
+    const purposeLegitimateInterests = flags(PURPOSES_LI, 11);
+    const specialFeatureOptins = flags(SPECIAL_FEATURES, 2);
+    const vendorConsents = range(VENDOR_MAX);
     const tcData = listenerId => {
         const data = {
             tcString,
@@ -468,17 +499,17 @@ function consentRRTcfDenied() {
                 disclosedVendors: {},
             },
             purpose: {
-                consents: refused(11),
-                legitimateInterests: refused(11),
+                consents: purposeConsents,
+                legitimateInterests: purposeLegitimateInterests,
             },
             vendor: {
-                consents: {},
-                legitimateInterests: {},
+                consents: vendorConsents,
+                legitimateInterests: vendorConsents,
             },
-            specialFeatureOptins: refused(2),
+            specialFeatureOptins,
             publisher: {
-                consents: refused(11),
-                legitimateInterests: refused(11),
+                consents: purposeConsents,
+                legitimateInterests: purposeLegitimateInterests,
                 customPurpose: {
                     consents: {},
                     legitimateInterests: {},
@@ -602,5 +633,5 @@ function consentRRTcfDenied() {
     });
     return tcString;
 }
-    consentRROneTrust('reject', consentRRTcfDenied);
+    consentRROneTrust('reject', consentRRTcfGranted);
 })();

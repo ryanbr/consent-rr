@@ -45,11 +45,12 @@ describe('resources file', ( ) => {
         }
     });
 
-    it('selects its mode, and only reject carries the IAB layer', ( ) => {
-        assert.ok(accept.includes("consentRROneTrust('accept')"));
-        assert.ok(reject.includes("consentRROneTrust('reject', consentRRTcfDenied)"));
-        assert.equal(accept.includes('__tcfapi'), false);
-        assert.ok(reject.includes('__tcfapi'));
+    it('selects its mode, and both carry the IAB layer', ( ) => {
+        assert.ok(accept.includes("consentRROneTrust('accept', consentRRTcfGranted)"));
+        assert.ok(reject.includes("consentRROneTrust('reject', consentRRTcfGranted)"));
+        for ( const code of [ accept, reject ] ) {
+            assert.ok(code.includes('__tcfapi'));
+        }
     });
 });
 
@@ -308,13 +309,13 @@ describe('tcf', ( ) => {
         return data;
     };
 
-    it('encodes a TC string the IAB decoder reads as granting nothing', ( ) => {
+    it('encodes a TC string the IAB decoder reads as consent', ( ) => {
         const win = run(reject, '<html lang="de"><body><p id="content">x');
         const decoded = TCString.decode(getTCData(win).tcString);
-        const set = vector => {
-            let count = 0;
-            vector.forEach(value => { if ( value ) { count += 1; } });
-            return count;
+        const on = vector => {
+            const ids = [];
+            vector.forEach((value, id) => { if ( value ) { ids.push(id); } });
+            return ids;
         };
         assert.equal(decoded.version, 2);
         assert.equal(decoded.policyVersion, 4);
@@ -322,23 +323,43 @@ describe('tcf', ( ) => {
         assert.equal(decoded.isServiceSpecific, true);
         // Taken off the page rather than assumed.
         assert.equal(decoded.consentLanguage, 'DE');
-        assert.equal(set(decoded.purposeConsents), 0);
-        assert.equal(set(decoded.purposeLegitimateInterests), 0);
-        assert.equal(set(decoded.specialFeatureOptins), 0);
-        assert.equal(decoded.vendorConsents.size, 0);
-        assert.equal(decoded.vendorLegitimateInterests.size, 0);
+        assert.deepEqual(on(decoded.purposeConsents),
+            [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ]);
+        assert.deepEqual(on(decoded.purposeLegitimateInterests),
+            [ 2, 7, 8, 9, 10, 11 ]);
+        assert.deepEqual(on(decoded.specialFeatureOptins), [ 1, 2 ]);
+        // Granted as one range rather than a bit per vendor.
+        assert.equal(decoded.vendorConsents.size, 1500);
+        assert.equal(decoded.vendorConsents.has(1), true);
+        assert.equal(decoded.vendorConsents.has(755), true);
+        assert.equal(decoded.vendorConsents.has(1500), true);
+        assert.equal(decoded.vendorConsents.has(1501), false);
+        assert.equal(decoded.vendorLegitimateInterests.size, 1500);
         assert.deepEqual(decoded.publisherRestrictions.getRestrictions(), []);
     });
 
-    it('reports every purpose refused in the tcData object too', ( ) => {
+    it('reports the same consent in the tcData object', ( ) => {
         const data = getTCData(run(reject));
         assert.equal(data.gdprApplies, true);
         assert.equal(data.eventStatus, 'tcloaded');
         assert.equal(data.cmpStatus, 'loaded');
-        assert.equal(Object.values(data.purpose.consents).includes(true), false);
+        assert.equal(Object.values(data.purpose.consents).includes(false), false);
         assert.equal(Object.keys(data.purpose.consents).length, 11);
-        assert.equal(Object.keys(data.vendor.consents).length, 0);
-        assert.equal(Object.values(data.specialFeatureOptins).includes(true), false);
+        assert.equal(data.vendor.consents[755], true);
+        assert.equal(data.specialFeatureOptins[1], true);
+    });
+
+    // The split is the point: a refusal here only asks vendors to police
+    // themselves, and costs the page its player when they do. uBO blocks their
+    // requests regardless.
+    it('grants TCF while OneTrust itself stays refused', ( ) => {
+        const win = run(reject);
+        assert.equal(win.OnetrustActiveGroups, ',C0001,');
+        assert.equal(win.OneTrust.GetDomainData().Groups
+            .find(group => group.CustomGroupId === 'C0004').Status, 'inactive');
+        const groups = (consentParams(win).get('groups') || '').split(',');
+        assert.ok(groups.includes('C0004:0'));
+        assert.equal(getTCData(win).purpose.consents[4], true);
     });
 
     it('answers ping as a loaded CMP', ( ) => {
@@ -424,15 +445,10 @@ describe('tcf', ( ) => {
         }
     );
 
-    it('is absent from the accept resource, which claims nothing for vendors',
-        ( ) => {
-            const win = run(accept);
-            assert.equal(win.__tcfapi, undefined);
-            assert.equal(cookies(win).has('eupubconsent-v2'), false);
-            assert.equal(
-                win.document.querySelector('iframe[name="__tcfapiLocator"]'),
-                null
-            );
-        }
-    );
+    it('answers vendors from the accept resource as well', ( ) => {
+        const win = run(accept);
+        assert.equal(typeof win.__tcfapi, 'function');
+        assert.equal(getTCData(win).purpose.consents[4], true);
+        assert.ok(win.document.querySelector('iframe[name="__tcfapiLocator"]'));
+    });
 });

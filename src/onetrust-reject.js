@@ -20,8 +20,11 @@
 
     Stands in for OneTrust's otSDKStub.js. The page sees a visitor who has
     already turned everything but C0001 down: no banner, no re-prompt, and
-    tags parked behind a category stay parked. IAB TCF vendors are answered
-    too, with a TC string that grants nothing.
+    tags parked behind a category stay parked.
+
+    IAB TCF vendors are answered separately, and with consent: refusing there
+    stops players and DRM from starting, and uBlock Origin is already blocking
+    those vendors' requests outright. See lib/onetrust-tcf.js.
 
 */
 
@@ -29,5 +32,5 @@
     'use strict';
     // @include lib/onetrust-core.js
     // @include lib/onetrust-tcf.js
-    consentRROneTrust('reject', consentRRTcfDenied);
+    consentRROneTrust('reject', consentRRTcfGranted);
 })();
