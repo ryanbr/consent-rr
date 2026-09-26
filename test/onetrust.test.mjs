@@ -11,8 +11,8 @@ import { TCString } from '@iabtcf/core';
 import { GppModel } from '@iabgpp/cmpapi';
 import { before, describe, it } from 'node:test';
 import {
-    consentParams, cookies, filtersText, fixture, loadResources, run, settle,
-    version,
+    consentParams, cookies, cookiesInJar, filtersText, fixture, loadResources,
+    run, runDom, settle, version,
 } from './helpers.mjs';
 
 let accept;
@@ -84,6 +84,36 @@ describe('reject', ( ) => {
         assert.ok(groups.includes('BG123:0'));
         // The IAB stack group, which sites read by name.
         assert.ok(groups.includes('V2STACK42:0'));
+    });
+
+    // The SDK scopes its cookies to the registered domain, so a host-only copy
+    // would shadow rather than replace one - two cookies of the same name, and
+    // a site taking the first match reads whichever is older.
+    it('scopes its cookies the way the SDK does', ( ) => {
+        for ( const [ url, domain ] of [
+            [ 'https://www.rugby365.com/', 'rugby365.com' ],
+            // Not co.uk: a cookie on a public suffix is refused.
+            [ 'https://shop.example.co.uk/', 'example.co.uk' ],
+        ] ) {
+            const dom = runDom(reject, url, fixture, w => {
+                w.document.cookie = 'OptanonConsent=stale; path=/';
+            });
+            const found = cookiesInJar(dom, url, 'OptanonConsent');
+            assert.equal(found.length, 1, url);
+            assert.equal(found[0].domain, domain);
+            assert.equal(Boolean(found[0].hostOnly), false);
+            assert.ok(found[0].value.includes('groups='));
+            // The probe used to find that domain does not linger.
+            assert.equal(/consentRRProbe/.test(dom.window.document.cookie), false);
+        }
+    });
+
+    it('leaves the parentheses in the datestamp alone, as the SDK does', ( ) => {
+        // The raw cookie, not the decoded value: %28 and ( are the same once
+        // URLSearchParams has been through it.
+        const raw = cookies(run(reject)).get('OptanonConsent') || '';
+        assert.equal(raw.includes('%28'), false);
+        assert.ok(/datestamp=[^&]*\(/.test(raw), raw.slice(0, 120));
     });
 
     it('removes banner markup that was server-rendered', ( ) => {

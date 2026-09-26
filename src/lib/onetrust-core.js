@@ -141,10 +141,50 @@ function consentRROneTrust(mode, installTcf, installGpp) {
         return '';
     };
 
+    // The SDK scopes its cookies to the registered domain. A host-only copy
+    // does not replace one of those, it shadows it - leaving two OptanonConsent
+    // cookies, and code that takes the first match reads whichever is older.
+    // There is no public suffix list in a page, so find the broadest domain the
+    // browser will accept: setting a cookie on a public suffix fails silently.
+    let cookieDomain;
+
+    const findCookieDomain = ( ) => {
+        const host = String(w.location.hostname);
+        if ( host === '' || /^[[\d.]/.test(host) ) { return ''; }
+        const labels = host.split('.');
+        const probe = 'consentRRProbe';
+        for ( let i = labels.length - 2; i >= 0; i-- ) {
+            const candidate = labels.slice(i).join('.');
+            try {
+                doc.cookie = probe + '=1; path=/; domain=' + candidate;
+                if ( readCookie(probe) !== '1' ) { continue; }
+                doc.cookie = probe + '=; path=/; max-age=0; domain=' + candidate;
+                return candidate;
+            } catch(ex) {
+            }
+        }
+        return '';
+    };
+
     const writeCookie = (name, value) => {
+        if ( cookieDomain === undefined ) {
+            try {
+                cookieDomain = findCookieDomain();
+            } catch(ex) {
+                cookieDomain = '';
+            }
+        }
+        const attributes = '; path=/; max-age=31536000; samesite=lax';
         try {
-            doc.cookie =
-                name + '=' + value + '; path=/; max-age=31536000; samesite=lax';
+            // Clear a host-only copy first, whoever wrote it, so the one that
+            // remains is the one the SDK's own scope would have used.
+            if ( cookieDomain !== '' ) {
+                doc.cookie = name + '=; path=/; max-age=0';
+                doc.cookie =
+                    name + '=' + value + attributes + '; domain=' + cookieDomain;
+                return;
+            }
+            doc.cookie = name + '=' + value + attributes;
         } catch(ex) {
         }
     };
@@ -194,7 +234,10 @@ function consentRROneTrust(mode, installTcf, installGpp) {
         params.set('groups', groups.join(','));
         params.set('AwaitingReconsent', 'false');
         params.set('intType', accept ? '1' : '2');
-        writeCookie('OptanonConsent', params.toString());
+        // URLSearchParams escapes the parentheses in a timezone name and the
+        // SDK does not, so put them back.
+        writeCookie('OptanonConsent', params.toString()
+            .replace(/%28/g, '(').replace(/%29/g, ')'));
         writeCookie('OptanonAlertBoxClosed', now.toISOString());
     };
 

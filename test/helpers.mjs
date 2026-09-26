@@ -93,6 +93,22 @@ export const run = (code, html = fixture, before = undefined) => {
     return dom.window;
 };
 
+// The jsdom instance rather than its window, for tests that need the cookie jar
+// to see a cookie's scope - document.cookie does not expose it.
+export const runDom = (code, url, html = fixture, before = undefined) => {
+    const dom = new JSDOM(html, {
+        runScripts: 'outside-only',
+        url,
+        virtualConsole: new VirtualConsole(),
+    });
+    if ( typeof before === 'function' ) { before(dom.window); }
+    dom.window.eval(code);
+    return dom;
+};
+
+export const cookiesInJar = (dom, url, name) =>
+    dom.cookieJar.getCookiesSync(url).filter(cookie => cookie.key === name);
+
 export const cookies = win => {
     const out = new Map();
     for ( const cookie of String(win.document.cookie).split(';') ) {

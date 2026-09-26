@@ -58,7 +58,7 @@ Check it took: each resource announces itself on load, so the console on a
 OneTrust site shows a line like
 
 ```
-[consent-rr] onetrust-reject 1.2.0 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-reject 1.2.1 groups=,C0001, tcf=refused gpp=refused
 ```
 
 and `OneTrust.consentRR` reports the same mode and version.
@@ -163,8 +163,11 @@ reproduced.
   will behave as it does for a returning visitor.
 - **No claimed location.** `getGeolocationData()` answers empty rather than
   inventing a region for a site to branch on.
-- **Cookies are host-only.** The real SDK scopes them to the registered domain,
-  so a decision is not shared with subdomains here.
+- Cookies are scoped to the registered domain, as the SDK scopes its own -
+  found by probing, since a page has no public suffix list and a cookie set on
+  one is refused. A host-only copy would not replace the SDK's, it would shadow
+  it: two `OptanonConsent` cookies, and a site taking the first match reads
+  whichever is older. Seen happening on a live site.
 - A page with a strict `script-src` CSP that omits `data:` will refuse the
   resource: user resources have no extension URL, so uBO serves them as a
   `data:` URI. Trusted Types enforcement can likewise block tag revival.
