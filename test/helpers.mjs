@@ -4,9 +4,10 @@
     Copyright (C) 2026-present ryanbr
     SPDX-License-Identifier: GPL-3.0-or-later
 
-    Test helpers. Resources are read back out of dist/consent-rr.txt with the
-    same line rules uBlock Origin applies, so the tests exercise the artifact
-    that ships rather than the sources it was built from.
+    Test helpers. Resources are read back out of the dist/*.js files with the
+    same line rules uBlock Origin applies, and joined the way uBO joins the
+    contents of several userResourcesLocation URLs, so the tests exercise the
+    artifacts that ship rather than the sources they were built from.
 
 */
 
@@ -44,9 +45,14 @@ export const parseResources = text => {
     return resources;
 };
 
-export const loadResources = async ( ) => parseResources(
-    await fs.readFile(path.join(root, 'dist', 'consent-rr.txt'), 'utf8')
-);
+export const loadResources = async ( ) => {
+    const dir = path.join(root, 'dist');
+    const names = (await fs.readdir(dir)).filter(n => n.endsWith('.js')).sort();
+    const files = await Promise.all(
+        names.map(name => fs.readFile(path.join(dir, name), 'utf8'))
+    );
+    return parseResources(files.join('\n\n'));
+};
 
 export const fixture = `<!DOCTYPE html><html><head>
 <script id="gated-inline" type="text/plain" class="optanon-category-C0002">window.inlineRan = true;</script>

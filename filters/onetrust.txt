@@ -5,9 +5,10 @@
 ! Expires: 7 days
 ! Homepage: https://github.com/ryanbr/consent-rr
 !
-! These filters do nothing on their own: they name resources that ship in
-! dist/consent-rr.txt, which has to be installed through uBlock Origin's
-! userResourcesLocation setting first. See the README.
+! These filters do nothing on their own: they name the resources
+! dist/onetrust-reject.js and dist/onetrust-accept.js, which have to be
+! installed through uBlock Origin's userResourcesLocation setting first -
+! either one on its own, or both. See the README.
 !
 ! uBlock Origin only (the MV2 extension). uBO Lite cannot load user resources.
 

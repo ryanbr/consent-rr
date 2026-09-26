@@ -22,10 +22,21 @@ behind a category (embedded players, maps) rather than behind the banner.
 ## Install
 
 1. **Resources.** uBlock Origin → *Settings* → *Advanced settings* →
-   `userResourcesLocation`, set to the raw URL of
-   [`dist/consent-rr.txt`](dist/consent-rr.txt). Several URLs can be
-   whitespace-separated. Then reload the filter lists
-   (*Filter lists* → *Purge all caches* → *Update now*).
+   `userResourcesLocation`. Set it to whichever resource you want, or to both,
+   whitespace-separated:
+
+   ```
+   https://raw.githubusercontent.com/ryanbr/consent-rr/main/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/main/dist/onetrust-accept.js
+   ```
+
+   Then reload the filter lists (*Filter lists* → *Purge all caches* →
+   *Update now*).
+
+   Each file stands on its own: nothing else has to be loaded for it to work.
+   Its first line, `/// onetrust-reject.js`, is the resource header uBO reads -
+   and a comment to JavaScript, so the file is a readable script at the same
+   time.
 2. **Filters.** Paste [`filters/onetrust.txt`](filters/onetrust.txt) into
    *My filters*, or host it and subscribe via *Import*.
 
@@ -85,23 +96,25 @@ reproduced.
 ## Development
 
 ```sh
-npm run build   # src/ -> dist/consent-rr.txt
-npm test        # builds, then runs the suite against the built file
+npm run build   # src/ -> dist/onetrust-accept.js, dist/onetrust-reject.js
+npm test        # builds, then runs the suite against the built files
 ```
 
 `src/onetrust-*.js` are thin entry points; the behaviour is in
-`src/lib/onetrust-core.js`, pulled in by a `// @include` line. `dist/` is
-committed, because that is the file uBO fetches.
+`src/lib/onetrust-core.js`, pulled in by a `// @include` line, so accept and
+reject cannot drift apart. The build inlines it, leaving one self-contained file
+per resource. `dist/` is committed, because those are the files uBO fetches.
 
 uBO's resources format is line-based and unforgiving, and the bundler enforces
 it: a **blank line ends a resource**, a line starting with `// ` or `#` is
-**dropped**, and `/// ` starts a directive — so blank lines and whole-line
-comments are stripped from the output. Resources must also stay **ASCII**,
+**dropped**, and a `/// ` line is the header or a directive — so blank lines and
+whole-line comments are stripped from the output, and no code line may begin
+with `/// `. Resources must also stay **ASCII**,
 because uBO encodes a user resource with `btoa()`. Sources may not use template
 literals, since the stripping is line-based.
 
-Tests run the built artifact in jsdom, parsing `dist/consent-rr.txt` with the
-same rules uBO applies.
+Tests run the built files in jsdom, parsed with the same rules uBO applies and
+joined the way uBO joins several `userResourcesLocation` URLs.
 
 ## License
 
