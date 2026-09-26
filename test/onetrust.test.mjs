@@ -69,6 +69,8 @@ describe('reject', ( ) => {
         const params = consentParams(win);
         assert.ok(cookies(win).has('OptanonAlertBoxClosed'));
         assert.equal(params.get('interactionCount'), '1');
+        assert.equal(params.get('isAnonUser'), '1');
+        assert.equal(params.get('prevHadToken'), '0');
         assert.equal(params.get('AwaitingReconsent'), 'false');
         // 2 is the SDK's own "Banner - Reject All".
         assert.equal(params.get('intType'), '2');
@@ -491,11 +493,16 @@ describe('tcf', ( ) => {
         assert.equal(decoded.isServiceSpecific, true);
         // Taken off the page rather than assumed.
         assert.equal(decoded.consentLanguage, 'DE');
-        // Nothing consented, as a real reject-all writes.
+        // Nothing consented, as a real reject-all writes - but legitimate
+        // interest survives it, at the purpose level as well as the vendor
+        // level, which is what a real "essential" click leaves behind.
         assert.deepEqual(on(decoded.purposeConsents), []);
-        assert.deepEqual(on(decoded.purposeLegitimateInterests), []);
+        assert.deepEqual(on(decoded.purposeLegitimateInterests),
+            [ 2, 7, 8, 9, 10, 11 ]);
         assert.deepEqual(on(decoded.specialFeatureOptins), []);
         assert.equal(decoded.vendorConsents.size, 0);
+        // What OneTrust writes itself, on sites in different countries.
+        assert.equal(decoded.publisherCountryCode, 'DE');
         // Legitimate interest is left alone: refusing does not object to it.
         assert.equal(decoded.vendorLegitimateInterests.size, 1500);
         assert.equal(decoded.vendorLegitimateInterests.has(755), true);
@@ -512,6 +519,8 @@ describe('tcf', ( ) => {
         assert.equal(Object.keys(data.purpose.consents).length, 11);
         assert.equal(Object.keys(data.vendor.consents).length, 0);
         assert.equal(data.vendor.legitimateInterests[755], true);
+        assert.equal(data.purpose.legitimateInterests[7], true);
+        assert.equal(data.purpose.legitimateInterests[1], false);
         assert.equal(data.specialFeatureOptins[1], false);
     });
 

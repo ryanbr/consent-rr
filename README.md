@@ -58,7 +58,7 @@ Check it took: each resource announces itself on load, so the console on a
 OneTrust site shows a line like
 
 ```
-[consent-rr] onetrust-reject 1.1.0 groups=,C0001, tcf=refused
+[consent-rr] onetrust-reject 1.1.1 groups=,C0001, tcf=refused
 ```
 
 and `OneTrust.consentRR` reports the same mode and version.
@@ -113,9 +113,12 @@ reproduced.
   interest - that needs a separate action. Policy version 5, and timestamps
   rounded to midday UTC so the string is stable for a day rather than unique per
   page load. Vendor ids are handled as one range to 1500 instead of a bit each.
-- The TC string names no jurisdiction (`publisherCC` is `AA`), because a
-  replacement has no geolocation to go on. Consent language is read off the
-  page's `lang`.
+- `publisherCC` is `DE` and `vendorListVersion` `178` because that is what real
+  OneTrust strings carry - `DE` turned up on sites in unrelated countries, so it
+  is OneTrust's own default rather than a jurisdiction we picked. Consent
+  language is read off the page's `lang`. `addtlConsent` stays empty: a real
+  refusal consents to no Google AC vendor either, and the disclosed-vendor list
+  a real string carries is not something a replacement can know.
 - Sites commonly keep their own record of the choice beside OneTrust's and
   re-prompt until it is set, so both resources set `localStorage`
   `cookieChoiceMade` to `true` - the `cookiechoices.js` convention, which

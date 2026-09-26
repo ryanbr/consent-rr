@@ -185,6 +185,7 @@ function consentRROneTrust(mode, installTcf) {
         params.set('consentId', previous.get('consentId') || randomConsentId());
         params.set('interactionCount', '1');
         params.set('isAnonUser', '1');
+        params.set('prevHadToken', '0');
         params.set('landingPath', 'NotLandingPage');
         params.set('groups', groups.join(','));
         params.set('AwaitingReconsent', 'false');
