@@ -58,7 +58,7 @@ Check it took: each resource announces itself on load, so the console on a
 OneTrust site shows a line like
 
 ```
-[consent-rr] onetrust-reject 1.1.2 groups=,C0001, tcf=refused
+[consent-rr] onetrust-reject 1.1.3 groups=,C0001, tcf=refused
 ```
 
 and `OneTrust.consentRR` reports the same mode and version.
@@ -113,9 +113,14 @@ reproduced.
   interest - that needs a separate action. Policy version 5, and timestamps
   rounded to midday UTC so the string is stable for a day rather than unique per
   page load. Vendor ids are handled as one range to 1500 instead of a bit each.
-- `publisherCC` is `DE` and `vendorListVersion` `178` because that is what real
-  OneTrust strings carry - `DE` turned up on sites in unrelated countries, so it
-  is OneTrust's own default rather than a jurisdiction we picked. Consent
+- **What varies per tenant is left alone rather than guessed.** Four sites
+  sampled disagreed on the publisher country (DE, DE, US), on whether a refusal
+  keeps legitimate interest at the purpose level (two of three did not), on how
+  many vendors keep it (15, 22, 390) and on publisher restrictions (none, none,
+  ten). So `publisherCC` is `AA`, the user-assigned code rather than a country;
+  a refusal keeps legitimate interest for vendors but not for purposes, the
+  majority shape; and no publisher restrictions are written.
+  `vendorListVersion` is `178`, which every sample carried. Consent
   language is read off the page's `lang`. The string carries the publisher
   segment beside the core, as a real one does, and vendor ids run to 2000 - a
   real string reached 1650.

@@ -78,6 +78,8 @@ describe('reject', ( ) => {
         assert.ok(groups.includes('C0001:1'));
         assert.ok(groups.includes('C0004:0'));
         assert.ok(groups.includes('BG123:0'));
+        // The IAB stack group, which sites read by name.
+        assert.ok(groups.includes('V2STACK42:0'));
     });
 
     it('removes banner markup that was server-rendered', ( ) => {
@@ -493,16 +495,14 @@ describe('tcf', ( ) => {
         assert.equal(decoded.isServiceSpecific, true);
         // Taken off the page rather than assumed.
         assert.equal(decoded.consentLanguage, 'DE');
-        // Nothing consented, as a real reject-all writes - but legitimate
-        // interest survives it, at the purpose level as well as the vendor
-        // level, which is what a real "essential" click leaves behind.
+        // Nothing consented, and nothing kept at the purpose level either:
+        // two of three real refusals sampled looked exactly like this.
         assert.deepEqual(on(decoded.purposeConsents), []);
-        assert.deepEqual(on(decoded.purposeLegitimateInterests),
-            [ 2, 7, 8, 9, 10, 11 ]);
+        assert.deepEqual(on(decoded.purposeLegitimateInterests), []);
         assert.deepEqual(on(decoded.specialFeatureOptins), []);
         assert.equal(decoded.vendorConsents.size, 0);
-        // What OneTrust writes itself, on sites in different countries.
-        assert.equal(decoded.publisherCountryCode, 'DE');
+        // Tenant-specific in every sample (DE, DE, US), so nothing is claimed.
+        assert.equal(decoded.publisherCountryCode, 'AA');
         // Legitimate interest is left alone: refusing does not object to it.
         assert.equal(decoded.vendorLegitimateInterests.has(755), true);
         // A real string carried vendor ids up to 1650.
@@ -513,8 +513,7 @@ describe('tcf', ( ) => {
         // the same thing again for the publisher's own purposes.
         assert.equal(getTCData(win).tcString.split('.').length, 2);
         assert.deepEqual(on(decoded.publisherConsents), []);
-        assert.deepEqual(on(decoded.publisherLegitimateInterests),
-            [ 2, 7, 8, 9, 10, 11 ]);
+        assert.deepEqual(on(decoded.publisherLegitimateInterests), []);
     });
 
     it('reports the same refusal in the tcData object', ( ) => {
@@ -526,8 +525,9 @@ describe('tcf', ( ) => {
         assert.equal(Object.keys(data.purpose.consents).length, 11);
         assert.equal(Object.keys(data.vendor.consents).length, 0);
         assert.equal(data.vendor.legitimateInterests[755], true);
-        assert.equal(data.purpose.legitimateInterests[7], true);
-        assert.equal(data.purpose.legitimateInterests[1], false);
+        assert.equal(data.purpose.legitimateInterests[7], false);
+        // Vendors keep theirs, which every real refusal sampled did.
+        assert.equal(data.vendor.legitimateInterests[1650], true);
         assert.equal(data.specialFeatureOptins[1], false);
     });
 

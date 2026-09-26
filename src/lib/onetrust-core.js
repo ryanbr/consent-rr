@@ -59,7 +59,11 @@ function consentRROneTrust(mode, installTcf) {
     // C0004 targeting, C0005 social media. Sites can add their own ids, so
     // the set is extended with whatever the document turns out to reference.
     const alwaysActive = 'C0001';
-    const groupIds = new Set([ 'C0001', 'C0002', 'C0003', 'C0004', 'C0005' ]);
+    // V2STACK42 is the IAB stack group, present in every IAB-enabled tenant
+    // sampled, and sites do read it by name.
+    const groupIds = new Set([
+        'C0001', 'C0002', 'C0003', 'C0004', 'C0005', 'V2STACK42',
+    ]);
 
     // Gated tags are tagged optanon-category-C0002, optanon-category-C0002-C0004
     // or ot-vscat-<id> (vendor service categories). Mirrors the SDK's matcher,

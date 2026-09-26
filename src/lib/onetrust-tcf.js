@@ -13,11 +13,16 @@
     The answer follows the resource: reject refuses, accept grants.
 
     Shapes and values are taken from TC strings real OneTrust reject-alls wrote:
-    policy version 5, publisher country DE, and consents all zero while
-    legitimate interests stay intact - rejecting does not object to legitimate
-    interest, which needs a separate action. Those real strings grant nothing
-    and sites work under them, so nothing is claimed on the visitor's behalf
-    here either.
+    policy version 5, and consents all zero while vendor legitimate interests
+    stay intact - rejecting does not object to those, which needs a separate
+    action. Those real strings grant nothing and sites work under them, so
+    nothing is claimed on the visitor's behalf here either.
+
+    What varies between tenants is left alone rather than guessed at. Four sites
+    sampled disagreed on the publisher country (DE, DE, US), on whether a
+    refusal keeps legitimate interest at the purpose level (two of three did
+    not), on how many vendors keep it (15, 22, 390) and on publisher
+    restrictions (none, none, ten). None of that is derivable from the page.
 
     Timestamps are rounded to midday UTC, as real CMPs do, so the string is
     stable for a day instead of unique per page load.
@@ -37,7 +42,9 @@ function consentRRTcf(grant) {
     // Vendor ids are granted as one range, so a generous ceiling costs nothing
     // in the string. A real one carried ids up to 1650.
     const VENDOR_MAX = 2000;
-    const PUBLISHER_CC = 'DE';
+    // Tenant-specific in every sample, so nothing is claimed: AA is the
+    // user-assigned code, not a country.
+    const PUBLISHER_CC = 'AA';
     const PURPOSES = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ];
     // Purposes that may be taken on legitimate interest rather than consent.
     const PURPOSES_LI = [ 2, 7, 8, 9, 10, 11 ];
@@ -114,7 +121,7 @@ function consentRRTcf(grant) {
         push(0, 1);                 // standard stacks and texts
         pushFlags(grant ? SPECIAL_FEATURES : [], 12);
         pushFlags(grant ? PURPOSES : [], 24);
-        pushFlags(PURPOSES_LI, 24);
+        pushFlags(grant ? PURPOSES_LI : [], 24);
         push(0, 1);                 // purpose one treatment
         pushLetters(PUBLISHER_CC);  // what OneTrust itself writes
         if ( grant ) {
@@ -134,7 +141,7 @@ function consentRRTcf(grant) {
         const { push, pushFlags, toString } = bitWriter();
         push(3, 3);                             // segment type
         pushFlags(grant ? PURPOSES : [], 24);   // publisher consents
-        pushFlags(PURPOSES_LI, 24);             // publisher legitimate interests
+        pushFlags(grant ? PURPOSES_LI : [], 24); // publisher legitimate interests
         push(0, 6);                             // no custom purposes
         return toString();
     };
@@ -158,7 +165,7 @@ function consentRRTcf(grant) {
     // Built once: a vendor object runs to a few hundred entries and every
     // getTCData answer shares it.
     const purposeConsents = flags(grant ? PURPOSES : [], 11);
-    const purposeLegitimateInterests = flags(PURPOSES_LI, 11);
+    const purposeLegitimateInterests = flags(grant ? PURPOSES_LI : [], 11);
     const specialFeatureOptins = flags(grant ? SPECIAL_FEATURES : [], 2);
     const vendorConsents = grant ? range(VENDOR_MAX) : {};
     const vendorLegitimateInterests = range(VENDOR_MAX);
