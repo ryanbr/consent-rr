@@ -58,7 +58,7 @@ Check it took: each resource announces itself on load, so the console on a
 OneTrust site shows a line like
 
 ```
-[consent-rr] onetrust-reject 1.1.3 groups=,C0001, tcf=refused
+[consent-rr] onetrust-reject 1.2.0 groups=,C0001, tcf=refused gpp=refused
 ```
 
 and `OneTrust.consentRR` reports the same mode and version.
@@ -91,7 +91,16 @@ reproduced.
 - `OneTrustGroupsUpdated` dispatched on `window` with the granted ids.
 - Server-rendered banner markup (`#onetrust-consent-sdk` and friends) removed,
   as it arrives.
-- The IAB layer the SDK installs when a tenant enables it: `window.__tcfapi`
+- The IAB **GPP** layer, the US counterpart, which `otSDKStub.js` installs
+  itself: `window.__gpp` (`ping`, `addEventListener`, `removeEventListener`,
+  `hasSection`, `getSection`, `getField`, plus the `queue` and `events`
+  accessors), the `__gppLocator` frame and the `__gppCall` bridge. The section
+  is `usnat`: refusing asserts the sale, sharing and targeted-advertising
+  opt-outs, accepting declines them, and the Global Privacy Control bit carries
+  the browser's own signal either way, since that is a fact about the request
+  rather than part of the decision. `getGPPData` is refused, as it is not a
+  command in GPP 1.1 and the reference implementation refuses it too.
+- The IAB **TCF** layer the SDK installs when a tenant enables it: `window.__tcfapi`
   (`ping`, `getTCData`, `getInAppTCData`, `addEventListener`,
   `removeEventListener`), the `__tcfapiLocator` frame and the `postMessage`
   bridge framed vendors use, calls a page stub parked on `__tcfapi.a` answered,

@@ -8,6 +8,7 @@
 
 import { strict as assert } from 'node:assert';
 import { TCString } from '@iabtcf/core';
+import { GppModel } from '@iabgpp/cmpapi';
 import { before, describe, it } from 'node:test';
 import {
     consentParams, cookies, filtersText, fixture, loadResources, run, settle,
@@ -46,11 +47,14 @@ describe('resources file', ( ) => {
         }
     });
 
-    it('selects its mode, and both carry the IAB layer', ( ) => {
-        assert.ok(accept.includes("consentRROneTrust('accept', consentRRTcf)"));
-        assert.ok(reject.includes("consentRROneTrust('reject', consentRRTcf)"));
+    it('selects its mode, and both carry the IAB layers', ( ) => {
+        assert.ok(accept.includes(
+            "consentRROneTrust('accept', consentRRTcf, consentRRGpp)"));
+        assert.ok(reject.includes(
+            "consentRROneTrust('reject', consentRRTcf, consentRRGpp)"));
         for ( const code of [ accept, reject ] ) {
             assert.ok(code.includes('__tcfapi'));
+            assert.ok(code.includes('__gpp'));
         }
     });
 });
@@ -451,7 +455,7 @@ describe('version', ( ) => {
         });
         assert.deepEqual(logs, [
             '[consent-rr] onetrust-reject ' + version +
-            ' groups=,C0001, tcf=refused',
+            ' groups=,C0001, tcf=refused gpp=refused',
         ]);
     });
 
@@ -462,7 +466,7 @@ describe('version', ( ) => {
         });
         assert.equal(logs.length, 1);
         assert.ok(logs[0].startsWith('[consent-rr] onetrust-accept ' + version));
-        assert.ok(logs[0].endsWith('tcf=granted'));
+        assert.ok(logs[0].endsWith('tcf=granted gpp=granted'));
     });
 
     it('installs anyway on a page that removed the console', ( ) => {
@@ -639,5 +643,178 @@ describe('tcf', ( ) => {
         assert.equal(decoded.publisherConsents.has(4), true);
         assert.equal(decoded.publisherLegitimateInterests.has(7), true);
         assert.ok(win.document.querySelector('iframe[name="__tcfapiLocator"]'));
+    });
+});
+
+/******************************************************************************/
+
+describe('gpp', ( ) => {
+    const ping = win => {
+        let data;
+        win.__gpp('ping', d => { data = d; });
+        return data;
+    };
+    const withGpc = w => {
+        Object.defineProperty(w.navigator, 'globalPrivacyControl', {
+            configurable: true,
+            value: true,
+        });
+    };
+
+    // The strings in the resource are constants, so prove them rather than
+    // trust them: rebuild one from the fields the resource itself reports,
+    // using the IAB's own library, and it has to come out identical.
+    const SETTABLE = [
+        'Version',
+        'SharingNotice', 'SaleOptOutNotice', 'SharingOptOutNotice',
+        'TargetedAdvertisingOptOutNotice', 'SensitiveDataProcessingOptOutNotice',
+        'SensitiveDataLimitUseNotice',
+        'SaleOptOut', 'SharingOptOut', 'TargetedAdvertisingOptOut',
+        'SensitiveDataProcessing', 'KnownChildSensitiveDataConsents',
+        'PersonalDataConsents', 'MspaCoveredTransaction',
+        'MspaOptOutOptionMode', 'MspaServiceProviderMode', 'Gpc',
+    ];
+    const reencode = section => {
+        const model = new GppModel();
+        for ( const field of SETTABLE ) {
+            model.setFieldValue('usnat', field, section[field]);
+        }
+        return model.encode();
+    };
+
+    it('encodes what it reports, in all four combinations', ( ) => {
+        for ( const code of [ reject, accept ] ) {
+            for ( const before of [ undefined, withGpc ] ) {
+                const data = ping(run(code, fixture, before));
+                assert.equal(data.gppString, reencode(data.parsedSections.usnat));
+            }
+        }
+    });
+
+    it('asserts the opt-outs on a refusal and declines them on consent', ( ) => {
+        const refused = ping(run(reject)).parsedSections.usnat;
+        const granted = ping(run(accept)).parsedSections.usnat;
+        for ( const field of [ 'SaleOptOut', 'SharingOptOut', 'TargetedAdvertisingOptOut' ] ) {
+            assert.equal(refused[field], 1, field);   // 1 is opted out
+            assert.equal(granted[field], 2, field);   // 2 is did not opt out
+        }
+        assert.deepEqual(
+            JSON.parse(JSON.stringify(refused.SensitiveDataProcessing)),
+            new Array(12).fill(1)
+        );
+    });
+
+    it('carries the browser GPC signal either way', ( ) => {
+        for ( const code of [ reject, accept ] ) {
+            assert.equal(ping(run(code)).parsedSections.usnat.Gpc, false);
+            const signalled = ping(run(code, fixture, withGpc));
+            assert.equal(signalled.parsedSections.usnat.Gpc, true);
+            assert.ok(signalled.gppString.endsWith('YA'));
+        }
+    });
+
+    it('answers ping as a loaded CMP with usnat applicable', ( ) => {
+        const data = ping(run(reject));
+        assert.equal(data.gppVersion, '1.1');
+        assert.equal(data.cmpStatus, 'loaded');
+        assert.equal(data.cmpDisplayStatus, 'hidden');
+        assert.equal(data.signalStatus, 'ready');
+        assert.equal(data.cmpId, 28);
+        assert.deepEqual(Array.from(data.supportedAPIs), [ '7:usnat' ]);
+        assert.deepEqual(Array.from(data.sectionList), [ 7 ]);
+        assert.deepEqual(Array.from(data.applicableSections), [ 7 ]);
+    });
+
+    it('serves hasSection, getSection and getField', ( ) => {
+        const win = run(reject);
+        const answers = [];
+        const collect = (value, success) => { answers.push([ value, success ]); };
+        win.__gpp('hasSection', collect, 'usnat');
+        win.__gpp('hasSection', collect, 'usca');
+        win.__gpp('getField', collect, 'usnat.SaleOptOut');
+        win.__gpp('getField', collect, 'usnat.NoSuchField');
+        win.__gpp('getField', collect, 'usca.SaleOptOut');
+        assert.deepEqual(answers, [
+            [ true, true ], [ false, true ],
+            [ 1, true ], [ null, false ], [ null, false ],
+        ]);
+        let section;
+        win.__gpp('getSection', d => { section = d; }, 'usnat');
+        assert.equal(section.MspaCoveredTransaction, 2);
+    });
+
+    it('refuses a command it does not implement, getGPPData included', ( ) => {
+        const win = run(reject);
+        const answers = [];
+        const collect = (value, success) => { answers.push([ value, success ]); };
+        // Not a command in GPP 1.1; the reference implementation refuses it too.
+        win.__gpp('getGPPData', collect);
+        win.__gpp('nonsense', collect);
+        assert.deepEqual(answers, [ [ null, false ], [ null, false ] ]);
+    });
+
+    it('serves and drops event listeners', ( ) => {
+        const win = run(reject);
+        const seen = [];
+        win.__gpp('addEventListener', d => { seen.push(d); });
+        assert.equal(seen.length, 1);
+        assert.equal(seen[0].eventName, 'listenerRegistered');
+        assert.equal(seen[0].data, true);
+        assert.equal(seen[0].pingData.signalStatus, 'ready');
+        const listenerId = seen[0].listenerId;
+        const removals = [];
+        const collect = (value, success) => { removals.push([ value.data, success ]); };
+        win.__gpp('removeEventListener', collect, listenerId);
+        win.__gpp('removeEventListener', collect, listenerId);
+        assert.deepEqual(removals, [ [ true, true ], [ false, false ] ]);
+    });
+
+    it('hands back the queue and events arrays the stub keeps', ( ) => {
+        const win = run(reject);
+        assert.deepEqual(Array.from(win.__gpp()), []);
+        assert.deepEqual(Array.from(win.__gpp('queue')), []);
+        win.__gpp('addEventListener', ( ) => {});
+        assert.equal(win.__gpp('events').length, 1);
+    });
+
+    it('answers calls a stub parked before it loaded', ( ) => {
+        let answered;
+        run(reject, fixture, w => {
+            const stub = function() {};
+            stub.queue = [ [ 'ping', d => { answered = d; }, undefined ] ];
+            stub.events = [];
+            w.__gpp = stub;
+        });
+        assert.equal(answered.cmpStatus, 'loaded');
+    });
+
+    it('answers a framed vendor over postMessage', ( ) => {
+        const win = run(reject);
+        const replies = [];
+        const source = { postMessage(response) { replies.push(response); } };
+        const post = data => {
+            const event = new win.MessageEvent('message', {
+                data,
+                origin: 'https://vendor.example',
+            });
+            Object.defineProperty(event, 'source', { value: source });
+            win.dispatchEvent(event);
+        };
+        post({ __gppCall: { command: 'ping', callId: 'c1' } });
+        assert.equal(replies[0].__gppReturn.callId, 'c1');
+        assert.equal(replies[0].__gppReturn.success, true);
+        assert.equal(replies[0].__gppReturn.returnValue.cmpStatus, 'loaded');
+        post(JSON.stringify({
+            __gppCall: { command: 'getField', callId: 2, parameter: 'usnat.SaleOptOut' },
+        }));
+        assert.equal(typeof replies[1], 'string');
+        assert.equal(JSON.parse(replies[1]).__gppReturn.returnValue, 1);
+    });
+
+    it('puts a locator frame in the page', ( ) => {
+        for ( const code of [ reject, accept ] ) {
+            const win = run(code);
+            assert.ok(win.document.querySelector('iframe[name="__gppLocator"]'));
+        }
     });
 });

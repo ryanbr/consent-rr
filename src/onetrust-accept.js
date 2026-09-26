@@ -29,5 +29,6 @@
     'use strict';
     // @include lib/onetrust-core.js
     // @include lib/onetrust-tcf.js
-    consentRROneTrust('accept', consentRRTcf);
+    // @include lib/onetrust-gpp.js
+    consentRROneTrust('accept', consentRRTcf, consentRRGpp);
 })();

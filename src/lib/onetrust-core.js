@@ -26,7 +26,7 @@
 
 */
 
-function consentRROneTrust(mode, installTcf) {
+function consentRROneTrust(mode, installTcf, installGpp) {
     const w = window;
     const doc = w.document;
     const accept = mode === 'accept';
@@ -545,13 +545,17 @@ function consentRROneTrust(mode, installTcf) {
     } catch(ex) {
     }
 
-    // The IAB layer, for a resource that carries one. eupubconsent-v2 is the
-    // cookie OneTrust keeps the publisher TC string in.
+    // The IAB layers, for a resource that carries them. eupubconsent-v2 is the
+    // cookie OneTrust keeps the publisher TC string in; the GPP string is not
+    // stored in one.
     if ( typeof installTcf === 'function' ) {
         const tcString = installTcf(accept);
         if ( typeof tcString === 'string' && tcString !== '' ) {
             writeCookie('eupubconsent-v2', tcString);
         }
+    }
+    if ( typeof installGpp === 'function' ) {
+        installGpp(accept);
     }
 
     pushDataLayer(active);
@@ -583,6 +587,9 @@ function consentRROneTrust(mode, installTcf) {
             ' groups=' + active +
             (typeof installTcf === 'function'
                 ? ' tcf=' + (accept ? 'granted' : 'refused')
+                : '') +
+            (typeof installGpp === 'function'
+                ? ' gpp=' + (accept ? 'granted' : 'refused')
                 : '')
         );
     }
