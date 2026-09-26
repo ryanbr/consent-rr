@@ -1,0 +1,458 @@
+/*******************************************************************************
+
+    consent-rr - cookie-consent resource replacements for uBlock Origin
+    Copyright (C) 2026-present ryanbr
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see {http://www.gnu.org/licenses/}.
+
+    Home: https://github.com/ryanbr/consent-rr
+
+    Shared implementation for onetrust-accept.js / onetrust-reject.js.
+
+    The globals, cookie fields, class names and event names below were read off
+    OneTrust's own otSDKStub.js and otBannerSdk.js so that page code cannot
+    tell the difference. No OneTrust code is reproduced here.
+
+*/
+
+function consentRROneTrust(mode) {
+    const w = window;
+    const doc = w.document;
+    const accept = mode === 'accept';
+
+    // A site can preset window.OneTrust (geolocationResponse, for one) before
+    // the SDK loads, and the SDK assigns over whatever is there rather than
+    // replacing it. Bail out when a consent-rr stub is already installed, i.e.
+    // when two requests in the same document were both redirected here.
+    const preset = typeof w.OneTrust === 'object' && w.OneTrust !== null
+        ? w.OneTrust
+        : null;
+    if ( preset !== null && preset.consentRR !== undefined ) { return; }
+
+    // https://developer.onetrust.com/onetrust/docs/javascript-api
+    // Bound, as uBO's own resources do it, so that a stubbed method reports
+    // itself as native code.
+    const noopfn = function() {
+    }.bind();
+    const noopstrfn = function() {
+        return '';
+    }.bind();
+    const nooptruefn = function() {
+        return true;
+    }.bind();
+
+    // C0001 strictly necessary, C0002 performance, C0003 functional,
+    // C0004 targeting, C0005 social media. Sites can add their own ids, so
+    // the set is extended with whatever the document turns out to reference.
+    const alwaysActive = 'C0001';
+    const groupIds = new Set([ 'C0001', 'C0002', 'C0003', 'C0004', 'C0005' ]);
+
+    // Gated tags are tagged optanon-category-C0002, optanon-category-C0002-C0004
+    // or ot-vscat-<id> (vendor service categories). Mirrors the SDK's matcher,
+    // which accepts alphanumerics and commas only.
+    const reCategoryClass = /(?:optanon-category|ot-vscat)((?:-[a-zA-Z0-9,]+)+)/;
+    const categorySelector = '[class*="optanon-category"],[class*="ot-vscat"]';
+    const scriptSelector =
+        'script[class*="optanon-category"],script[class*="ot-vscat"]';
+
+    const collectGroupIds = ( ) => {
+        for ( const node of doc.querySelectorAll(categorySelector) ) {
+            const match = reCategoryClass.exec(node.getAttribute('class') || '');
+            if ( match === null ) { continue; }
+            for ( const id of match[1].split(/[-,]/) ) {
+                if ( id !== '' ) { groupIds.add(id); }
+            }
+        }
+    };
+
+    const consentedIds = ( ) => accept
+        ? Array.from(groupIds)
+        : [ alwaysActive ];
+
+    /**************************************************************************/
+
+    // otSDKStub.js publishes ",<id>,<id>," under both names.
+    const setGlobals = ( ) => {
+        const active = ',' + consentedIds().join(',') + ',';
+        w.OnetrustActiveGroups = active;
+        w.OptanonActiveGroups = active;
+        return active;
+    };
+
+    // ... and seeds the data layer with its own two load events, creating the
+    // array when the page has not done so yet.
+    const pushDataLayer = active => {
+        const events = [
+            { event: 'OneTrustLoaded', OnetrustActiveGroups: active },
+            { event: 'OptanonLoaded', OptanonActiveGroups: active },
+        ];
+        const dl = w.dataLayer;
+        if ( dl === undefined ) {
+            w.dataLayer = events;
+            return;
+        }
+        if ( Array.isArray(dl) === false ) { return; }
+        for ( const event of events ) {
+            try {
+                dl.push(event);
+            } catch(ex) {
+            }
+        }
+    };
+
+    /**************************************************************************/
+
+    const readCookie = name => {
+        for ( const cookie of String(doc.cookie).split(';') ) {
+            const pos = cookie.indexOf('=');
+            if ( pos === -1 ) { continue; }
+            if ( cookie.slice(0, pos).trim() !== name ) { continue; }
+            return cookie.slice(pos + 1).trim();
+        }
+        return '';
+    };
+
+    const writeCookie = (name, value) => {
+        try {
+            doc.cookie =
+                name + '=' + value + '; path=/; max-age=31536000; samesite=lax';
+        } catch(ex) {
+        }
+    };
+
+    const randomConsentId = ( ) => {
+        try {
+            if ( typeof crypto.randomUUID === 'function' ) {
+                return crypto.randomUUID();
+            }
+        } catch(ex) {
+        }
+        let out = '';
+        for ( let i = 0; i < 36; i++ ) {
+            out += i === 8 || i === 13 || i === 18 || i === 23
+                ? '-'
+                : Math.floor(Math.random() * 16).toString(16);
+        }
+        return out;
+    };
+
+    // OptanonConsent holds the decision, OptanonAlertBoxClosed suppresses the
+    // banner. intType 1 is the SDK's "Banner - Allow All", 2 its
+    // "Banner - Reject All". An existing consentId is kept so that a site does
+    // not see a new visitor on every page load.
+    const writeConsentCookies = ( ) => {
+        const previous = new URLSearchParams(readCookie('OptanonConsent'));
+        const consented = new Set(consentedIds());
+        const groups = [];
+        for ( const id of groupIds ) {
+            groups.push(id + ':' + (consented.has(id) ? '1' : '0'));
+        }
+        const now = new Date();
+        const params = new URLSearchParams();
+        params.set('isGpcEnabled', '0');
+        params.set('datestamp', now.toString());
+        params.set('version', previous.get('version') || '202501.1.0');
+        params.set('browserGpcFlag', '0');
+        params.set('isIABGlobal', 'false');
+        params.set('hosts', '');
+        params.set('genVendors', '');
+        params.set('consentId', previous.get('consentId') || randomConsentId());
+        params.set('interactionCount', '1');
+        params.set('landingPath', 'NotLandingPage');
+        params.set('groups', groups.join(','));
+        params.set('AwaitingReconsent', 'false');
+        params.set('intType', accept ? '1' : '2');
+        writeCookie('OptanonConsent', params.toString());
+        writeCookie('OptanonAlertBoxClosed', now.toISOString());
+    };
+
+    /**************************************************************************/
+
+    // The banner can be server-rendered, and OtAutoBlock.js can have put the
+    // overlay in place before this stub runs.
+    const bannerSelectors = [
+        '#onetrust-consent-sdk',
+        '#onetrust-banner-sdk',
+        '#onetrust-pc-sdk',
+        '.onetrust-pc-dark-filter',
+        '#ot-sdk-btn-floating',
+    ];
+
+    const removeBanner = ( ) => {
+        for ( const selector of bannerSelectors ) {
+            for ( const node of doc.querySelectorAll(selector) ) {
+                node.remove();
+            }
+        }
+    };
+
+    /**************************************************************************/
+
+    // Both halves of the SDK's substitutePlainTextScriptTags(): a tag carrying
+    // data-src gets its src back, a script parked at type="text/plain" is
+    // replaced by a live copy of itself.
+    const reactivateSrcTag = node => {
+        const src = node.getAttribute('data-src');
+        if ( src === null ) { return; }
+        node.setAttribute('src', src);
+        node.removeAttribute('data-src');
+    };
+
+    const reactivateScriptTag = node => {
+        const parent = node.parentNode;
+        if ( parent === null ) { return; }
+        const clone = doc.createElement(node.tagName);
+        clone.textContent = node.textContent;
+        for ( const attr of node.attributes ) {
+            try {
+                clone.setAttribute(
+                    attr.name,
+                    attr.name === 'type' ? 'text/javascript' : attr.value
+                );
+            } catch(ex) {
+            }
+        }
+        parent.appendChild(clone);
+        parent.removeChild(node);
+    };
+
+    const activateGatedTags = ( ) => {
+        for ( const node of doc.querySelectorAll(categorySelector) ) {
+            if ( node.tagName === 'SCRIPT' ) { continue; }
+            if ( node.hasAttribute('data-src') === false ) { continue; }
+            reactivateSrcTag(node);
+        }
+        for ( const node of doc.querySelectorAll(scriptSelector) ) {
+            if ( node.getAttribute('type') !== 'text/plain' ) { continue; }
+            reactivateScriptTag(node);
+        }
+    };
+
+    /**************************************************************************/
+
+    let scanTimer;
+
+    const scan = ( ) => {
+        if ( scanTimer !== undefined ) {
+            w.clearTimeout(scanTimer);
+            scanTimer = undefined;
+        }
+        collectGroupIds();
+        const active = setGlobals();
+        removeBanner();
+        if ( accept ) { activateGatedTags(); }
+        return active;
+    };
+
+    // Gated tags and the banner markup arrive as the document is parsed, and
+    // single-page apps keep adding them after that, so the observer stays.
+    const scanDeferred = ( ) => {
+        if ( scanTimer !== undefined ) { return; }
+        scanTimer = w.setTimeout(scan, 100);
+    };
+
+    /**************************************************************************/
+
+    const domainData = ( ) => {
+        const consented = new Set(consentedIds());
+        return {
+            ShowAlertNotice: false,
+            IsIabEnabled: false,
+            Groups: Array.from(groupIds).map(id => ({
+                CustomGroupId: id,
+                GroupId: id,
+                GroupName: id,
+                Parent: '',
+                Status: id === alwaysActive
+                    ? 'always active'
+                    : consented.has(id) ? 'active' : 'inactive',
+                IsIabPurpose: false,
+                Cookies: [],
+                FirstPartyCookies: [],
+                Hosts: [],
+                SubGroups: [],
+            })),
+        };
+    };
+
+    const querySelector = selector => {
+        if ( typeof selector !== 'string' || selector === '' ) { return null; }
+        try {
+            return doc.querySelector(selector);
+        } catch(ex) {
+        }
+        return null;
+    };
+
+    const insertScript = (url, selector, callback, options, groupId, isAsync) => {
+        if ( accept !== true ) { return; }
+        if ( typeof url !== 'string' || url === '' ) { return; }
+        const target = querySelector(selector) || doc.body;
+        if ( target === null ) { return; }
+        const script = doc.createElement('script');
+        if ( typeof callback === 'function' ) {
+            script.addEventListener('load', callback, { once: true });
+        }
+        if ( isAsync === true ) { script.async = true; }
+        script.src = url;
+        target.appendChild(script);
+    };
+
+    const insertHtml = (element, selector, callback, options, groupId) => {
+        if ( accept !== true ) { return; }
+        const source = typeof element === 'string'
+            ? doc.getElementById(element) || querySelector(element)
+            : null;
+        const target = querySelector(selector);
+        if ( source === null || target === null ) { return; }
+        if ( typeof options === 'object' && options !== null &&
+            options.deleteSelectorContent )
+        {
+            target.textContent = '';
+        }
+        target.appendChild(source.cloneNode(true));
+        if ( typeof callback === 'function' ) {
+            try {
+                callback();
+            } catch(ex) {
+            }
+        }
+    };
+
+    // The SDK's OnConsentChanged() is a deduplicated window listener for
+    // "consent.onetrust". Consent never changes here, so nothing dispatches it
+    // - same as a return visit whose choice is already stored.
+    const consentChangedSeen = new Set();
+
+    const onConsentChanged = callback => {
+        if ( typeof callback !== 'function' ) { return; }
+        const key = callback.toString();
+        if ( consentChangedSeen.has(key) ) { return; }
+        consentChangedSeen.add(key);
+        w.addEventListener('consent.onetrust', callback);
+    };
+
+    const api = {
+        consentRR: { mode: accept ? 'accept' : 'reject' },
+        // There is no banner and no preference centre to drive.
+        Init: noopfn,
+        InitializeBanner: noopfn,
+        LoadBanner: noopfn,
+        Close: noopfn,
+        ToggleInfoDisplay: noopfn,
+        FetchAndDownloadPC: noopfn,
+        initializeCookiePolicyHtml: noopfn,
+        getCSS: noopstrfn,
+        getHTML: noopstrfn,
+        // The decision is fixed by which resource the filter redirected to.
+        AllowAll: noopfn,
+        RejectAll: noopfn,
+        UpdateConsent: noopfn,
+        ReconsentGroups: noopfn,
+        SetAlertBoxClosed: noopfn,
+        IsAlertBoxClosed: nooptruefn,
+        IsAlertBoxClosedAndValid: nooptruefn,
+        IsVendorServiceEnabled: ( ) => accept,
+        GetDomainData: domainData,
+        OnConsentChanged: onConsentChanged,
+        InsertScript: insertScript,
+        InsertHtml: insertHtml,
+        // The SDK ships InsertHtml; the public docs call it InsertHTML.
+        InsertHTML: insertHtml,
+        // No location is claimed: an empty answer keeps a site from branching
+        // on a region this stub made up.
+        getGeolocationData: ( ) => ({ country: '', state: '' }),
+        setGeoLocation: noopfn,
+        useGeoLocationService: false,
+        changeLanguage: noopfn,
+        getDataSubjectId: noopstrfn,
+        getDSDefaultIdentifier: noopstrfn,
+        setDataSubjectId: noopfn,
+        syncConsentProfile: noopfn,
+        setConsentProfile: noopfn,
+        SendReceipt: noopfn,
+        BlockGoogleAnalytics: noopfn,
+        TriggerGoogleAnalyticsEvent: noopfn,
+        UpdateGCM: noopfn,
+        getVendorConsentsRequestV2: noopfn,
+        testLog: noopfn,
+        Api: { TriggerReceiptAction: noopfn },
+    };
+
+    /**************************************************************************/
+
+    let wrapperDone = false;
+
+    // Called as a property of window, exactly as the SDK does, so that a
+    // wrapper reading "this" still sees the window.
+    const executeOptanonWrapper = ( ) => {
+        if ( wrapperDone ) { return; }
+        if ( typeof w.OptanonWrapper !== 'function' ) { return; }
+        wrapperDone = true;
+        try {
+            w.OptanonWrapper();
+        } catch(ex) {
+        }
+    };
+
+    const dispatchGroupsUpdated = ( ) => {
+        let event;
+        try {
+            event = new CustomEvent('OneTrustGroupsUpdated', {
+                detail: consentedIds(),
+            });
+        } catch(ex) {
+            return;
+        }
+        w.dispatchEvent(event);
+    };
+
+    const onReady = ( ) => {
+        scan();
+        executeOptanonWrapper();
+        dispatchGroupsUpdated();
+        if ( wrapperDone ) { return; }
+        // OptanonWrapper is often declared later than the SDK tag - a deferred
+        // bundle, or an inline script further down the page.
+        let tries = 0;
+        const timer = w.setInterval(( ) => {
+            executeOptanonWrapper();
+            tries += 1;
+            if ( wrapperDone === false && tries < 20 ) { return; }
+            w.clearInterval(timer);
+        }, 250);
+    };
+
+    /**************************************************************************/
+
+    w.OneTrust = w.Optanon = Object.assign({}, preset, api);
+
+    const active = scan();
+    writeConsentCookies();
+    pushDataLayer(active);
+
+    try {
+        new MutationObserver(scanDeferred).observe(doc.documentElement || doc, {
+            childList: true,
+            subtree: true,
+        });
+    } catch(ex) {
+    }
+
+    if ( doc.readyState === 'loading' ) {
+        doc.addEventListener('DOMContentLoaded', onReady, { once: true });
+    } else {
+        w.setTimeout(onReady, 0);
+    }
+}

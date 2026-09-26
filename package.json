@@ -1,0 +1,17 @@
+{
+  "name": "consent-rr",
+  "version": "1.0.0",
+  "description": "Cookie-consent resource replacements for uBlock Origin",
+  "scripts": {
+    "test": "node tools/build.mjs && node --test test/*.test.mjs",
+    "build": "node tools/build.mjs",
+    "lint": "node --check src/lib/onetrust-core.js && node --check src/onetrust-accept.js && node --check src/onetrust-reject.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "devDependencies": {
+    "jsdom": "^30.1.1"
+  }
+}

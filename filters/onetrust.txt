@@ -1,0 +1,40 @@
+! Title: consent-rr - OneTrust
+! Description: Replaces OneTrust's consent SDK with a stub that reports an
+!              already-made decision, instead of waiting for a banner to render
+!              and clicking it.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: they name resources that ship in
+! dist/consent-rr.txt, which has to be installed through uBlock Origin's
+! userResourcesLocation setting first. See the README.
+!
+! uBlock Origin only (the MV2 extension). uBO Lite cannot load user resources.
+
+! -----------------------------------------------------------------------------
+! Reject all - C0001 only, everything else off.
+! -----------------------------------------------------------------------------
+||cdn.cookielaw.org/scripttemplates/otSDKStub.js$script,redirect=onetrust-reject.js
+||cookie-cdn.cookiepro.com/scripttemplates/otSDKStub.js$script,redirect=onetrust-reject.js
+||cdn.cookiepro.com/scripttemplates/otSDKStub.js$script,redirect=onetrust-reject.js
+||optanon.blob.core.windows.net/*/otSDKStub.js$script,redirect=onetrust-reject.js
+
+! -----------------------------------------------------------------------------
+! Accept all - for sites that hide content behind a category rather than behind
+! the banner. A higher redirect priority beats the reject rule above, so add a
+! domain here instead of excepting it.
+! -----------------------------------------------------------------------------
+! ||cdn.cookielaw.org/scripttemplates/otSDKStub.js$script,redirect=onetrust-accept.js:10,domain=example.com
+
+! -----------------------------------------------------------------------------
+! The stub above never asks for these, so they only matter when a page hardcodes
+! them. OtAutoBlock.js is the part that parks third-party tags at
+! type="text/plain"; neutering it leaves them to load on their own, which is
+! what the accept-all resource would have done anyway.
+! -----------------------------------------------------------------------------
+||cdn.cookielaw.org/scripttemplates/*/otBannerSdk.js$script,redirect=noopjs
+||cookie-cdn.cookiepro.com/scripttemplates/*/otBannerSdk.js$script,redirect=noopjs
+||cdn.cookiepro.com/scripttemplates/*/otBannerSdk.js$script,redirect=noopjs
+||cdn.cookielaw.org/consent/*/OtAutoBlock.js$script,redirect=noopjs
+||cookie-cdn.cookiepro.com/consent/*/OtAutoBlock.js$script,redirect=noopjs
+||cdn.cookiepro.com/consent/*/OtAutoBlock.js$script,redirect=noopjs
