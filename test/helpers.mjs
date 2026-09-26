@@ -17,6 +17,10 @@ import { JSDOM, VirtualConsole } from 'jsdom';
 
 const root = path.join(import.meta.dirname, '..');
 
+export const filtersText = await fs.readFile(
+    path.join(root, 'filters', 'onetrust.txt'), 'utf8'
+);
+
 export const version = JSON.parse(
     await fs.readFile(path.join(root, 'package.json'), 'utf8')
 ).version;

@@ -47,8 +47,12 @@ never asked for. The same resources inject as scriptlets, which also puts them
 at `document_start`:
 
 ```
-example.com##+js(onetrust-reject.js)
+example.com##+js(onetrust-reject)
 ```
+
+Written without `.js`: uBO appends that itself when resolving a scriptlet token,
+so `+js(onetrust-reject.js)` looks for `onetrust-reject.js.js`, finds nothing and
+injects nothing at all. Only `$redirect=` takes the full resource name.
 
 Check it took: each resource announces itself on load, so the console on a
 OneTrust site shows a line like

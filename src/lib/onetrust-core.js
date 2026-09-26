@@ -302,11 +302,23 @@ function consentRROneTrust(mode, installTcf) {
         return active;
     };
 
+    // The document can bite: a tag that will not be replaced, a page that has
+    // tampered with querySelectorAll. None of that may cost the page its
+    // consent state, so every scan is fenced off and whatever this one missed is
+    // picked up by the next.
+    const safeScan = ( ) => {
+        try {
+            return scan();
+        } catch(ex) {
+        }
+        return setGlobals();
+    };
+
     // Gated tags and the banner markup arrive as the document is parsed, and
     // single-page apps keep adding them after that, so the observer stays.
     const scanDeferred = ( ) => {
         if ( scanTimer !== undefined ) { return; }
-        scanTimer = w.setTimeout(scan, 100);
+        scanTimer = w.setTimeout(safeScan, 100);
     };
 
     /**************************************************************************/
@@ -493,7 +505,7 @@ function consentRROneTrust(mode, installTcf) {
     };
 
     const onReady = ( ) => {
-        const active = scan();
+        const active = safeScan();
         executeOptanonWrapper();
         pushGroupsUpdated(active);
         dispatchGroupsUpdated();
@@ -513,7 +525,7 @@ function consentRROneTrust(mode, installTcf) {
 
     w.OneTrust = w.Optanon = Object.assign({}, preset, api);
 
-    const active = scan();
+    const active = safeScan();
     writeConsentCookies();
     writeSiteChoice();
 

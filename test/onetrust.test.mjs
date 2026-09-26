@@ -10,7 +10,8 @@ import { strict as assert } from 'node:assert';
 import { TCString } from '@iabtcf/core';
 import { before, describe, it } from 'node:test';
 import {
-    consentParams, cookies, fixture, loadResources, run, settle, version,
+    consentParams, cookies, filtersText, fixture, loadResources, run, settle,
+    version,
 } from './helpers.mjs';
 
 let accept;
@@ -309,6 +310,20 @@ describe('page integration', ( ) => {
         assert.ok(cookies(win).has('OptanonAlertBoxClosed'));
     });
 
+    it('records the choice even when the document fights back', ( ) => {
+        const win = run(reject, fixture, w => {
+            w.document.querySelectorAll = ( ) => {
+                throw new Error('no');
+            };
+        });
+        // The state a page reads does not depend on the DOM work succeeding.
+        assert.equal(win.localStorage.getItem('cookieChoiceMade'), 'true');
+        assert.equal(win.OnetrustActiveGroups, ',C0001,');
+        assert.ok(cookies(win).has('OptanonAlertBoxClosed'));
+        assert.equal(consentParams(win).get('intType'), '2');
+        assert.equal(typeof win.__tcfapi, 'function');
+    });
+
     it('keeps properties the page preset on window.OneTrust', ( ) => {
         const win = run(reject, fixture, w => {
             w.OneTrust = { geolocationResponse: { countryCode: 'GB' } };
@@ -332,6 +347,53 @@ describe('page integration', ( ) => {
         assert.equal(fired, 0);
         win.dispatchEvent(new win.CustomEvent('consent.onetrust', { detail: [] }));
         assert.equal(fired, 1);
+    });
+});
+
+/******************************************************************************/
+
+describe('filters', ( ) => {
+    const shipped = async ( ) => new Set(
+        Array.from((await loadResources()).keys())
+    );
+
+    // Comment lines included the wrong form on purpose, to warn about it.
+    const active = filtersText.split('\n')
+        .filter(line => line.startsWith('!') === false)
+        .join('\n');
+
+    // uBO appends .js itself when resolving a scriptlet token, so a token
+    // carrying it resolves to <name>.js.js, matches nothing, and is silently
+    // dropped - no error, no injection.
+    it('writes scriptlet tokens without .js, and names real resources',
+        async ( ) => {
+            const names = await shipped();
+            const tokens = Array.from(
+                active.matchAll(/\+js\(([^,)]+)/g), m => m[1].trim()
+            );
+            assert.ok(tokens.length !== 0);
+            for ( const token of tokens ) {
+                assert.equal(token.endsWith('.js'), false,
+                    `+js(${token}) must not carry .js`);
+                if ( token.startsWith('onetrust-') === false ) { continue; }
+                assert.ok(names.has(`${token}.js`), `no resource named ${token}`);
+            }
+        }
+    );
+
+    // A redirect token is the resource name verbatim, .js and all.
+    it('writes redirect names in full, and names real resources', async ( ) => {
+        const names = await shipped();
+        const tokens = Array.from(
+            active.matchAll(/redirect(?:-rule)?=([^,\s]+)/g),
+            m => m[1].replace(/:-?\d+$/, '')
+        );
+        assert.ok(tokens.length !== 0);
+        for ( const token of tokens ) {
+            if ( token.startsWith('onetrust-') === false ) { continue; }
+            assert.ok(token.endsWith('.js'), `${token} needs its extension`);
+            assert.ok(names.has(token), `no resource named ${token}`);
+        }
     });
 });
 

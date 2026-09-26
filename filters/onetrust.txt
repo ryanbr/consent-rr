@@ -63,12 +63,11 @@
 ! of any gate the page puts on window.__tcfapi - nowtv.com.tr gives its own gate
 ! about 2.5 seconds before it gives up and leaves the player uninitialised.
 !
+! The token is written without .js: uBO appends it when resolving a scriptlet,
+! so +js(onetrust-reject.js) resolves to onetrust-reject.js.js, finds nothing and
+! silently injects nothing. Only $redirect= takes the full resource name.
+!
 ! Only ever per site: injecting on every site would run a OneTrust stub on pages
 ! that have no OneTrust.
 ! -----------------------------------------------------------------------------
-nowtv.com.tr##+js(onetrust-reject.js)
-
-! And the key on its own, with uBO's own scriptlet. Independent of whether the
-! resources above are installed or still cached from an older copy, so it is the
-! one that works today - the injected resource sets the same key once it runs.
-nowtv.com.tr##+js(set-local-storage-item, cookieChoiceMade, true)
+nowtv.com.tr##+js(onetrust-reject)
