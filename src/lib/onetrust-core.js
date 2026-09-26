@@ -30,6 +30,9 @@ function consentRROneTrust(mode, installTcf) {
     const w = window;
     const doc = w.document;
     const accept = mode === 'accept';
+    // Substituted from package.json by tools/build.mjs.
+    const VERSION = '@@VERSION@@';
+    const NAME = 'onetrust-' + (accept ? 'accept' : 'reject');
 
     // A site can preset window.OneTrust (geolocationResponse, for one) before
     // the SDK loads, and the SDK assigns over whatever is there rather than
@@ -414,7 +417,7 @@ function consentRROneTrust(mode, installTcf) {
     };
 
     const api = {
-        consentRR: { mode: accept ? 'accept' : 'reject' },
+        consentRR: { mode: accept ? 'accept' : 'reject', version: VERSION },
         // There is no banner and no preference centre to drive.
         Init: noopfn,
         InitializeBanner: noopfn,
@@ -537,5 +540,17 @@ function consentRROneTrust(mode, installTcf) {
         doc.addEventListener('DOMContentLoaded', onReady, { once: true });
     } else {
         w.setTimeout(onReady, 0);
+    }
+
+    // Said once, at the end, so it reports what actually went in. A page is
+    // free to have removed the console.
+    if ( typeof console === 'object' && typeof console.info === 'function' ) {
+        console.info(
+            '[consent-rr] ' + NAME + ' ' + VERSION +
+            ' groups=' + active +
+            (typeof installTcf === 'function'
+                ? ' tcf=' + (accept ? 'granted' : 'refused')
+                : '')
+        );
     }
 }

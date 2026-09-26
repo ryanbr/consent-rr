@@ -13,9 +13,13 @@
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { JSDOM } from 'jsdom';
+import { JSDOM, VirtualConsole } from 'jsdom';
 
 const root = path.join(import.meta.dirname, '..');
+
+export const version = JSON.parse(
+    await fs.readFile(path.join(root, 'package.json'), 'utf8')
+).version;
 
 export const parseResources = text => {
     const resources = new Map();
@@ -71,6 +75,9 @@ export const openPage = (html = fixture, before = undefined) => {
     const dom = new JSDOM(html, {
         runScripts: 'outside-only',
         url: 'https://example.com/',
+        // Dropped rather than forwarded: the resources announce themselves on
+        // load, and a test that wants the line stubs console.info itself.
+        virtualConsole: new VirtualConsole(),
     });
     if ( typeof before === 'function' ) { before(dom.window); }
     return dom;

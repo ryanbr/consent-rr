@@ -10,7 +10,7 @@ import { strict as assert } from 'node:assert';
 import { TCString } from '@iabtcf/core';
 import { before, describe, it } from 'node:test';
 import {
-    consentParams, cookies, fixture, loadResources, run, settle,
+    consentParams, cookies, fixture, loadResources, run, settle, version,
 } from './helpers.mjs';
 
 let accept;
@@ -332,6 +332,53 @@ describe('page integration', ( ) => {
         assert.equal(fired, 0);
         win.dispatchEvent(new win.CustomEvent('consent.onetrust', { detail: [] }));
         assert.equal(fired, 1);
+    });
+});
+
+/******************************************************************************/
+
+describe('version', ( ) => {
+    it('stamps the version from package.json into both resources', ( ) => {
+        for ( const code of [ accept, reject ] ) {
+            assert.ok(code.includes("const VERSION = '" + version + "'"));
+            assert.equal(code.includes('@@VERSION@@'), false);
+        }
+    });
+
+    it('reports it on the marker a console check would reach for', ( ) => {
+        // Structural compare: the marker lives in the page's realm.
+        const marker = code => JSON.parse(
+            JSON.stringify(run(code).OneTrust.consentRR)
+        );
+        assert.deepEqual(marker(reject), { mode: 'reject', version });
+        assert.deepEqual(marker(accept), { mode: 'accept', version });
+    });
+
+    it('announces what went in, once', ( ) => {
+        const logs = [];
+        run(reject, fixture, w => {
+            w.console.info = (...args) => { logs.push(args.join(' ')); };
+        });
+        assert.deepEqual(logs, [
+            '[consent-rr] onetrust-reject ' + version +
+            ' groups=,C0001, tcf=refused',
+        ]);
+    });
+
+    it('says accept and granted from the accept resource', ( ) => {
+        const logs = [];
+        run(accept, fixture, w => {
+            w.console.info = (...args) => { logs.push(args.join(' ')); };
+        });
+        assert.equal(logs.length, 1);
+        assert.ok(logs[0].startsWith('[consent-rr] onetrust-accept ' + version));
+        assert.ok(logs[0].endsWith('tcf=granted'));
+    });
+
+    it('installs anyway on a page that removed the console', ( ) => {
+        const win = run(reject, fixture, w => { w.console = undefined; });
+        assert.equal(win.OnetrustActiveGroups, ',C0001,');
+        assert.equal(win.OneTrust.consentRR.version, version);
     });
 });
 

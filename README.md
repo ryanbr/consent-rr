@@ -40,8 +40,14 @@ behind a category (embedded players, maps) rather than behind the banner.
 2. **Filters.** Paste [`filters/onetrust.txt`](filters/onetrust.txt) into
    *My filters*, or host it and subscribe via *Import*.
 
-Check it took: on a OneTrust site, `OneTrust.consentRR` in the console names the
-mode that is active.
+Check it took: each resource announces itself on load, so the console on a
+OneTrust site shows a line like
+
+```
+[consent-rr] onetrust-reject 1.0.0 groups=,C0001, tcf=refused
+```
+
+and `OneTrust.consentRR` reports the same mode and version.
 
 uBlock Origin (the MV2 extension) only — uBO Lite cannot load user resources.
 
@@ -122,6 +128,10 @@ reproduced.
 npm run build   # src/ -> dist/onetrust-accept.js, dist/onetrust-reject.js
 npm test        # builds, then runs the suite against the built files
 ```
+
+The version comes from `package.json` and nowhere else: the build substitutes
+`@@VERSION@@` and refuses to ship a file where the placeholder survived, so
+bumping there is enough.
 
 `src/onetrust-*.js` are thin entry points; the behaviour is in
 `src/lib/onetrust-core.js`, pulled in by a `// @include` line, so accept and
