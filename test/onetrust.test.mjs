@@ -504,10 +504,17 @@ describe('tcf', ( ) => {
         // What OneTrust writes itself, on sites in different countries.
         assert.equal(decoded.publisherCountryCode, 'DE');
         // Legitimate interest is left alone: refusing does not object to it.
-        assert.equal(decoded.vendorLegitimateInterests.size, 1500);
         assert.equal(decoded.vendorLegitimateInterests.has(755), true);
-        assert.equal(decoded.vendorLegitimateInterests.has(1501), false);
+        // A real string carried vendor ids up to 1650.
+        assert.equal(decoded.vendorLegitimateInterests.has(1650), true);
+        assert.equal(decoded.vendorLegitimateInterests.has(2001), false);
         assert.deepEqual(decoded.publisherRestrictions.getRestrictions(), []);
+        // The publisher segment a real string carries beside the core, saying
+        // the same thing again for the publisher's own purposes.
+        assert.equal(getTCData(win).tcString.split('.').length, 2);
+        assert.deepEqual(on(decoded.publisherConsents), []);
+        assert.deepEqual(on(decoded.publisherLegitimateInterests),
+            [ 2, 7, 8, 9, 10, 11 ]);
     });
 
     it('reports the same refusal in the tcData object', ( ) => {
@@ -628,7 +635,9 @@ describe('tcf', ( ) => {
         assert.equal(data.purpose.consents[4], true);
         assert.equal(data.vendor.consents[755], true);
         const decoded = TCString.decode(data.tcString);
-        assert.equal(decoded.vendorConsents.size, 1500);
+        assert.equal(decoded.vendorConsents.has(1650), true);
+        assert.equal(decoded.publisherConsents.has(4), true);
+        assert.equal(decoded.publisherLegitimateInterests.has(7), true);
         assert.ok(win.document.querySelector('iframe[name="__tcfapiLocator"]'));
     });
 });

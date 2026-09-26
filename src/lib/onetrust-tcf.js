@@ -34,9 +34,9 @@ function consentRRTcf(grant) {
     const CMP_VERSION = 1;
     const POLICY_VERSION = 5;       // as a real reject-all writes
     const VENDOR_LIST_VERSION = 178;
-    // Vendor ids are granted as one range. The list runs to roughly 1400, so
-    // this covers every vendor in it and leaves room above.
-    const VENDOR_MAX = 1500;
+    // Vendor ids are granted as one range, so a generous ceiling costs nothing
+    // in the string. A real one carried ids up to 1650.
+    const VENDOR_MAX = 2000;
     const PUBLISHER_CC = 'DE';
     const PURPOSES = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ];
     // Purposes that may be taken on legitimate interest rather than consent.
@@ -49,9 +49,8 @@ function consentRRTcf(grant) {
         return match !== null ? match[0] : fallback;
     };
 
-    // Field order and widths are the IAB core segment layout, 6 bits per
-    // base64url character.
-    const encodeCoreString = ( ) => {
+    // Bits in, base64url out, 6 bits per character.
+    const bitWriter = ( ) => {
         const chunks = [];
         const pushBits = text => {
             chunks.push(text);
@@ -82,6 +81,22 @@ function consentRRTcf(grant) {
             push(1, 16);            // from
             push(VENDOR_MAX, 16);   // to
         };
+        const toString = ( ) => {
+            let stream = chunks.join('');
+            while ( stream.length % 6 !== 0 ) { stream += '0'; }
+            let out = '';
+            for ( let i = 0; i < stream.length; i += 6 ) {
+                out += B64.charAt(parseInt(stream.slice(i, i + 6), 2));
+            }
+            return out;
+        };
+        return { push, pushBits, pushLetters, pushFlags, pushVendorRange, toString };
+    };
+
+    // Field order and widths are the IAB core segment layout.
+    const encodeCoreString = ( ) => {
+        const { push, pushLetters, pushFlags, pushVendorRange, toString } =
+            bitWriter();
         const now = new Date();
         const deciseconds = Math.floor(Date.UTC(
             now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12
@@ -110,16 +125,21 @@ function consentRRTcf(grant) {
         }
         pushVendorRange();          // vendor legitimate interests, left intact
         push(0, 12);                // publisher restrictions: none
-        let stream = chunks.join('');
-        while ( stream.length % 6 !== 0 ) { stream += '0'; }
-        let out = '';
-        for ( let i = 0; i < stream.length; i += 6 ) {
-            out += B64.charAt(parseInt(stream.slice(i, i + 6), 2));
-        }
-        return out;
+        return toString();
     };
 
-    const tcString = encodeCoreString();
+    // Segment type 3, which a real string carries alongside the core: the same
+    // answer again, for the publisher's own purposes.
+    const encodePublisherSegment = ( ) => {
+        const { push, pushFlags, toString } = bitWriter();
+        push(3, 3);                             // segment type
+        pushFlags(grant ? PURPOSES : [], 24);   // publisher consents
+        pushFlags(PURPOSES_LI, 24);             // publisher legitimate interests
+        push(0, 6);                             // no custom purposes
+        return toString();
+    };
+
+    const tcString = encodeCoreString() + '.' + encodePublisherSegment();
 
     const flags = (ids, count) => {
         const out = {};

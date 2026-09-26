@@ -58,7 +58,7 @@ Check it took: each resource announces itself on load, so the console on a
 OneTrust site shows a line like
 
 ```
-[consent-rr] onetrust-reject 1.1.1 groups=,C0001, tcf=refused
+[consent-rr] onetrust-reject 1.1.2 groups=,C0001, tcf=refused
 ```
 
 and `OneTrust.consentRR` reports the same mode and version.
@@ -116,9 +116,13 @@ reproduced.
 - `publisherCC` is `DE` and `vendorListVersion` `178` because that is what real
   OneTrust strings carry - `DE` turned up on sites in unrelated countries, so it
   is OneTrust's own default rather than a jurisdiction we picked. Consent
-  language is read off the page's `lang`. `addtlConsent` stays empty: a real
-  refusal consents to no Google AC vendor either, and the disclosed-vendor list
-  a real string carries is not something a replacement can know.
+  language is read off the page's `lang`. The string carries the publisher
+  segment beside the core, as a real one does, and vendor ids run to 2000 - a
+  real string reached 1650.
+- `addtlConsent` stays empty. A real refusal consents to no Google AC vendor
+  either; a real acceptance lists some 600 of them, which is Google's own global
+  list rather than anything a replacement can derive, and missing it costs ads
+  rather than breaking a page.
 - Sites commonly keep their own record of the choice beside OneTrust's and
   re-prompt until it is set, so both resources set `localStorage`
   `cookieChoiceMade` to `true` - the `cookiechoices.js` convention, which
