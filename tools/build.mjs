@@ -4,9 +4,11 @@
     Copyright (C) 2026-present ryanbr
     SPDX-License-Identifier: GPL-3.0-or-later
 
-    Bundles each src/*.js into a standalone dist/<name>.js in the resources
+    Bundles each src/<cmp>/*.js into a standalone dist/<name>.js in the resources
     file format that uBlock Origin's hidden setting "userResourcesLocation"
-    fetches. One file per resource, so either can be pointed at on its own;
+    fetches. One directory per consent manager, its shared code in that
+    directory's lib/, and dist/ stays flat because uBO addresses a resource by
+    name alone. One file per resource, so either can be pointed at on its own;
     the setting takes several whitespace-separated URLs.
 
     The "/// <name>" header uBO needs is also a JavaScript comment, so each
@@ -105,16 +107,21 @@ const resolveIncludes = async (file, seen = new Set()) => {
 /******************************************************************************/
 
 const build = async ( ) => {
-    const names = (await fs.readdir(srcDir))
-        .filter(name => name.endsWith('.js'))
-        .sort();
-    assert.ok(names.length !== 0, 'no resources found in src/');
+    const entries = [];
+    for ( const dirent of await fs.readdir(srcDir, { withFileTypes: true }) ) {
+        if ( dirent.isDirectory() === false ) { continue; }
+        const family = path.join(srcDir, dirent.name);
+        for ( const name of await fs.readdir(family) ) {
+            if ( name.endsWith('.js') === false ) { continue; }
+            entries.push({ name, path: path.join(family, name) });
+        }
+    }
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+    assert.ok(entries.length !== 0, 'no resources found under src/');
     await fs.mkdir(outDir, { recursive: true });
 
-    for ( const name of names ) {
-        const lines = compact(
-            (await resolveIncludes(path.join(srcDir, name))).join('\n')
-        );
+    for ( const { name, path: entry } of entries ) {
+        const lines = compact((await resolveIncludes(entry)).join('\n'));
         const code = lines.join('\n').replaceAll('@@VERSION@@', version);
         assert.ok(
             code.includes('@@VERSION@@') === false,

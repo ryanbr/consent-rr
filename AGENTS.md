@@ -6,10 +6,13 @@ pointed at it. The notes below are the things that have actually gone wrong.
 
 ## Layout
 
-- `src/lib/onetrust-core.js` - OneTrust's own API, cookies, banner removal, tag
-  revival. Shared by both resources.
-- `src/lib/onetrust-tcf.js`, `src/lib/onetrust-gpp.js` - the IAB layers.
-- `src/onetrust-accept.js`, `src/onetrust-reject.js` - entry points, pulled
+- One directory per consent manager under `src/`, shared code in its `lib/`.
+  `dist/` stays flat: uBO addresses a resource by name alone. Two families so
+  far, `onetrust/` and `cookieinformation/`.
+- `src/onetrust/lib/onetrust-core.js` - OneTrust's own API, cookies, banner
+  removal, tag revival. Shared by its resources.
+- `src/onetrust/lib/onetrust-tcf.js`, `.../onetrust-gpp.js` - the IAB layers.
+- `src/onetrust/onetrust-*.js` - entry points, pulled
   together by `// @include` lines. **The two built files differ by one line**, the
   mode argument; a test asserts that, so anything landing in one and not the other
   is a bug.

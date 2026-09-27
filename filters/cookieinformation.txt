@@ -1,0 +1,31 @@
+! Title: consent-rr - Cookie Information
+! Description: Replaces Cookie Information's uc.js with a stub that reports an
+!              already-made decision, instead of waiting for a banner.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+!
+! Host-anchored, unlike the OneTrust list. That one matches on filename because
+! the SDK is served from several CDNs under three different path layouts; here
+! the host is distinctive and the filename is "uc.js", which is far too generic
+! to match on its own.
+
+! -----------------------------------------------------------------------------
+! The necessary category only, everything else denied. One resource: no
+! accept-all or unblock variant for this consent manager.
+! -----------------------------------------------------------------------------
+||policy.app.cookieinformation.com/uc.js$script,redirect=cookieinformation-reject.js
+
+
+! -----------------------------------------------------------------------------
+! uc.js is what asks for these, so with it replaced they are never requested.
+! They only matter where something unblocks uc.js itself: the per-site dialog
+! text and configuration, the cross-domain consent-sharing frame, and the cookie
+! table the banner renders.
+! -----------------------------------------------------------------------------
+||policy.app.cookieinformation.com/latest/*$script,redirect=noopjs
+||policy.app.cookieinformation.com/cookiesharingiframe.html$subdocument,redirect=noopframe
+||policy.app.cookieinformation.com/cookie-data/*$xhr,redirect=noopjson

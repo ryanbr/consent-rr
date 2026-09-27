@@ -29,11 +29,12 @@ before(async ( ) => {
 /******************************************************************************/
 
 describe('resources file', ( ) => {
-    it('holds exactly the three named resources', async ( ) => {
+    it('holds exactly the named resources', async ( ) => {
         const resources = await loadResources();
         assert.deepEqual(
             Array.from(resources.keys()).sort(),
             [
+                'cookieinformation-reject.js',
                 'onetrust-accept.js',
                 'onetrust-reject-unblock.js',
                 'onetrust-reject.js',

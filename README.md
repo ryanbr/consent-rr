@@ -9,12 +9,14 @@ take the other route: uBO redirects the CMP's own script to a stub that reports
 a decision the visitor already made. No banner is ever built, nothing has to be
 clicked, and the page's consent API answers normally.
 
-Currently covered: **OneTrust** (and its CookiePro tier).
+Currently covered: **OneTrust** (and its CookiePro tier) and **Cookie
+Information**.
 
 | Resource | What the page sees |
 | --- | --- |
 | `onetrust-reject.js` | A stored *reject all*: `C0001` on, everything else off. Tags parked behind a category stay parked. |
 | `onetrust-accept.js` | A stored *accept all*: every category on, and tags parked behind one are switched back on. |
+| `cookieinformation-reject.js` | Cookie Information: the necessary category approved, everything else denied. One resource - no accept or unblock variant. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
 Pick `reject` as the default. `reject-unblock` is for a site that withholds the
@@ -41,9 +43,10 @@ from the built files rather than described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.5.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.5.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.5.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.0/dist/cookieinformation-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -57,8 +60,9 @@ from the built files rather than described.
    Its first line, `/// onetrust-reject.js`, is the resource header uBO reads -
    and a comment to JavaScript, so the file is a readable script at the same
    time.
-2. **Filters.** Paste [`filters/onetrust.txt`](filters/onetrust.txt) into
-   *My filters*, or host it and subscribe via *Import*.
+2. **Filters.** Paste [`filters/onetrust.txt`](filters/onetrust.txt) and
+   [`filters/cookieinformation.txt`](filters/cookieinformation.txt) into
+   *My filters*, or host them and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
 loads OneTrust there is no request to redirect - uBO's lists neuter
@@ -78,7 +82,7 @@ Check it took: each resource announces itself on load, so the console on a
 OneTrust site shows a line like
 
 ```
-[consent-rr] onetrust-reject 1.5.0 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-reject 1.6.0 groups=,C0001, tcf=refused gpp=refused
 ```
 
 and `OneTrust.consentRR` reports the same mode and version.
@@ -233,14 +237,18 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.5.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token
 rules, where the values come from, and why the tests are written the way they are.
 
-`src/onetrust-*.js` are thin entry points; the behaviour is in
-`src/lib/onetrust-core.js`, pulled in by a `// @include` line, so accept and
+One directory per consent manager under `src/`, its shared code in that
+directory's `lib/`, and `dist/` stays flat because uBO addresses a resource by
+name alone.
+
+`src/onetrust/onetrust-*.js` are thin entry points; the behaviour is in
+`src/onetrust/lib/onetrust-core.js`, pulled in by a `// @include` line, so accept and
 reject cannot drift apart. The build inlines it, leaving one self-contained file
 per resource. `dist/` is committed, because those are the files uBO fetches.
 
