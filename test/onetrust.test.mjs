@@ -1027,7 +1027,7 @@ describe('reject-unblock', ( ) => {
 // categories in an attribute and the source in data-src or base64 in
 // data-obfuscated-src. automobiles.honda.com is one.
 describe('tags a site parked itself', ( ) => {
-    const HIDDEN = 'aHR0cHM6Ly9jZG4uYXBwZHluYW1pY3MuY29tL2FkcnVtL2FkcnVtLmpz';
+    const HIDDEN = 'aHR0cHM6Ly9jZG4uZXhhbXBsZS9tb25pdG9yaW5nLmpz';
     const page = '<html><head>' +
         '<script id="many" type="text/plain" class="my-optanon-managed" ' +
         'data-optanon-category="C0002,C0003,C0004" data-src="//dtm.example/l.js"></' + 'script>' +
@@ -1051,7 +1051,7 @@ describe('tags a site parked itself', ( ) => {
         assert.equal(state(win, 'many'), '//dtm.example/l.js');
         // base64, decoded the way their own loader decodes it
         assert.equal(state(win, 'obf'),
-            'https://cdn.appdynamics.com/adrum/adrum.js');
+            'https://cdn.example/monitoring.js');
     });
 
     it('leaves them parked on a plain refusal, except a necessary one', ( ) => {
