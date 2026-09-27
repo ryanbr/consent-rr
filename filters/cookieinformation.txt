@@ -19,11 +19,20 @@
 ! -----------------------------------------------------------------------------
 ||policy.app.cookieinformation.com/uc.js$script,redirect=cookieinformation-reject.js
 
-! Where a site's CSP omits data: for scripts, the redirected resource is refused
-! by the browser and nothing of ours runs - while the banner still disappears,
-! because the real SDK was replaced at the network layer. Pair the redirect with
-! the scriptlet form, which is not fetched and so not subject to the directive:
-!   almbrand.dk##+js(cookieinformation-reject)
+! -----------------------------------------------------------------------------
+! Sites whose CSP omits data: for scripts.
+!
+! A user resource has no extension URL, so uBO serves it as a data: URI, and a
+! script-src-elem or default-src without data: refuses it. Nothing of ours runs -
+! no cookie, no console line, CookieInformation.consentRR undefined - while the
+! banner still disappears, because the redirect above kept the real SDK out. That
+! reads as success with a missing cookie, which is how it was first reported.
+!
+! The scriptlet form is injected rather than fetched, so the directive does not
+! apply. The redirect above still does its half of the job: keeping the real SDK
+! out. Both lines are needed on these sites.
+! -----------------------------------------------------------------------------
+almbrand.dk##+js(cookieinformation-reject)
 
 
 ! -----------------------------------------------------------------------------

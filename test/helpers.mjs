@@ -17,9 +17,13 @@ import { JSDOM, VirtualConsole } from 'jsdom';
 
 const root = path.join(import.meta.dirname, '..');
 
-export const filtersText = await fs.readFile(
-    path.join(root, 'filters', 'onetrust.txt'), 'utf8'
-);
+// Every list, so the token guards cover each one rather than only the first.
+export const filtersText = (await Promise.all(
+    (await fs.readdir(path.join(root, 'filters')))
+        .filter(name => name.endsWith('.txt'))
+        .sort()
+        .map(name => fs.readFile(path.join(root, 'filters', name), 'utf8'))
+)).join('\n');
 
 const manifest = JSON.parse(
     await fs.readFile(path.join(root, 'package.json'), 'utf8')
