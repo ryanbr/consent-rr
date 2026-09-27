@@ -356,6 +356,12 @@ function consentRRCookieInformation() {
         stored = writeConsentCookie();
     } catch(ex) {
     }
+    // On the marker as well as the console, so one expression answers "did this
+    // run, which version, and did the cookie stick".
+    w.CookieInformation.consentRR.cookie = stored ? 'written' : 'refused';
+    w.CookieInformation.consentRR.domain = cookieDomain === ''
+        ? 'host-only'
+        : cookieDomain;
 
     try {
         new MutationObserver(scanDeferred).observe(doc.documentElement || doc, {
