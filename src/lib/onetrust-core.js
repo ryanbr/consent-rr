@@ -70,11 +70,9 @@ function consentRROneTrust(mode, installTcf, installGpp) {
     // which accepts alphanumerics and commas only.
     const reCategoryClass = /(?:optanon-category|ot-vscat)((?:-[a-zA-Z0-9,]+)+)/;
     const categorySelector = '[class*="optanon-category"],[class*="ot-vscat"]';
-    const scriptSelector =
-        'script[class*="optanon-category"],script[class*="ot-vscat"]';
 
-    const collectGroupIds = ( ) => {
-        for ( const node of doc.querySelectorAll(categorySelector) ) {
+    const collectGroupIds = nodes => {
+        for ( const node of nodes ) {
             const match = reCategoryClass.exec(node.getAttribute('class') || '');
             if ( match === null ) { continue; }
             for ( const id of match[1].split(/[-,]/) ) {
@@ -275,20 +273,27 @@ function consentRROneTrust(mode, installTcf, installGpp) {
 
     // The banner can be server-rendered, and OtAutoBlock.js can have put the
     // overlay in place before this stub runs.
-    const bannerSelectors = [
+    const bannerSelector = [
         '#onetrust-consent-sdk',
         '#onetrust-banner-sdk',
         '#onetrust-pc-sdk',
         '.onetrust-pc-dark-filter',
         '#ot-sdk-btn-floating',
-    ];
+    ].join(',');
 
-    const removeBanner = ( ) => {
-        for ( const selector of bannerSelectors ) {
-            for ( const node of doc.querySelectorAll(selector) ) {
-                node.remove();
-            }
+    // Matched in one pass, and against the root itself as well, since a scan of
+    // an added subtree is handed the added node.
+    const matching = (root, selector) => {
+        const out = [];
+        if ( typeof root.matches === 'function' && root.matches(selector) ) {
+            out.push(root);
         }
+        for ( const node of root.querySelectorAll(selector) ) { out.push(node); }
+        return out;
+    };
+
+    const removeBanner = root => {
+        for ( const node of matching(root, bannerSelector) ) { node.remove(); }
     };
 
     /**************************************************************************/
@@ -324,25 +329,28 @@ function consentRROneTrust(mode, installTcf, installGpp) {
     // reactivateTag() asks canInsertForGroup() about each tag's own categories,
     // so a tag gated on nothing but C0001 is revived even by a reject-all. Only
     // the categories decide, never the mode.
-    const mayRevive = node => {
+    const mayRevive = (node, consented) => {
         const match = reCategoryClass.exec(node.getAttribute('class') || '');
         if ( match === null ) { return accept; }
         const ids = match[1].split(/[-,]/).filter(id => id !== '');
         if ( ids.length === 0 ) { return accept; }
-        const consented = new Set(consentedIds());
         return ids.every(id => consented.has(id));
     };
 
-    const activateGatedTags = ( ) => {
-        for ( const node of doc.querySelectorAll(categorySelector) ) {
+    // Two passes over one list, keeping the SDK's order - tags carrying data-src
+    // first, then scripts parked at text/plain.
+    const activateGatedTags = nodes => {
+        const consented = new Set(consentedIds());
+        for ( const node of nodes ) {
             if ( node.tagName === 'SCRIPT' ) { continue; }
             if ( node.hasAttribute('data-src') === false ) { continue; }
-            if ( mayRevive(node) === false ) { continue; }
+            if ( mayRevive(node, consented) === false ) { continue; }
             reactivateSrcTag(node);
         }
-        for ( const node of doc.querySelectorAll(scriptSelector) ) {
+        for ( const node of nodes ) {
+            if ( node.tagName !== 'SCRIPT' ) { continue; }
             if ( node.getAttribute('type') !== 'text/plain' ) { continue; }
-            if ( mayRevive(node) === false ) { continue; }
+            if ( mayRevive(node, consented) === false ) { continue; }
             reactivateScriptTag(node);
         }
     };
@@ -351,15 +359,12 @@ function consentRROneTrust(mode, installTcf, installGpp) {
 
     let scanTimer;
 
-    const scan = ( ) => {
-        if ( scanTimer !== undefined ) {
-            w.clearTimeout(scanTimer);
-            scanTimer = undefined;
-        }
-        collectGroupIds();
+    const scan = (root = doc) => {
+        const nodes = matching(root, categorySelector);
+        collectGroupIds(nodes);
         const active = setGlobals();
-        removeBanner();
-        activateGatedTags();
+        removeBanner(root);
+        activateGatedTags(nodes);
         return active;
     };
 
@@ -367,19 +372,44 @@ function consentRROneTrust(mode, installTcf, installGpp) {
     // tampered with querySelectorAll. None of that may cost the page its
     // consent state, so every scan is fenced off and whatever this one missed is
     // picked up by the next.
-    const safeScan = ( ) => {
+    const safeScan = root => {
         try {
-            return scan();
+            return scan(root);
         } catch(ex) {
         }
         return setGlobals();
     };
 
     // Gated tags and the banner markup arrive as the document is parsed, and
-    // single-page apps keep adding them after that, so the observer stays.
-    const scanDeferred = ( ) => {
+    // single-page apps keep adding them after that, so the observer stays. It
+    // looks only at what was added: a document-wide pass costs the same whether
+    // one node changed or none did, and on a busy page it would run all day.
+    let pendingRoots;
+
+    const flushScan = ( ) => {
+        scanTimer = undefined;
+        const roots = pendingRoots;
+        pendingRoots = undefined;
+        if ( roots === undefined ) {
+            safeScan();
+            return;
+        }
+        for ( const root of roots ) { safeScan(root); }
+    };
+
+    const scanDeferred = records => {
+        if ( Array.isArray(records) ) {
+            for ( const record of records ) {
+                for ( const node of record.addedNodes ) {
+                    if ( node.nodeType !== 1 ) { continue; }
+                    if ( pendingRoots === undefined ) { pendingRoots = new Set(); }
+                    pendingRoots.add(node);
+                }
+            }
+            if ( pendingRoots === undefined ) { return; }
+        }
         if ( scanTimer !== undefined ) { return; }
-        scanTimer = w.setTimeout(safeScan, 100);
+        scanTimer = w.setTimeout(flushScan, 100);
     };
 
     /**************************************************************************/

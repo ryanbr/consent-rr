@@ -263,8 +263,40 @@ describe('accept', ( ) => {
         assert.equal(img.hasAttribute('data-src'), false);
     });
 
+    // The observer scans what was added rather than the whole document, so a
+    // gated tag nested inside an added wrapper has to be found through it, and
+    // an added node that is itself the match has to be found too.
+    it('revives a tag nested inside something added later', async ( ) => {
+        const win = run(accept);
+        // Let the document-ready pass finish, so what follows can only have
+        // been done by the observer.
+        await settle(60);
+        const wrapper = win.document.createElement('div');
+        wrapper.innerHTML =
+            '<section><script id="deep" type="text/plain" ' +
+            'class="optanon-category-C0004" src="https://d.example/d.js">' +
+            '</' + 'script></section>';
+        win.document.body.append(wrapper);
+        await settle(200);
+        assert.equal(
+            win.document.getElementById('deep').getAttribute('type'),
+            'text/javascript'
+        );
+    });
+
+    it('removes a banner that is itself the added node', async ( ) => {
+        const win = run(reject);
+        await settle(60);
+        const banner = win.document.createElement('div');
+        banner.id = 'onetrust-banner-sdk';
+        win.document.body.append(banner);
+        await settle(200);
+        assert.equal(win.document.querySelector('#onetrust-banner-sdk'), null);
+    });
+
     it('revives tags added after it ran', async ( ) => {
         const win = run(accept);
+        await settle(60);
         const script = win.document.createElement('script');
         script.type = 'text/plain';
         script.className = 'optanon-category-C0004';
