@@ -9,14 +9,15 @@ take the other route: uBO redirects the CMP's own script to a stub that reports
 a decision the visitor already made. No banner is ever built, nothing has to be
 clicked, and the page's consent API answers normally.
 
-Currently covered: **OneTrust** (and its CookiePro tier) and **Cookie
-Information**.
+Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**
+and **InMobi Choice** (formerly Quantcast Choice).
 
 | Resource | What the page sees |
 | --- | --- |
 | `onetrust-reject.js` | A stored *reject all*: `C0001` on, everything else off. Tags parked behind a category stay parked. |
 | `onetrust-accept.js` | A stored *accept all*: every category on, and tags parked behind one are switched back on. |
 | `cookieinformation-reject.js` | Cookie Information: the necessary category approved, everything else denied. One resource - no accept or unblock variant. |
+| `inmobi-reject.js` | InMobi Choice: a stored refusal. Nothing consented to, a TC string that says so, and `__tcfapi`, `__gpp` and `__uspapi` all answering instead of stalling. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
 Pick `reject` as the default. `reject-unblock` is for a site that withholds the
@@ -43,10 +44,11 @@ from the built files rather than described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.1/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.1/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.1/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.1/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.7.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.7.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.7.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.7.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.7.0/dist/inmobi-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -60,9 +62,10 @@ from the built files rather than described.
    Its first line, `/// onetrust-reject.js`, is the resource header uBO reads -
    and a comment to JavaScript, so the file is a readable script at the same
    time.
-2. **Filters.** Paste [`filters/onetrust.txt`](filters/onetrust.txt) and
-   [`filters/cookieinformation.txt`](filters/cookieinformation.txt) into
-   *My filters*, or host them and subscribe via *Import*.
+2. **Filters.** Paste [`filters/onetrust.txt`](filters/onetrust.txt),
+   [`filters/cookieinformation.txt`](filters/cookieinformation.txt) and
+   [`filters/inmobi.txt`](filters/inmobi.txt) into *My filters*, or host them and
+   subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
 loads OneTrust there is no request to redirect - uBO's lists neuter
@@ -224,6 +227,44 @@ reproduced.
 - Accept mode revives advertising tags too, which is what accepting means. uBO
   still blocks the requests they make.
 
+## InMobi Choice
+
+Two files make up this CMP, and **the replacement goes on the second one**:
+
+```
+||cmp.inmobi.com/tcfv2/cmp2.js$script,redirect=inmobi-reject.js
+```
+
+`choice.js` is a per-site loader. It inserts `cmp2.js`, injects the banner's CSS,
+and calls `__tcfapi('init', 2, fn, config)` with the tenant's entire
+configuration inline. `cmp2.js` reads that config back out of the page's IAB
+stub - `window.__tcfapi()` with no arguments returns the stub's queue, and the
+argument list whose first entry is `init` carries it. So leaving `choice.js` alone
+is what gets the tenant's own publisher country, consent language and
+legitimate-interest purposes into the answer; replacing `choice.js` instead works
+too, on defaults.
+
+The stub then installs what `cmp2.js` installs: `window.__tcfapi` (the built-in
+commands plus the custom ones the page itself calls, `init`, `getConfig` and the
+`displayConsentUi` behind a privacy-settings button), `window.__gpp` with a
+`tcfeuv2` section, `window.__uspapi`, `window.__tcfapiui`, both locator frames and
+both `postMessage` bridges, and a `gtag` shim on `dataLayer` where the page has
+none. Anything the page parked before the redirect landed is replayed. The TC
+string goes into `euconsent-v2` and the GPP string into `IABGPP_HDR_GppString`,
+with the attributes and the 390-day life `cmp2.js` uses - scoped to the hostname,
+as its own writer scopes it, rather than to the registered domain.
+
+Its refusal was measured against a real one on the same tenant, and differs in
+three places, all documented in the source: a real refusal keeps legitimate
+interest for 212 *named* vendors where this keeps it as one range (which 212 is a
+fact about the vendor list, not about the page); it carries five publisher
+restrictions and a disclosed-vendors segment listing 1015 vendors, neither of
+which can be derived. Global Privacy Control withdraws legitimate interest
+altogether, as it does for OneTrust. `addtl_consent` is deliberately not written:
+with nothing consented to, `cmp2.js` deletes that cookie rather than writing one.
+`__uspapi` answers `1---`, no notice and no opt-out applicable, because where in
+the world the visitor is is not something a page can tell.
+
 ## Development
 
 ```sh
@@ -255,7 +296,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.1/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.7.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

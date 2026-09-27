@@ -7,8 +7,8 @@ pointed at it. The notes below are the things that have actually gone wrong.
 ## Layout
 
 - One directory per consent manager under `src/`, shared code in its `lib/`.
-  `dist/` stays flat: uBO addresses a resource by name alone. Two families so
-  far, `onetrust/` and `cookieinformation/`.
+  `dist/` stays flat: uBO addresses a resource by name alone. Three families so
+  far, `onetrust/`, `cookieinformation/` and `inmobi/`.
 - `src/onetrust/lib/onetrust-core.js` - OneTrust's own API, cookies, banner
   removal, tag revival. Shared by its resources.
 - `src/onetrust/lib/onetrust-tcf.js`, `.../onetrust-gpp.js` - the IAB layers.
@@ -16,6 +16,9 @@ pointed at it. The notes below are the things that have actually gone wrong.
   together by `// @include` lines. **The two built files differ by one line**, the
   mode argument; a test asserts that, so anything landing in one and not the other
   is a bug.
+- `src/inmobi/lib/inmobi-core.js` - the config hand-off, cookies and the CCPA
+  API; `.../inmobi-tcf.js` and `.../inmobi-gpp.js` are the IAB layers, and this
+  CMP is nothing but those.
 - `tools/build.mjs` - bundles, substitutes, and refuses to ship what uBO cannot
   parse. `npm run build`.
 - `dist/` is committed, because that is what uBO fetches. CI fails when it does
@@ -57,13 +60,21 @@ two - the redirect to keep the SDK out, `##+js(<resource>)` to supply the stub.
   tenants and is served from several CDNs.
 - Another list's `@@` exception beats a plain `$redirect`; `important` is needed
   to override one.
-- Two tests read `filters/onetrust.txt` and check every token against the above.
+- Two tests read every list in `filters/` and check each token against the above,
+  for every family in `resourceVersions` - so a list added for a new consent
+  manager is held to the same rules rather than skipped by them.
+- **Where the replacement goes matters.** InMobi's `choice.js` hands `cmp2.js`
+  the tenant configuration through the page's stub queue, so the redirect belongs
+  on `cmp2.js`: taking out `choice.js` instead means no config to read, and
+  another list blocking `choice.js` means `cmp2.js` is never requested and the
+  redirect never fires at all. A test asserts the list targets `cmp2.js`.
 
 ## Fidelity comes from evidence, not from prose
 
-Every value in here was read off OneTrust's own `otSDKStub.js` / `otBannerSdk.js`
-/ `otTCF.js`, off the IAB reference libraries, or off real cookies captured from a
-real click. **Don't add a value because a spec or a doc page says so** - the docs
+Every value in here was read off the SDK that is being replaced - OneTrust's
+`otSDKStub.js` / `otBannerSdk.js` / `otTCF.js`, Cookie Information's `uc.js`,
+InMobi's `choice.js` / `cmp2.js` - off the IAB reference libraries, or off real
+cookies captured from a real click. **Don't add a value because a spec or a doc page says so** - the docs
 disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
 `getGPPData` which is not a GPP 1.1 command at all).
 
@@ -74,6 +85,11 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
 - **Don't over-fit to one sample.** `publisherCC` was changed to `DE` on two
   samples and a third said `US`; purpose-level legitimate interest was changed on
   one sample and two others disagreed. Both had to be reverted.
+- Read the CMP's own bootstrap before deciding what to install. `cmp2.js` finds
+  its configuration by calling `window.__tcfapi()` with no arguments and taking
+  the `init` entry's fourth argument; both it and `window.__gpp()` drain a stub's
+  queue that way. That convention is why the InMobi resource can be tenant-
+  accurate at all, and it is not in any documentation.
 - What varies per tenant is left alone deliberately: `publisherCC`, publisher
   restrictions, how many vendors keep legitimate interest, the tenant's consent
   language, whether Google vendors are enabled. None is derivable from a page.

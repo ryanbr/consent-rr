@@ -35,6 +35,7 @@ describe('resources file', ( ) => {
             Array.from(resources.keys()).sort(),
             [
                 'cookieinformation-reject.js',
+                'inmobi-reject.js',
                 'onetrust-accept.js',
                 'onetrust-reject-unblock.js',
                 'onetrust-reject.js',
@@ -488,6 +489,12 @@ describe('filters', ( ) => {
         .filter(line => line.startsWith('!') === false)
         .join('\n');
 
+    // Every consent manager in the repo, so a list added for a new one is held
+    // to the same rule rather than skipped by it. uBO's own tokens - noopjs and
+    // the rest - are not ours to check.
+    const ours = token => Object.keys(versions)
+        .some(family => token.startsWith(`${family}-`));
+
     // uBO appends .js itself when resolving a scriptlet token, so a token
     // carrying it resolves to <name>.js.js, matches nothing, and is silently
     // dropped - no error, no injection.
@@ -501,7 +508,7 @@ describe('filters', ( ) => {
             for ( const token of tokens ) {
                 assert.equal(token.endsWith('.js'), false,
                     `+js(${token}) must not carry .js`);
-                if ( token.startsWith('onetrust-') === false ) { continue; }
+                if ( ours(token) === false ) { continue; }
                 assert.ok(names.has(`${token}.js`), `no resource named ${token}`);
             }
         }
@@ -516,7 +523,7 @@ describe('filters', ( ) => {
         );
         assert.ok(tokens.length !== 0);
         for ( const token of tokens ) {
-            if ( token.startsWith('onetrust-') === false ) { continue; }
+            if ( ours(token) === false ) { continue; }
             assert.ok(token.endsWith('.js'), `${token} needs its extension`);
             assert.ok(names.has(token), `no resource named ${token}`);
         }

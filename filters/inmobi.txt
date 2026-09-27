@@ -1,0 +1,56 @@
+! Title: consent-rr - InMobi Choice
+! Description: Replaces InMobi Choice's cmp2.js with a stub that reports a
+!              refusal, instead of waiting for a banner.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! The replacement goes on cmp2.js, not on choice.js.
+!
+! choice.js is a per-site loader: it inserts cmp2.js and calls
+! __tcfapi('init', 2, fn, config) with the tenant's whole configuration inline.
+! cmp2.js reads that config back out of the page's IAB stub. Leaving choice.js
+! alone is therefore what gets the tenant's own publisher country, consent
+! language and legitimate-interest purposes into the TC string this writes.
+!
+! Both file names: choice.js asks for the polyfilled build on a browser without
+! script[nomodule].
+! -----------------------------------------------------------------------------
+||cmp.inmobi.com/tcfv2/cmp2.js$script,redirect=inmobi-reject.js
+||cmp.inmobi.com/tcfv2/cmp2-polyfilled.js$script,redirect=inmobi-reject.js
+
+! -----------------------------------------------------------------------------
+! Where a redirect cannot land.
+!
+! Two cases, and both look the same from the page: no CMP at all, so anything
+! waiting on __tcfapi waits forever.
+!
+!  - Another list blocks choice.js. cmp2.js is then never requested, so the
+!    redirect above never fires.
+!  - The site's CSP omits data: for scripts. A user resource has no extension
+!    URL, so uBO serves it as a data: URI and script-src-elem refuses it.
+!
+! The scriptlet form is injected rather than fetched and does not need choice.js,
+! so it covers both. It answers with the defaults, because there is no init call
+! to read a tenant config from. Add it per site:
+!
+! example.com##+js(inmobi-reject)
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! cmp2.js is what asks for these, so with it replaced they are never requested.
+! They only matter where something unblocks cmp2.js itself: the banner's own
+! bundle, its translations, the vendor list, and the location lookup that
+! decides which privacy regime to apply.
+! -----------------------------------------------------------------------------
+||cmp.inmobi.com/tcfv2/*/cmp2ui.js$script,redirect=noopjs
+||cmp.inmobi.com/tcfv2/translations/*$xhr,redirect=noopjson
+||cmp.inmobi.com/consolidated-translations/*$xhr,redirect=noopjson
+||cmp.inmobi.com/custom-translations/*$xhr,redirect=noopjson
+||cmp.inmobi.com/GVL-v2/*$xhr,redirect=noopjson
+||cmp.inmobi.com/GVL-v3/*$xhr,redirect=noopjson
+||cmp.inmobi.com/geoip$xhr,redirect=noopjson
