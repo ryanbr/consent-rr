@@ -74,15 +74,26 @@ function consentRROneTrust(mode, installTcf, installGpp) {
     // or ot-vscat-<id> (vendor service categories). Mirrors the SDK's matcher,
     // which accepts alphanumerics and commas only.
     const reCategoryClass = /(?:optanon-category|ot-vscat)((?:-[a-zA-Z0-9,]+)+)/;
-    const categorySelector = '[class*="optanon-category"],[class*="ot-vscat"]';
+    // Sites also park tags themselves rather than letting OtAutoBlock.js do it,
+    // carrying the categories in an attribute and the real source in data-src or
+    // base64 in data-obfuscated-src. Their own loader reads the attribute.
+    const categorySelector = '[class*="optanon-category"],[class*="ot-vscat"],' +
+        '[data-optanon-category]';
+
+    const nodeCategories = node => {
+        const attribute = node.getAttribute('data-optanon-category');
+        if ( attribute !== null ) {
+            return attribute.split(',').map(id => id.trim())
+                .filter(id => id !== '');
+        }
+        const match = reCategoryClass.exec(node.getAttribute('class') || '');
+        if ( match === null ) { return []; }
+        return match[1].split(/[-,]/).filter(id => id !== '');
+    };
 
     const collectGroupIds = nodes => {
         for ( const node of nodes ) {
-            const match = reCategoryClass.exec(node.getAttribute('class') || '');
-            if ( match === null ) { continue; }
-            for ( const id of match[1].split(/[-,]/) ) {
-                if ( id !== '' ) { groupIds.add(id); }
-            }
+            for ( const id of nodeCategories(node) ) { groupIds.add(id); }
         }
     };
 
@@ -337,6 +348,23 @@ function consentRROneTrust(mode, installTcf, installGpp) {
             } catch(ex) {
             }
         }
+        // A tag parked by the site rather than by OtAutoBlock.js keeps its real
+        // source out of src, and its own loader moves it across. OneTrust's own
+        // tags keep theirs where they are, so this only applies to the former.
+        if ( node.hasAttribute('data-optanon-category') ) {
+            if ( clone.hasAttribute('src') === false ) {
+                const src = clone.getAttribute('data-src');
+                const hidden = clone.getAttribute('data-obfuscated-src');
+                if ( src !== null ) {
+                    clone.setAttribute('src', src);
+                } else if ( hidden !== null ) {
+                    try {
+                        clone.setAttribute('src', w.atob(hidden));
+                    } catch(ex) {
+                    }
+                }
+            }
+        }
         parent.appendChild(clone);
         parent.removeChild(node);
     };
@@ -344,11 +372,13 @@ function consentRROneTrust(mode, installTcf, installGpp) {
     // reactivateTag() asks canInsertForGroup() about each tag's own categories,
     // so a tag gated on nothing but C0001 is revived even by a reject-all. Only
     // the categories decide, never the mode.
+    // Every category a tag names has to be consented, as canInsertForGroup
+    // requires. A site's own loader may be looser - Honda's asks whether any one
+    // of them is - but being looser here would load an advertising tag off the
+    // back of a consented necessary one.
     const mayRevive = (node, consented) => {
         if ( reviveAll ) { return true; }
-        const match = reCategoryClass.exec(node.getAttribute('class') || '');
-        if ( match === null ) { return false; }
-        const ids = match[1].split(/[-,]/).filter(id => id !== '');
+        const ids = nodeCategories(node);
         if ( ids.length === 0 ) { return false; }
         return ids.every(id => consented.has(id));
     };

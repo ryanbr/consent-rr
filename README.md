@@ -38,9 +38,9 @@ every TCF vendor and in the GPP string as well.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.4.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.4.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.4.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.5.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.5.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.5.0/dist/onetrust-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -75,7 +75,7 @@ Check it took: each resource announces itself on load, so the console on a
 OneTrust site shows a line like
 
 ```
-[consent-rr] onetrust-reject 1.4.0 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-reject 1.5.0 groups=,C0001, tcf=refused gpp=refused
 ```
 
 and `OneTrust.consentRR` reports the same mode and version.
@@ -130,6 +130,13 @@ reproduced.
   `C0004` as well stays parked. Categories are read from `optanon-category-*`
   and `ot-vscat-*` class names, including ids the site invented, and a
   `MutationObserver` keeps handling tags added later.
+- Tags a site parked itself rather than letting `OtAutoBlock.js` do it: the
+  categories in a `data-optanon-category` attribute, the source in `data-src` or
+  base64 in `data-obfuscated-src`, which is moved across and decoded the way such
+  a loader does it. Every category a tag names still has to be consented, as
+  `canInsertForGroup()` requires - a site's own loader may only ask whether *any*
+  of them is, but being that loose would load an advertising tag off the back of a
+  consented necessary one.
 
 ### Deliberate gaps
 
@@ -223,7 +230,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.4.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.5.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

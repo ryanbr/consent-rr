@@ -1020,3 +1020,65 @@ describe('reject-unblock', ( ) => {
         );
     });
 });
+
+/******************************************************************************/
+
+// Sites park tags themselves rather than letting OtAutoBlock.js do it, with the
+// categories in an attribute and the source in data-src or base64 in
+// data-obfuscated-src. automobiles.honda.com is one.
+describe('tags a site parked itself', ( ) => {
+    const HIDDEN = 'aHR0cHM6Ly9jZG4uYXBwZHluYW1pY3MuY29tL2FkcnVtL2FkcnVtLmpz';
+    const page = '<html><head>' +
+        '<script id="many" type="text/plain" class="my-optanon-managed" ' +
+        'data-optanon-category="C0002,C0003,C0004" data-src="//dtm.example/l.js"></' + 'script>' +
+        '<script id="obf" type="text/plain" class="my-optanon-managed" ' +
+        'data-optanon-category="C0002" data-obfuscated-src="' + HIDDEN + '"></' + 'script>' +
+        '<script id="nec" type="text/plain" class="my-optanon-managed" ' +
+        'data-optanon-category="C0001">x</' + 'script>' +
+        '<script id="mixed" type="text/plain" class="my-optanon-managed" ' +
+        'data-optanon-category="C0001, C0004" data-src="//mixed.example/m.js"></' + 'script>' +
+        '<script id="ot" type="text/plain" class="optanon-category-C0004" ' +
+        'data-src="//ot.example/o.js"></' + 'script>' +
+        '</head><body><p id="content">x</p></body></html>';
+    const state = (win, id) => {
+        const el = win.document.getElementById(id);
+        if ( el.getAttribute('type') !== 'text/javascript' ) { return 'parked'; }
+        return el.getAttribute('src') || 'inline';
+    };
+
+    it('frees them, moving the source across as their loader would', ( ) => {
+        const win = run(unblock, page);
+        assert.equal(state(win, 'many'), '//dtm.example/l.js');
+        // base64, decoded the way their own loader decodes it
+        assert.equal(state(win, 'obf'),
+            'https://cdn.appdynamics.com/adrum/adrum.js');
+    });
+
+    it('leaves them parked on a plain refusal, except a necessary one', ( ) => {
+        const win = run(reject, page);
+        assert.equal(state(win, 'many'), 'parked');
+        assert.equal(state(win, 'obf'), 'parked');
+        assert.equal(state(win, 'nec'), 'inline');
+        // Every category named has to be consented: C0001 alone does not carry
+        // a tag that also names C0004, however loose a site's own loader is.
+        assert.equal(state(win, 'mixed'), 'parked');
+    });
+
+    it('reads the categories out of the attribute', ( ) => {
+        const groups = (consentParams(run(reject, page)).get('groups') || '')
+            .split(',');
+        for ( const pair of [ 'C0002:0', 'C0003:0', 'C0004:0', 'C0001:1' ] ) {
+            assert.ok(groups.includes(pair), pair);
+        }
+    });
+
+    it('leaves a OneTrust-parked tag exactly where the SDK leaves it',
+        ( ) => {
+            const win = run(unblock, page);
+            const el = win.document.getElementById('ot');
+            assert.equal(el.getAttribute('type'), 'text/javascript');
+            assert.equal(el.hasAttribute('src'), false);
+            assert.equal(el.getAttribute('data-src'), '//ot.example/o.js');
+        }
+    );
+});
