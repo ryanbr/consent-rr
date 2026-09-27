@@ -38,10 +38,10 @@
 ! globals, TCF and GPP all carry the same refusal. Un-parking a tag is mechanical,
 ! and uBO still blocks whatever it asks for.
 !
-! No use where the page's own script reads OnetrustActiveGroups and renders the
-! placeholder itself - "please allow advertising cookies" and the like. That wants
-! the accept resource, or a per-site rule spoofing just that one global:
-!   example.com##+js(trusted-set-constant, OnetrustActiveGroups, ',C0001,C0004,')
+! It also covers the other pattern, where the page's own script renders "please
+! allow advertising cookies" from OptanonActiveGroups: the globals report every
+! category while the cookie, TCF and GPP refuse, and OnConsentChanged fires so a
+! placeholder already drawn is re-checked. No per-site spoofing needed.
 ! -----------------------------------------------------------------------------
 ! /otSDKStub.js$script,redirect=onetrust-reject-unblock.js:10,domain=example.com
 

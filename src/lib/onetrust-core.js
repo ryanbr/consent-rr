@@ -86,15 +86,25 @@ function consentRROneTrust(mode, installTcf, installGpp) {
         }
     };
 
+    // What the page's own scripts can read, and what is stored in a cookie or
+    // sent to a vendor, are separate things. reject-unblock reports every
+    // category to the page - a global is a local variable, no more transmitted
+    // than un-parking a tag is - while the cookie, TCF and GPP carry the
+    // refusal. Sites gate their own players on exactly this read:
+    //   window.OptanonActiveGroups.includes('C0004')
     const consentedIds = ( ) => accept
         ? Array.from(groupIds)
         : [ alwaysActive ];
+
+    const reportedIds = ( ) => reviveAll
+        ? Array.from(groupIds)
+        : consentedIds();
 
     /**************************************************************************/
 
     // otSDKStub.js publishes ",<id>,<id>," under both names.
     const setGlobals = ( ) => {
-        const active = ',' + consentedIds().join(',') + ',';
+        const active = ',' + reportedIds().join(',') + ',';
         w.OnetrustActiveGroups = active;
         w.OptanonActiveGroups = active;
         return active;
@@ -421,7 +431,7 @@ function consentRROneTrust(mode, installTcf, installGpp) {
     /**************************************************************************/
 
     const domainData = ( ) => {
-        const consented = new Set(consentedIds());
+        const consented = new Set(reportedIds());
         return {
             ShowAlertNotice: false,
             IsIabEnabled: false,
@@ -590,11 +600,21 @@ function consentRROneTrust(mode, installTcf, installGpp) {
         }
     };
 
+    const dispatchOn = (name, detail) => {
+        let event;
+        try {
+            event = new CustomEvent(name, { detail });
+        } catch(ex) {
+            return;
+        }
+        w.dispatchEvent(event);
+    };
+
     const dispatchGroupsUpdated = ( ) => {
         let event;
         try {
             event = new CustomEvent('OneTrustGroupsUpdated', {
-                detail: consentedIds(),
+                detail: reportedIds(),
             });
         } catch(ex) {
             return;
@@ -608,6 +628,13 @@ function consentRROneTrust(mode, installTcf, installGpp) {
         executeOptanonWrapper();
         pushGroupsUpdated(active);
         dispatchGroupsUpdated();
+        // Only where the point is to make the page look again: a site that drew
+        // a placeholder before this ran re-checks from OnConsentChanged, which
+        // is a listener on this event. reject and accept stay silent, as a
+        // return visit with a stored decision does.
+        if ( reviveAll && accept === false ) {
+            dispatchOn('consent.onetrust', reportedIds());
+        }
         if ( wrapperDone ) { return; }
         // OptanonWrapper is often declared later than the SDK tag - a deferred
         // bundle, or an inline script further down the page.
@@ -674,6 +701,9 @@ function consentRROneTrust(mode, installTcf, installGpp) {
         console.info(
             '[consent-rr] ' + NAME + ' ' + VERSION +
             ' groups=' + active +
+            (reviveAll && accept === false
+                ? ' stored=,' + consentedIds().join(',') + ','
+                : '') +
             (typeof installTcf === 'function'
                 ? ' tcf=' + (accept ? 'granted' : 'refused')
                 : '') +

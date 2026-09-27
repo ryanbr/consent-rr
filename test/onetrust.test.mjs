@@ -949,12 +949,13 @@ describe('reject-unblock', ( ) => {
         '<iframe id="emb" class="optanon-category-C0003" data-src="https://e.example/v"></iframe>' +
         '<p id="content">x</p></body></html>';
 
-    it('reports the same refusal as reject', ( ) => {
+    // Stored and sent: the refusal, exactly as reject writes it.
+    it('stores and sends the same refusal as reject', ( ) => {
         const win = run(unblock);
-        assert.equal(win.OnetrustActiveGroups, ',C0001,');
         assert.equal(consentParams(win).get('intType'), '2');
         const groups = (consentParams(win).get('groups') || '').split(',');
         assert.ok(groups.includes('C0004:0'));
+        assert.ok(groups.includes('C0002:0'));
         let tc;
         win.__tcfapi('getTCData', 2, d => { tc = d; });
         assert.equal(Object.values(tc.purpose.consents).includes(true), false);
@@ -962,6 +963,35 @@ describe('reject-unblock', ( ) => {
         win.__gpp('ping', d => { gpp = d; });
         assert.equal(gpp.parsedSections.usnat.SaleOptOut, 1);
         assert.equal(win.OneTrust.consentRR.mode, 'reject-unblock');
+    });
+
+    // Read locally: every category, because that is what a site's own gate asks.
+    // This is the check automobiles.honda.com makes before it will play a video.
+    it('tells the page what its own gate asks for', ( ) => {
+        const gate = win => win.OptanonActiveGroups !== undefined &&
+            win.OptanonActiveGroups !== null &&
+            win.OptanonActiveGroups.includes('C0004');
+        assert.equal(gate(run(unblock)), true);
+        assert.equal(gate(run(reject)), false);
+        assert.equal(gate(run(accept)), true);
+        const win = run(unblock);
+        assert.equal(win.OnetrustActiveGroups, win.OptanonActiveGroups);
+        assert.ok(win.OnetrustActiveGroups.includes('V2STACK42'));
+        assert.equal(win.OneTrust.GetDomainData().Groups
+            .find(group => group.CustomGroupId === 'C0004').Status, 'active');
+    });
+
+    // A page that drew its placeholder before this ran re-checks from here.
+    it('tells listeners to look again, where reject stays silent', async ( ) => {
+        const fired = [];
+        for ( const code of [ reject, unblock, accept ] ) {
+            const win = run(code);
+            let seen = 0;
+            win.OneTrust.OnConsentChanged(( ) => { seen += 1; });
+            await settle(80);
+            fired.push(seen);
+        }
+        assert.deepEqual(fired, [ 0, 1, 0 ]);
     });
 
     it('lets every parked tag go, whatever its category', ( ) => {
