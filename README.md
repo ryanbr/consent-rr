@@ -213,6 +213,9 @@ cache-buster, since uBO will not refetch a URL it already has:
 https://raw.githubusercontent.com/ryanbr/consent-rr/v1.2.4/dist/onetrust-reject.js
 ```
 
+[AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token
+rules, where the values come from, and why the tests are written the way they are.
+
 `src/onetrust-*.js` are thin entry points; the behaviour is in
 `src/lib/onetrust-core.js`, pulled in by a `// @include` line, so accept and
 reject cannot drift apart. The build inlines it, leaving one self-contained file
