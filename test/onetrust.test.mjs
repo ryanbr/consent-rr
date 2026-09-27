@@ -616,6 +616,30 @@ describe('tcf', ( ) => {
         assert.equal(data.specialFeatureOptins[1], false);
     });
 
+    // Refusing is not objecting to legitimate interest, so vendors keep it - but
+    // Global Privacy Control is that objection, and a real refusal on a GPC
+    // browser carries none at all.
+    it('drops vendor legitimate interest when GPC objects for you', ( ) => {
+        const signalGpc = w => {
+            Object.defineProperty(w.navigator, 'globalPrivacyControl', {
+                configurable: true,
+                value: true,
+            });
+        };
+        const refused = getTCData(run(reject, fixture, signalGpc));
+        assert.equal(Object.keys(refused.vendor.legitimateInterests).length, 0);
+        assert.equal(
+            TCString.decode(refused.tcString).vendorLegitimateInterests.size, 0
+        );
+        // Without the signal they keep it.
+        assert.ok(Object.keys(getTCData(run(reject)).vendor.legitimateInterests)
+            .length !== 0);
+        // And consent overrides the signal rather than being overridden by it.
+        const granted = getTCData(run(accept, fixture, signalGpc));
+        assert.equal(granted.vendor.legitimateInterests[755], true);
+        assert.equal(granted.vendor.consents[755], true);
+    });
+
     it('is stable for the day rather than unique per page load', ( ) => {
         const decoded = TCString.decode(getTCData(run(reject)).tcString);
         // Rounded to midday UTC, as real CMPs write it.

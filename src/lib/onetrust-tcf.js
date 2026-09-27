@@ -18,11 +18,17 @@
     action. Those real strings grant nothing and sites work under them, so
     nothing is claimed on the visitor's behalf here either.
 
-    What varies between tenants is left alone rather than guessed at. Four sites
-    sampled disagreed on the publisher country (DE, DE, US), on whether a
+    A refusal leaves legitimate interest with the vendors, because refusing is
+    not the same as objecting to it - unless the browser is sending Global
+    Privacy Control, which is that objection. A real refusal on a GPC browser
+    carries no vendor legitimate interest at all, where refusals without it
+    carried 15, 22 and 390.
+
+    What varies between tenants is left alone rather than guessed at. Five sites
+    sampled disagreed on the publisher country (DE, DE, US, DE), on whether a
     refusal keeps legitimate interest at the purpose level (two of three did
-    not), on how many vendors keep it (15, 22, 390) and on publisher
-    restrictions (none, none, ten). None of that is derivable from the page.
+    not), on how many vendors keep it, and on publisher restrictions (none,
+    none, ten, eleven). None of that is derivable from the page.
 
     Timestamps are rounded to midday UTC, as real CMPs do, so the string is
     stable for a day instead of unique per page load.
@@ -49,6 +55,9 @@ function consentRRTcf(grant) {
     // Purposes that may be taken on legitimate interest rather than consent.
     const PURPOSES_LI = [ 2, 7, 8, 9, 10, 11 ];
     const SPECIAL_FEATURES = [ 1, 2 ];
+    // Consent overrides the signal; a refusal alongside it does not.
+    const keepLegitimateInterest =
+        grant || w.navigator.globalPrivacyControl !== true;
 
     const twoLetters = (value, fallback) => {
         const text = typeof value === 'string' ? value.toUpperCase() : '';
@@ -130,7 +139,12 @@ function consentRRTcf(grant) {
             push(0, 16);            // no vendor consents at all
             push(0, 1);
         }
-        pushVendorRange();          // vendor legitimate interests, left intact
+        if ( keepLegitimateInterest ) {
+            pushVendorRange();      // vendor legitimate interests, left intact
+        } else {
+            push(0, 16);            // objected to, by Global Privacy Control
+            push(0, 1);
+        }
         push(0, 12);                // publisher restrictions: none
         return toString();
     };
@@ -168,7 +182,9 @@ function consentRRTcf(grant) {
     const purposeLegitimateInterests = flags(grant ? PURPOSES_LI : [], 11);
     const specialFeatureOptins = flags(grant ? SPECIAL_FEATURES : [], 2);
     const vendorConsents = grant ? range(VENDOR_MAX) : {};
-    const vendorLegitimateInterests = range(VENDOR_MAX);
+    const vendorLegitimateInterests = keepLegitimateInterest
+        ? range(VENDOR_MAX)
+        : {};
 
     const tcData = listenerId => {
         const data = {

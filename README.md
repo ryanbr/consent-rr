@@ -26,8 +26,8 @@ behind a category (embedded players, maps) rather than behind the banner.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.2.3/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.2.3/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.2.4/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.2.4/dist/onetrust-accept.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -62,7 +62,7 @@ Check it took: each resource announces itself on load, so the console on a
 OneTrust site shows a line like
 
 ```
-[consent-rr] onetrust-reject 1.2.3 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-reject 1.2.4 groups=,C0001, tcf=refused gpp=refused
 ```
 
 and `OneTrust.consentRR` reports the same mode and version.
@@ -210,7 +210,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.2.3/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.2.4/dist/onetrust-reject.js
 ```
 
 `src/onetrust-*.js` are thin entry points; the behaviour is in
