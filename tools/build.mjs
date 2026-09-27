@@ -36,6 +36,17 @@ const manifest = JSON.parse(
     await fs.readFile(path.join(root, 'package.json'), 'utf8')
 );
 const version = manifest.version;
+
+// The README's install URLs are pinned to a release, so they have to name the
+// version being built - otherwise a release ships telling people to install the
+// one before it.
+const readme = await fs.readFile(path.join(root, 'README.md'), 'utf8');
+for ( const match of readme.matchAll(/consent-rr\/v(\d+\.\d+\.\d+)\//g) ) {
+    assert.equal(
+        match[1], version,
+        `README pins v${match[1]} but this is ${version}`
+    );
+}
 const srcDir = path.join(root, 'src');
 const outDir = path.join(root, 'dist');
 

@@ -26,12 +26,16 @@ behind a category (embedded players, maps) rather than behind the banner.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/main/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/main/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.2.3/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.2.3/dist/onetrust-accept.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
    *Update now*).
+
+   Pinned to a release: the URL never moves, and it changes with each one, which
+   is what makes uBO refetch - it will not ask again for a URL it already has.
+   Swap the tag for `main` to track every push instead.
 
    Each file stands on its own: nothing else has to be loaded for it to work.
    Its first line, `/// onetrust-reject.js`, is the resource header uBO reads -
@@ -196,6 +200,10 @@ git commit -a && git tag -a v1.3.0 -m '1.3.0 - what changed'
 git push origin main --follow-tags
 gh release create v1.3.0 --verify-tag --title v1.3.0 --notes-file notes.md
 ```
+
+The install URLs above are pinned, so they move with each release too - the build
+refuses to run while they name a different version from `package.json`, which
+stops a release shipping instructions for the one before it.
 
 Every version has a [release](https://github.com/ryanbr/consent-rr/releases),
 and its tag gives a URL that never moves - useful both for pinning and as its own
