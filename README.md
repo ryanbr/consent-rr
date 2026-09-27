@@ -202,9 +202,25 @@ reproduced.
   one is refused. A host-only copy would not replace the SDK's, it would shadow
   it: two `OptanonConsent` cookies, and a site taking the first match reads
   whichever is older. Seen happening on a live site.
-- A page with a strict `script-src` CSP that omits `data:` will refuse the
-  resource: user resources have no extension URL, so uBO serves them as a
-  `data:` URI. Trusted Types enforcement can likewise block tag revival.
+- **A page whose CSP omits `data:` for scripts silently refuses a redirected
+  resource.** User resources have no extension URL, so uBO serves them as a
+  `data:` URI, and `script-src-elem`/`script-src`/`default-src` without `data:`
+  blocks it. Nothing of ours runs: no console line, no cookie, no marker - and
+  because the real SDK was replaced at the network layer, the banner is gone too,
+  which makes it look like the resource worked. Seen on almbrand.dk, whose CSP
+  allows `'self'` and named hosts only.
+
+  The scriptlet form is not fetched, so it is not subject to that directive:
+
+  ```
+  ||policy.app.cookieinformation.com/uc.js$script,redirect=cookieinformation-reject.js,domain=example.com
+  example.com##+js(cookieinformation-reject)
+  ```
+
+  The redirect keeps the real SDK out; the scriptlet supplies the stub. The tell
+  is a CSP violation in the console naming a `data:` script, and
+  `CookieInformation.consentRR` or `OneTrust.consentRR` being undefined.
+- Trusted Types enforcement can likewise block tag revival.
 - Accept mode revives advertising tags too, which is what accepting means. uBO
   still blocks the requests they make.
 

@@ -37,6 +37,15 @@ The build enforces all of it, plus that `@@VERSION@@` was substituted and that
 the README's pinned URLs name the version being built. Don't defeat those checks;
 they have each caught a real mistake.
 
+## When a redirect silently does nothing
+
+A redirected resource is served as a `data:` URI, so a page whose CSP omits
+`data:` for scripts refuses it. Nothing runs, and because the real SDK was
+replaced at the network layer the banner is gone as well, which reads as success.
+Check `<cmp>.consentRR` in the console: undefined means it never ran. The
+scriptlet form is not fetched and is not subject to that directive, so pair the
+two - the redirect to keep the SDK out, `##+js(<resource>)` to supply the stub.
+
 ## Filters
 
 - `+js(onetrust-reject)` - **no `.js`**. uBO appends it, so `+js(name.js)`

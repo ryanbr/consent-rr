@@ -19,6 +19,12 @@
 ! -----------------------------------------------------------------------------
 ||policy.app.cookieinformation.com/uc.js$script,redirect=cookieinformation-reject.js
 
+! Where a site's CSP omits data: for scripts, the redirected resource is refused
+! by the browser and nothing of ours runs - while the banner still disappears,
+! because the real SDK was replaced at the network layer. Pair the redirect with
+! the scriptlet form, which is not fetched and so not subject to the directive:
+!   almbrand.dk##+js(cookieinformation-reject)
+
 
 ! -----------------------------------------------------------------------------
 ! uc.js is what asks for these, so with it replaced they are never requested.
