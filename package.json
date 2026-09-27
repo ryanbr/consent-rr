@@ -1,6 +1,6 @@
 {
   "name": "consent-rr",
-  "version": "1.2.4",
+  "version": "1.3.0",
   "description": "Cookie-consent resource replacements for uBlock Origin",
   "scripts": {
     "test": "node tools/build.mjs && node --test test/*.test.mjs",

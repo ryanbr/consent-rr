@@ -17,45 +17,57 @@ import {
 
 let accept;
 let reject;
+let unblock;
 
 before(async ( ) => {
     const resources = await loadResources();
     accept = resources.get('onetrust-accept.js');
     reject = resources.get('onetrust-reject.js');
+    unblock = resources.get('onetrust-reject-unblock.js');
 });
 
 /******************************************************************************/
 
 describe('resources file', ( ) => {
-    it('holds exactly the two named resources', async ( ) => {
+    it('holds exactly the three named resources', async ( ) => {
         const resources = await loadResources();
         assert.deepEqual(
             Array.from(resources.keys()).sort(),
-            [ 'onetrust-accept.js', 'onetrust-reject.js' ]
+            [
+                'onetrust-accept.js',
+                'onetrust-reject-unblock.js',
+                'onetrust-reject.js',
+            ]
         );
     });
 
     it('carries no blank line inside a resource, which would truncate it', ( ) => {
-        for ( const code of [ accept, reject ] ) {
+        for ( const code of [ accept, reject, unblock ] ) {
             assert.equal(/^[ \t]*$/m.test(code), false);
         }
     });
 
     it('stays inside ASCII, since uBO base64-encodes it with btoa()', ( ) => {
-        for ( const code of [ accept, reject ] ) {
+        for ( const code of [ accept, reject, unblock ] ) {
             assert.equal(/[^\x20-\x7e\t\n]/.test(code), false);
         }
     });
 
-    it('selects its mode, and both carry the IAB layers', ( ) => {
-        assert.ok(accept.includes(
-            "consentRROneTrust('accept', consentRRTcf, consentRRGpp)"));
-        assert.ok(reject.includes(
-            "consentRROneTrust('reject', consentRRTcf, consentRRGpp)"));
-        for ( const code of [ accept, reject ] ) {
+    // One line apart, all three of them: anything that lands in one and not the
+    // others is a bug rather than a mode.
+    it('differs only in the mode it selects', ( ) => {
+        for ( const mode of [ 'accept', 'reject', 'reject-unblock' ] ) {
+            const code = { accept, reject, 'reject-unblock': unblock }[mode];
+            assert.ok(code.includes(
+                "consentRROneTrust('" + mode + "', consentRRTcf, consentRRGpp)"),
+                mode);
             assert.ok(code.includes('__tcfapi'));
             assert.ok(code.includes('__gpp'));
         }
+        const strip = code =>
+            code.replace(/consentRROneTrust\('[a-z-]+'/, 'consentRROneTrust(');
+        assert.equal(strip(accept), strip(reject));
+        assert.equal(strip(reject), strip(unblock));
     });
 });
 
@@ -921,5 +933,60 @@ describe('gpp', ( ) => {
             const win = run(code);
             assert.ok(win.document.querySelector('iframe[name="__gppLocator"]'));
         }
+    });
+});
+
+/******************************************************************************/
+
+// Refuses exactly as reject does, and lets every parked tag go anyway: un-parking
+// one claims no consent, and uBO still blocks whatever it asks for.
+describe('reject-unblock', ( ) => {
+    const gated = '<html><head>' +
+        '<script id="nec" type="text/plain" class="optanon-category-C0001">a</' + 'script>' +
+        '<script id="tgt" type="text/plain" class="optanon-category-C0004" src="https://t.example/t.js"></' + 'script>' +
+        '<script id="vs" type="text/plain" class="ot-vscat-V2">c</' + 'script>' +
+        '</head><body>' +
+        '<iframe id="emb" class="optanon-category-C0003" data-src="https://e.example/v"></iframe>' +
+        '<p id="content">x</p></body></html>';
+
+    it('reports the same refusal as reject', ( ) => {
+        const win = run(unblock);
+        assert.equal(win.OnetrustActiveGroups, ',C0001,');
+        assert.equal(consentParams(win).get('intType'), '2');
+        const groups = (consentParams(win).get('groups') || '').split(',');
+        assert.ok(groups.includes('C0004:0'));
+        let tc;
+        win.__tcfapi('getTCData', 2, d => { tc = d; });
+        assert.equal(Object.values(tc.purpose.consents).includes(true), false);
+        let gpp;
+        win.__gpp('ping', d => { gpp = d; });
+        assert.equal(gpp.parsedSections.usnat.SaleOptOut, 1);
+        assert.equal(win.OneTrust.consentRR.mode, 'reject-unblock');
+    });
+
+    it('lets every parked tag go, whatever its category', ( ) => {
+        const doc = run(unblock, gated).document;
+        for ( const id of [ 'nec', 'tgt', 'vs' ] ) {
+            assert.equal(doc.getElementById(id).getAttribute('type'),
+                'text/javascript', id);
+        }
+        assert.equal(doc.getElementById('emb').getAttribute('src'),
+            'https://e.example/v');
+        // Which is the whole difference from reject.
+        const rejected = run(reject, gated).document;
+        assert.equal(rejected.getElementById('tgt').getAttribute('type'),
+            'text/plain');
+        assert.equal(rejected.getElementById('emb').hasAttribute('src'), false);
+    });
+
+    it('honours an InsertScript call for any category', ( ) => {
+        const win = run(unblock);
+        win.OneTrust.InsertScript('https://i.example/t.js', 'body', undefined,
+            undefined, 'C0004');
+        assert.equal(
+            Array.from(win.document.querySelectorAll('body script'), s => s.src)
+                .join(','),
+            'https://i.example/t.js'
+        );
     });
 });

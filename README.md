@@ -15,9 +15,19 @@ Currently covered: **OneTrust** (and its CookiePro tier).
 | --- | --- |
 | `onetrust-reject.js` | A stored *reject all*: `C0001` on, everything else off. Tags parked behind a category stay parked. |
 | `onetrust-accept.js` | A stored *accept all*: every category on, and tags parked behind one are switched back on. |
+| `onetrust-reject-unblock.js` | The same refusal as reject - cookies, globals, TCF and GPP all say no - but every parked tag is let go anyway. |
 
-Pick `reject` as the default. `accept` is for sites that put the content itself
-behind a category (embedded players, maps) rather than behind the banner.
+Pick `reject` as the default. `reject-unblock` is for a site that parks the
+content itself behind a category: it consents to nothing and un-parks the tag
+anyway, which is mechanical and claims nothing - uBlock Origin still blocks
+whatever that tag then asks for. `accept` is the last resort, for a site whose own
+script reads `OnetrustActiveGroups` and renders "please allow advertising cookies"
+itself, since that decision is the site's rather than the SDK's.
+
+Which one a site needs is answerable in the console: if
+`document.querySelectorAll('script[type="text/plain"][class*="optanon-category"], [data-src][class*="optanon-category"]')`
+finds the content, `reject-unblock` will free it. If it finds nothing, the page is
+deciding for itself and only consent moves it.
 
 ## Install
 
@@ -26,8 +36,9 @@ behind a category (embedded players, maps) rather than behind the banner.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.2.4/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.2.4/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.3.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.3.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.3.0/dist/onetrust-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -62,7 +73,7 @@ Check it took: each resource announces itself on load, so the console on a
 OneTrust site shows a line like
 
 ```
-[consent-rr] onetrust-reject 1.2.4 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-reject 1.3.0 groups=,C0001, tcf=refused gpp=refused
 ```
 
 and `OneTrust.consentRR` reports the same mode and version.
@@ -210,7 +221,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.2.4/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.3.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

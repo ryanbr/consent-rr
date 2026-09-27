@@ -33,6 +33,19 @@
 ! /otSDKStub.js$script,redirect=onetrust-accept.js:10,domain=example.com
 
 ! -----------------------------------------------------------------------------
+! Reject, but let the content through - for a site that parks an embed behind a
+! category and shows a placeholder instead. Consents to nothing: the cookies, the
+! globals, TCF and GPP all carry the same refusal. Un-parking a tag is mechanical,
+! and uBO still blocks whatever it asks for.
+!
+! No use where the page's own script reads OnetrustActiveGroups and renders the
+! placeholder itself - "please allow advertising cookies" and the like. That wants
+! the accept resource, or a per-site rule spoofing just that one global:
+!   example.com##+js(trusted-set-constant, OnetrustActiveGroups, ',C0001,C0004,')
+! -----------------------------------------------------------------------------
+! /otSDKStub.js$script,redirect=onetrust-reject-unblock.js:10,domain=example.com
+
+! -----------------------------------------------------------------------------
 ! The stub above is what asks for these, so they are only reached when something
 ! unblocks the stub itself. OtAutoBlock.js is the part that parks third-party
 ! tags at type="text/plain"; neutering it leaves them to load on their own,

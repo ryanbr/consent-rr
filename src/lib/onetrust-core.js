@@ -29,10 +29,15 @@
 function consentRROneTrust(mode, installTcf, installGpp) {
     const w = window;
     const doc = w.document;
+    // What the page is told, and whether parked tags are let go, are two
+    // separate things. reject-unblock refuses exactly as reject does, and still
+    // un-parks everything: un-parking a tag is mechanical, it claims no consent,
+    // and uBlock Origin still blocks whatever the tag then asks for.
     const accept = mode === 'accept';
+    const reviveAll = accept || mode === 'reject-unblock';
     // Substituted from package.json by tools/build.mjs.
     const VERSION = '@@VERSION@@';
-    const NAME = 'onetrust-' + (accept ? 'accept' : 'reject');
+    const NAME = 'onetrust-' + (accept ? 'accept' : mode);
 
     // A site can preset window.OneTrust (geolocationResponse, for one) before
     // the SDK loads, and the SDK assigns over whatever is there rather than
@@ -330,10 +335,11 @@ function consentRROneTrust(mode, installTcf, installGpp) {
     // so a tag gated on nothing but C0001 is revived even by a reject-all. Only
     // the categories decide, never the mode.
     const mayRevive = (node, consented) => {
+        if ( reviveAll ) { return true; }
         const match = reCategoryClass.exec(node.getAttribute('class') || '');
-        if ( match === null ) { return accept; }
+        if ( match === null ) { return false; }
         const ids = match[1].split(/[-,]/).filter(id => id !== '');
-        if ( ids.length === 0 ) { return accept; }
+        if ( ids.length === 0 ) { return false; }
         return ids.every(id => consented.has(id));
     };
 
@@ -451,7 +457,8 @@ function consentRROneTrust(mode, installTcf, installGpp) {
                 .split(',')
                 .map(id => id.trim())
                 .filter(id => id !== '');
-        if ( requested.length === 0 ) { return accept; }
+        if ( reviveAll ) { return true; }
+        if ( requested.length === 0 ) { return false; }
         const consented = new Set(consentedIds());
         return requested.every(id => consented.has(id));
     };
@@ -520,7 +527,7 @@ function consentRROneTrust(mode, installTcf, installGpp) {
     };
 
     const api = {
-        consentRR: { mode: accept ? 'accept' : 'reject', version: VERSION },
+        consentRR: { mode, version: VERSION },
         // There is no banner and no preference centre to drive.
         Init: noopfn,
         InitializeBanner: noopfn,
