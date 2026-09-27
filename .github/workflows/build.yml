@@ -33,9 +33,9 @@ jobs:
       - run: npm ci
       # Builds, then runs the suite against the built files.
       - run: npm test
-      - name: dist matches src
+      - name: dist and COMPARISON.md match src
         run: |
-          if ! git diff --exit-code --stat -- dist; then
-            echo "::error::dist/ is stale - run 'npm run build' and commit the result"
+          if ! git diff --exit-code --stat -- dist COMPARISON.md; then
+            echo "::error::committed output is stale - run 'npm test' and commit the result"
             exit 1
           fi
