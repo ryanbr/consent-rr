@@ -174,6 +174,7 @@ function consentRRCookieInformation() {
             'CookieInformationConsent',
             encodeURIComponent(JSON.stringify(record))
         );
+        return readCookie('CookieInformationConsent') !== '';
     };
 
     /**************************************************************************/
@@ -350,7 +351,11 @@ function consentRRCookieInformation() {
     /**************************************************************************/
 
     const map = safeScan();
-    writeConsentCookie();
+    let stored = false;
+    try {
+        stored = writeConsentCookie();
+    } catch(ex) {
+    }
 
     try {
         new MutationObserver(scanDeferred).observe(doc.documentElement || doc, {
@@ -387,7 +392,8 @@ function consentRRCookieInformation() {
         console.info(
             '[consent-rr] ' + NAME + ' ' + VERSION +
             ' approved=' + approved().join(',') +
-            ' denied=' + denied().join(',')
+            ' denied=' + denied().join(',') +
+            ' cookie=' + (stored ? 'written' : 'refused')
         );
     }
     void map;

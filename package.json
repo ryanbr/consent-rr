@@ -3,7 +3,7 @@
   "version": "1.6.1",
   "resourceVersions": {
     "onetrust": "1.5.0",
-    "cookieinformation": "1.0.0"
+    "cookieinformation": "1.0.1"
   },
   "description": "Cookie-consent resource replacements for uBlock Origin",
   "scripts": {

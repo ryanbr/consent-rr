@@ -188,6 +188,27 @@ describe('cookieinformation-reject', ( ) => {
         );
     });
 
+    // "no cookie" and "never ran" looked identical from the console, which cost
+    // a round of guessing on a live site.
+    it('says on the console whether the cookie stuck', ( ) => {
+        const logs = [];
+        runDom(reject, URL, PAGE, w => {
+            w.console.info = (...args) => { logs.push(args.join(' ')); };
+        });
+        assert.ok(logs[0].endsWith('cookie=written'), logs[0]);
+
+        const refused = [];
+        runDom(reject, URL, PAGE, w => {
+            w.console.info = (...args) => { refused.push(args.join(' ')); };
+            Object.defineProperty(w.document, 'cookie', {
+                configurable: true,
+                get( ) { return ''; },
+                set( ) {},
+            });
+        });
+        assert.ok(refused[0].endsWith('cookie=refused'), refused[0]);
+    });
+
     it('does nothing the second time it is injected', async ( ) => {
         const dom = open();
         dom.window.eval(reject);
