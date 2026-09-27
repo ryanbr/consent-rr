@@ -21,9 +21,13 @@ export const filtersText = await fs.readFile(
     path.join(root, 'filters', 'onetrust.txt'), 'utf8'
 );
 
-export const version = JSON.parse(
+const manifest = JSON.parse(
     await fs.readFile(path.join(root, 'package.json'), 'utf8')
-).version;
+);
+
+// The repo's release version, and the per-consent-manager resource versions.
+export const version = manifest.version;
+export const versions = manifest.resourceVersions;
 
 export const parseResources = text => {
     const resources = new Map();

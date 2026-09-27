@@ -3,7 +3,7 @@
 Measured, not described: this file is written by `tools/comparison.mjs`, which
 runs each built resource against the same page and records what it did. `npm run
 build` regenerates it and CI fails if the committed copy has drifted. Everything
-below is from **1.6.0**.
+below is from the OneTrust resources at **1.5.0**.
 
 A row in bold is one where the three differ.
 
@@ -93,9 +93,9 @@ and a vendor receiving that string is entitled to act on it.
 Keep `reject` global and escalate per site. The console line names which one ran:
 
 ```
-[consent-rr] onetrust-reject 1.6.0 groups=,C0001, tcf=refused gpp=refused
-[consent-rr] onetrust-reject-unblock 1.6.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
-[consent-rr] onetrust-accept 1.6.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
+[consent-rr] onetrust-reject 1.5.0 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-reject-unblock 1.5.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-accept 1.5.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
 ```
 
-Sizes: `reject` 36.0 KB, `reject-unblock` 36.1 KB, `accept` 36.0 KB.
+Sizes: `reject` 36.1 KB, `reject-unblock` 36.1 KB, `accept` 36.1 KB.

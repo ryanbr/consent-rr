@@ -90,8 +90,14 @@ line rules and joined the way uBO joins several resource URLs.
 
 ## Releasing
 
+Each consent manager has its own version under `resourceVersions` in
+`package.json`; the repo's `version` is what releases are named after. Bump the
+family's entry when its resources change, and not otherwise - a version on a stub
+means that stub changed.
+
 ```sh
-npm version patch --no-git-tag-version      # or minor
+# bump resourceVersions.<family> if that family's resources changed
+npm version patch --no-git-tag-version      # the repo's own version
 # bump the pinned URLs in README.md - the build refuses to run otherwise
 npm run build && npm test
 git commit -a && git tag -a v1.2.5 -m '1.2.5 - what changed'

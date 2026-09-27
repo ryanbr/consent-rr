@@ -43,10 +43,10 @@ from the built files rather than described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.1/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.1/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.1/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.1/dist/cookieinformation-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -215,13 +215,15 @@ npm run build   # src/ -> dist/onetrust-accept.js, dist/onetrust-reject.js
 npm test        # builds, then runs the suite against the built files
 ```
 
-The version comes from `package.json` and nowhere else: the build substitutes
-`@@VERSION@@` and refuses to ship a file where the placeholder survived, so
-bumping there is enough. Releasing is three steps, and the tag is what says
-which commit a version shipped from:
+Each consent manager carries its own version, from `resourceVersions` in
+`package.json`, so adding or fixing one never restamps another's resources. The
+build substitutes `@@VERSION@@` with that family's version and refuses to ship a
+file where the placeholder survived. `version` in `package.json` is the repo's
+own, which is what a release and its tag are named after:
 
 ```sh
-npm version minor --no-git-tag-version   # or patch
+# bump the family's entry in resourceVersions if its resources changed
+npm version minor --no-git-tag-version   # the repo's own version
 npm run build && npm test                # dist/ carries the new number
 git commit -a && git tag -a v1.3.0 -m '1.3.0 - what changed'
 git push origin main --follow-tags
@@ -237,7 +239,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.6.1/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

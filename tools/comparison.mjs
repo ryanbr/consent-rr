@@ -174,7 +174,7 @@ const doc = `# The three resources compared
 Measured, not described: this file is written by \`tools/comparison.mjs\`, which
 runs each built resource against the same page and records what it did. \`npm run
 build\` regenerates it and CI fails if the committed copy has drifted. Everything
-below is from **${manifest.version}**.
+below is from the OneTrust resources at **${manifest.resourceVersions.onetrust}**.
 
 A row in bold is one where the three differ.
 
