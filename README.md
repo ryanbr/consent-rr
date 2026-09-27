@@ -194,6 +194,15 @@ npm version minor --no-git-tag-version   # or patch
 npm run build && npm test                # dist/ carries the new number
 git commit -a && git tag -a v1.3.0 -m '1.3.0 - what changed'
 git push origin main --follow-tags
+gh release create v1.3.0 --verify-tag --title v1.3.0 --notes-file notes.md
+```
+
+Every version has a [release](https://github.com/ryanbr/consent-rr/releases),
+and its tag gives a URL that never moves - useful both for pinning and as its own
+cache-buster, since uBO will not refetch a URL it already has:
+
+```
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.2.3/dist/onetrust-reject.js
 ```
 
 `src/onetrust-*.js` are thin entry points; the behaviour is in
