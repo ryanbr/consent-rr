@@ -186,7 +186,15 @@ npm test        # builds, then runs the suite against the built files
 
 The version comes from `package.json` and nowhere else: the build substitutes
 `@@VERSION@@` and refuses to ship a file where the placeholder survived, so
-bumping there is enough.
+bumping there is enough. Releasing is three steps, and the tag is what says
+which commit a version shipped from:
+
+```sh
+npm version minor --no-git-tag-version   # or patch
+npm run build && npm test                # dist/ carries the new number
+git commit -a && git tag -a v1.3.0 -m '1.3.0 - what changed'
+git push origin main --follow-tags
+```
 
 `src/onetrust-*.js` are thin entry points; the behaviour is in
 `src/lib/onetrust-core.js`, pulled in by a `// @include` line, so accept and
