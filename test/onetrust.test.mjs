@@ -76,6 +76,11 @@ describe('reject', ( ) => {
         assert.equal(params.get('isAnonUser'), '1');
         assert.equal(params.get('prevHadToken'), '0');
         assert.equal(params.get('AwaitingReconsent'), 'false');
+        // The SDK's LAST_CONSENT_RECEIPT, last in the cookie as it writes it.
+        const crTime = Number(params.get('crTime'));
+        assert.ok(Math.abs(Date.now() - crTime) < 60000, String(crTime));
+        const raw = cookies(win).get('OptanonConsent') || '';
+        assert.ok(/&crTime=\d+$/.test(raw), raw.slice(-40));
         // 2 is the SDK's own "Banner - Reject All".
         assert.equal(params.get('intType'), '2');
         const groups = (params.get('groups') || '').split(',');
@@ -105,6 +110,20 @@ describe('reject', ( ) => {
             assert.ok(found[0].value.includes('groups='));
             // The probe used to find that domain does not linger.
             assert.equal(/consentRRProbe/.test(dom.window.document.cookie), false);
+        }
+    });
+
+    // Version, then the consented ids, then the disclosed ones. Both lists are
+    // empty: a real refusal consents to no AC vendor either, and the ids a real
+    // string carries are Google's global list rather than anything derivable.
+    it('writes an AC string that consents to nothing, either way', ( ) => {
+        for ( const code of [ reject, accept ] ) {
+            const win = run(code);
+            assert.equal(cookies(win).get('OTAdditionalConsentString'), '2~~dv');
+            let data;
+            win.__tcfapi('getTCData', 2, d => { data = d; });
+            // The cookie and the TCF answer say the same thing.
+            assert.equal(data.addtlConsent, '2~~dv');
         }
     });
 

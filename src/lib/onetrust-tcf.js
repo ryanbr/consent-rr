@@ -206,7 +206,9 @@ function consentRRTcf(grant) {
                 },
                 restrictions: {},
             },
-            addtlConsent: '',
+            // Matches the OTAdditionalConsentString cookie: an AC string
+            // consenting to nothing, rather than no AC string at all.
+            addtlConsent: '2~~dv',
         };
         if ( listenerId !== undefined ) { data.listenerId = listenerId; }
         return data;

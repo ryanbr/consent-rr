@@ -58,7 +58,7 @@ Check it took: each resource announces itself on load, so the console on a
 OneTrust site shows a line like
 
 ```
-[consent-rr] onetrust-reject 1.2.1 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-reject 1.2.2 groups=,C0001, tcf=refused gpp=refused
 ```
 
 and `OneTrust.consentRR` reports the same mode and version.
@@ -133,10 +133,13 @@ reproduced.
   language is read off the page's `lang`. The string carries the publisher
   segment beside the core, as a real one does, and vendor ids run to 2000 - a
   real string reached 1650.
-- `addtlConsent` stays empty. A real refusal consents to no Google AC vendor
-  either; a real acceptance lists some 600 of them, which is Google's own global
-  list rather than anything a replacement can derive, and missing it costs ads
-  rather than breaking a page.
+- Google's Additional Consent string is written as `2~~dv`, in the
+  `OTAdditionalConsentString` cookie and as `addtlConsent` in the TCF answer:
+  version, then an empty consented list, then an empty disclosed one. A real
+  refusal consents to no AC vendor either - its long tail is a disclosure record,
+  not consent. A real acceptance moves some 600 ids into the consented slot,
+  which is Google's own global list rather than anything a replacement can
+  derive, so neither resource claims them.
 - **The IAB layer goes in whether or not the tenant had one.** Plenty of
   OneTrust tenants run with the IAB module off and write no `eupubconsent-v2` at
   all, and a replacement cannot tell which, since that lives in domain data it

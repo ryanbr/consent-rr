@@ -234,11 +234,20 @@ function consentRROneTrust(mode, installTcf, installGpp) {
         params.set('groups', groups.join(','));
         params.set('AwaitingReconsent', 'false');
         params.set('intType', accept ? '1' : '2');
+        // crTime is the SDK's LAST_CONSENT_RECEIPT, written where a tenant logs
+        // receipts. Nothing was sent anywhere, so this is only the moment the
+        // decision was recorded, same as datestamp.
+        params.set('crTime', String(now.getTime()));
         // URLSearchParams escapes the parentheses in a timezone name and the
         // SDK does not, so put them back.
         writeCookie('OptanonConsent', params.toString()
             .replace(/%28/g, '(').replace(/%29/g, ')'));
         writeCookie('OptanonAlertBoxClosed', now.toISOString());
+        // Google's Additional Consent string: version, the consented ids, then
+        // the disclosed ones. Both lists are empty here - a refusal consents to
+        // no AC vendor either, and the several hundred ids a real string carries
+        // are Google's own global list, not anything derivable from the page.
+        writeCookie('OTAdditionalConsentString', '2~~dv');
     };
 
     // Sites commonly keep their own record of the choice beside OneTrust's and
