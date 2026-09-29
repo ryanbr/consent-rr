@@ -1,0 +1,42 @@
+! Title: consent-rr - Cookiebot
+! Description: Replaces Cookiebot's uc.js with a stub that reports a refusal,
+!              instead of waiting for a banner.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! uc.js is the engine: it defines the API, blocks the tags, writes the cookie
+! and fires the events. Both hosts serve the same file.
+! -----------------------------------------------------------------------------
+||consent.cookiebot.com/uc.js$script,redirect=cookiebot-reject.js
+||consent.cookiebot.eu/uc.js$script,redirect=cookiebot-reject.js
+
+! -----------------------------------------------------------------------------
+! Where a redirect cannot land.
+!
+! A user resource is served as a data: URI, so a site whose CSP omits data: for
+! scripts refuses it - nothing of ours runs, no cookie, no console line, while
+! the banner is gone anyway because the redirect kept the real script out. The
+! scriptlet form is injected rather than fetched, so the directive does not apply
+! to it. Both lines are needed on such a site:
+!
+! example.com##+js(cookiebot-reject)
+!
+! Injected that way there is no document.currentScript to read the site's
+! configuration from, so the stub looks for the tag by its id and by data-cbid,
+! as their own code does.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! uc.js is what asks for these, so with it replaced they are never requested.
+! They only matter where something unblocks it: the per-site dialog and
+! configuration, and the CDN frame it syncs consent through.
+! -----------------------------------------------------------------------------
+||consent.cookiebot.com/*/cc.js$script,redirect=noopjs
+||consent.cookiebot.eu/*/cc.js$script,redirect=noopjs
+||consentcdn.cookiebot.com^$subdocument,redirect=noopframe
+||consentcdn.cookiebot.eu^$subdocument,redirect=noopframe

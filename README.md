@@ -10,8 +10,8 @@ a decision the visitor already made. No banner is ever built, nothing has to be
 clicked, and the page's consent API answers normally.
 
 Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**,
-**InMobi Choice** (formerly Quantcast Choice), **Osano** and **Civic Cookie
-Control**.
+**InMobi Choice** (formerly Quantcast Choice), **Osano**, **Civic Cookie
+Control** and **Cookiebot**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -21,6 +21,7 @@ Control**.
 | `inmobi-reject.js` | InMobi Choice: a stored refusal. Nothing consented to, a TC string that says so, and `__tcfapi`, `__gpp` and `__uspapi` all answering instead of stalling. |
 | `civic-reject.js` | Civic Cookie Control: every optional category the site declares recorded as `revoked`, the necessary ones untouched, and `CookieControl` answering. |
 | `civic-reject-unblock.js` | Civic, for a site that withholds content until a category is on: accepts the categories that do not read as tracking, refuses the ones that do, and still refuses the IAB layer. |
+| `cookiebot-reject.js` | Cookiebot: their own default state, which is already a refusal - `necessary` true, `preferences`, `statistics` and `marketing` false - with `CookieConsent` answering and parked tags left parked. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -48,13 +49,15 @@ from the built files rather than described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/cookiebot-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -72,8 +75,9 @@ from the built files rather than described.
    [`filters/cookieinformation.txt`](filters/cookieinformation.txt),
    [`filters/inmobi.txt`](filters/inmobi.txt),
    [`filters/osano.txt`](filters/osano.txt) and
-   [`filters/civic.txt`](filters/civic.txt) into *My filters*, or host them and
-   subscribe via *Import*.
+   [`filters/civic.txt`](filters/civic.txt) and
+   [`filters/cookiebot.txt`](filters/cookiebot.txt) into *My filters*, or host
+   them and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
 loads OneTrust there is no request to redirect - uBO's lists neuter
@@ -499,6 +503,64 @@ unblocking a site's own content is no reason to consent for a vendor list.
 - **Version 9 only.** Version 8 is a different, much smaller build and the
   filter deliberately does not match it.
 
+## Cookiebot
+
+```
+||consent.cookiebot.com/uc.js$script,redirect=cookiebot-reject.js
+||consent.cookiebot.eu/uc.js$script,redirect=cookiebot-reject.js
+```
+
+`uc.js` is the engine - it defines the API, blocks the tags, writes the cookie
+and fires the events. `cc.js` beside it is the dialog and the site's own
+configuration, and is never asked for once `uc.js` is replaced.
+
+`window.CookieConsent` and `window.Cookiebot` are one object, as theirs are, and
+it carries their default state, which is already a refusal: `necessary` true,
+`preferences`, `statistics` and `marketing` false, `consented` false, `declined`
+true, and **`hasResponse` true**, which is what stops their banner being built.
+The site's configuration is read off their own script tag - `data-cbid`,
+`data-framework`, `data-user-country` - so `Cookiebot.serial` answers with the
+site's id rather than an empty string.
+
+The cookie is written the way theirs is, with the quotes and commas already
+percent-escaped inside the value, which their own reader unescapes:
+
+```
+CookieConsent={stamp:%270%27%2Cnecessary:true%2Cpreferences:false%2Cstatistics:false%2Cmarketing:false%2Cmethod:%27explicit%27%2Cver:1%2Cutc:…}
+```
+
+Run through their own parser that yields `declined`. A `stamp` already issued is
+kept; where there is none their placeholder `0` stands in, because the real one
+is a hash their server issues and nothing here can compute it. The region is
+named only where the site's tag says which it is.
+
+Their events fire in their order - `CookiebotOnLoad`, then the declined half,
+then `CookiebotOnTagsExecuted`, then `CookiebotOnConsentReady` a tick later -
+each with its `CookieConsent…` twin and its `CookiebotCallback_…` global. The
+consent-mode signals are theirs too, values and all: Google's seven keys with
+`security_storage` granted and the rest denied, their developer id,
+`ads_data_redaction`, Microsoft's `uetq` and Clarity.
+
+### Deliberate gaps
+
+- **A tag marked `necessary` runs; everything else stays parked.** Their own
+  check tests a tag's categories against `preferences`, `statistics` and
+  `marketing` only, so a tag naming none of those is freed - by this as by them.
+  `script[type="text/plain"][data-cookieconsent]` and the `data-src` /
+  `data-cookieblock-src` forms on `iframe`, `img`, `embed`, `video`, `audio`,
+  `picture` and `source` are all handled, `ignore` is left alone, and the
+  `cookieconsent-optin-…` classes go on either way.
+- **No IAB TCF layer.** Where a site sets `data-framework` to one of the IAB
+  values, `uc.js` installs the IAB stub and then loads a separate module that
+  implements `__tcfapi`. That module is in neither file, so its identity cannot
+  be read off anything and a TC string is not something to invent. Such a site
+  is named on the console line - `iab=IAB` rather than `iab=off` - so it is
+  visible rather than silent. Tell me if you hit one and it can be built from
+  that site's own module.
+- **The decision cannot be changed from the page.** `show`, `renew`, `withdraw`
+  and `submitCustomConsent` answer without doing anything: theirs re-render a
+  dialog that was never built.
+
 ## Development
 
 ```sh
@@ -530,7 +592,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

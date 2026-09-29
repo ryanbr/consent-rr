@@ -36,6 +36,7 @@ describe('resources file', ( ) => {
             [
                 'civic-reject-unblock.js',
                 'civic-reject.js',
+                'cookiebot-reject.js',
                 'cookieinformation-reject.js',
                 'inmobi-reject.js',
                 'onetrust-accept.js',

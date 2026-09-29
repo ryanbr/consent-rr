@@ -8,7 +8,8 @@ pointed at it. The notes below are the things that have actually gone wrong.
 
 - One directory per consent manager under `src/`, shared code in its `lib/`.
   `dist/` stays flat: uBO addresses a resource by name alone. Four families so
-  far: `onetrust/`, `cookieinformation/`, `inmobi/`, `osano/` and `civic/`.
+  far: `onetrust/`, `cookieinformation/`, `inmobi/`, `osano/`, `civic/` and
+  `cookiebot/`.
 - `src/onetrust/lib/onetrust-core.js` - OneTrust's own API, cookies, banner
   removal, tag revival. Shared by its resources.
 - `src/onetrust/lib/onetrust-tcf.js`, `.../onetrust-gpp.js` - the IAB layers.
@@ -109,6 +110,10 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   does, and a strict server-side parser drops the whole header over it. The copy
   in the cookie is percent-encoded for that reason, the one in localStorage - the
   store their reader consults first - is not.
+- **A script tag is configuration too.** Cookiebot's `<script id="Cookiebot"
+  data-cbid=… data-framework=…>` carries the site's settings, and a redirected
+  resource can read them: `document.currentScript` is that element. Injected as
+  a scriptlet there is none, so fall back to the lookup their own code does.
 - **Some CMPs hand you the configuration.** Civic's page calls
   `CookieControl.load({...})` with its categories, callbacks and cookie settings
   inline, and InMobi's `choice.js` passes a `coreConfig` through the TCF stub's
