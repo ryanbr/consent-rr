@@ -48,13 +48,13 @@ from the built files rather than described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.12.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.12.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.12.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.12.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.12.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.12.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.12.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/civic-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -378,6 +378,17 @@ for the site's `consentCookieExpiry` or 90 days. An existing record's `user` and
 `interactedWith: true` is what does the work: their `finaliseSetup` only builds a
 notification when it is false.
 
+The record goes in as **plain JSON, not percent-encoded** - their `saveConsent`
+passes `configuration.encodeCookie` as the encode flag and it is false by
+default. That is not a detail: sites read this cookie back with their own
+helpers, and those do not decode. Goldsmiths runs `JSON.parse` straight over the
+raw value and asks whether a category is accepted, so an encoded record throws
+there and the site concludes nothing was consented to - which is exactly what an
+earlier version of this resource caused. Where a site sets `encodeCookie`,
+theirs encodes and so does this. (Osano's cookie is the other way round: theirs
+is encrypted, so the plain JSON written there is percent-encoded to keep a
+`Cookie` header well formed. The rule is the CMP's own format, not a preference.)
+
 ### The IAB layer
 
 Unlike the other consent managers here, this one needs no guessing: the IAB
@@ -497,7 +508,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.12.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

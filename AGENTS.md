@@ -97,6 +97,13 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   `setAttribute`, the `src` setters, `document.cookie` - so with it replaced
   there is nothing parked and nothing to revive, and uBO does the blocking. Check
   which kind you have before writing revival code for a CMP that has no parking.
+- **The CMP's own cookie format is not yours to choose.** Civic writes its
+  record as plain JSON, because `encodeCookie` defaults to false, and sites read
+  it back with helpers that do not decode - Goldsmiths runs `JSON.parse` over
+  the raw value. Percent-encoding it there means the site parses nothing and
+  shows its "you have not consented" placeholder, with no error anywhere. Osano
+  is the opposite case (below). Check how the CMP writes it *and* how a real
+  site reads it before choosing.
 - **A cookie value goes to the server.** Osano's own record is encrypted, so its
   quotes and commas never reach a `Cookie` header; plain JSON in their format
   does, and a strict server-side parser drops the whole header over it. The copy

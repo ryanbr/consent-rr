@@ -150,6 +150,62 @@ describe('civic-reject', ( ) => {
         });
     });
 
+    it('writes plain JSON, because the readers on these sites do not decode',
+        ( ) => {
+            const w = open().window;
+            const raw = cookies(w).get('CookieControl');
+            // Their saveConsent passes configuration.encodeCookie as the encode
+            // flag and it is false by default, so the real cookie carries the
+            // record as written, quotes and all.
+            assert.ok(raw.startsWith('{'), raw.slice(0, 40));
+            assert.equal(raw.includes('%22'), false);
+            // Goldsmiths reads it with JSON.parse over the raw value and no
+            // decodeURIComponent, then asks whether a category is accepted. A
+            // percent-encoded value throws there, and the site decides nothing
+            // was consented to.
+            const theirs = JSON.parse(raw);
+            assert.equal(theirs.optionalCookies.analytics, 'revoked');
+            // A site that does set it gets what theirs would write.
+            const encoded = open({
+                config: '{ encodeCookie: true, optionalCookies:' +
+                    ' [ { name: "analytics" } ] }',
+            }).window;
+            const rawEncoded = cookies(encoded).get('CookieControl');
+            assert.ok(rawEncoded.startsWith('%7B'), rawEncoded.slice(0, 40));
+            assert.equal(
+                JSON.parse(decodeURIComponent(rawEncoded))
+                    .optionalCookies.analytics,
+                'revoked'
+            );
+        }
+    );
+
+    it('is read by the check a site gates its content on', ( ) => {
+        // Goldsmiths, verbatim in behaviour: read the cookie once, and show the
+        // content when the category it gates on is accepted - no event needed.
+        const gate = w => {
+            const raw = cookies(w).get('CookieControl');
+            let parsed;
+            try {
+                parsed = JSON.parse(raw);
+            } catch(ex) {
+                return false;
+            }
+            return Boolean(
+                parsed.optionalCookies &&
+                parsed.optionalCookies.embedded === 'accepted'
+            );
+        };
+        const config = '{ optionalCookies: [ { name: "analytics" },' +
+            ' { name: "embedded" } ] }';
+        assert.equal(gate(open({ config }).window), false);
+        assert.equal(gate(open({ config, code: unblock }).window), true);
+        assert.equal(
+            gate(open({ config, code: withArgs('embedded') }).window),
+            true
+        );
+    });
+
     it('scopes the cookie the way their own writer does', ( ) => {
         const dom = open();
         const found = cookiesInJar(dom, URL, 'CookieControl');

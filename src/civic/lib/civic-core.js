@@ -309,12 +309,21 @@ function consentRRCivic(installTcf, unblockAll) {
 
     let tcString = '';
 
+    // Their saveConsent hands configuration.encodeCookie to saveCookie as its
+    // encode flag, and that setting is false by default - so the record goes in
+    // as plain JSON, quotes and all, which is what their own cookie carries.
+    //
+    // It has to. A site reads it back with its own helper, and those do not
+    // decode: Goldsmiths runs JSON.parse over the raw value, so a
+    // percent-encoded one throws and the site decides nothing was consented to.
+    // Where a site sets encodeCookie, theirs encodes and so does this.
     const save = ( ) => {
         const expiry = typeof record.consentExpiry === 'number'
             ? record.consentExpiry
             : 90;
         return writeCookie(
-            CC_COOKIE, JSON.stringify(record), expiry, true
+            CC_COOKIE, JSON.stringify(record), expiry,
+            config.encodeCookie === true
         );
     };
 
@@ -357,7 +366,10 @@ function consentRRCivic(installTcf, unblockAll) {
             delete record.ccpa;
             record.iabConsent = tcString;
             if ( config.setCookieControlTC === true ) {
-                writeCookie(TC_COOKIE, tcString, record.consentExpiry, true);
+                writeCookie(
+                    TC_COOKIE, tcString, record.consentExpiry,
+                    config.encodeCookie === true
+                );
             }
         }
         // Before the record is saved, as theirs does it.
