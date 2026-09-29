@@ -378,6 +378,13 @@ for the site's `consentCookieExpiry` or 90 days. An existing record's `user` and
 `interactedWith: true` is what does the work: their `finaliseSetup` only builds a
 notification when it is false.
 
+One difference from what their own script writes, and it is deliberate: a real
+refusal leaves `optionalCookies` **empty**, where this names every category as
+`revoked`. Their code accepts anything that is *not* revoked - a `ccpa`-mode site
+does that to every category on load, and a `gdpr`-mode one to any category whose
+`lawfulBasis` is legitimate interest - so an empty map hands those straight back.
+Everything else matches field for field, down to the uuid shape.
+
 The record goes in as **plain JSON, not percent-encoded** - their `saveConsent`
 passes `configuration.encodeCookie` as the encode flag and it is false by
 default. That is not a detail: sites read this cookie back with their own

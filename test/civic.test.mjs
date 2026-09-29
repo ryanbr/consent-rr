@@ -206,6 +206,57 @@ describe('civic-reject', ( ) => {
         );
     });
 
+    it('matches the record their own script writes, saying no out loud', ( ) => {
+        // Both of these were written by the real Cookie Control on gold.ac.uk:
+        // one after accepting the embedded category, one after refusing.
+        const theirs = {
+            necessaryCookies: [
+                'gold', 'PHPSESSID', 'info.gold.ac.uk', 'appView',
+                'resolution', 'AWSALB', 'UB_UUID', 'redux:authState',
+                '__cfduid', 'pusherTransportTLS', 'Firebase Device ID',
+            ],
+            statement: { shown: true, updated: '01/12/2020' },
+            consentExpiry: 90,
+            interactedWith: true,
+        };
+        const config = '{ necessaryCookies: ' +
+            JSON.stringify(theirs.necessaryCookies) + ',' +
+            ' statement: { updated: "01/12/2020" },' +
+            ' optionalCookies: [ { name: "analytics" }, { name: "embedded" } ] }';
+        const mine = record(open({ config }).window);
+        // Field for field, and their own uuid shape.
+        assert.deepEqual(
+            Object.keys(mine).sort(),
+            [
+                'consentDate', 'consentExpiry', 'interactedWith',
+                'necessaryCookies', 'optionalCookies', 'statement', 'user',
+            ]
+        );
+        assert.deepEqual(mine.necessaryCookies, theirs.necessaryCookies);
+        assert.deepEqual(mine.statement, theirs.statement);
+        assert.equal(mine.consentExpiry, theirs.consentExpiry);
+        assert.equal(mine.interactedWith, theirs.interactedWith);
+        assert.ok(
+            /^[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/
+                .test(mine.user),
+            mine.user
+        );
+        // The one difference, and it is deliberate. Their refusal leaves the
+        // map empty; this names every category as revoked, because their own
+        // code accepts anything that is not - a CCPA-mode site does it to every
+        // category, and a GDPR-mode one to any category taken on legitimate
+        // interest. An empty map hands those back.
+        assert.deepEqual(mine.optionalCookies, {
+            analytics: 'revoked',
+            embedded: 'revoked',
+        });
+        const accepted = record(open({ config, code: withArgs('embedded') }).window);
+        assert.deepEqual(accepted.optionalCookies, {
+            analytics: 'revoked',
+            embedded: 'accepted',
+        });
+    });
+
     it('scopes the cookie the way their own writer does', ( ) => {
         const dom = open();
         const found = cookiesInJar(dom, URL, 'CookieControl');
