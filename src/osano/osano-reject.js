@@ -21,7 +21,8 @@
     Stands in for Osano's osano.js. The page sees a visitor who accepted the
     essential category and refused the rest: no banner, no re-prompt, the
     consent record already stored, and Osano.cm answering as it would on a
-    return visit.
+    return visit - along with the IAB APIs an IAB-enabled tenant's bundle
+    installs, __tcfapi, __gpp and __uspapi, so nothing gated on one stalls.
 
     Osano blocks tags by patching the DOM at runtime rather than by parking
     them in the markup, so unlike the other resources here there is nothing to
@@ -33,6 +34,8 @@
 (function() {
     'use strict';
     // @include lib/osano-usp.js
+    // @include lib/osano-tcf.js
+    // @include lib/osano-gpp.js
     // @include lib/osano-core.js
-    consentRROsano(consentRROsanoUsp);
+    consentRROsano(consentRROsanoUsp, consentRROsanoTcf, consentRROsanoGpp);
 })();

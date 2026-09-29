@@ -44,7 +44,7 @@
 
 */
 
-function consentRROsano(installUsp) {
+function consentRROsano(installUsp, installTcf, installGpp) {
     const w = window;
     const doc = w.document;
     const VERSION = '@@VERSION@@';
@@ -478,7 +478,14 @@ function consentRROsano(installUsp) {
     };
     pushConsentMode();
 
-    const uspString = typeof installUsp === 'function' ? installUsp(gpc) : '';
+    // The IAB layers. A tenant with the module on gets a bundle that installs
+    // __tcfapi, __gpp and __uspapi; one without gets __uspapi alone. Which it
+    // is lives in the tenant's own configuration, which a page cannot be asked,
+    // so all three go in - a vendor stalled on an API that never answers is the
+    // worse failure, and refusing is the conservative direction to be wrong in.
+    const usp = installUsp(gpc);
+    const tcf = installTcf(gpc, locale);
+    installGpp(tcf, usp);
 
     const written = writeBoth(KEY, record) && writeBoth(UUID_KEY, consentId);
     // Saving clears the expiry key, as theirs does.
@@ -493,7 +500,10 @@ function consentRROsano(installUsp) {
             ' denied=' + Object.keys(consent)
                 .filter(name => consent[name] !== ACCEPT)
                 .join(',') +
-            (uspString !== '' ? ' usp=' + uspString : '') +
+            ' tcf=refused' +
+            ' li=' + (tcf.keptLegitimateInterest ? 'kept' : 'objected') +
+            ' gpp=refused' +
+            ' usp=' + usp.uspString +
             ' cookie=' + (written ? 'written' : 'refused')
         );
     }

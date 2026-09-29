@@ -48,6 +48,15 @@ function consentRROsanoUsp(gpc) {
         }
     };
 
+    // The section as @iabgpp/cmpapi parses a uspv1 one: the characters of the
+    // string, which is also what their own getField answers with.
+    const section = {
+        Version: 1,
+        Notice: uspString.charAt(1),
+        OptOutSale: uspString.charAt(2),
+        LspaCovered: uspString.charAt(3),
+    };
+
     const uspApi = (command, version, callback, parameter) => {
         if ( version !== undefined && version !== null && Number(version) !== 1 ) {
             if ( typeof callback === 'function' ) { callback(null, false); }
@@ -125,5 +134,12 @@ function consentRROsanoUsp(gpc) {
         }, call.parameter);
     });
 
-    return uspString;
+    return {
+        uspString,
+        section,
+        // For __gpp's section passthrough, "uspv1.getUSPData", which their own
+        // GPP layer routes here with the version filled in.
+        call: (command, callback, parameter) =>
+            uspApi(command, 1, callback, parameter),
+    };
 }

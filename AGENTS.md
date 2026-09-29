@@ -99,6 +99,13 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   does, and a strict server-side parser drops the whole header over it. The copy
   in the cookie is percent-encoded for that reason, the one in localStorage - the
   store their reader consults first - is not.
+- **The same CMP ships a different bundle per tenant.** Osano's per-tenant file
+  ends `C({usp: ...})` where the IAB module is off and
+  `C({gpp: ..., tcf: ..., usp: ...})` where it is on - so one tenant's copy
+  installs `__uspapi` alone and another's installs all three. Three sampled
+  tenants agreed on all twenty structural checks and differed on exactly that,
+  so check the module init at the tail of a second tenant's bundle before
+  concluding which APIs a stub has to put back.
 - Read the CMP's own bootstrap before deciding what to install. `cmp2.js` finds
   its configuration by calling `window.__tcfapi()` with no arguments and taking
   the `init` entry's fourth argument; both it and `window.__gpp()` drain a stub's

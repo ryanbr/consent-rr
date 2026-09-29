@@ -8,6 +8,8 @@
 
 import { strict as assert } from 'node:assert';
 import { before, describe, it } from 'node:test';
+import { TCString } from '@iabtcf/core';
+import { GppModel } from '@iabgpp/cmpapi';
 import {
     cookies, cookiesInJar, filtersText, loadResources, runDom, settle, versions,
 } from './helpers.mjs';
@@ -52,6 +54,20 @@ const boot = (options = {}) => runDom(
 const plain = value => JSON.parse(JSON.stringify(value));
 
 const stored = (w, name = KEY) => w.localStorage.getItem(name);
+
+const tcData = w => {
+    let data;
+    w.__tcfapi('getTCData', 2, value => { data = value; });
+    return data;
+};
+
+const idsOn = model => {
+    const out = [];
+    model.forEach((value, id) => {
+        if ( value ) { out.push(id); }
+    });
+    return out;
+};
 
 const lines = w => {
     const out = [];
@@ -100,6 +116,24 @@ describe('osano-reject', ( ) => {
         let usp;
         w.__uspapi('getUSPData', 1, value => { usp = value; });
         assert.equal(usp.uspString, '1-Y-');
+        // The signal is an objection to legitimate interest, which a plain
+        // refusal is not - their own IAB default keeps it either way.
+        const decoded = TCString.decode(tcData(w).tcString);
+        assert.deepEqual(idsOn(decoded.purposeLegitimateInterests), []);
+        // And it reaches the GPP section too, where the opt-out is the third
+        // character of the string rather than the second.
+        let pinged;
+        w.__gpp('ping', value => { pinged = value; });
+        assert.ok(pinged.gppString.endsWith('~1-Y-'));
+        const model = new GppModel();
+        model.decode(pinged.gppString);
+        let mine;
+        w.__gpp('getSection', value => { mine = value; }, 'uspv1');
+        assert.deepEqual(
+            plain(mine),
+            JSON.parse(JSON.stringify(model.getSection('uspv1')))
+        );
+        assert.equal(plain(mine).OptOutSale, 'Y');
     });
 
     it('answers what the page parked before it arrived', async ( ) => {
@@ -395,6 +429,169 @@ describe('osano-reject', ( ) => {
         assert.equal(w.Osano.cm.mode, 'production');
     });
 
+    it('puts back the IAB APIs an enabled tenant bundle installs', ( ) => {
+        const w = boot().window;
+        assert.equal(typeof w.__tcfapi, 'function');
+        assert.equal(typeof w.__gpp, 'function');
+        assert.equal(typeof w.__uspapi, 'function');
+        // Their own ping field set, and only those fields.
+        let pinged;
+        w.__tcfapi('ping', 2, value => { pinged = value; });
+        assert.deepEqual(plain(pinged), {
+            apiVersion: '2.0',
+            cmpId: 279,
+            cmpLoaded: true,
+            cmpStatus: 'loaded',
+            cmpVersion: 3332,
+            displayStatus: 'hidden',
+            gdprApplies: true,
+            gvlVersion: 187,
+            tcfPolicyVersion: 5,
+        });
+        for ( const name of [
+            '__tcfapiLocator', '__gppLocator', '__uspapiLocator',
+        ] ) {
+            assert.equal(
+                w.document.querySelectorAll('iframe[name="' + name + '"]').length,
+                1,
+                name
+            );
+        }
+    });
+
+    it('writes their own default IAB state into the TC string', ( ) => {
+        const w = boot().window;
+        const decoded = TCString.decode(tcData(w).tcString);
+        assert.equal(decoded.cmpId, 279);
+        assert.equal(decoded.cmpVersion, 3332);
+        assert.equal(decoded.policyVersion, 5);
+        assert.equal(decoded.vendorListVersion, 187);
+        assert.equal(decoded.isServiceSpecific, true);
+        // Their default: no consents, legitimate interest for these six.
+        assert.deepEqual(idsOn(decoded.purposeConsents), []);
+        assert.deepEqual(idsOn(decoded.specialFeatureOptins), []);
+        assert.deepEqual(idsOn(decoded.purposeLegitimateInterests),
+            [ 2, 7, 8, 9, 10, 11 ]);
+        // And no vendors at all, which is their default state as well - unlike
+        // the other resources here, which grant a range.
+        assert.equal(decoded.vendorConsents.size, 0);
+        assert.equal(decoded.vendorLegitimateInterests.size, 0);
+        assert.equal(decoded.publisherRestrictions.numRestrictions ?? 0, 0);
+        // AA, not the US their lookup falls back to: US names a country.
+        assert.equal(decoded.publisherCountryCode, 'AA');
+        // Midnight UTC, as their encoder rounds.
+        const now = new Date();
+        assert.equal(decoded.created.getTime(), Date.UTC(
+            now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()
+        ));
+    });
+
+    it('takes the consent language from a locale the page set', ( ) => {
+        const w = boot({
+            before: w_ => { w_.eval(STUB + 'Osano("locale", "fr");'); },
+            stub: false,
+        }).window;
+        assert.equal(TCString.decode(tcData(w).tcString).consentLanguage, 'FR');
+    });
+
+    it('answers the TCF commands theirs answers, and refuses the rest', ( ) => {
+        const w = boot().window;
+        const answers = {};
+        const take = name => (value, success) => {
+            answers[name] = { value, success };
+        };
+        let listenerId;
+        w.__tcfapi('addEventListener', 2, data => { listenerId = data.listenerId; });
+        assert.equal(listenerId, 1);
+        w.__tcfapi('removeEventListener', 2, take('removed'), listenerId);
+        w.__tcfapi('setGdprApplies', 2, take('set'), true);
+        w.__tcfapi('setGdprApplies', 2, take('badSet'), 'yes');
+        // Not in their switch: theirs has no getInAppTCData or getVendorList.
+        w.__tcfapi('getVendorList', 2, take('vendorList'));
+        w.__tcfapi('getTCData', 1, take('wrongVersion'));
+        assert.equal(answers.removed.value, true);
+        assert.deepEqual(plain(answers.set), { value: 'set', success: true });
+        assert.equal(answers.badSet.success, false);
+        assert.equal(answers.vendorList.success, false);
+        assert.equal(answers.wrongVersion.success, false);
+        const data = tcData(w);
+        assert.equal(data.eventStatus, 'tcloaded');
+        assert.equal(data.cmpStatus, 'loaded');
+        assert.deepEqual(plain(data.vendor.consents), {});
+    });
+
+    it('answers __gpp with both sections, and the reference parse agrees', ( ) => {
+        const w = boot().window;
+        let pinged;
+        w.__gpp('ping', value => { pinged = value; });
+        assert.equal(pinged.cmpId, 279);
+        assert.equal(pinged.signalStatus, 'ready');
+        // Their section map is { tcfeuv2: 2, tcfcav1: 5, uspv1: 6 }; the
+        // Canadian one is left out rather than invented.
+        assert.deepEqual(plain(pinged.sectionList), [ 2, 6 ]);
+        assert.deepEqual(plain(pinged.supportedAPIs), [ '2:tcfeuv2', '6:uspv1' ]);
+        assert.ok(pinged.gppString.startsWith('DBACNYA~'));
+
+        const model = new GppModel();
+        model.decode(pinged.gppString);
+        assert.deepEqual(model.getSectionIds(), [ 2, 6 ]);
+        for ( const name of [ 'tcfeuv2', 'uspv1' ] ) {
+            const reference = JSON.parse(JSON.stringify(model.getSection(name)));
+            let mine;
+            w.__gpp('getSection', value => { mine = value; }, name);
+            assert.deepEqual(plain(mine), reference, name);
+        }
+    });
+
+    it('answers the GPP commands, including their section passthrough', ( ) => {
+        const w = boot().window;
+        const answers = {};
+        const take = name => (value, success) => {
+            answers[name] = { value, success };
+        };
+        w.__gpp('hasSection', take('byName'), 'uspv1');
+        // Theirs matches on the name alone; a number is answered here too.
+        w.__gpp('hasSection', take('byId'), 2);
+        w.__gpp('hasSection', take('canadian'), 'tcfcav1');
+        w.__gpp('getField', take('field'), 'tcfeuv2.CmpId');
+        w.__gpp('getField', take('uspField'), 'uspv1.OptOutSale');
+        w.__gpp('getField', take('noField'), 'tcfeuv2.Nonsense');
+        w.__gpp('getGPPData', take('gppData'));
+        // Their passthrough: <section>.<command> goes to that section's API.
+        w.__gpp('uspv1.getUSPData', take('passUsp'));
+        w.__gpp('tcfeuv2.ping', take('passTcf'));
+        assert.equal(answers.byName.value, true);
+        assert.equal(answers.byId.value, true);
+        assert.equal(answers.canadian.value, false);
+        assert.equal(answers.field.value, 279);
+        assert.equal(answers.uspField.value, '-');
+        assert.equal(answers.noField.success, false);
+        assert.equal(answers.gppData.success, false);
+        assert.deepEqual(plain(answers.passUsp.value),
+            { version: 1, uspString: '1---' });
+        assert.equal(answers.passTcf.value.cmpId, 279);
+    });
+
+    it('answers a framed vendor on every bridge', ( ) => {
+        const w = boot().window;
+        const replies = [];
+        const source = { postMessage(response) { replies.push(response); } };
+        const post = data => {
+            const event = new w.MessageEvent('message', {
+                data,
+                origin: 'https://vendor.example',
+            });
+            Object.defineProperty(event, 'source', { value: source });
+            w.dispatchEvent(event);
+        };
+        post({ __tcfapiCall: { command: 'ping', version: 2, callId: 'a' } });
+        assert.equal(replies[0].__tcfapiReturn.returnValue.cmpId, 279);
+        post({ __gppCall: { command: 'ping', callId: 'b' } });
+        assert.equal(replies[1].__gppReturn.returnValue.cmpId, 279);
+        post({ __uspapiCall: { command: 'getUSPData', version: 1, callId: 'c' } });
+        assert.equal(replies[2].__uspapiReturn.returnValue.uspString, '1---');
+    });
+
     it('says on the console what went in', ( ) => {
         let out;
         const w = boot({ before: w_ => { out = lines(w_); } }).window;
@@ -403,7 +600,7 @@ describe('osano-reject', ( ) => {
             '[consent-rr] osano-reject ' + versions.osano +
             ' consent=ESSENTIAL' +
             ' denied=STORAGE,MARKETING,PERSONALIZATION,ANALYTICS,OPT_OUT' +
-            ' usp=1--- cookie=written'
+            ' tcf=refused li=kept gpp=refused usp=1--- cookie=written'
         );
         assert.equal(w.Osano.consentRR.mode, 'reject');
         assert.equal(w.Osano.consentRR.version, versions.osano);

@@ -18,7 +18,7 @@ Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**
 | `onetrust-accept.js` | A stored *accept all*: every category on, and tags parked behind one are switched back on. |
 | `cookieinformation-reject.js` | Cookie Information: the necessary category approved, everything else denied. One resource - no accept or unblock variant. |
 | `inmobi-reject.js` | InMobi Choice: a stored refusal. Nothing consented to, a TC string that says so, and `__tcfapi`, `__gpp` and `__uspapi` all answering instead of stalling. |
-| `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm` answering. |
+| `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
 Pick `reject` as the default. `reject-unblock` is for a site that withholds the
@@ -45,12 +45,12 @@ from the built files rather than described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.8.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.8.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.8.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.8.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.8.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.8.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.9.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.9.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.9.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.9.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.9.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.9.0/dist/osano-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -293,10 +293,32 @@ is cleared, which is what their own save does. An id and timestamp already
 stored are kept, so a site does not see a decision made afresh on every load.
 Google consent mode gets their signal map, with `ad_storage`, `ad_user_data`,
 `ad_personalization`, `analytics_storage` and `personalization_storage` denied
-and the two `ESSENTIAL` ones granted. `window.__uspapi` goes in with the
-`__uspapiLocator` frame and the `postMessage` bridge, answering `1---`, or `1-Y-`
-where the browser sends Global Privacy Control - which is also the one input
-their code turns into a CCPA opt-out by itself, so `OPT_OUT` follows it.
+and the two `ESSENTIAL` ones granted.
+
+### The IAB layers
+
+How much Osano installs depends on the tenant, and the tail of its bundle says
+which: `C({usp: ...})` for a tenant with the IAB module off, or
+`C({gpp: ..., tcf: ..., usp: ...})` for one with it on. All three go in here,
+because that switch lives in configuration a page cannot be asked, and a vendor
+stalled on an API that never answers is the worse failure.
+
+`__tcfapi` carries their own values - cmpId 279, cmpVersion 3332, policy version
+5, GVL fallback 187 - and their own default IAB state: no purpose consents,
+legitimate interest for purposes 2, 7, 8, 9, 10 and 11, and **no vendors at
+all**, which is where this differs from the OneTrust and InMobi resources, both
+of which grant vendors a range. Their command set is `setGdprApplies`, `ping`,
+`getTCData`, `addEventListener` and `removeEventListener` - no `getInAppTCData`,
+no `getVendorList` - and that is the set answered. The string carries the core
+segment alone, as their field sequence does, with timestamps at UTC midnight.
+
+`__gpp` reports the two sections it can build, `tcfeuv2` (2) and `uspv1` (6),
+under the `DBACNYA` header; their Canadian section is left out rather than
+invented. Their own passthrough works too: `__gpp("uspv1.getUSPData", fn)` is
+routed to that section's API. `__uspapi` answers `1---`, or `1-Y-` where the
+browser sends Global Privacy Control - which is also the one input their code
+turns into a CCPA opt-out by itself, so `OPT_OUT` follows it, and here it
+withdraws legitimate interest as well.
 
 ### Deliberate gaps
 
@@ -314,14 +336,16 @@ their code turns into a CCPA opt-out by itself, so `OPT_OUT` follows it.
   theirs: an unencoded quote or comma in a `Cookie` header is what a strict
   server-side parser refuses, taking the rest of the header with it. localStorage,
   which their reader consults first, carries it verbatim.
+- **Two departures inside the IAB layer.** Their publisher country falls back to
+  `US` where the location lookup has not answered; this writes `AA`, the
+  user-assigned code, because `US` names a country a page cannot know. And
+  Global Privacy Control withdraws legitimate interest here, as it does in the
+  other resources - their own default keeps it either way, but that signal is
+  the objection a plain refusal is not.
 - **Tenant data is left empty rather than invented**: `jurisdiction` and
   `countryCode` come from a location lookup, `revision`, `cmpContentHash` and
   `publishTimestamp` from the tenant's own configuration. `gdprApplies` answers
   `true`, the protective answer where it cannot be known.
-- **No IAB TCF layer.** Osano only checks whether the page already has a
-  `__tcfapi`; the sampled tenant has the IAB module off, and this build installs
-  the US Privacy API alone. `__uspapi` is therefore the one it puts back.
-
 ## Development
 
 ```sh
@@ -353,7 +377,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.8.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.9.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token
