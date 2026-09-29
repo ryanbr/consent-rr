@@ -1,0 +1,66 @@
+! Title: consent-rr - Securiti
+! Description: Replaces Securiti's cookie-consent-sdk-loader.js with a stub that
+!              reports a refusal, instead of waiting for a banner.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! The loader is the bootstrapper: it asks app.securiti.ai where the visitor is,
+! decides whether TCF applies, and then loads the SDK - 600kB of it - with its
+! CSS, its utils and the site's configuration. Replacing the loader means none
+! of that is requested.
+!
+! Their loader takes its CDN base from its own src, so a tenant served from
+! another Securiti host needs that host adding here.
+! -----------------------------------------------------------------------------
+||cdn-prod.securiti.ai/consent/cookie-consent-sdk-loader.js$script,redirect=securiti-reject.js
+
+! -----------------------------------------------------------------------------
+! Where a redirect cannot land.
+!
+! A user resource is served as a data: URI, so a site whose CSP omits data: for
+! scripts refuses it - nothing of ours runs, no cookie, no console line, while
+! the banner is gone anyway because the redirect kept the loader out. The
+! scriptlet form is injected rather than fetched, so the directive does not
+! apply to it. Both lines are needed on such a site:
+!
+! example.com##+js(securiti-reject)
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Leave their auto-blocking script alone.
+!
+! A site may load a second, per-tenant file beside the loader:
+!
+!   cdn-app3.securiti.ai/consent/auto_blocking/<tenant>/<domain>.js
+!
+! It blocks tags by the site's own classification - moving src to data-src and
+! the type to text/plain - and releases a category when the SDK calls
+! setConsentedCategories. With the loader replaced that call never comes, and
+! its own rule is
+!
+!   allowed = consented ids + non_optout_categories   (which is Essential alone)
+!
+! so it reads the refusal this writes, releases nothing, and leaves essential
+! scripts running. That is the refusal enforced by the site's own list, for
+! free, so blocking or nooping this file makes things worse rather than better.
+!
+! One caveat: it reads the consent cookie when it loads, which can be before
+! the loader runs. A visitor who had previously accepted gets one more page
+! load on the old cookie before this takes over.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! The loader is what asks for these, so with it replaced they are never
+! requested. They only matter where something unblocks it: the SDK itself, its
+! utils and stylesheet, the IAB stub, and the location lookup it will not start
+! without.
+! -----------------------------------------------------------------------------
+||cdn-prod.securiti.ai/consent/cookie-consent-sdk-*.js$script,redirect=noopjs
+||cdn-prod.securiti.ai/consent/sdk-stub.js$script,redirect=noopjs
+||cdn-prod.securiti.ai/consent/cookie-consent-*.css$stylesheet,redirect=noopcss
+||app.securiti.ai/core/v1/utils/geo/location$xhr,redirect=noopjson

@@ -11,7 +11,7 @@ clicked, and the page's consent API answers normally.
 
 Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**,
 **InMobi Choice** (formerly Quantcast Choice), **Osano**, **Civic Cookie
-Control** and **Cookiebot**.
+Control**, **Cookiebot** and **Securiti**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -22,6 +22,7 @@ Control** and **Cookiebot**.
 | `civic-reject.js` | Civic Cookie Control: every optional category the site declares recorded as `revoked`, the necessary ones untouched, and `CookieControl` answering. |
 | `civic-reject-unblock.js` | Civic, for a site that withholds content until a category is on: accepts the categories that do not read as tracking, refuses the ones that do, and still refuses the IAB layer. |
 | `cookiebot-reject.js` | Cookiebot: their own default state, which is already a refusal - `necessary` true, `preferences`, `statistics` and `marketing` false - with `CookieConsent` answering and parked tags left parked. |
+| `securiti-reject.js` | Securiti: a refusal recorded in their own `__privaci_cookie_consents`, with the API their loader parks answering instead of queueing for an SDK that never arrives. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -49,15 +50,16 @@ from the built files rather than described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/securiti-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -76,7 +78,8 @@ from the built files rather than described.
    [`filters/inmobi.txt`](filters/inmobi.txt),
    [`filters/osano.txt`](filters/osano.txt) and
    [`filters/civic.txt`](filters/civic.txt) and
-   [`filters/cookiebot.txt`](filters/cookiebot.txt) into *My filters*, or host
+   [`filters/cookiebot.txt`](filters/cookiebot.txt) and
+   [`filters/securiti.txt`](filters/securiti.txt) into *My filters*, or host
    them and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
@@ -561,6 +564,82 @@ consent-mode signals are theirs too, values and all: Google's seven keys with
   and `submitCustomConsent` answer without doing anything: theirs re-render a
   dialog that was never built.
 
+## Securiti
+
+```
+||cdn-prod.securiti.ai/consent/cookie-consent-sdk-loader.js$script,redirect=securiti-reject.js
+```
+
+The loader is a bootstrapper: it asks `app.securiti.ai` where the visitor is,
+decides whether TCF applies, and then fetches the SDK - 600 kB of it - with its
+stylesheet, its utils and the site's configuration. Replacing the loader means
+none of that is requested.
+
+It parks five functions for the SDK to drain - `initCmp`,
+`setConsentBannerParams`, `showConsentPreferencesPopup`, `overrideThemeMatching`
+and `registerSrtiCookieSDKEvents` - and those answer here rather than queueing
+for something that never arrives. `window.SecuritiSDK` carries their
+`registerEvent` and `onReady`, and the events that describe a decision already
+made - `onLoad`, `onReady`, `onConsentGiven` - are answered on registration,
+because theirs fire them once the SDK is ready and this is ready as soon as it
+exists. Their Google consent mode goes out denied, in their own key order, the
+way gtag pushes it.
+
+**The categories are the part no page can supply.** They live in the tenant's
+configuration, fetched from their CDN by id, so a refusal cannot name them - and
+does not have to. Every reader in their SDK asks whether a category's id is set
+in the record's `consents` map, so a record whose map is empty refuses all of
+them, whatever they turn out to be called:
+
+```json
+{"consents":{},"st":{},"gcm":{"…":"…","security_storage":"granted"},"ts":1790666096}
+```
+
+That goes in `__privaci_cookie_consents` with `__privaci_cookie_consent_uuid`
+beside it, and `__privaci_cookie_no_action` - the marker that says nobody has
+answered - is cleared. A visitor id and timestamp already stored are kept.
+
+### Their auto-blocking script
+
+A site may load a second, per-tenant file beside the loader:
+
+```
+cdn-app3.securiti.ai/consent/auto_blocking/<tenant>/<domain>.js
+```
+
+**Leave it alone.** It blocks tags by the site's own classification - moving
+`src` to `data-src` and the type to `text/plain` - and releases a category when
+the SDK calls `setConsentedCategories`. With the loader replaced that call never
+comes, and its own rule is
+
+```js
+function O(e) {                                 // allow this resource?
+    var t = n.concat(c.non_optout_categories);  // consented ids + Essential
+    return t.length && e && e.length && t.some(t => -1 < e.indexOf(t));
+}
+```
+
+so it reads the refusal this writes, releases nothing, and still lets essential
+scripts run. That is the refusal enforced a second time by the site's own list,
+at no cost - blocking or nooping that file makes things worse, not better.
+
+One caveat: it reads the consent cookie when it loads, which can be before the
+loader runs. A visitor who had previously accepted gets one more page load on
+the old cookie before this takes over.
+
+### Deliberate gaps
+
+- **The category names are never known**, so anything a site drives off them -
+  `onCategoryConsented`, a preference centre built from them - sees an empty
+  map rather than a list of refusals. Nothing is granted either way.
+- **No location is claimed.** `__isTcfEnabledForLocation` is `false` and
+  `getUserLocationAndLanguage()` answers `null`; theirs come back from the
+  lookup this never makes.
+- **No IAB layer.** Where a tenant's location has TCF on, their loader also
+  fetches `sdk-stub.js` and the SDK implements `__tcfapi`. None of that is put
+  back, for the same reason as Cookiebot: the identity is not in any file
+  served here, and a TC string is not something to invent.
+
 ## Development
 
 ```sh
@@ -592,7 +671,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.15.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

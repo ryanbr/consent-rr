@@ -43,6 +43,7 @@ describe('resources file', ( ) => {
                 'onetrust-reject-unblock.js',
                 'onetrust-reject.js',
                 'osano-reject.js',
+                'securiti-reject.js',
             ]
         );
     });
