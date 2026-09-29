@@ -1,0 +1,457 @@
+/*******************************************************************************
+
+    consent-rr - cookie-consent resource replacements for uBlock Origin
+    Copyright (C) 2026-present ryanbr
+    SPDX-License-Identifier: GPL-3.0-or-later
+
+*/
+
+import { strict as assert } from 'node:assert';
+import { before, describe, it } from 'node:test';
+import { TCString } from '@iabtcf/core';
+import {
+    cookies, cookiesInJar, filtersText, loadResources, runDom, settle, versions,
+} from './helpers.mjs';
+
+const URL = 'https://www.example.co.uk/about';
+const PAGE = '<html lang="en"><head></head><body>' +
+    '<script id="parked" data-cc-category="analytics" ' +
+    'data-src="https://tracker.example/a.js"></' + 'script>' +
+    '<p id="content">x</p></body></html>';
+
+// The configuration a site hands to CookieControl.load, written in the page's
+// own realm so its callbacks close over the page's window.
+const CONFIG = '{' +
+    ' apiKey: "demo", product: "PRO",' +
+    ' necessaryCookies: [ "session*" ],' +
+    ' optionalCookies: [' +
+    '  { name: "analytics", label: "Analytical Cookies",' +
+    '    cookies: [ "_ga", "_gid" ],' +
+    '    onAccept: function() { window.marks.push("accept:analytics"); },' +
+    '    onRevoke: function() { window.marks.push("revoke:analytics"); } },' +
+    '  { name: "marketing (social)", label: "Marketing",' +
+    '    onAccept: function() { window.marks.push("accept:marketing"); },' +
+    '    onRevoke: function() { window.marks.push("revoke:marketing"); } }' +
+    ' ],' +
+    ' statement: { name: "Cookie Statement", updated: "01/01/2026" },' +
+    ' onLoad: function() { window.marks.push("load"); }' +
+    '}';
+
+let reject;
+
+before(async ( ) => {
+    reject = (await loadResources()).get('civic-reject.js');
+});
+
+const plain = value => JSON.parse(JSON.stringify(value));
+
+const open = (options = {}) => {
+    const dom = runDom(reject, options.url || URL, options.html || PAGE, w => {
+        if ( typeof options.before === 'function' ) { options.before(w); }
+    });
+    dom.window.eval('window.marks = [];');
+    if ( options.load !== false ) {
+        dom.window.eval('CookieControl.load(' + (options.config || CONFIG) + ');');
+    }
+    return dom;
+};
+
+const record = w => JSON.parse(decodeURIComponent(cookies(w).get('CookieControl')));
+
+const lines = w => {
+    const out = [];
+    w.console.info = line => { out.push(line); };
+    return out;
+};
+
+/******************************************************************************/
+
+describe('civic-reject', ( ) => {
+    it('ships as one resource, in the format uBO parses', async ( ) => {
+        const names = Array.from((await loadResources()).keys())
+            .filter(name => name.startsWith('civic-'));
+        assert.deepEqual(names, [ 'civic-reject.js' ]);
+        assert.equal(/^[ \t]*$/m.test(reject), false);
+        assert.equal(/[^\x20-\x7e\t\n]/.test(reject), false);
+        assert.ok(reject.includes("const VERSION = '" + versions.civic + "'"));
+    });
+
+    it('is there before the page calls load, with their method set', ( ) => {
+        const w = open({ load: false }).window;
+        assert.equal(typeof w.CookieControl, 'object');
+        for ( const name of [
+            'load', 'update', 'open', 'hide', 'notify', 'acceptAll',
+            'rejectAll', 'changeCategory', 'toggleCategory',
+            'getCategoryConsent', 'getCookie', 'getAllCookies', 'saveCookie',
+            'delete', 'deleteAll', 'config', 'info', 'geoInfo', 'geoTest',
+        ] ) {
+            assert.equal(typeof w.CookieControl[name], 'function', name);
+        }
+        assert.equal(w.CookieControl.geo, null);
+        assert.equal(w.CookieControl.info(), 'Cookie Control Version: 9.11.1');
+    });
+
+    it('records every optional category as revoked, by their own key', ( ) => {
+        const w = open().window;
+        const saved = record(w);
+        // Their _validCookieName strips the separators a cookie name may not
+        // carry, so "marketing (social)" is stored as marketingsocial.
+        assert.deepEqual(saved.optionalCookies, {
+            analytics: 'revoked',
+            marketingsocial: 'revoked',
+        });
+        assert.deepEqual(saved.necessaryCookies, [ 'session*' ]);
+        assert.equal(w.CookieControl.getCategoryConsent(0), false);
+        assert.equal(w.CookieControl.getCategoryConsent(1), false);
+        // An index that is not a category at all, as theirs answers.
+        assert.equal(w.CookieControl.getCategoryConsent(9), null);
+    });
+
+    it('marks the decision as made, which is what stops the banner', ( ) => {
+        const saved = record(open().window);
+        // Their finaliseSetup only builds a notification when this is false.
+        assert.equal(saved.interactedWith, true);
+        assert.equal(saved.consentExpiry, 90);
+        assert.ok(saved.consentDate > 0);
+        assert.ok(/^[0-9A-Za-z-]{36}$/.test(saved.user));
+        // A statement the site declares is recorded as seen, so a site that
+        // re-prompts on a newer statement date does not re-prompt now.
+        assert.deepEqual(saved.statement, {
+            shown: true,
+            updated: '01/01/2026',
+        });
+    });
+
+    it('scopes the cookie the way their own writer does', ( ) => {
+        const dom = open();
+        const found = cookiesInJar(dom, URL, 'CookieControl');
+        assert.equal(found.length, 1);
+        // Theirs walks out from the registered domain until one sticks.
+        assert.equal(found[0].domain, 'example.co.uk');
+        assert.equal(Boolean(found[0].hostOnly), false);
+        assert.equal(found[0].path, '/');
+        const days = (found[0].expires.getTime() - Date.now()) / 86400000;
+        assert.ok(days > 89 && days < 91, 'expiry is ' + days + ' days');
+        assert.equal(found[0].sameSite, 'lax');
+    });
+
+    it('takes the cookie life the site configured', ( ) => {
+        const dom = open({
+            config: '{ consentCookieExpiry: 30, optionalCookies: [] }',
+        });
+        assert.equal(record(dom.window).consentExpiry, 30);
+        const found = cookiesInJar(dom, URL, 'CookieControl');
+        const days = (found[0].expires.getTime() - Date.now()) / 86400000;
+        assert.ok(days > 29 && days < 31, 'expiry is ' + days + ' days');
+    });
+
+    it('keeps the visitor a previous decision recorded', ( ) => {
+        const w = open({
+            before: w_ => {
+                w_.document.cookie = 'CookieControl=' + encodeURIComponent(
+                    JSON.stringify({
+                        optionalCookies: {},
+                        consentDate: 1700000000000,
+                        user: 'kept-across-visits',
+                    })
+                ) + '; path=/';
+            },
+        }).window;
+        const saved = record(w);
+        assert.equal(saved.user, 'kept-across-visits');
+        assert.equal(saved.consentDate, 1700000000000);
+    });
+
+    it('calls onLoad and neither of the category callbacks', async ( ) => {
+        const w = open().window;
+        // Theirs calls onAccept only for accepted categories, and onRevoke only
+        // when somebody changes one. Nothing is accepted and nobody changed
+        // anything, so neither fires.
+        assert.deepEqual(plain(w.marks), []);
+        // Theirs waits a second before calling it, so it is not there yet.
+        await settle(300);
+        assert.deepEqual(plain(w.marks), []);
+        await settle(1000);
+        assert.deepEqual(plain(w.marks), [ 'load' ]);
+    });
+
+    it('leaves a parked tag parked', ( ) => {
+        const w = open().window;
+        const tag = w.document.getElementById('parked');
+        // Theirs frees one by copying data-src into src when its category is
+        // accepted. None is.
+        assert.equal(tag.getAttribute('src'), null);
+        assert.equal(tag.getAttribute('data-src'), 'https://tracker.example/a.js');
+    });
+
+    it('refuses to change the decision it just recorded', ( ) => {
+        const w = open().window;
+        assert.equal(w.CookieControl.changeCategory(0, true), false);
+        assert.equal(w.CookieControl.toggleCategory(0), false);
+        // There is no interface to open, and nothing to delete on a visitor's
+        // behalf - uBlock Origin is doing the blocking half.
+        assert.equal(w.CookieControl.deleteAll(), false);
+        for ( const name of [
+            'open', 'hide', 'notify', 'acceptAll', 'rejectAll',
+            'notifyAccept', 'notifyReject', 'notifyDismiss',
+        ] ) {
+            w.CookieControl[name]();
+        }
+        assert.deepEqual(record(w).optionalCookies, {
+            analytics: 'revoked',
+            marketingsocial: 'revoked',
+        });
+        assert.equal(w.CookieControl.getCategoryConsent(0), false);
+    });
+
+    it('answers the cookie helpers a page may be using', ( ) => {
+        const w = open().window;
+        assert.equal(w.CookieControl.saveCookie('ccTest', 'value', 1), true);
+        assert.equal(w.CookieControl.getCookie('ccTest'), 'value');
+        assert.ok(w.CookieControl.getAllCookies().ccTest !== undefined);
+        assert.equal(w.CookieControl.delete('ccTest'), true);
+        assert.equal(w.CookieControl.getCookie('ccTest'), null);
+        assert.equal(w.CookieControl.getCookie('nothing-here'), null);
+    });
+
+    it('claims no location, where theirs gets one with its key check', ( ) => {
+        const w = open().window;
+        assert.equal(w.CookieControl.geoInfo(), false);
+        let answered;
+        assert.equal(
+            w.CookieControl.geoTest('PRO', 'demo', value => { answered = value; }),
+            false
+        );
+        assert.equal(answered, false);
+    });
+
+    it('records a CCPA notice as shown in their ccpa mode', ( ) => {
+        const w = open({
+            config: '{ mode: "ccpa", ccpaConfig: { updated: "02/02/2026" },' +
+                ' optionalCookies: [ { name: "sale" } ] }',
+        }).window;
+        const saved = record(w);
+        assert.deepEqual(saved.ccpa, { shown: true, updated: '02/02/2026' });
+        assert.deepEqual(saved.optionalCookies, { sale: 'revoked' });
+    });
+
+    it('refuses explicitly, which is what defeats their CCPA auto-accept', ( ) => {
+        // Their one Global Privacy Control check is here, in ccpa mode: with
+        // the signal off they accept every category that is not explicitly
+        // revoked, and with it on they accept only what already was. Naming
+        // each category as revoked answers both branches the same way, so the
+        // signal changes nothing - which is the whole of GPC in their file.
+        const config = '{ mode: "ccpa", ccpaConfig: { updated: "02/02/2026" },' +
+            ' optionalCookies: [ { name: "sale" }, { name: "analytics" } ] }';
+        const withSignal = open({
+            config,
+            before: w_ => {
+                Object.defineProperty(w_.navigator, 'globalPrivacyControl', {
+                    value: true,
+                    configurable: true,
+                });
+            },
+        }).window;
+        const without = open({ config }).window;
+        for ( const w of [ withSignal, without ] ) {
+            const saved = record(w);
+            // Present and revoked, not merely absent: absent is what their
+            // auto-accept turns into an acceptance.
+            assert.deepEqual(saved.optionalCookies, {
+                sale: 'revoked',
+                analytics: 'revoked',
+            });
+        }
+        const strip = w => {
+            const saved = record(w);
+            delete saved.consentDate;
+            delete saved.user;
+            return JSON.stringify(saved);
+        };
+        assert.equal(strip(withSignal), strip(without));
+    });
+
+    it('installs no TCF API where the site has not asked for one', ( ) => {
+        const w = open().window;
+        // Their own script installs it only when iabCMP is true, which is a
+        // paid option and off by default.
+        assert.equal(typeof w.__tcfapi, 'undefined');
+        assert.equal(w.CookieControl.config().iabCMP, false);
+        assert.equal(record(w).iabConsent, undefined);
+    });
+
+    it('installs one where the site does ask, refusing everything', ( ) => {
+        const w = open({
+            config: '{ iabCMP: true, iabConfig: { publisherCC: "IE",' +
+                ' language: "en" }, optionalCookies: [ { name: "ads" } ] }',
+        }).window;
+        assert.equal(typeof w.__tcfapi, 'function');
+        let data;
+        w.__tcfapi('getTCData', 2, value => { data = value; });
+        const decoded = TCString.decode(data.tcString);
+        assert.equal(decoded.cmpId, 259);
+        assert.equal(decoded.cmpVersion, 9);
+        assert.equal(decoded.vendorListVersion, 178);
+        assert.equal(decoded.publisherCountryCode, 'IE');
+        // Their reject-all turns legitimate interest off too, unlike the other
+        // consent managers here.
+        const anyOn = model => {
+            let found = false;
+            model.forEach(value => { if ( value ) { found = true; } });
+            return found;
+        };
+        assert.equal(anyOn(decoded.purposeConsents), false);
+        assert.equal(anyOn(decoded.purposeLegitimateInterests), false);
+        assert.equal(anyOn(decoded.specialFeatureOptins), false);
+        assert.equal(decoded.vendorConsents.size, 0);
+        assert.equal(decoded.vendorLegitimateInterests.size, 0);
+        // Local midnight, as their encoder rounds.
+        const midnight = new Date();
+        midnight.setHours(0, 0, 0, 0);
+        assert.equal(decoded.created.getTime(), midnight.getTime());
+        assert.equal(
+            w.document.querySelectorAll('iframe[name="__tcfapiLocator"]').length,
+            1
+        );
+    });
+
+    it('answers ping with their field set, policy version and all', ( ) => {
+        const w = open({ config: '{ iabCMP: true, optionalCookies: [] }' }).window;
+        let pinged;
+        w.__tcfapi('ping', 2, value => { pinged = value; });
+        assert.deepEqual(plain(pinged), {
+            gdprApplies: true,
+            cmpLoaded: true,
+            cmpStatus: 'loaded',
+            displayStatus: 'hidden',
+            apiVersion: '2.2',
+            cmpVersion: 9,
+            cmpId: 259,
+            gvlVersion: 178,
+            // Theirs answers 4 here while encoding 5 into the string. That is
+            // their inconsistency, kept rather than tidied up.
+            tcfPolicyVersion: 4,
+        });
+        let data;
+        w.__tcfapi('getTCData', 2, value => { data = value; });
+        assert.equal(data.tcfPolicyVersion, 4);
+        assert.equal(TCString.decode(data.tcString).policyVersion, 5);
+    });
+
+    it('keeps the TC string where theirs keeps it', ( ) => {
+        const w = open({
+            config: '{ iabCMP: true, setCookieControlTC: true,' +
+                ' optionalCookies: [ { name: "ads" } ] }',
+        }).window;
+        let data;
+        w.__tcfapi('getTCData', 2, value => { data = value; });
+        const saved = record(w);
+        // In IAB mode their own record drops the categories and carries the
+        // string, which their reader takes verbatim when no compressed
+        // addtlConsent sits beside it.
+        assert.equal(saved.optionalCookies, undefined);
+        assert.equal(saved.iabConsent, data.tcString);
+        assert.equal(saved.addtlConsent, undefined);
+        // And the separate cookie, which is off unless the site asks for it.
+        assert.equal(cookies(w).get('CookieControlTC'), data.tcString);
+        const without = open({
+            config: '{ iabCMP: true, optionalCookies: [] }',
+        }).window;
+        assert.equal(cookies(without).has('CookieControlTC'), false);
+    });
+
+    it('answers the TCF commands theirs answers, and warns on the rest', ( ) => {
+        const w = open({ config: '{ iabCMP: true, optionalCookies: [] }' }).window;
+        const warned = [];
+        w.console.warn = line => { warned.push(line); };
+        const seen = [];
+        let listenerId;
+        w.__tcfapi('addEventListener', 2, (data, success) => {
+            listenerId = data.listenerId;
+            seen.push([ data.eventStatus, success ]);
+        });
+        assert.deepEqual(plain(seen), [ [ 'useractioncomplete', true ] ]);
+        // Their update re-announces to every listener.
+        w.__tcfapi('update', 2, '_', 'ignored');
+        assert.equal(seen.length, 2);
+        let removed;
+        w.__tcfapi('removeEventListener', 2, ok => { removed = ok; }, listenerId);
+        assert.equal(removed, true);
+        w.__tcfapi('update', 2, '_', 'ignored');
+        assert.equal(seen.length, 2);
+        // Their own two warnings.
+        w.__tcfapi('getVendorList', 2, ( ) => {});
+        w.__tcfapi('ping', 3, ( ) => {});
+        assert.deepEqual(warned, [
+            'Unsupported CMP command: getVendorList',
+            'Invalid TCF Version: 3',
+        ]);
+    });
+
+    it('answers a framed vendor over postMessage', ( ) => {
+        const w = open({ config: '{ iabCMP: true, optionalCookies: [] }' }).window;
+        const replies = [];
+        const source = { postMessage(response) { replies.push(response); } };
+        const post = data => {
+            const event = new w.MessageEvent('message', {
+                data,
+                origin: 'https://vendor.example',
+            });
+            Object.defineProperty(event, 'source', { value: source });
+            w.dispatchEvent(event);
+        };
+        post({ __tcfapiCall: { command: 'ping', version: 2, callId: 'a' } });
+        assert.equal(replies[0].__tcfapiReturn.callId, 'a');
+        assert.equal(replies[0].__tcfapiReturn.returnValue.cmpId, 259);
+        post(JSON.stringify({
+            __tcfapiCall: { command: 'getTCData', version: 2, callId: 2 },
+        }));
+        assert.equal(typeof replies[1], 'string');
+        assert.equal(JSON.parse(replies[1]).__tcfapiReturn.success, true);
+    });
+
+    it('says on the console what went in', ( ) => {
+        let out;
+        const w = open({ before: w_ => { out = lines(w_); } }).window;
+        assert.equal(out.length, 1);
+        assert.equal(out[0],
+            '[consent-rr] civic-reject ' + versions.civic +
+            ' mode=gdpr revoked=analytics,marketing (social)' +
+            ' iab=off cookie=written'
+        );
+        assert.equal(w.CookieControl.consentRR.mode, 'reject');
+        assert.equal(w.CookieControl.consentRR.version, versions.civic);
+    });
+
+    it('does nothing the second time it is injected', ( ) => {
+        const dom = open();
+        const w = dom.window;
+        const before_ = cookies(w).get('CookieControl');
+        w.eval(reject);
+        // The second copy returns before replacing anything. A fresh one would
+        // throw away the configuration the page already handed over, and answer
+        // config() with defaults it never asked for.
+        assert.equal(w.CookieControl.config().optionalCookies.length, 2);
+        assert.equal(w.CookieControl.getCategoryConsent(0), false);
+        assert.equal(cookies(w).get('CookieControl'), before_);
+    });
+});
+
+/******************************************************************************/
+
+describe('filters, civic', ( ) => {
+    const active = filtersText.split('\n')
+        .filter(line => line.startsWith('!') === false)
+        .join('\n');
+
+    it('replaces version 9, and leaves version 8 alone', ( ) => {
+        const ours = active.split('\n').filter(line => line.includes('civic-reject'));
+        assert.ok(ours.length !== 0);
+        for ( const line of ours ) {
+            assert.ok(/cc\.cdn\.civiccomputing\.com|\+js\(/.test(line), line);
+        }
+        assert.ok(active.includes('/9/cookieControl-9*.js'));
+        // This was read against 9; 8 is a different build.
+        assert.equal(active.includes('cookieControl-8'), false);
+    });
+});

@@ -8,7 +8,7 @@ pointed at it. The notes below are the things that have actually gone wrong.
 
 - One directory per consent manager under `src/`, shared code in its `lib/`.
   `dist/` stays flat: uBO addresses a resource by name alone. Four families so
-  far: `onetrust/`, `cookieinformation/`, `inmobi/` and `osano/`.
+  far: `onetrust/`, `cookieinformation/`, `inmobi/`, `osano/` and `civic/`.
 - `src/onetrust/lib/onetrust-core.js` - OneTrust's own API, cookies, banner
   removal, tag revival. Shared by its resources.
 - `src/onetrust/lib/onetrust-tcf.js`, `.../onetrust-gpp.js` - the IAB layers.
@@ -22,6 +22,9 @@ pointed at it. The notes below are the things that have actually gone wrong.
 - `src/osano/lib/osano-core.js` - the whole of that CMP's surface, because
   Osano ships as one per-tenant file; `.../osano-usp.js` is the CCPA API its
   bundle carries.
+- `src/civic/lib/civic-core.js` - the CookieControl object and its cookie;
+  `.../civic-tcf.js` is the IAB layer, which only installs where the page's own
+  load() config asks for it.
 - `tools/build.mjs` - bundles, substitutes, and refuses to ship what uBO cannot
   parse. `npm run build`.
 - `dist/` is committed, because that is what uBO fetches. CI fails when it does
@@ -99,6 +102,12 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   does, and a strict server-side parser drops the whole header over it. The copy
   in the cookie is percent-encoded for that reason, the one in localStorage - the
   store their reader consults first - is not.
+- **Some CMPs hand you the configuration.** Civic's page calls
+  `CookieControl.load({...})` with its categories, callbacks and cookie settings
+  inline, and InMobi's `choice.js` passes a `coreConfig` through the TCF stub's
+  queue. Where that exists, take the values from it rather than defaulting: the
+  refusal then names the site's own categories, and the IAB layer goes in only
+  where the site asked for one. Check for it before writing a fallback.
 - **The same CMP ships a different bundle per tenant.** Osano's per-tenant file
   ends `C({usp: ...})` where the IAB module is off and
   `C({gpp: ..., tcf: ..., usp: ...})` where it is on - so one tenant's copy

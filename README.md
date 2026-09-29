@@ -10,7 +10,8 @@ a decision the visitor already made. No banner is ever built, nothing has to be
 clicked, and the page's consent API answers normally.
 
 Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**,
-**InMobi Choice** (formerly Quantcast Choice) and **Osano**.
+**InMobi Choice** (formerly Quantcast Choice), **Osano** and **Civic Cookie
+Control**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -18,6 +19,7 @@ Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**
 | `onetrust-accept.js` | A stored *accept all*: every category on, and tags parked behind one are switched back on. |
 | `cookieinformation-reject.js` | Cookie Information: the necessary category approved, everything else denied. One resource - no accept or unblock variant. |
 | `inmobi-reject.js` | InMobi Choice: a stored refusal. Nothing consented to, a TC string that says so, and `__tcfapi`, `__gpp` and `__uspapi` all answering instead of stalling. |
+| `civic-reject.js` | Civic Cookie Control: every optional category the site declares recorded as `revoked`, the necessary ones untouched, and `CookieControl` answering. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -45,12 +47,13 @@ from the built files rather than described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.9.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.9.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.9.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.9.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.9.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.9.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/civic-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -66,8 +69,9 @@ from the built files rather than described.
    time.
 2. **Filters.** Paste [`filters/onetrust.txt`](filters/onetrust.txt),
    [`filters/cookieinformation.txt`](filters/cookieinformation.txt),
-   [`filters/inmobi.txt`](filters/inmobi.txt) and
-   [`filters/osano.txt`](filters/osano.txt) into *My filters*, or host them and
+   [`filters/inmobi.txt`](filters/inmobi.txt),
+   [`filters/osano.txt`](filters/osano.txt) and
+   [`filters/civic.txt`](filters/civic.txt) into *My filters*, or host them and
    subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
@@ -346,6 +350,77 @@ withdraws legitimate interest as well.
   `countryCode` come from a location lookup, `revision`, `cmpContentHash` and
   `publishTimestamp` from the tenant's own configuration. `gdprApplies` answers
   `true`, the protective answer where it cannot be known.
+## Civic Cookie Control
+
+```
+||cc.cdn.civiccomputing.com/9/cookieControl-9*.js$script,redirect=civic-reject.js
+```
+
+The page drives this one. It loads the script and then calls
+`CookieControl.load({...})` with its whole configuration inline - the categories,
+their `onAccept` and `onRevoke` callbacks, the cookie settings, and whether the
+IAB module is on - so everything the stub answers with is the site's own, and
+none of it has to be guessed at.
+
+`CookieControl` is in place before that call and carries their method set:
+`load`, `update`, `config`, `info`, `getCategoryConsent`, `changeCategory`,
+`toggleCategory`, `open`, `hide`, `notify`, `acceptAll`, `rejectAll`, the
+`getCookie` / `getAllCookies` / `saveCookie` / `delete` helpers, `geoInfo` and
+`geoTest`. The decision goes into their `CookieControl` cookie as URL-encoded
+JSON - `necessaryCookies`, `optionalCookies` keyed by their own
+`_validCookieName` (the name with separators stripped, so `marketing (social)`
+becomes `marketingsocial`), `statement`, `consentDate`, `consentExpiry`,
+`interactedWith` and `user` - scoped to the registered domain, `SameSite=Lax`,
+for the site's `consentCookieExpiry` or 90 days. An existing record's `user` and
+`consentDate` are kept, so a site does not see a decision made afresh each load.
+
+`interactedWith: true` is what does the work: their `finaliseSetup` only builds a
+notification when it is false.
+
+### The IAB layer
+
+Unlike the other consent managers here, this one needs no guessing: the IAB
+module is a paid option and the page declares it as `iabCMP: true`. With it off
+their script installs no `__tcfapi` at all, and neither does this. With it on,
+`__tcfapi` goes in with cmpId 259 and cmpVersion 9, their `update` / `ping` /
+`getTCData` / `addEventListener` / `removeEventListener` set, the
+`__tcfapiLocator` frame and the `postMessage` bridge - and the TC string goes
+where theirs goes, into `iabConsent` inside the same cookie, which their reader
+takes verbatim when no compressed `addtlConsent` sits beside it. The separate
+`CookieControlTC` cookie follows `setCookieControlTC`, as theirs does.
+
+A refusal here turns **legitimate interest off as well**, which is where this
+differs from the OneTrust and InMobi resources: their `_defaultStore` has every
+purpose consent and legitimate interest false, and their reject-all leaves them
+that way.
+
+### Deliberate gaps
+
+- **Nothing is freed and nothing is deleted.** A tag parked for a category
+  carries `data-cc-category` and `data-src`, and their script frees it by copying
+  `data-src` into `src` when that category is accepted. None is, so parked tags
+  stay parked. Their `deleteAll` - which removes every cookie outside the
+  consented set on each load - answers `false` here: that is the blocking half
+  of this CMP, uBlock Origin is doing it, and deleting a visitor's cookies is not
+  a consent stub's to do.
+- **The category callbacks are not called.** Their own load calls `onAccept`
+  only for accepted categories, and `onRevoke` only when somebody changes one.
+  Nothing is accepted and nobody changed anything, so neither fires. `onLoad`
+  does, a second later, as theirs does.
+- **The decision cannot be changed from the page.** `changeCategory`,
+  `toggleCategory`, `acceptAll` and `rejectAll` answer without doing anything -
+  theirs re-render a panel that was never built. A site whose own preferences
+  page is built on those calls will find them inert.
+- **`tcfPolicyVersion` is answered as 4 while the string carries 5.** That is
+  their inconsistency - their API hardcodes 4, their encoder takes 5 from the
+  vendor list they fetch - kept rather than tidied up, so a vendor branching on
+  either gets what their script would have given it.
+- **No API key check, and no claimed location.** Theirs will not start without
+  validating the key against `apikeys.civiccomputing.com`, which also returns
+  the visitor's country. `geo` is `null` and `geoInfo()` answers `false`.
+- **Version 9 only.** Version 8 is a different, much smaller build and the
+  filter deliberately does not match it.
+
 ## Development
 
 ```sh
@@ -377,7 +452,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.9.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token
