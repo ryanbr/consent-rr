@@ -59,6 +59,17 @@ function consentRRCivic(installTcf) {
         if ( existing.consentRR !== undefined ) { return; }
     }
 
+    // Categories to accept anyway, named by the filter that injected this.
+    // uBlock Origin substitutes a scriptlet's arguments for these; where there
+    // are none, and where the resource is served as a redirect - which takes no
+    // arguments at all - they stay as they are, and a placeholder matches no
+    // category name, so nothing is accepted.
+    //
+    // A site that withholds content behind a category needs this: refusing is
+    // the whole point, but a page gating its videos on "embedded" shows a
+    // placeholder until that category's onAccept has run.
+    const named = [ '{{1}}', '{{2}}', '{{3}}' ];
+
     const CC_COOKIE = 'CookieControl';
     const TC_COOKIE = 'CookieControlTC';
     const ACCEPTED = 'accepted';
@@ -218,6 +229,19 @@ function consentRRCivic(installTcf) {
         return out;
     };
 
+    // Their own matching is on the category's name. Accept a filter that names
+    // it either as written or as the key it is stored under.
+    const isNamed = name => {
+        const plain = String(name).toLowerCase();
+        const key = validName(name).toLowerCase();
+        for ( const entry of named ) {
+            const wanted = entry.trim().toLowerCase();
+            if ( wanted === '*' ) { return true; }
+            if ( wanted === plain || wanted === key ) { return true; }
+        }
+        return false;
+    };
+
     const categories = ( ) => {
         const out = [];
         for ( const entry of config.optionalCookies ) {
@@ -256,7 +280,8 @@ function consentRRCivic(installTcf) {
             }
         }
         for ( const entry of categories() ) {
-            out.optionalCookies[validName(entry.name)] = REVOKED;
+            out.optionalCookies[validName(entry.name)] =
+                isNamed(entry.name) ? ACCEPTED : REVOKED;
         }
         // Their own shape: the statement is recorded as shown, so a site that
         // re-prompts on a new statement date does not re-prompt now.
@@ -292,6 +317,30 @@ function consentRRCivic(installTcf) {
 
     let stored = false;
 
+    // Their _optionalCategoryAccept, both halves: the category's own callback,
+    // then any tag parked for it, whose real url waits in data-src.
+    const acceptCategory = entry => {
+        if ( typeof entry.onAccept === 'function' ) {
+            try {
+                entry.onAccept();
+            } catch(ex) {
+            }
+        }
+        let parked;
+        try {
+            parked = doc.querySelectorAll(
+                '[data-cc-category="' + entry.name + '"]'
+            );
+        } catch(ex) {
+            return;
+        }
+        for ( const node of parked ) {
+            const source = node.getAttribute('data-src');
+            if ( source === null || source === '' ) { continue; }
+            node.setAttribute('src', source);
+        }
+    };
+
     const load = settings => {
         config = merge(settings);
         record = buildRecord();
@@ -307,6 +356,12 @@ function consentRRCivic(installTcf) {
             if ( config.setCookieControlTC === true ) {
                 writeCookie(TC_COOKIE, tcString, record.consentExpiry, true);
             }
+        }
+        // Before the record is saved, as theirs does it.
+        for ( const entry of categories() ) {
+            if ( isNamed(entry.name) === false ) { continue; }
+            if ( record.optionalCookies === undefined ) { continue; }
+            acceptCategory(entry);
         }
         stored = save();
         // Theirs calls onLoad a second after everything else has settled.
@@ -325,12 +380,20 @@ function consentRRCivic(installTcf) {
     const announce = ( ) => {
         if ( typeof console !== 'object' ) { return; }
         if ( typeof console.info !== 'function' ) { return; }
-        const names = [];
-        for ( const entry of categories() ) { names.push(entry.name); }
+        const refused = [];
+        const allowed = [];
+        for ( const entry of categories() ) {
+            if ( isNamed(entry.name) ) {
+                allowed.push(entry.name);
+                continue;
+            }
+            refused.push(entry.name);
+        }
         console.info(
             '[consent-rr] ' + NAME + ' ' + VERSION +
             ' mode=' + config.mode +
-            ' revoked=' + (names.length !== 0 ? names.join(',') : '(none)') +
+            ' revoked=' + (refused.length !== 0 ? refused.join(',') : '(none)') +
+            (allowed.length !== 0 ? ' accepted=' + allowed.join(',') : '') +
             ' iab=' + (config.iabCMP === true ? 'refused' : 'off') +
             ' cookie=' + (stored ? 'written' : 'refused')
         );

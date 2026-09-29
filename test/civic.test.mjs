@@ -45,8 +45,21 @@ before(async ( ) => {
 
 const plain = value => JSON.parse(JSON.stringify(value));
 
+// uBlock Origin passes a scriptlet's arguments to a resource like this one by
+// substituting {{1}}, {{2}}... textually - see patchScriptlet in
+// scriptlet-filtering-core.js. This is that substitution, argument for
+// argument, so the tests exercise what uBO would actually inject.
+const withArgs = (...args) => {
+    let out = reject;
+    args.forEach((value, i) => {
+        out = out.replace('{{' + (i + 1) + '}}', value);
+    });
+    return out;
+};
+
 const open = (options = {}) => {
-    const dom = runDom(reject, options.url || URL, options.html || PAGE, w => {
+    const dom = runDom(options.code || reject, options.url || URL,
+        options.html || PAGE, w => {
         if ( typeof options.before === 'function' ) { options.before(w); }
     });
     dom.window.eval('window.marks = [];');
@@ -233,6 +246,85 @@ describe('civic-reject', ( ) => {
         const saved = record(w);
         assert.deepEqual(saved.ccpa, { shown: true, updated: '02/02/2026' });
         assert.deepEqual(saved.optionalCookies, { sale: 'revoked' });
+    });
+
+    it('takes its arguments the way uBO hands them to a resource', ( ) => {
+        // uBO calls a resource that opens with "function name(" by name, and
+        // substitutes {{1}} into anything else. This one has to stay the
+        // second kind: were it the first, the placeholders would ship as
+        // written and a filter naming a category would do nothing at all,
+        // silently - uBO wraps scriptlets in an empty catch.
+        assert.equal(/^function\s+([^(\s]+)\s*\(/.test(reject), false);
+        // And served as a redirect, which takes no arguments, they stay as
+        // they are and nothing is accepted.
+        assert.ok(reject.includes("'{{1}}', '{{2}}', '{{3}}'"));
+        const w = open().window;
+        assert.deepEqual(record(w).optionalCookies, {
+            analytics: 'revoked',
+            marketingsocial: 'revoked',
+        });
+    });
+
+    it('accepts a category the filter names, and runs their onAccept', ( ) => {
+        let out;
+        const w = open({
+            code: withArgs('analytics'),
+            before: w_ => { out = lines(w_); },
+        }).window;
+        // A site that withholds content behind a category gates it on this
+        // callback, which is what their own accept path calls.
+        assert.deepEqual(plain(w.marks), [ 'accept:analytics' ]);
+        assert.deepEqual(record(w).optionalCookies, {
+            analytics: 'accepted',
+            marketingsocial: 'revoked',
+        });
+        assert.equal(w.CookieControl.getCategoryConsent(0), true);
+        assert.equal(w.CookieControl.getCategoryConsent(1), false);
+        // The tag parked for it gets its real url back, as theirs does.
+        assert.equal(
+            w.document.getElementById('parked').getAttribute('src'),
+            'https://tracker.example/a.js'
+        );
+        assert.equal(out[0],
+            '[consent-rr] civic-reject ' + versions.civic +
+            ' mode=gdpr revoked=marketing (social) accepted=analytics' +
+            ' iab=off cookie=written'
+        );
+    });
+
+    it('matches a category by its stored key as well as its name', ( ) => {
+        const w = open({ code: withArgs('marketingsocial') }).window;
+        assert.deepEqual(record(w).optionalCookies, {
+            analytics: 'revoked',
+            marketingsocial: 'accepted',
+        });
+        assert.deepEqual(plain(w.marks), [ 'accept:marketing' ]);
+    });
+
+    it('accepts every category on a star, and none on a name that is not one',
+        ( ) => {
+            const all = open({ code: withArgs('*') }).window;
+            assert.deepEqual(record(all).optionalCookies, {
+                analytics: 'accepted',
+                marketingsocial: 'accepted',
+            });
+            const none = open({ code: withArgs('nothing-called-this') }).window;
+            assert.deepEqual(record(none).optionalCookies, {
+                analytics: 'revoked',
+                marketingsocial: 'revoked',
+            });
+            assert.deepEqual(plain(none.marks), []);
+        }
+    );
+
+    it('takes more than one name, as uBO passes more than one argument', ( ) => {
+        const w = open({ code: withArgs('analytics', 'marketing (social)') }).window;
+        assert.deepEqual(record(w).optionalCookies, {
+            analytics: 'accepted',
+            marketingsocial: 'accepted',
+        });
+        assert.deepEqual(plain(w.marks).sort(),
+            [ 'accept:analytics', 'accept:marketing' ]);
     });
 
     it('refuses explicitly, which is what defeats their CCPA auto-accept', ( ) => {

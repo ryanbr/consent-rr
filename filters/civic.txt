@@ -36,6 +36,20 @@
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
+! Sites that withhold content behind a category.
+!
+! Refusing is the point, but a site may gate its videos, maps or embeds on one
+! of its own categories and show a placeholder until that category's onAccept
+! has run - "We cannot show you this content because it uses cookies" and the
+! like. The category is the site's own, so no resource can know its name: name
+! it in the filter instead, and the redirect above keeps doing the rest.
+!
+! Up to three names, and * for all of them. The name is the one the site's own
+! CookieControl.load() call uses, which the console line prints.
+! -----------------------------------------------------------------------------
+gold.ac.uk##+js(civic-reject, embedded)
+
+! -----------------------------------------------------------------------------
 ! The script is what asks for these, so with it replaced they are never
 ! requested. They only matter where something unblocks it: the API key and geo
 ! check it will not start without, the consent it logs back, and the IAB vendor

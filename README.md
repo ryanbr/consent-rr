@@ -47,13 +47,13 @@ from the built files rather than described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.11.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.11.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.11.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.11.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.11.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.11.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.11.0/dist/civic-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -394,6 +394,37 @@ differs from the OneTrust and InMobi resources: their `_defaultStore` has every
 purpose consent and legitimate interest false, and their reject-all leaves them
 that way.
 
+### Sites that withhold content
+
+Refusing is the point, but a site may gate its videos, maps or embeds on one of
+its own categories and show a placeholder until that category's `onAccept` has
+run. Goldsmiths does exactly that, from the configuration on its own page:
+
+```js
+{ name: "embedded", label: "Embedded content", …
+  onAccept: function() {
+      dataLayer.push({ civic_cookies_embedded: "consent_given", … });
+      document.dispatchEvent(new Event("embeddedConsentGiven"));   // the page listens for this
+  } }
+```
+
+The category is the site's own, so no resource can know its name. Name it in
+the filter instead, alongside the redirect:
+
+```
+gold.ac.uk##+js(civic-reject, embedded)
+```
+
+That category is then recorded as `accepted`, its `onAccept` runs, and anything
+parked for it with `data-cc-category` gets its `data-src` back - their own accept
+path, for that one category. Everything else stays refused. Up to three names,
+and `*` for all of them; the console line prints the names a site uses.
+
+Both lines are needed: the scriptlet supplies the stub with its argument at
+`document_start`, and the redirect keeps the real script from replacing it.
+Arguments only reach the scriptlet form - a `$redirect=` takes none, so on its
+own it always refuses everything.
+
 ### Deliberate gaps
 
 - **Nothing is freed and nothing is deleted.** A tag parked for a category
@@ -410,7 +441,8 @@ that way.
 - **The decision cannot be changed from the page.** `changeCategory`,
   `toggleCategory`, `acceptAll` and `rejectAll` answer without doing anything -
   theirs re-render a panel that was never built. A site whose own preferences
-  page is built on those calls will find them inert.
+  page is built on those calls will find them inert, so a category that has to
+  be on is named in the filter instead.
 - **`tcfPolicyVersion` is answered as 4 while the string carries 5.** That is
   their inconsistency - their API hardcodes 4, their encoder takes 5 from the
   vendor list they fetch - kept rather than tidied up, so a vendor branching on
@@ -452,7 +484,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.10.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.11.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token
