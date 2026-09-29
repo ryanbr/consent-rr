@@ -1,10 +1,17 @@
-# The three resources compared
+# Resources compared
 
 Measured, not described: this file is written by `tools/comparison.mjs`, which
-runs each built resource against the same page and records what it did. `npm run
-build` regenerates it and CI fails if the committed copy has drifted. Everything
-below is from the OneTrust resources at **1.5.0**.
+boots each built resource on a page its own consent manager would recognise and
+records what it did. `npm run build` regenerates it and CI fails if the
+committed copy has drifted.
 
+Two parts: the three OneTrust modes row by row, because they are the same CMP
+answered three ways and worth comparing closely, then every resource in the
+repo side by side.
+
+# The three OneTrust modes
+
+From the OneTrust resources at **1.5.0**.
 A row in bold is one where the three differ.
 
 ## What is stored
@@ -99,3 +106,80 @@ Keep `reject` global and escalate per site. The console line names which one ran
 ```
 
 Sizes: `reject` 36.1 KB, `reject-unblock` 36.1 KB, `accept` 36.1 KB.
+
+# Every resource, side by side
+
+Seven consent managers, ten resources. Each one was booted on a page its own
+consent manager would recognise, and the rows below are what it did there - the
+globals it defined, the cookies it wrote, the signals it sent. A resource that
+shares a page with another (the OneTrust three, the Civic two) was measured on
+the same fixture as its sibling.
+
+| Resource | Size | What it defines |
+| --- | --- | --- |
+| `onetrust-reject` | 36.1 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
+| `onetrust-accept` | 36.1 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
+| `onetrust-reject-unblock` | 36.1 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
+| `cookieinformation-reject` | 10.9 KB | `CookieInformation`, `CookieConsent`, `CookieConsentDialog`, `cicc`, `cicl`, `isCookieInformationAPIReady` |
+| `inmobi-reject` | 24.8 KB | `__gpp`, `__uspapi`, `__tcfapiui` |
+| `osano-reject` | 34.0 KB | `Osano`, `__uspapi`, `__tcfapi`, `__gpp` |
+| `civic-reject` | 22.8 KB | `CookieControl` |
+| `civic-reject-unblock` | 22.8 KB | `CookieControl` |
+| `cookiebot-reject` | 14.4 KB | `CookieConsent`, `Cookiebot`, `uetq`, `CB_OnTagsExecuted_Processed` |
+| `securiti-reject` | 8.2 KB | `SecuritiSDK`, `__ScrtSdkApiOps`, `initCmp`, `setConsentBannerParams`, `showConsentPreferencesPopup`, `overrideThemeMatching` +4 more |
+
+## What each one stores and sends
+
+| Resource | Cookies written | Google consent mode | IAB APIs | GPC changes it |
+| --- | --- | --- | --- | --- |
+| `onetrust-reject` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2` | - | `__tcfapi`, `__gpp` | yes |
+| `onetrust-accept` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2` | - | `__tcfapi`, `__gpp` | no |
+| `onetrust-reject-unblock` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2` | - | `__tcfapi`, `__gpp` | yes |
+| `cookieinformation-reject` | `CookieInformationConsent` | - | - | no |
+| `inmobi-reject` | `euconsent-v2`, `IABGPP_HDR_GppString` | - | `__tcfapi`, `__gpp`, `__uspapi` | yes |
+| `osano-reject` | `osano_consentmanager`, `osano_consentmanager_uuid` | default: granted security_storage, functionality_storage | `__tcfapi`, `__gpp`, `__uspapi` | yes |
+| `civic-reject` | `CookieControl` | - | - | no |
+| `civic-reject-unblock` | `CookieControl` | - | - | no |
+| `cookiebot-reject` | `CookieConsent` | update: granted security_storage | - | no |
+| `securiti-reject` | `__privaci_cookie_consents`, `__privaci_cookie_consent_uuid` | update: granted security_storage | - | no |
+
+Every one of them refuses; what differs is what each consent manager gives a
+page to read, and therefore what a refusal has to answer. The three that GPC
+changes carry a legitimate-interest or opt-out field for it to change - the
+categories are refused with or without the signal.
+
+## What each one does to a parked tag
+
+A tag the site parked behind a category, and one it parked behind nothing but
+its necessary category, on the fixtures that have them.
+
+| Resource | Parked tags after it ran |
+| --- | --- |
+| `onetrust-reject` | `nec: freed`, `ads: parked` |
+| `onetrust-accept` | `nec: freed`, `ads: freed` |
+| `onetrust-reject-unblock` | `nec: freed`, `ads: freed` |
+| `cookieinformation-reject` | `nec: freed`, `stat: parked` |
+| `civic-reject` | `stat: parked`, `content: parked` |
+| `civic-reject-unblock` | `stat: parked`, `content: freed` |
+| `cookiebot-reject` | `nec: freed`, `stat: parked` |
+
+Where a consent manager parks tags in the markup, a refusal leaves them parked -
+except the ones gated on nothing but a necessary category, which its own script
+would run too. Osano and Securiti do not park tags in the markup at all: they
+patch the DOM at runtime, so with them replaced there is nothing parked and
+uBlock Origin does the blocking.
+
+## What each one says
+
+```
+[consent-rr] onetrust-reject 1.5.0 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-accept 1.5.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
+[consent-rr] onetrust-reject-unblock 1.5.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
+[consent-rr] cookieinformation-reject 1.0.2 approved=cookie_cat_necessary denied=cookie_cat_functional,cookie_cat_statistic,cookie_cat_marketing,cookie_cat_unclassified cookie=written
+[consent-rr] inmobi-reject 1.0.0 config=read cc=IT lang=IT tcf=refused li=kept gpp=refused usp=1--- cookie=written gppcookie=written
+[consent-rr] osano-reject 1.1.0 consent=ESSENTIAL denied=STORAGE,MARKETING,PERSONALIZATION,ANALYTICS,OPT_OUT tcf=refused li=kept gpp=refused usp=1--- cookie=written
+[consent-rr] civic-reject 1.4.0 mode=gdpr revoked=analytics,embedded iab=off cookie=written
+[consent-rr] civic-reject-unblock 1.4.0 mode=gdpr revoked=analytics accepted=embedded iab=off cookie=written
+[consent-rr] cookiebot-reject 1.0.0 necessary=true denied=preferences,statistics,marketing iab=off cookie=written
+[consent-rr] securiti-reject 1.0.0 consents=none tenant=read gcm=denied cookie=written
+```

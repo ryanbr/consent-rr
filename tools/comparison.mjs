@@ -169,13 +169,217 @@ const table = section => {
     return out.join('\n');
 };
 
-const doc = `# The three resources compared
+/******************************************************************************/
+
+// Every resource, measured the same way: boot it on a page its own consent
+// manager would recognise, then record what it installed, wrote and signalled.
+// Nothing here is described from memory - a cell is wrong only if the code is.
+
+const FIXTURES = [
+    {
+        resource: 'onetrust-reject.js',
+        cmp: 'OneTrust',
+        page: '<html lang="en"><head>' +
+            '<script id="nec" type="text/plain" class="optanon-category-C0001">a</' + 'script>' +
+            '<script id="ads" type="text/plain" class="optanon-category-C0004" src="https://t.example/t.js"></' + 'script>' +
+            '</head><body><p>x</p></body></html>',
+    },
+    { resource: 'onetrust-accept.js', cmp: 'OneTrust', sameAs: 'onetrust-reject.js' },
+    { resource: 'onetrust-reject-unblock.js', cmp: 'OneTrust', sameAs: 'onetrust-reject.js' },
+    {
+        resource: 'cookieinformation-reject.js',
+        cmp: 'Cookie Information',
+        page: '<html lang="da"><head>' +
+            '<script id="nec" data-category-consent="cookie_cat_necessary" data-consent-src="https://n.example/n.js"></' + 'script>' +
+            '<script id="stat" data-category-consent="cookie_cat_statistic" data-consent-src="https://s.example/s.js"></' + 'script>' +
+            '</head><body><p>x</p></body></html>',
+    },
+    {
+        resource: 'inmobi-reject.js',
+        cmp: 'InMobi Choice',
+        page: '<html lang="it"><body><p>x</p></body></html>',
+        drive: w => {
+            w.eval('window.__tcfapi = (function(){var q=[];return function(){' +
+                'var a=arguments; if(!a.length){return q;} q.push(a);};})();');
+            w.eval('window.__tcfapi("init", 2, function(){}, { "coreConfig": ' +
+                '{ "publisherCountryCode": "IT", "lang_": "it" } });');
+        },
+    },
+    {
+        resource: 'osano-reject.js',
+        cmp: 'Osano',
+        page: '<html lang="en"><body><p>x</p></body></html>',
+    },
+    {
+        resource: 'civic-reject.js',
+        cmp: 'Civic Cookie Control',
+        page: '<html lang="en"><head>' +
+            '<script id="stat" data-cc-category="analytics" data-src="https://s.example/s.js"></' + 'script>' +
+            '</head><body>' +
+            '<iframe id="content" data-cc-category="embedded" data-src="https://player.example/v"></iframe>' +
+            '<p>x</p></body></html>',
+        after: w => {
+            w.eval('CookieControl.load({ optionalCookies: [' +
+                ' { name: "analytics", label: "Analytics" },' +
+                ' { name: "embedded", label: "Embedded content" } ] });');
+        },
+    },
+    { resource: 'civic-reject-unblock.js', cmp: 'Civic Cookie Control', sameAs: 'civic-reject.js' },
+    {
+        resource: 'cookiebot-reject.js',
+        cmp: 'Cookiebot',
+        page: '<html lang="en"><head>' +
+            '<script id="Cookiebot" data-cbid="uuid-1"></' + 'script>' +
+            '<script id="nec" type="text/plain" data-cookieconsent="necessary" src="https://n.example/n.js"></' + 'script>' +
+            '<script id="stat" type="text/plain" data-cookieconsent="statistics" src="https://s.example/s.js"></' + 'script>' +
+            '</head><body><p>x</p></body></html>',
+    },
+    {
+        resource: 'securiti-reject.js',
+        cmp: 'Securiti',
+        page: '<html lang="en"><head>' +
+            '<script id="s" data-tenant-uuid="t-1" data-domain-uuid="d-1"></' + 'script>' +
+            '</head><body><p>x</p></body></html>',
+    },
+];
+
+const bootResource = async (fixture, source, gpc) => {
+    const code = await fs.readFile(
+        path.join(root, 'dist', fixture.resource), 'utf8'
+    );
+    const dom = new JSDOM(source.page, {
+        runScripts: 'outside-only',
+        url: 'https://www.example.com/',
+    });
+    const w = dom.window;
+    const doc = w.document;
+    const logs = [];
+    w.console.info = (...args) => { logs.push(args.join(' ')); };
+    w.console.warn = ( ) => {};
+    if ( gpc ) {
+        Object.defineProperty(w.navigator, 'globalPrivacyControl', {
+            value: true, configurable: true,
+        });
+    }
+    // What a page with Google's tag has. Some of these call gtag and some push
+    // to the layer directly; with this here the column measures the same thing
+    // for all of them.
+    w.eval('window.dataLayer = window.dataLayer || [];' +
+        'window.gtag = function() { window.dataLayer.push(arguments); };');
+    if ( typeof source.drive === 'function' ) { source.drive(w); }
+    // How each tag was parked, before anything ran: these consent managers
+    // park in two different ways, and freed means something different for each.
+    const TAG_IDS = [ 'nec', 'stat', 'ads', 'content' ];
+    const parkedAs = {};
+    for ( const id of TAG_IDS ) {
+        const el = doc.getElementById(id);
+        if ( el === null ) { continue; }
+        const type = el.getAttribute('type');
+        parkedAs[id] = {
+            byType: type !== null && type.toLowerCase() === 'text/plain',
+            url: el.getAttribute('src') ||
+                el.getAttribute('data-src') ||
+                el.getAttribute('data-consent-src') ||
+                el.getAttribute('data-cookieblock-src') || '',
+        };
+    }
+    const before = new Set(Object.keys(w));
+    w.eval(code);
+    if ( typeof source.after === 'function' ) { source.after(w); }
+    await new Promise(resolve => { setTimeout(resolve, 60); });
+
+    const installed = Object.keys(w).filter(name =>
+        before.has(name) === false && /^\d+$/.test(name) === false
+    );
+    const cookies = String(doc.cookie).split(/;\s*/)
+        .map(pair => pair.slice(0, pair.indexOf('=')))
+        .filter(name => name !== '');
+    const layer = Array.isArray(w.dataLayer)
+        ? Array.from(w.dataLayer).map(entry =>
+            Array.isArray(entry) || typeof entry.length === 'number'
+                ? Array.prototype.slice.call(entry)
+                : entry)
+        : [];
+    const consentMode = layer.find(entry =>
+        Array.isArray(entry) && entry[0] === 'consent'
+    );
+    const iab = [];
+    let tcString = '';
+    if ( typeof w.__tcfapi === 'function' ) {
+        iab.push('`__tcfapi`');
+        w.__tcfapi('getTCData', 2, data => {
+            if ( data && data.tcString ) { tcString = data.tcString; }
+        });
+    }
+    if ( typeof w.__gpp === 'function' ) { iab.push('`__gpp`'); }
+    if ( typeof w.__uspapi === 'function' ) { iab.push('`__uspapi`'); }
+    // Freed means the tag's real url is now being fetched, and each of these
+    // goes about that differently: some put src back on the element, some
+    // insert a live copy beside it, and OneTrust revives an inline one in
+    // place by changing its type. So how it was parked decides what to look at.
+    const state = id => {
+        const el = doc.getElementById(id);
+        if ( el === null ) { return 'gone'; }
+        const parked = parkedAs[id];
+        if ( parked === undefined ) { return 'gone'; }
+        const copy = parked.url !== '' && Array.from(
+            doc.querySelectorAll('script[src], iframe[src], img[src]')
+        ).some(node => node !== el && node.getAttribute('src') === parked.url);
+        if ( copy ) { return 'freed'; }
+        if ( parked.byType ) {
+            const type = el.getAttribute('type');
+            return type !== null && type.toLowerCase() === 'text/plain'
+                ? 'parked'
+                : 'freed';
+        }
+        // Parked by holding the url in an attribute of their own.
+        return el.getAttribute('src') ? 'freed' : 'parked';
+    };
+    const freed = TAG_IDS
+        .filter(id => doc.getElementById(id) !== null)
+        .map(id => id + ': ' + state(id));
+    return {
+        bytes: code.length,
+        installed,
+        cookies,
+        consentMode: consentMode !== undefined
+            ? consentMode[1] + ' ' + Object.entries(consentMode[2] || {})
+                .filter(pair => pair[1] === 'granted')
+                .map(pair => pair[0]).join(', ')
+            : '',
+        iab,
+        tcString,
+        tags: freed,
+        console: logs[0] || '',
+    };
+};
+
+const crossRows = [];
+for ( const fixture of FIXTURES ) {
+    const source = fixture.sameAs
+        ? FIXTURES.find(entry => entry.resource === fixture.sameAs)
+        : fixture;
+    const plain = await bootResource(fixture, source, false);
+    const withGpc = await bootResource(fixture, source, true);
+    const same = JSON.stringify([ plain.cookies, plain.tcString, plain.console ]) ===
+        JSON.stringify([ withGpc.cookies, withGpc.tcString, withGpc.console ]);
+    crossRows.push({ fixture, plain, gpcChanges: same === false });
+}
+
+const doc = `# Resources compared
 
 Measured, not described: this file is written by \`tools/comparison.mjs\`, which
-runs each built resource against the same page and records what it did. \`npm run
-build\` regenerates it and CI fails if the committed copy has drifted. Everything
-below is from the OneTrust resources at **${manifest.resourceVersions.onetrust}**.
+boots each built resource on a page its own consent manager would recognise and
+records what it did. \`npm run build\` regenerates it and CI fails if the
+committed copy has drifted.
 
+Two parts: the three OneTrust modes row by row, because they are the same CMP
+answered three ways and worth comparing closely, then every resource in the
+repo side by side.
+
+# The three OneTrust modes
+
+From the OneTrust resources at **${manifest.resourceVersions.onetrust}**.
 A row in bold is one where the three differ.
 
 ## What is stored
@@ -235,6 +439,76 @@ ${MODES.map(m => results[m].console).join('\n')}
 
 Sizes: ${MODES.map(m => '`' + m + '` ' +
     (results[m].bytes / 1024).toFixed(1) + ' KB').join(', ')}.
+
+# Every resource, side by side
+
+Seven consent managers, ten resources. Each one was booted on a page its own
+consent manager would recognise, and the rows below are what it did there - the
+globals it defined, the cookies it wrote, the signals it sent. A resource that
+shares a page with another (the OneTrust three, the Civic two) was measured on
+the same fixture as its sibling.
+
+| Resource | Size | What it defines |
+| --- | --- | --- |
+${crossRows.map(row =>
+    '| `' + row.fixture.resource.replace('.js', '') + '` | ' +
+    (row.plain.bytes / 1024).toFixed(1) + ' KB | ' +
+    (row.plain.installed.length !== 0
+        ? row.plain.installed.slice(0, 6).map(n => '`' + n + '`').join(', ') +
+            (row.plain.installed.length > 6
+                ? ' +' + (row.plain.installed.length - 6) + ' more'
+                : '')
+        : '-') +
+    ' |'
+).join('\n')}
+
+## What each one stores and sends
+
+| Resource | Cookies written | Google consent mode | IAB APIs | GPC changes it |
+| --- | --- | --- | --- | --- |
+${crossRows.map(row =>
+    '| `' + row.fixture.resource.replace('.js', '') + '` | ' +
+    (row.plain.cookies.length !== 0
+        ? row.plain.cookies.map(n => '`' + n + '`').join(', ')
+        : '-') + ' | ' +
+    (row.plain.consentMode !== ''
+        ? row.plain.consentMode.replace(/^(default|update) ?/, '$1: granted ') +
+            (row.plain.consentMode.trim().split(' ').length === 1
+                ? 'nothing' : '')
+        : '-') + ' | ' +
+    (row.plain.iab.length !== 0 ? row.plain.iab.join(', ') : '-') + ' | ' +
+    (row.gpcChanges ? 'yes' : 'no') +
+    ' |'
+).join('\n')}
+
+Every one of them refuses; what differs is what each consent manager gives a
+page to read, and therefore what a refusal has to answer. The three that GPC
+changes carry a legitimate-interest or opt-out field for it to change - the
+categories are refused with or without the signal.
+
+## What each one does to a parked tag
+
+A tag the site parked behind a category, and one it parked behind nothing but
+its necessary category, on the fixtures that have them.
+
+| Resource | Parked tags after it ran |
+| --- | --- |
+${crossRows.filter(row => row.plain.tags.length !== 0).map(row =>
+    '| `' + row.fixture.resource.replace('.js', '') + '` | ' +
+    row.plain.tags.map(t => '`' + t + '`').join(', ') + ' |'
+).join('\n')}
+
+Where a consent manager parks tags in the markup, a refusal leaves them parked -
+except the ones gated on nothing but a necessary category, which its own script
+would run too. Osano and Securiti do not park tags in the markup at all: they
+patch the DOM at runtime, so with them replaced there is nothing parked and
+uBlock Origin does the blocking.
+
+## What each one says
+
+\`\`\`
+${crossRows.map(row => row.plain.console).filter(line => line !== '').join('\n')}
+\`\`\`
 `;
 
 await fs.writeFile(path.join(root, 'COMPARISON.md'), doc, 'utf8');

@@ -40,8 +40,9 @@ window.OptanonActiveGroups.includes('C0004')   // automobiles.honda.com
 `accept` is for when you actually mean it: it grants consent in the cookie, to
 every TCF vendor and in the GPP string as well.
 
-[COMPARISON.md](COMPARISON.md) sets the three side by side, row by row, measured
-from the built files rather than described.
+[COMPARISON.md](COMPARISON.md) sets the three side by side, row by row, and then
+every resource in the repo against each other - measured by running the built
+files, not described.
 
 ## Install
 
