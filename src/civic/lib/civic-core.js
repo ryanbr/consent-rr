@@ -231,10 +231,21 @@ function consentRRCivic(installTcf, unblockAll) {
 
     // Their own matching is on the category's name. Accept a filter that names
     // it either as written or as the key it is stored under.
-    const isNamed = name => {
-        // The unblock resource frees the lot: a redirect carries no arguments,
-        // so naming one category is not something it can be told.
-        if ( unblockAll === true ) { return true; }
+    // What the unblock resource will not free, for want of being able to ask.
+    // A redirect carries no arguments, so that resource has to decide for
+    // itself, and the only thing it has to go on is what the site called its
+    // categories. These words are a judgement, not a reading of their code -
+    // the one place in this repo where something is guessed at - so the console
+    // line prints both lists, and civic-reject.js takes an exact name where the
+    // guess is wrong in either direction.
+    const reTracking =
+        /analyt|statistic|performance|advertis|marketing|targeting|tracking|remarket|personali[sz]/i;
+
+    const isNamed = (name, label) => {
+        if ( unblockAll === true ) {
+            const text = String(name) + ' ' + String(label || '');
+            return reTracking.test(text) === false;
+        }
         const plain = String(name).toLowerCase();
         const key = validName(name).toLowerCase();
         for ( const entry of named ) {
@@ -284,7 +295,7 @@ function consentRRCivic(installTcf, unblockAll) {
         }
         for ( const entry of categories() ) {
             out.optionalCookies[validName(entry.name)] =
-                isNamed(entry.name) ? ACCEPTED : REVOKED;
+                isNamed(entry.name, entry.label) ? ACCEPTED : REVOKED;
         }
         // Their own shape: the statement is recorded as shown, so a site that
         // re-prompts on a new statement date does not re-prompt now.
@@ -374,7 +385,7 @@ function consentRRCivic(installTcf, unblockAll) {
         }
         // Before the record is saved, as theirs does it.
         for ( const entry of categories() ) {
-            if ( isNamed(entry.name) === false ) { continue; }
+            if ( isNamed(entry.name, entry.label) === false ) { continue; }
             if ( record.optionalCookies === undefined ) { continue; }
             acceptCategory(entry);
         }
@@ -398,7 +409,7 @@ function consentRRCivic(installTcf, unblockAll) {
         const refused = [];
         const allowed = [];
         for ( const entry of categories() ) {
-            if ( isNamed(entry.name) ) {
+            if ( isNamed(entry.name, entry.label) ) {
                 allowed.push(entry.name);
                 continue;
             }

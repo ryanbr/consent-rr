@@ -449,29 +449,83 @@ describe('civic-reject', ( ) => {
             [ 'accept:analytics', 'accept:marketing' ]);
     });
 
-    it('frees every category from the unblock resource, for a redirect', ( ) => {
-        // A redirect carries no arguments, so the resource that has to work
-        // without one accepts the lot.
+    it('frees what withholds content and refuses the tracking, unasked', ( ) => {
+        // Goldsmiths' own three categories. A redirect carries no arguments, so
+        // this resource decides from what the site called them.
+        const config = '{ optionalCookies: [' +
+            ' { name: "analytics", label: "Analytics",' +
+            '   onAccept: function() { window.marks.push("analytics"); } },' +
+            ' { name: "embedded", label: "Embedded content",' +
+            '   onAccept: function() { window.marks.push("embedded"); } },' +
+            ' { name: "advertising", label: "Advertising/targeting cookies",' +
+            '   onAccept: function() { window.marks.push("advertising"); } }' +
+            ' ] }';
         let out;
-        const w = open({ code: unblock, before: w_ => { out = lines(w_); } }).window;
+        const w = open({
+            code: unblock,
+            config,
+            html: '<html><body><iframe id="parked" data-cc-category="embedded"' +
+                ' data-src="https://player.vimeo.com/video/1"></iframe></body></html>',
+            before: w_ => { out = lines(w_); },
+        }).window;
         assert.deepEqual(record(w).optionalCookies, {
-            analytics: 'accepted',
-            marketingsocial: 'accepted',
+            analytics: 'revoked',
+            embedded: 'accepted',
+            advertising: 'revoked',
         });
-        assert.deepEqual(plain(w.marks).sort(),
-            [ 'accept:analytics', 'accept:marketing' ]);
-        assert.equal(w.CookieControl.getCategoryConsent(0), true);
+        // Only the one that withholds content is run, so the gtag consent
+        // updates the other two push are never sent.
+        assert.deepEqual(plain(w.marks), [ 'embedded' ]);
+        assert.equal(w.CookieControl.getCategoryConsent(0), false);
         assert.equal(w.CookieControl.getCategoryConsent(1), true);
+        assert.equal(w.CookieControl.getCategoryConsent(2), false);
         assert.equal(
             w.document.getElementById('parked').getAttribute('src'),
-            'https://tracker.example/a.js'
+            'https://player.vimeo.com/video/1'
         );
         assert.equal(w.CookieControl.consentRR.mode, 'reject-unblock');
+        // Both lists on the console, because this is the one judgement in here
+        // that is not read off anybody's code.
         assert.equal(out[0],
             '[consent-rr] civic-reject-unblock ' + versions.civic +
-            ' mode=gdpr revoked=(none)' +
-            ' accepted=analytics,marketing (social) iab=off cookie=written'
+            ' mode=gdpr revoked=analytics,advertising accepted=embedded' +
+            ' iab=off cookie=written'
         );
+    });
+
+    it('judges a category by its label as well as its name', ( ) => {
+        const config = '{ optionalCookies: [' +
+            ' { name: "cat1", label: "Advertising/targeting cookies" },' +
+            ' { name: "cat2", label: "Statistics" },' +
+            ' { name: "cat3", label: "Video and maps" },' +
+            ' { name: "personalisation", label: "Tailored content" },' +
+            ' { name: "advertising", label: "Adverts" },' +
+            ' { name: "functional", label: "Functional" }' +
+            ' ] }';
+        const w = open({ code: unblock, config }).window;
+        assert.deepEqual(record(w).optionalCookies, {
+            cat1: 'revoked',
+            cat2: 'revoked',
+            cat3: 'accepted',
+            personalisation: 'revoked',
+            // Named for what it is, and labelled without the word the one
+            // above is caught by.
+            advertising: 'revoked',
+            functional: 'accepted',
+        });
+    });
+
+    it('takes an exact name where that judgement goes the wrong way', ( ) => {
+        // Plenty of sites park their embeds under a category called marketing.
+        // The guess refuses that one; naming it overrules the guess.
+        const config = '{ optionalCookies: [ { name: "marketing",' +
+            ' label: "Marketing", onAccept: function() {' +
+            ' window.marks.push("marketing"); } } ] }';
+        const guessed = open({ code: unblock, config }).window;
+        assert.deepEqual(record(guessed).optionalCookies, { marketing: 'revoked' });
+        const told = open({ code: withArgs('marketing'), config }).window;
+        assert.deepEqual(record(told).optionalCookies, { marketing: 'accepted' });
+        assert.deepEqual(plain(told.marks), [ 'marketing' ]);
     });
 
     it('still refuses the IAB layer from the unblock resource', ( ) => {

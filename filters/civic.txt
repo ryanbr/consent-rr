@@ -54,9 +54,11 @@
 !
 ! ||cc.cdn.civiccomputing.com/9/cookieControl-9*.js$script,redirect=civic-reject-unblock.js:10,domain=example.com
 !
-! It accepts the lot, so prefer naming the one category where that will do:
-! Goldsmiths gates its videos and maps on "embedded", and its analytics stays
-! refused this way.
+! That one accepts the categories whose name and label do not read as tracking
+! and refuses the ones that do, which on Goldsmiths is embedded accepted with
+! analytics and advertising refused. It is a guess at what a category is for -
+! the only one in this repo - so where a site parks its embeds under a category
+! called marketing, name it here instead and the guess is overruled.
 ! -----------------------------------------------------------------------------
 gold.ac.uk##+js(civic-reject, embedded)
 

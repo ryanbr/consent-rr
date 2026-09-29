@@ -20,7 +20,7 @@ Control**.
 | `cookieinformation-reject.js` | Cookie Information: the necessary category approved, everything else denied. One resource - no accept or unblock variant. |
 | `inmobi-reject.js` | InMobi Choice: a stored refusal. Nothing consented to, a TC string that says so, and `__tcfapi`, `__gpp` and `__uspapi` all answering instead of stalling. |
 | `civic-reject.js` | Civic Cookie Control: every optional category the site declares recorded as `revoked`, the necessary ones untouched, and `CookieControl` answering. |
-| `civic-reject-unblock.js` | Civic, for a site that withholds content until a category is on: accepts every optional category, runs each `onAccept`, frees the tags parked for them - and still refuses the IAB layer. |
+| `civic-reject-unblock.js` | Civic, for a site that withholds content until a category is on: accepts the categories that do not read as tracking, refuses the ones that do, and still refuses the IAB layer. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -48,13 +48,13 @@ from the built files rather than described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/civic-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -443,18 +443,33 @@ Both lines are needed: the scriptlet supplies the stub with its argument at
 `document_start`, and the redirect keeps the real script from replacing it.
 
 Arguments only reach the scriptlet form - a `$redirect=` takes none. Where one
-line is wanted instead, `civic-reject-unblock.js` does the same for **every**
-category the site declares, as a redirect:
+line is wanted instead, `civic-reject-unblock.js` decides for itself:
 
 ```
 ||cc.cdn.civiccomputing.com/9/cookieControl-9*.js$script,redirect=civic-reject-unblock.js:10,domain=example.com
 ```
 
 The `:10` raises its priority above the plain `civic-reject.js` rule, which
-matches the same request. It accepts the lot, so prefer naming the one category
-where that will do - on Goldsmiths that keeps analytics refused while the videos
-play. Either way the IAB layer still refuses: unblocking a site's own content is
-no reason to consent for a vendor list.
+matches the same request.
+
+It accepts the categories whose name and label do not read as tracking, and
+refuses the ones that do - `analyt`, `statistic`, `performance`, `advertis`,
+`marketing`, `targeting`, `tracking`, `remarket`, `personali[sz]`. On
+Goldsmiths that is `embedded` accepted, `analytics` and `advertising` refused,
+so the videos play while the two `gtag("consent", "update", …)` calls their
+other categories make are never run.
+
+**This is the one thing in the repo that is guessed at rather than read off
+somebody's code**, so the console line prints both lists:
+
+```
+[consent-rr] civic-reject-unblock 1.4.0 mode=gdpr revoked=analytics,advertising accepted=embedded iab=off cookie=written
+```
+
+Plenty of sites park their embeds under a category called `marketing`, where
+that guess refuses the thing you wanted. Name it instead - an argument overrules
+the guess, in either direction. Either way the IAB layer still refuses:
+unblocking a site's own content is no reason to consent for a vendor list.
 
 ### Deliberate gaps
 
@@ -515,7 +530,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.13.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.14.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token
