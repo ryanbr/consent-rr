@@ -38,9 +38,12 @@ const CONFIG = '{' +
     '}';
 
 let reject;
+let unblock;
 
 before(async ( ) => {
-    reject = (await loadResources()).get('civic-reject.js');
+    const resources = await loadResources();
+    reject = resources.get('civic-reject.js');
+    unblock = resources.get('civic-reject-unblock.js');
 });
 
 const plain = value => JSON.parse(JSON.stringify(value));
@@ -83,10 +86,22 @@ describe('civic-reject', ( ) => {
     it('ships as one resource, in the format uBO parses', async ( ) => {
         const names = Array.from((await loadResources()).keys())
             .filter(name => name.startsWith('civic-'));
-        assert.deepEqual(names, [ 'civic-reject.js' ]);
-        assert.equal(/^[ \t]*$/m.test(reject), false);
-        assert.equal(/[^\x20-\x7e\t\n]/.test(reject), false);
-        assert.ok(reject.includes("const VERSION = '" + versions.civic + "'"));
+        assert.deepEqual(names, [
+            'civic-reject-unblock.js', 'civic-reject.js',
+        ]);
+        for ( const code of [ reject, unblock ] ) {
+            assert.equal(/^[ \t]*$/m.test(code), false);
+            assert.equal(/[^\x20-\x7e\t\n]/.test(code), false);
+            assert.ok(code.includes("const VERSION = '" + versions.civic + "'"));
+        }
+        // The two differ by the one argument that tells them apart.
+        assert.equal(
+            reject.replace(
+                'consentRRCivic(consentRRCivicTcf);',
+                'consentRRCivic(consentRRCivicTcf, true);'
+            ),
+            unblock
+        );
     });
 
     it('is there before the page calls load, with their method set', ( ) => {
@@ -325,6 +340,51 @@ describe('civic-reject', ( ) => {
         });
         assert.deepEqual(plain(w.marks).sort(),
             [ 'accept:analytics', 'accept:marketing' ]);
+    });
+
+    it('frees every category from the unblock resource, for a redirect', ( ) => {
+        // A redirect carries no arguments, so the resource that has to work
+        // without one accepts the lot.
+        let out;
+        const w = open({ code: unblock, before: w_ => { out = lines(w_); } }).window;
+        assert.deepEqual(record(w).optionalCookies, {
+            analytics: 'accepted',
+            marketingsocial: 'accepted',
+        });
+        assert.deepEqual(plain(w.marks).sort(),
+            [ 'accept:analytics', 'accept:marketing' ]);
+        assert.equal(w.CookieControl.getCategoryConsent(0), true);
+        assert.equal(w.CookieControl.getCategoryConsent(1), true);
+        assert.equal(
+            w.document.getElementById('parked').getAttribute('src'),
+            'https://tracker.example/a.js'
+        );
+        assert.equal(w.CookieControl.consentRR.mode, 'reject-unblock');
+        assert.equal(out[0],
+            '[consent-rr] civic-reject-unblock ' + versions.civic +
+            ' mode=gdpr revoked=(none)' +
+            ' accepted=analytics,marketing (social) iab=off cookie=written'
+        );
+    });
+
+    it('still refuses the IAB layer from the unblock resource', ( ) => {
+        // Categories are one thing; consenting for a vendor list is another,
+        // and unblocking a site's own content is no reason to do it.
+        const w = open({
+            code: unblock,
+            config: '{ iabCMP: true, optionalCookies: [ { name: "ads" } ] }',
+        }).window;
+        let data;
+        w.__tcfapi('getTCData', 2, value => { data = value; });
+        const decoded = TCString.decode(data.tcString);
+        const anyOn = model => {
+            let found = false;
+            model.forEach(value => { if ( value ) { found = true; } });
+            return found;
+        };
+        assert.equal(anyOn(decoded.purposeConsents), false);
+        assert.equal(anyOn(decoded.purposeLegitimateInterests), false);
+        assert.equal(decoded.vendorConsents.size, 0);
     });
 
     it('refuses explicitly, which is what defeats their CCPA auto-accept', ( ) => {

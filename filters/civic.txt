@@ -46,6 +46,17 @@
 !
 ! Up to three names, and * for all of them. The name is the one the site's own
 ! CookieControl.load() call uses, which the console line prints.
+!
+! Arguments only reach the scriptlet form. Where one line is wanted instead,
+! civic-reject-unblock.js does the same for every category the site declares,
+! as a redirect - point it at the sites that need it, and raise its priority
+! above the rule below, which matches the same request:
+!
+! ||cc.cdn.civiccomputing.com/9/cookieControl-9*.js$script,redirect=civic-reject-unblock.js:10,domain=example.com
+!
+! It accepts the lot, so prefer naming the one category where that will do:
+! Goldsmiths gates its videos and maps on "embedded", and its analytics stays
+! refused this way.
 ! -----------------------------------------------------------------------------
 gold.ac.uk##+js(civic-reject, embedded)
 

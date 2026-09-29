@@ -48,11 +48,11 @@
 
 */
 
-function consentRRCivic(installTcf) {
+function consentRRCivic(installTcf, unblockAll) {
     const w = window;
     const doc = w.document;
     const VERSION = '@@VERSION@@';
-    const NAME = 'civic-reject';
+    const NAME = unblockAll === true ? 'civic-reject-unblock' : 'civic-reject';
 
     const existing = w.CookieControl;
     if ( existing !== null && typeof existing === 'object' ) {
@@ -232,6 +232,9 @@ function consentRRCivic(installTcf) {
     // Their own matching is on the category's name. Accept a filter that names
     // it either as written or as the key it is stored under.
     const isNamed = name => {
+        // The unblock resource frees the lot: a redirect carries no arguments,
+        // so naming one category is not something it can be told.
+        if ( unblockAll === true ) { return true; }
         const plain = String(name).toLowerCase();
         const key = validName(name).toLowerCase();
         for ( const entry of named ) {
@@ -486,7 +489,7 @@ function consentRRCivic(installTcf) {
             return false;
         },
         consentRR: {
-            mode: 'reject',
+            mode: unblockAll === true ? 'reject-unblock' : 'reject',
             version: VERSION,
         },
     };
