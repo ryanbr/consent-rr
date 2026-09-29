@@ -1,0 +1,48 @@
+! Title: consent-rr - Osano
+! Description: Replaces Osano's osano.js with a stub that reports a refusal,
+!              instead of waiting for a banner.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+!
+! Host-anchored, like the Cookie Information list. Osano serves the whole CMP -
+! configuration, translations and all - from one per-tenant file under
+! cmp.osano.com/<customer>/<config>/osano.js, so there is one thing to replace
+! and one host to match on.
+
+! -----------------------------------------------------------------------------
+! The essential category accepted, everything else refused. One resource: no
+! accept-all or unblock variant for this consent manager.
+!
+! Second line: their loader also builds per-tenant variants of the same file,
+! osano-<name>.js and its .legacy and .modern forms.
+! -----------------------------------------------------------------------------
+||cmp.osano.com/*/osano.js$script,redirect=osano-reject.js
+||cmp.osano.com/*/osano-*.js$script,redirect=osano-reject.js
+
+! -----------------------------------------------------------------------------
+! Where a redirect cannot land.
+!
+! A user resource is served as a data: URI, so a site whose CSP omits data: for
+! scripts refuses it - nothing of ours runs, no cookie, no console line, while
+! the banner is gone anyway because the redirect kept the real CMP out. The
+! scriptlet form is injected rather than fetched, so the directive does not apply
+! to it. Both lines are needed on such a site:
+!
+! example.com##+js(osano-reject)
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! osano.js is what asks for these, so with it replaced they are never requested.
+! They only matter where something unblocks osano.js itself: the consent record
+! it posts back, the blocked-item telemetry, the jurisdiction lookup, the
+! per-category disclosure lists and the translations.
+! -----------------------------------------------------------------------------
+||consent.api.osano.com^$xhr,redirect=noopjson
+||tattle.api.osano.com^$xhr,redirect=noopjson
+||lookups.api.osano.com^$xhr,redirect=noopjson
+||disclosure.api.osano.com^$xhr,redirect=noopjson
+||locale.cmp.osano.com^$xhr,redirect=noopjson

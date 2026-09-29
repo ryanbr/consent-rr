@@ -7,8 +7,8 @@ pointed at it. The notes below are the things that have actually gone wrong.
 ## Layout
 
 - One directory per consent manager under `src/`, shared code in its `lib/`.
-  `dist/` stays flat: uBO addresses a resource by name alone. Three families so
-  far, `onetrust/`, `cookieinformation/` and `inmobi/`.
+  `dist/` stays flat: uBO addresses a resource by name alone. Four families so
+  far: `onetrust/`, `cookieinformation/`, `inmobi/` and `osano/`.
 - `src/onetrust/lib/onetrust-core.js` - OneTrust's own API, cookies, banner
   removal, tag revival. Shared by its resources.
 - `src/onetrust/lib/onetrust-tcf.js`, `.../onetrust-gpp.js` - the IAB layers.
@@ -19,6 +19,9 @@ pointed at it. The notes below are the things that have actually gone wrong.
 - `src/inmobi/lib/inmobi-core.js` - the config hand-off, cookies and the CCPA
   API; `.../inmobi-tcf.js` and `.../inmobi-gpp.js` are the IAB layers, and this
   CMP is nothing but those.
+- `src/osano/lib/osano-core.js` - the whole of that CMP's surface, because
+  Osano ships as one per-tenant file; `.../osano-usp.js` is the CCPA API its
+  bundle carries.
 - `tools/build.mjs` - bundles, substitutes, and refuses to ship what uBO cannot
   parse. `npm run build`.
 - `dist/` is committed, because that is what uBO fetches. CI fails when it does
@@ -85,6 +88,17 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
 - **Don't over-fit to one sample.** `publisherCC` was changed to `DE` on two
   samples and a third said `US`; purpose-level legitimate interest was changed on
   one sample and two others disagreed. Both had to be reverted.
+- **How a CMP blocks decides how much a stub has to do.** OneTrust and Cookie
+  Information park a tag in the markup, so their stubs have to revive the ones a
+  decision allows. Osano patches the DOM at runtime instead - `createElement`,
+  `setAttribute`, the `src` setters, `document.cookie` - so with it replaced
+  there is nothing parked and nothing to revive, and uBO does the blocking. Check
+  which kind you have before writing revival code for a CMP that has no parking.
+- **A cookie value goes to the server.** Osano's own record is encrypted, so its
+  quotes and commas never reach a `Cookie` header; plain JSON in their format
+  does, and a strict server-side parser drops the whole header over it. The copy
+  in the cookie is percent-encoded for that reason, the one in localStorage - the
+  store their reader consults first - is not.
 - Read the CMP's own bootstrap before deciding what to install. `cmp2.js` finds
   its configuration by calling `window.__tcfapi()` with no arguments and taking
   the `init` entry's fourth argument; both it and `window.__gpp()` drain a stub's

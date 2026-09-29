@@ -9,8 +9,8 @@ take the other route: uBO redirects the CMP's own script to a stub that reports
 a decision the visitor already made. No banner is ever built, nothing has to be
 clicked, and the page's consent API answers normally.
 
-Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**
-and **InMobi Choice** (formerly Quantcast Choice).
+Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**,
+**InMobi Choice** (formerly Quantcast Choice) and **Osano**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -18,6 +18,7 @@ and **InMobi Choice** (formerly Quantcast Choice).
 | `onetrust-accept.js` | A stored *accept all*: every category on, and tags parked behind one are switched back on. |
 | `cookieinformation-reject.js` | Cookie Information: the necessary category approved, everything else denied. One resource - no accept or unblock variant. |
 | `inmobi-reject.js` | InMobi Choice: a stored refusal. Nothing consented to, a TC string that says so, and `__tcfapi`, `__gpp` and `__uspapi` all answering instead of stalling. |
+| `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
 Pick `reject` as the default. `reject-unblock` is for a site that withholds the
@@ -44,11 +45,12 @@ from the built files rather than described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.7.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.7.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.7.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.7.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.7.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.8.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.8.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.8.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.8.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.8.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.8.0/dist/osano-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -63,8 +65,9 @@ from the built files rather than described.
    and a comment to JavaScript, so the file is a readable script at the same
    time.
 2. **Filters.** Paste [`filters/onetrust.txt`](filters/onetrust.txt),
-   [`filters/cookieinformation.txt`](filters/cookieinformation.txt) and
-   [`filters/inmobi.txt`](filters/inmobi.txt) into *My filters*, or host them and
+   [`filters/cookieinformation.txt`](filters/cookieinformation.txt),
+   [`filters/inmobi.txt`](filters/inmobi.txt) and
+   [`filters/osano.txt`](filters/osano.txt) into *My filters*, or host them and
    subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
@@ -265,6 +268,60 @@ with nothing consented to, `cmp2.js` deletes that cookie rather than writing one
 `__uspapi` answers `1---`, no notice and no opt-out applicable, because where in
 the world the visitor is is not something a page can tell.
 
+## Osano
+
+The whole CMP is one per-tenant file, so there is one thing to replace:
+
+```
+||cmp.osano.com/*/osano.js$script,redirect=osano-reject.js
+```
+
+`window.Osano` is a function of their own making - `osano.js` installs
+`Osano = Osano || function(){ Osano.data.push(arguments) }` so a page can call it
+before the script lands, then drains that queue and replaces its `push` so later
+calls are handled live. This does the same, with their own mapping:
+`Osano("onConsentSaved", fn)` becomes the `osano-cm-consent-saved` listener, and
+any other first argument sets a property on `Osano.cm`.
+
+`Osano.cm` answers as it would on a return visit: `getConsent()`, the
+`analytics` / `marketing` / `personalization` / `optOut` flags, `locale`,
+`userData`, the event methods, and the show/hide methods as no-ops, because
+nothing was rendered to show. The record goes into `osano_consentmanager` and
+`osano_consentmanager_uuid` - in localStorage *and* a cookie, as theirs does,
+scoped to the registered domain for a year - and `osano_consentmanager_expdate`
+is cleared, which is what their own save does. An id and timestamp already
+stored are kept, so a site does not see a decision made afresh on every load.
+Google consent mode gets their signal map, with `ad_storage`, `ad_user_data`,
+`ad_personalization`, `analytics_storage` and `personalization_storage` denied
+and the two `ESSENTIAL` ones granted. `window.__uspapi` goes in with the
+`__uspapiLocator` frame and the `postMessage` bridge, answering `1---`, or `1-Y-`
+where the browser sends Global Privacy Control - which is also the one input
+their code turns into a CCPA opt-out by itself, so `OPT_OUT` follows it.
+
+### Deliberate gaps
+
+- **Nothing is un-blocked, because nothing was blocked.** Osano holds tags back
+  by patching the DOM at runtime - `createElement`, `setAttribute`, the `src`
+  setters, `document.cookie` - rather than by parking them in the markup the way
+  OneTrust and Cookie Information do. With the CMP replaced, a tag it would have
+  held back simply runs, and uBlock Origin blocks what it makes of it at the
+  network layer. Re-implementing that interception would mean shipping a second
+  content blocker inside a consent stub.
+- **The record is plain JSON where theirs is encrypted.** Their own reader tries
+  `JSON.parse` first and only then decrypts, so what this writes is what
+  `osano.js` itself would read back if it ever loaded - it would honour the
+  refusal rather than re-prompt. The cookie copy is percent-encoded, unlike
+  theirs: an unencoded quote or comma in a `Cookie` header is what a strict
+  server-side parser refuses, taking the rest of the header with it. localStorage,
+  which their reader consults first, carries it verbatim.
+- **Tenant data is left empty rather than invented**: `jurisdiction` and
+  `countryCode` come from a location lookup, `revision`, `cmpContentHash` and
+  `publishTimestamp` from the tenant's own configuration. `gdprApplies` answers
+  `true`, the protective answer where it cannot be known.
+- **No IAB TCF layer.** Osano only checks whether the page already has a
+  `__tcfapi`; the sampled tenant has the IAB module off, and this build installs
+  the US Privacy API alone. `__uspapi` is therefore the one it puts back.
+
 ## Development
 
 ```sh
@@ -296,7 +353,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.7.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.8.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token
