@@ -242,11 +242,46 @@ describe('filters, transcend', ( ) => {
     it('replaces the banner and leaves the engine alone', ( ) => {
         const ours = active.split('\n')
             .filter(line => line.includes('transcend-reject'));
-        assert.equal(ours.length, 1);
-        assert.ok(active.includes(
-            '||transcend-cdn.com/cm/*/ui.js$script,redirect=transcend-reject.js'
-        ));
+        // Both of the names their builds give the banner, and a path that
+        // covers /cm/ and the /cm-test/ Airtable is served from.
+        assert.deepEqual(ours, [
+            '||transcend-cdn.com/cm*/*/ui.js$script,redirect=transcend-reject.js',
+            '||transcend-cdn.com/cm*/*/uiV2.js$script,redirect=transcend-reject.js',
+        ]);
         // airgap.js is the engine, and the thing that enforces the refusal.
         assert.equal(active.includes('airgap.js'), false);
+    });
+
+    it('matches the urls both kinds of build actually serve', ( ) => {
+        // uBO's own pattern rules: || is a host anchor and * spans anything,
+        // including a path separator.
+        const matches = (pattern, url) => {
+            const body = pattern.slice(2, pattern.indexOf('$'));
+            const re = new RegExp(
+                '^https?://([^/]*\\.)?' +
+                body.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')
+            );
+            return re.test(url);
+        };
+        const patterns = active.split('\n')
+            .filter(line => line.includes('transcend-reject'));
+        const urls = [
+            'https://transcend-cdn.com/cm/27549f25-ae97-4ab1-93cc-40599429e806/ui.js',
+            'https://transcend-cdn.com/cm-test/619e6e3b-1a5c-4516-be11-6d77bdcbd717/uiV2.js',
+        ];
+        for ( const url of urls ) {
+            assert.ok(
+                patterns.some(pattern => matches(pattern, url)),
+                'no rule matches ' + url
+            );
+        }
+        // And the engine is matched by none of them.
+        for ( const pattern of patterns ) {
+            assert.equal(
+                matches(pattern, 'https://transcend-cdn.com/cm/x/airgap.js'),
+                false,
+                pattern + ' matches airgap.js'
+            );
+        }
     });
 });

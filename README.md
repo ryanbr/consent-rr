@@ -52,17 +52,17 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/transcend-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -647,7 +647,8 @@ the old cookie before this takes over.
 ## Transcend
 
 ```
-||transcend-cdn.com/cm/*/ui.js$script,redirect=transcend-reject.js
+||transcend-cdn.com/cm*/*/ui.js$script,redirect=transcend-reject.js
+||transcend-cdn.com/cm*/*/uiV2.js$script,redirect=transcend-reject.js
 ```
 
 **Replace the banner, not the engine.** Transcend ships in two halves, and the
@@ -680,7 +681,14 @@ out: a visitor with nothing recorded gets the prompt, which is this, which
 records the refusal; a visitor who already has it recorded never triggers the
 fetch, and there is nothing to do.
 
-It works in either position. Served in place of `ui.js` it runs with airgap
+Two names and two paths, because their builds differ. An older one points at
+one UI for the whole tenant, `ui: "/cm/<id>/ui.js"`; a newer one names it per
+regime and under a different prefix - Airtable's is
+`[{"url":"uiV2.js","kind":"ui"}]` served from `/cm-test/`. The engine and the
+API are the same in both, so the resource is too; only the filename and the
+path move, and a test checks the rules against a real url of each kind.
+
+It works in either position. Served in place of the banner it runs with airgap
 already ready. Injected as a scriptlet it runs at `document_start`, before
 `airgap.js` - the first script on the page - has executed, and installs their
 own stub shape, `{ readyQueue, ready }`, which `airgap.js` spreads over its own
@@ -732,7 +740,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

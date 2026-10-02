@@ -21,7 +21,22 @@
 ! thing enforcing it. Replacing it would drop that blocking and mean
 ! reimplementing the API it exposes.
 ! -----------------------------------------------------------------------------
-||transcend-cdn.com/cm/*/ui.js$script,redirect=transcend-reject.js
+||transcend-cdn.com/cm*/*/ui.js$script,redirect=transcend-reject.js
+||transcend-cdn.com/cm*/*/uiV2.js$script,redirect=transcend-reject.js
+
+! Two names and two paths, because their builds differ. An older one points at
+! one UI for the whole tenant:
+!
+!   ui: "/cm/<id>/ui.js"
+!
+! and a newer one names it per regime, under a different path prefix:
+!
+!   [[...regions...], ["at-eu-uk-sui-can-quebec"], ..., [{"url":"uiV2.js","kind":"ui"}], ...]
+!
+! Airtable is the second kind, served from /cm-test/. The engine and the API are
+! the same in both, so the resource is too - only the filename and the path
+! prefix move.
+! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
 ! Served first-party.
@@ -29,7 +44,8 @@
 ! A tenant may serve the same files from its own host by CNAME - Costco uses
 ! consent.costco.ca - and those need naming per site:
 !
-! ||consent.costco.ca/cm/*/ui.js$script,redirect=transcend-reject.js
+! ||consent.costco.ca/cm*/*/ui.js$script,redirect=transcend-reject.js
+! ||consent.costco.ca/cm*/*/uiV2.js$script,redirect=transcend-reject.js
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
@@ -54,4 +70,6 @@
 ! fetched. The cross-domain frame is what syncs a decision between a tenant's
 ! domains; with a refusal recorded, a refusal is what it syncs.
 ! -----------------------------------------------------------------------------
-||transcend-cdn.com/cm/*/metadata.json$xhr,redirect=noopjson
+||transcend-cdn.com/cm*/*/metadata.json$xhr,redirect=noopjson
+||transcend-cdn.com/cm*/*/uiV2/themes/*.css$stylesheet,redirect=noopcss
+||transcend-cdn.com/cm*/*/uiV2/translations/*$xhr,redirect=noopjson
