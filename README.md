@@ -72,6 +72,17 @@ files, not described.
    is what makes uBO refetch - it will not ask again for a URL it already has.
    Swap the tag for `main` to track every push instead.
 
+   Every release is on npm as well, so the same files come off a CDN if you
+   would rather not fetch from GitHub - same bytes, same pinning:
+
+   ```
+   https://cdn.jsdelivr.net/npm/consent-rr@1.18.1/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.18.1/dist/onetrust-reject.js
+   ```
+
+   The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
+   is for hosting the files yourself rather than for importing anything.
+
    Each file stands on its own: nothing else has to be loaded for it to work.
    Its first line, `/// onetrust-reject.js`, is the resource header uBO reads -
    and a comment to JavaScript, so the file is a readable script at the same
