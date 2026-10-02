@@ -25,8 +25,9 @@ const PURPOSES = {
     Functional: true,
 };
 
-// Another tenant's, from their own cookie: four purposes, none of them the
-// tri-state, and none of the names the set above shares.
+// Indiegogo's, which its airgap declares in this order and its own cookie
+// carries in the same one: four purposes, none of them the tri-state, and
+// none of the names the set above adds.
 const IGG_PURPOSES = {
     SaleOfInfo: false,
     Analytics: false,
@@ -125,8 +126,8 @@ describe('transcend-reject', ( ) => {
     });
 
     it('refuses a tenant that shares none of those names', ( ) => {
-        // Indiegogo's four, none of them the tri-state. Nothing here knows
-        // them; they arrive from their own getConsent.
+        // Nothing here knows those names; they arrive from their own
+        // getConsent, and this set shares only half of them with the other.
         const w = runDom(reject, 'https://www.indiegogo.com/',
             '<html><body><p>x</p></body></html>',
             w_ => { w_.eval(airgap('off', IGG_PURPOSES) + READY_NOW); }
@@ -141,7 +142,7 @@ describe('transcend-reject', ( ) => {
     });
 
     it('writes the record their own banner writes for a refusal', ( ) => {
-        // A genuine cookie from a site running their banner, with this
+        // A genuine cookie from Indiegogo running their banner, with this
         // resource nowhere near it: their UI's own record of a full refusal.
         const theirs = {
             purposes: {
