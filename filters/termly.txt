@@ -1,0 +1,40 @@
+! Title: consent-rr - Termly
+! Description: Replaces Termly's resource-blocker with a stub that records
+!              their own refusal and leaves their parked tags parked.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! One file is their whole CMP - the auto-blocker, the banner, the tenant
+! configuration and the visitor's geo, around 460kB of it, served per request.
+! The path carries the website uuid and the options arrive as a query string,
+! autoBlock=on and sometimes masterConsentsOrigin for a group of sites sharing
+! one consent, so the rule stops at the path.
+! -----------------------------------------------------------------------------
+||app.termly.io/resource-blocker/$script,redirect=termly-reject.js
+
+! -----------------------------------------------------------------------------
+! Where a redirect cannot land.
+!
+! A user resource is served as a data: URI, so a site whose CSP omits data: for
+! scripts refuses it - nothing of ours runs, while the banner is gone anyway
+! because the redirect kept their file out. The scriptlet form is injected
+! rather than fetched, so the directive does not apply to it:
+!
+! example.com##+js(termly-reject)
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Their embed widget and documents are left alone.
+!
+!   app.termly.io/embed.min.js
+!   app.termly.io/document/<kind>/<uuid>
+!
+! Those render a published privacy policy or cookie list into the page, which
+! is content a visitor asked for rather than consent machinery, and blocking
+! them leaves a hole in the page without refusing anything.
+! -----------------------------------------------------------------------------

@@ -45,6 +45,7 @@ describe('resources file', ( ) => {
                 'osano-reject.js',
                 'pubtech-reject.js',
                 'securiti-reject.js',
+                'termly-reject.js',
                 'transcend-reject.js',
                 'usercentrics-reject.js',
             ]

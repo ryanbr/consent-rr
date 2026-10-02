@@ -11,8 +11,8 @@ clicked, and the page's consent API answers normally.
 
 Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**,
 **InMobi Choice** (formerly Quantcast Choice), **Osano**, **Civic Cookie
-Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics** and
-**PubTech**.
+Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
+**PubTech** and **Termly**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -25,6 +25,7 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics** and
 | `cookiebot-reject.js` | Cookiebot: their own default state, which is already a refusal - `necessary` true, `preferences`, `statistics` and `marketing` false - with `CookieConsent` answering and parked tags left parked. |
 | `securiti-reject.js` | Securiti: a refusal recorded in their own `__privaci_cookie_consents`, with the API their loader parks answering instead of queueing for an SDK that never arrives. |
 | `transcend-reject.js` | Transcend: no banner, and the refusal recorded through airgap's own API - which leaves airgap itself in place, blocking by that refusal. |
+| `termly-reject.js` | Termly: no banner, their own opted-in record - essential alone - with their denied Google consent mode, and the tags their auto-blocker parked left parked. |
 | `pubtech-reject.js` | PubTech CMP: no banner, their publisher-cookie string with every choice off, and `__tcfapi` answering a refusal the IAB's own library agrees is one. |
 | `usercentrics-reject.js` | Usercentrics: no banner, and no service consented in the record their own blocker reads - which leaves that blocker in place, blocking by it. A service a returning visitor had accepted is revoked by name. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
@@ -55,19 +56,20 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/termly-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -81,8 +83,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.24.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.24.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.25.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.25.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -101,7 +103,8 @@ files, not described.
    [`filters/securiti.txt`](filters/securiti.txt) and
    [`filters/transcend.txt`](filters/transcend.txt) and
    [`filters/usercentrics.txt`](filters/usercentrics.txt) and
-   [`filters/pubtech.txt`](filters/pubtech.txt) into *My filters*, or host them
+   [`filters/pubtech.txt`](filters/pubtech.txt) and
+   [`filters/termly.txt`](filters/termly.txt) into *My filters*, or host them
    and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
@@ -1036,6 +1039,72 @@ their two GTM events.
   and a rule for them would only break a banner on a page where their CMP is
   still running.
 
+## Termly
+
+```
+||app.termly.io/resource-blocker/$script,redirect=termly-reject.js
+```
+
+One file is their whole CMP - the auto-blocker, the banner, the tenant
+configuration and the visitor's geo, around 460 kB served per request, with the
+website uuid in the path and the options in the query string (`autoBlock=on`,
+and `masterConsentsOrigin` where a group of sites shares one consent). The rule
+stops at the path so both forms match.
+
+**The polarity was the thing to get right**, and their own constants read
+backwards at first glance:
+
+```js
+OPT_IN:  { ...map(defaultValue=false), do_not_sell: false }   // essential only
+OPT_OUT: { ...map(defaultValue=true),  do_not_sell: false }   // everything
+map = ({defaultValue}) => values.map(c => [ c, c === ESSENTIAL || defaultValue ])
+```
+
+`consentAll()` sets **OPT_OUT**, and their `isAllDeclined()` is
+`every(c => c === ESSENTIAL || !state[c])` - so `true` is consented, and their
+`OPT_IN` is the refusal. That is what goes into
+`localStorage.TERMLY_API_CACHE`, which is a namespaced cache,
+`{ TERMLY_COOKIE_CONSENT: { createdAt, value } }`, merged rather than replaced
+so the entries beside it and any `document_version_id` already recorded
+survive. `do_not_sell` is set where theirs leaves it false: a visitor refusing
+is refusing that too.
+
+**Their parked tags stay parked, bar the ones they never block.** The
+auto-blocker parks `[data-categories]` elements with the real url in `data-src`
+or `data-href` and scripts typed `text/plain`; releasing one clones the node,
+puts the url back, retypes the script `text/javascript` and replaces the
+original. This releases the elements whose categories include `essential` -
+their filter is `some()`, so a tag marked `essential,analytics` goes in on that
+path too - which is exactly what their own code does where the CMP is off for a
+region and the visitor sends GPC.
+
+Google consent mode is derived rather than invented: their keys map to
+categories (`ad_*` to advertising, `analytics_storage` to analytics,
+`functionality_storage` and `personalization_storage` to performance,
+`security_storage` to essential, `social_storage` and `unclassified_storage` to
+their own), so this refusal produces their denied map exactly - everything
+denied but `security_storage`. It goes out through their gtag, which is
+`dataLayer.push(arguments)`, after their developer id and before the
+`userPrefUpdate` and `Termly.consentSaveDone` events, and `window
+.TERMLY_FORCE_DISABLE_GCM` is honoured.
+
+### Deliberate gaps
+
+- **No TC string.** A TCF tenant's `__tcfapi` comes from this same file, and
+  where their CMP is off they leave behind a ping answering `cmpId 412`,
+  `cmpVersion 1`, `cmpStatus "error"`, `cmpLoaded false` - preserving whatever
+  `gdprApplies` the page's own stub had. That is what goes back, on evidence of
+  a stub or a locator frame, rather than a string invented for a framework the
+  tenant may not have enabled: a vendor reading an error has no consent to act
+  on, which is the answer.
+- **Their embed and documents are left alone** - `embed.min.js` and
+  `/document/...` render a published policy or cookie list, which is content a
+  visitor asked for rather than consent machinery.
+- **GPC changes their side, not this one.** They read it: in a region where
+  their CMP is disabled, a GPC visitor gets essentials released and denied
+  consent-mode defaults, while one without gets everything released. This
+  refuses either way.
+
 ## Development
 
 ```sh
@@ -1067,7 +1136,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

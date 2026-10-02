@@ -258,6 +258,16 @@ const FIXTURES = [
         },
     },
     {
+        resource: 'termly-reject.js',
+        cmp: 'Termly',
+        page: '<html lang="en"><head>' +
+            '<script src="https://app.termly.io/resource-blocker/64bc9ee4-ef55-4cbe-b0ae-78a06a508235?autoBlock=on"></' + 'script>' +
+            '</head><body>' +
+            '<script id="nec" type="text/plain" data-categories="essential" data-src="https://n.example/n.js"></' + 'script>' +
+            '<script id="stat" type="text/plain" data-categories="analytics" data-src="https://s.example/s.js"></' + 'script>' +
+            '<p>x</p></body></html>',
+    },
+    {
         resource: 'pubtech-reject.js',
         cmp: 'PubTech CMP',
         page: '<html lang="it"><head>' +
