@@ -1,0 +1,80 @@
+name: publish
+
+# Publishes the package to npm, which is a second way to get the resources:
+# jsDelivr and unpkg serve any published version at a stable url, so a uBO
+# user resource can point at one of those instead of a raw GitHub url.
+#
+# Nothing here bumps a version. A version is set by hand, in the commit that
+# changes dist/, and this publishes exactly what the tag carries - so a release
+# that ships nothing cannot be made by accident from here.
+
+on:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # For npm provenance: the attestation is signed with this run's OIDC token.
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      # The tag the release names, not whatever main happens to be at.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+
+      # The same gate as build.yml: the suite builds from src/ first, so this
+      # also proves the committed dist/ is what src/ produces.
+      - run: npm test
+
+      - name: dist and COMPARISON.md match src
+        run: |
+          if ! git diff --exit-code --stat -- dist COMPARISON.md; then
+            echo "::error::committed output is stale - run 'npm test' and commit the result"
+            exit 1
+          fi
+
+      # A tag that disagrees with package.json means the bump was forgotten or
+      # the tag was typed wrong, and the published version would not be the one
+      # the release names. Versions on npm cannot be replaced, so stop here.
+      - name: the tag is the version being published
+        if: github.event_name == 'release'
+        run: |
+          version="v$(node -p 'require("./package.json").version')"
+          tag='${{ github.event.release.tag_name }}'
+          if [ "$tag" != "$version" ]; then
+            echo "::error::release is tagged $tag but package.json says $version"
+            exit 1
+          fi
+
+      # Re-publishing a version is not possible, so a release republished or a
+      # dispatch run twice should do nothing rather than fail.
+      - name: is this version already on npm
+        id: published
+        run: |
+          name=$(node -p 'require("./package.json").name')
+          version=$(node -p 'require("./package.json").version')
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "::notice::$name@$version is already published - nothing to do"
+            echo 'skip=true' >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: npm publish
+        if: steps.published.outputs.skip == 'false'
+        run: npm publish --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -12,14 +12,42 @@
     "transcend": "1.1.0"
   },
   "description": "Cookie-consent resource replacements for uBlock Origin",
+  "files": [
+    "dist/",
+    "filters/",
+    "COMPARISON.md"
+  ],
   "scripts": {
     "test": "node tools/build.mjs && node tools/comparison.mjs && node --test --test-timeout=15000 test/*.test.mjs",
     "build": "node tools/build.mjs",
     "lint": "node --check src/lib/onetrust-core.js && node --check src/onetrust-accept.js && node --check src/onetrust-reject.js",
-    "comparison": "node tools/comparison.mjs"
+    "comparison": "node tools/comparison.mjs",
+    "prepublishOnly": "npm run build && npm test"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "ublock-origin",
+    "ubo",
+    "cookie-consent",
+    "consent",
+    "gdpr",
+    "tcf",
+    "onetrust",
+    "cookiebot",
+    "scriptlet",
+    "redirect-resource"
+  ],
+  "author": "ryanbr <mp3geek@gmail.com>",
+  "homepage": "https://github.com/ryanbr/consent-rr#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ryanbr/consent-rr.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ryanbr/consent-rr/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "GPL-3.0-or-later",
   "type": "module",
   "devDependencies": {

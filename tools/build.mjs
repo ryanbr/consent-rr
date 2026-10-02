@@ -51,7 +51,13 @@ const version = manifest.version;
 // one before it.
 for ( const name of [ 'README.md', 'AGENTS.md', 'CLAUDE.md' ] ) {
     const text = await fs.readFile(path.join(root, name), 'utf8');
-    for ( const match of text.matchAll(/consent-rr\/v(\d+\.\d+\.\d+)\//g) ) {
+    const pinned = [
+        // https://raw.githubusercontent.com/ryanbr/consent-rr/v1.2.3/dist/...
+        /consent-rr\/v(\d+\.\d+\.\d+)\//g,
+        // https://cdn.jsdelivr.net/npm/consent-rr@1.2.3/dist/...
+        /consent-rr@(\d+\.\d+\.\d+)\//g,
+    ].flatMap(re => Array.from(text.matchAll(re)));
+    for ( const match of pinned ) {
         assert.equal(
             match[1], version,
             `${name} pins v${match[1]} but this is ${version}`

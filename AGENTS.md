@@ -202,6 +202,20 @@ gh release create v1.2.5 --verify-tag --title v1.2.5 --notes-file notes.md
 
 Tags sit on the last commit carrying a version, which is the state that shipped.
 
+Publishing the GitHub release runs `.github/workflows/publish.yml`, which puts
+the same version on npm with `NPM_TOKEN`. It bumps nothing: it publishes what
+the tag carries, and refuses if the tag and `package.json` disagree, if the
+committed `dist/` is stale, or if the suite fails. A version already on npm is a
+no-op rather than a failure, because a release can be published twice and npm
+versions cannot be replaced.
+
+npm matters here because jsDelivr and unpkg then serve every resource at a
+pinned url, which is a second place a uBO user resource can point at. Those urls
+pin with the name, an `@`, the version and a slash, and the pin check in
+`tools/build.mjs` reads that shape as well as the raw-GitHub one, so a stale CDN
+url in the docs fails the build the same way. (Writing one of those urls here
+with a version in it would itself fail the check, which is the check working.)
+
 ## Commits
 
 Authored `ryanbr <mp3geek@gmail.com>`. No AI attribution trailers, no
