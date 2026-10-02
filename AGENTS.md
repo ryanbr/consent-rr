@@ -207,13 +207,20 @@ When `dist/` really has changed:
 
 ```sh
 # bump resourceVersions.<family> if that family's resources changed
-npm version patch --no-git-tag-version      # the repo's own version
+npm pkg set version=1.2.5                   # the repo's own version
 # bump the pinned URLs in README.md - the build refuses to run otherwise
 npm run build && npm test
 git commit -a && git tag -a v1.2.5 -m '1.2.5 - what changed'
 git push origin main --follow-tags
 gh release create v1.2.5 --verify-tag --title v1.2.5 --notes-file notes.md
 ```
+
+`npm pkg set` rather than `npm version`, because `npm version` rewrites the
+root version in `package-lock.json` too and that lands two lines of noise in
+every release commit. Nothing needs them in step: `npm ci` installs fine with
+the lockfile naming an older version of the project itself - it only checks
+dependencies - and `npm publish` reads `package.json`. An `npm install` will
+re-sync it eventually; let it, rather than carrying it in the release.
 
 Tags sit on the last commit carrying a version, which is the state that shipped.
 
