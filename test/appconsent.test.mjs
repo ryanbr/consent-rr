@@ -60,6 +60,32 @@ const tcData = w => {
 
 const decode = w => TCString.decode(tcData(w).tcString);
 
+// A real state, captured from a site after accepting with none of this in
+// play. Their enum is ALLOWED 1, PENDING 0, DISALLOWED -1, type 0 a purpose,
+// and legintStatus -1 against the purposes that have no legitimate interest.
+const THEIR_STATE = {
+    consents: {
+        consentables: [
+            {
+                id: 1, iab_id: 1,
+                name: { values: { en: 'Store and/or access information on a device' } },
+                vendors_number: 228, status: 1, legintStatus: -1, type: 0,
+            },
+            {
+                id: 2, iab_id: 2,
+                name: { values: { en: 'Use limited data to select advertising' } },
+                vendors_number: 205, status: 1, legintStatus: 1, type: 0,
+            },
+            {
+                id: 7, iab_id: 7,
+                name: { values: { en: 'Measure advertising performance' } },
+                vendors_number: 199, status: 1, legintStatus: 1, type: 0,
+            },
+        ],
+        vendors: [ { id: 755, iab_id: 755, status: 1 } ],
+    },
+};
+
 // Rewriting the cmp version of a string, to stand in for one their own bundle
 // wrote with a version this cannot know: the core segment's fields are fixed
 // width, cmpVersion at bit 90.
@@ -279,15 +305,68 @@ describe('appconsent', ( ) => {
         assert.deepEqual(plain(other), [ null, false ]);
     });
 
-    it('leaves their own state alone', ( ) => {
+    it('restamps the state a returning visitor carries', ( ) => {
+        let out;
+        const w = boot(reject, {
+            before: w_ => {
+                out = lines(w_);
+                w_.localStorage.setItem('appconsent',
+                    JSON.stringify(THEIR_STATE));
+            },
+        }).window;
+        const state = JSON.parse(w.localStorage.getItem('appconsent'));
+        // Their own status enum, every consentable and every vendor.
+        assert.deepEqual(
+            plain(state.consents.consentables.map(e => e.status)),
+            [ -1, -1, -1 ]
+        );
+        assert.deepEqual(plain(state.consents.vendors.map(e => e.status)),
+            [ -1 ]);
+        // The names and counts are theirs and are left as they were.
+        assert.equal(
+            state.consents.consentables[0].name.values.en,
+            'Store and/or access information on a device'
+        );
+        assert.equal(state.consents.consentables[0].vendors_number, 228);
+        assert.ok(out[0].includes(' state=denied 4'), out[0]);
+    });
+
+    it('grants that state in accept mode, minus the impossible', ( ) => {
+        const w = boot(accept, {
+            before: w_ => {
+                w_.localStorage.setItem('appconsent',
+                    JSON.stringify(THEIR_STATE));
+            },
+        }).window;
+        const state = JSON.parse(w.localStorage.getItem('appconsent'));
+        assert.deepEqual(
+            plain(state.consents.consentables.map(e => e.status)),
+            [ 1, 1, 1 ]
+        );
+        // Purposes 1, 3, 4, 5 and 6 have no legitimate interest - their own
+        // list - so one marked not-applicable stays that way rather than
+        // being granted something that does not exist.
+        assert.deepEqual(
+            plain(state.consents.consentables.map(e => e.legintStatus)),
+            [ -1, 1, 1 ]
+        );
+        assert.deepEqual(plain(state.consents.vendors.map(e => e.status)),
+            [ 1 ]);
+    });
+
+    it('leaves their own state alone where there is none', ( ) => {
         // Its shape comes back with a configuration this never fetches, and
         // the fields a decision would consist of are not in their bundle at
         // all - hasConsent and consentedAll appear nowhere in it. The answer
         // lives in the IABTCF_ keys and in __tcfapi instead.
         const w = boot(accept).window;
         assert.equal(w.localStorage.getItem('appconsent'), null);
+        // And a state with no consentables in it is not given any: the list
+        // comes back with their configuration, which is never fetched here.
+        let out;
         const kept = boot(reject, {
             before: w_ => {
+                out = lines(w_);
                 w_.localStorage.setItem('appconsent', JSON.stringify({
                     appKey: 'abc',
                 }));
@@ -296,6 +375,25 @@ describe('appconsent', ( ) => {
         assert.deepEqual(
             plain(JSON.parse(kept.localStorage.getItem('appconsent'))),
             { appKey: 'abc' }
+        );
+        // Nothing to restamp is not the same as having restamped nothing, and
+        // the console says which it was.
+        assert.ok(out[0].includes(' state=absent'), out[0]);
+        // Their own shape but with nothing in it - a visitor part way through
+        // - is the case that tells those two apart.
+        let empty;
+        const bare = boot(reject, {
+            before: w_ => {
+                empty = lines(w_);
+                w_.localStorage.setItem('appconsent', JSON.stringify({
+                    consents: { consentables: [], vendors: [] },
+                }));
+            },
+        }).window;
+        assert.ok(empty[0].includes(' state=absent'), empty[0]);
+        assert.deepEqual(
+            plain(JSON.parse(bare.localStorage.getItem('appconsent'))),
+            { consents: { consentables: [], vendors: [] } }
         );
     });
 
@@ -347,7 +445,8 @@ describe('appconsent', ( ) => {
         assert.equal(
             out[0],
             '[consent-rr] appconsent-reject ' + versions.appconsent +
-            ' tcf=refused cmp=2/33/default cc=FR keys=17 drained=0'
+            ' tcf=refused cmp=2/33/default cc=FR keys=17 state=absent' +
+            ' drained=0'
         );
         let granting;
         boot(accept, { before: w_ => { granting = lines(w_); } });

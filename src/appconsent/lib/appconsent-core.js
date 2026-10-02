@@ -25,7 +25,20 @@
 
     Read off that bundle rather than from documentation:
 
-      localStorage.appconsent    their own state, JSON - left alone, see below
+      localStorage.appconsent    their own state, JSON. A real one, captured
+                                 from a site after accepting, reads
+                                   { consents: { consentables: [ { id, iab_id,
+                                     name: { values: { en: ... } },
+                                     vendors_number, status, legintStatus,
+                                     type } ], vendors: [ ... ] } }
+                                 with their own status enum - ALLOWED 1,
+                                 PENDING 0, DISALLOWED -1, MIXED 2 - and a
+                                 validator in the bundle that insists a status
+                                 is -1, 0 or 1. type 0 is a purpose and type 2
+                                 a special feature, which is how their own
+                                 code filters them. Their [1,3,4,5,6] is the
+                                 set of purposes with no legitimate interest,
+                                 which is why those carry legintStatus -1.
       the IABTCF_ keys           the standard set, in localStorage, each a
                                  string of "0" and "1" built by their
                                  lt(set, length)
@@ -42,12 +55,14 @@
                                  pass put eleven methods there of which eight
                                  appear nowhere in their bundle.
 
-    Their own state is not written. Its shape comes back with the
-    configuration this never fetches, and the fields a decision would consist
-    of are not visible in the bundle - hasConsent and consentedAll, which an
-    earlier pass wrote into it, appear nowhere in there at all. The answer
-    lives in the IABTCF_ keys and in __tcfapi, which is where a vendor looks;
-    their UI is the only thing that reads that state, and it is not here.
+    Their state is rewritten where the visitor already has one, and only
+    then: every consentable and every vendor in it takes the mode's status,
+    and a legitimate interest already marked not-applicable stays that way.
+    The list itself cannot be invented - the consentables come back with the
+    configuration this never fetches - so a first visit leaves the key alone
+    and the answer lives in the IABTCF_ keys and in __tcfapi, which is where a
+    vendor looks. An earlier pass wrote hasConsent and consentedAll into that
+    key; neither field appears anywhere in their bundle.
 
     Two modes, one line apart:
 
@@ -76,6 +91,14 @@ function consentRRAppConsent(grantAll) {
     }
 
     const TC_KEY = 'IABTCF_TCString';
+    const STATE = 'appconsent';
+    // Their enum: p = { MIXED: 2, ALLOWED: 1, PENDING: 0, DISALLOWED: -1 },
+    // and their own validator refuses anything but -1, 0 and 1.
+    const ALLOWED = 1;
+    const DISALLOWED = -1;
+    // Their X: the purposes that have no legitimate interest, which is why a
+    // real record carries legintStatus -1 against them.
+    const NO_LEGITIMATE_INTEREST = [ 1, 3, 4, 5, 6 ];
 
     const read = name => {
         try {
@@ -116,6 +139,55 @@ function consentRRAppConsent(grantAll) {
     };
 
     const stored = store();
+
+    // Rewrite what is there rather than invent a list: the consentables come
+    // back with their configuration, which a replaced bundle never fetches.
+    const restate = ( ) => {
+        let state;
+        try {
+            const raw = read(STATE);
+            if ( raw === '' ) { return 'absent'; }
+            state = JSON.parse(raw);
+        } catch(ex) {
+            return 'absent';
+        }
+        if ( state === null || typeof state !== 'object' ) { return 'absent'; }
+        const consents = state.consents;
+        if ( consents === null || typeof consents !== 'object' ) {
+            return 'absent';
+        }
+        const status = tcf.granted ? ALLOWED : DISALLOWED;
+        let touched = 0;
+        const restamp = entry => {
+            if ( entry === null || typeof entry !== 'object' ) { return; }
+            entry.status = status;
+            if ( entry.legintStatus !== undefined ) {
+                // Theirs is not applicable for those purposes, and stays so.
+                const absent = entry.legintStatus === DISALLOWED &&
+                    entry.type === 0 &&
+                    NO_LEGITIMATE_INTEREST.indexOf(entry.iab_id) !== -1;
+                entry.legintStatus = absent || tcf.granted === false
+                    ? DISALLOWED
+                    : ALLOWED;
+            }
+            touched += 1;
+        };
+        try {
+            if ( Array.isArray(consents.consentables) ) {
+                for ( const entry of consents.consentables ) { restamp(entry); }
+            }
+            if ( Array.isArray(consents.vendors) ) {
+                for ( const entry of consents.vendors ) { restamp(entry); }
+            }
+            if ( touched === 0 ) { return 'absent'; }
+            w.localStorage.setItem(STATE, JSON.stringify(state));
+            return (tcf.granted ? 'granted ' : 'denied ') + touched;
+        } catch(ex) {
+        }
+        return 'refused';
+    };
+
+    const restated = restate();
 
     const listeners = new Map();
     let nextId = 0;
@@ -272,6 +344,7 @@ function consentRRAppConsent(grantAll) {
             (tcf.reusedIdentity ? '' : '/default') +
             ' cc=' + tcf.publisherCC +
             ' keys=' + stored +
+            ' state=' + restated +
             ' drained=' + answered
         );
     } catch(ex) {

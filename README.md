@@ -60,24 +60,24 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/appconsent-accept.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -91,8 +91,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.28.1/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.28.1/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.28.2/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.28.2/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -1280,14 +1280,18 @@ the string says yes, the network says no. Use it per site, never globally.
 
 - **No GPP and no US privacy string.** Neither appears anywhere in their
   bundle, so there is none to put back.
-- **Their own state is not written.** `localStorage.appconsent` holds their
-  store, whose shape arrives with the configuration this never fetches, and
-  the fields a decision would consist of are not in their bundle at all -
-  `hasConsent` and `consentedAll`, which an earlier pass of this resource
-  wrote into it, appear nowhere in there. Whatever is already in that key is
-  left as it is. The answer lives in the `IABTCF_` keys and in `__tcfapi`,
-  which is where a vendor looks; their UI is the only thing that reads the
-  state, and it is not here.
+- **Their state is restamped, never invented.** A real
+  `localStorage.appconsent`, captured from a site after accepting, reads
+  `{ consents: { consentables: [ { id, iab_id, name, vendors_number, status,
+  legintStatus, type } ], vendors: [...] } }`, with their own enum - `ALLOWED
+  1`, `PENDING 0`, `DISALLOWED -1` - and a validator in the bundle insisting a
+  status is one of those three. Where a visitor already has that, every
+  consentable and vendor in it takes the mode's status, a legitimate interest
+  marked not-applicable stays so (their own purposes `[1,3,4,5,6]` have none),
+  and the names and counts are left alone. Where there is none, the key is
+  untouched: the list itself comes back with the configuration this never
+  fetches. An earlier pass wrote `hasConsent` and `consentedAll` there -
+  neither appears anywhere in their bundle.
 - **GPC and DNT are not read**, because they do not read them either: neither
   `globalPrivacyControl` nor `doNotTrack` appears in their bundle.
 
@@ -1322,7 +1326,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.1/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.2/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token
