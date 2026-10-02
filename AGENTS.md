@@ -172,6 +172,10 @@ line rules and joined the way uBO joins several resource URLs.
 for a push that changes what a user fetches. Everything else - a filter list, the
 README, a test, a tool - lands on `main` with no bump, no tag and no release.
 
+The other side of that: a release needs a version of its own, always. npm will
+not take a version twice, so publishing is what a bump is for - the question is
+never whether to bump a release, only whether this push is one.
+
 So before reaching for `npm version`, check there is anything to ship:
 
 ```sh
