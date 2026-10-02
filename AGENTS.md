@@ -143,6 +143,36 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   the `init` entry's fourth argument; both it and `window.__gpp()` drain a stub's
   queue that way. That convention is why the InMobi resource can be tenant-
   accurate at all, and it is not in any documentation.
+- **Read the CMP's decision path to its last call.** CookieScript's refusal
+  paths `qt()` and `yt()` both end in `oe()`, which is `window.location.reload()`
+  - and its loader opens with `Mt()`, which removes banner markup the page may
+  already carry, a `position: fixed` full-screen dialog among it. Four releases
+  wrote a perfect record while the page stayed broken, because the record was
+  never the part that mattered: tags are parked in markup rendered before any
+  decision existed, and only a fresh render brings them back. Grep a new family
+  for `location.reload`, `removeChild` and the teardown that runs before they
+  inject anything. A reload needs guards - no prior decision, the record
+  verifiably written, top document, a one-shot marker - and the document hidden
+  while it is in flight, or the page paints unstyled first.
+- **Where the CMP dispatches, dispatch.** CookieScript's `s()` fires at
+  `window.document` with `bubbles`; firing at `window` reaches no page listener.
+  CookieScript is the odd one - Cookiebot and Usercentrics both fire at `window`
+  - so check the vendor's own dispatcher rather than copying a sibling resource.
+- **A tenant can rename what you write.** CookieScript's `j()` takes the consent
+  cookie's *name* off a `script[data-cs-cookiename]` attribute and only then
+  falls back to `CookieScriptConsent`. A redirected script keeps its attributes
+  in the document, so read them; hardcoding the default writes a record nothing
+  reads, on a page that looks fine otherwise.
+- **Matching a selector exactly can do more harm than approximating it.**
+  CookieScript's refusal reaches its unblocker as `k(['strict'])`, and with a
+  non-empty list their selector requires `[data-cookiecategory]` to be present,
+  their script selector wanting `type="text/plain"` besides. A re-review matched
+  that and broke a page that had been working, because the element it needs
+  carries no category. Freeing is decided on the category rule alone now, with
+  the refusal invariant kept explicit instead: a declared category must be the
+  never-refused one, and the CMP's own bucket for unidentified trackers
+  (`unclassified`) stays refused. **Any finding that makes a resource do less
+  needs field evidence, not just a reading of the SDK.**
 - What varies per tenant is left alone deliberately: `publisherCC`, publisher
   restrictions, how many vendors keep legitimate interest, the tenant's consent
   language, whether Google vendors are enabled. None is derivable from a page.
@@ -157,7 +187,22 @@ line rules and joined the way uBO joins several resource URLs.
 - **Mutation-test anything you add.** Break the code the test covers and watch it
   fail. Three tests here passed for weeks against the wrong thing: they were
   satisfied by the document-ready full scan, not by the observer they claimed to
-  test, and deleting the observer left them green.
+  test, and deleting the observer left them green. It happened again in
+  cookiescript afterwards, so here is the mechanism: **jsdom fires
+  `DOMContentLoaded` in the same turn as an insertion**, so a test that injects
+  markup while the document is loading and then awaits a microtask is served by
+  the ready-event sweep whether the observer runs or not. To test an observer,
+  inject into a document that has already loaded (`await settle(50)` before
+  `eval`): the ready and load sweeps are then never registered and their delayed
+  pass is far off, so nothing but the observer can act.
+- **An event-target bug hides behind a `window` listener.** A bubbling event
+  dispatched at `document` reaches a `window` listener too, so a test listening
+  there passes either way. Listen where a page listens, and assert `ev.target`
+  and `ev.bubbles`.
+- **Don't write a mutation that leaves a long timer.** `node --test` waits for
+  the event loop to drain, so stretching a cleanup timer to ten minutes hangs
+  the run rather than failing it - remove the cleanup call instead. (And a
+  `pkill -f` pattern matches its own command line; kill by pid.)
 - A surviving mutation is not automatically a coverage gap - check the mutation
   actually disabled the behaviour. Zeroing `maxVendorId` changes nothing because
   the decoder reads the range entries.
