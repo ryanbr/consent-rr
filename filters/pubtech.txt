@@ -1,0 +1,42 @@
+! Title: consent-rr - PubTech CMP
+! Description: Replaces PubTech's CMP with a stub that records a refusal in
+!              their own publisher-cookie string and TC string.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! One file is the whole CMP: the TCF API, the banner, the vendor lists it goes
+! on to fetch, and the tenant's own configuration, which is inlined at the top
+! of that very file as window.__pub_tech_cmp_config. The path carries the
+! tenant id - 312 and 466 seen in the field - and the bundle name has varied
+! (pubtech-cmp-v2-esm.js), so both are wildcarded.
+! -----------------------------------------------------------------------------
+||cmp.pubtech.ai/*/pubtech-cmp-*.js$script,redirect=pubtech-reject.js
+
+! -----------------------------------------------------------------------------
+! Their entry is a module - <script type="module" src="..."> - and a user
+! resource is served as a data: URI. If a browser declines to run a module from
+! one, nothing of ours runs, so the scriptlet form is the reliable shape here:
+! it is injected rather than fetched, and runs at document_start, before their
+! bundle would have.
+!
+! example.com##+js(pubtech-reject)
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Their asset host is deliberately left alone.
+!
+!   cmp-assets.pubtech.ai/vendorList/v2.2/<version>/vendor-list.json
+!   cmp-assets.pubtech.ai/vendorList/v2.2/<version>/google-vendor-list.json
+!   cmp-assets.pubtech.ai/<tenant>/<folder>/<lang>/cookie/<n>/publisher-cookie.json
+!
+! The CMP is what asks for all three - the IAB vendor list at the version
+! pinned in its bundle, Google's additional-consent list, and the publisher's
+! own cookie declarations - so with it replaced they are never requested. A
+! rule for them would only matter on a page where their CMP is still running,
+! and there it would break the banner rather than the tracking.
+! -----------------------------------------------------------------------------

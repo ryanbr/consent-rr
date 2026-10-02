@@ -109,7 +109,7 @@ Sizes: `reject` 36.1 KB, `reject-unblock` 36.1 KB, `accept` 36.1 KB.
 
 # Every resource, side by side
 
-9 consent managers, 12 resources. Each one was booted on a page its own
+10 consent managers, 13 resources. Each one was booted on a page its own
 consent manager would recognise, and the rows below are what it did there - the
 globals it defined, the cookies it wrote, the signals it sent. A resource that
 shares a page with another (the OneTrust three, the Civic two) was measured on
@@ -128,6 +128,7 @@ the same fixture as its sibling.
 | `cookiebot-reject` | 14.7 KB | `CookieConsent`, `Cookiebot`, `uetq`, `CB_OnTagsExecuted_Processed` |
 | `securiti-reject` | 8.2 KB | `SecuritiSDK`, `__ScrtSdkApiOps`, `initCmp`, `setConsentBannerParams`, `showConsentPreferencesPopup`, `overrideThemeMatching` +4 more |
 | `transcend-reject` | 5.2 KB | - |
+| `pubtech-reject` | 16.0 KB | `__tcfapi`, `__pub_tech_cmp_on_consent_queue__pre`, `__pub_tech_cmp_on_consent_queue`, `__pub_tech_cmp_consent_rr` |
 | `usercentrics-reject` | 29.8 KB | `__ucCmp`, `UC_UI` |
 
 ## What each one stores and sends
@@ -145,6 +146,7 @@ the same fixture as its sibling.
 | `cookiebot-reject` | `CookieConsent` | - | update: granted security_storage | - | no |
 | `securiti-reject` | `__privaci_cookie_consents`, `__privaci_cookie_consent_uuid` | - | update: granted security_storage | - | no |
 | `transcend-reject` | - | - | - | - | no |
+| `pubtech-reject` | `pubtech-cmp-pcstring`, `euconsent-v2`, `ac_euconsent-v2` | `ac_euconsent-v2` | - | `__tcfapi` | no |
 | `usercentrics-reject` | - | `ucData`, `uc_interaction_type`, `uc_user_interaction` | update: granted nothing | - | no |
 
 Every one of them refuses; what differs is what each consent manager gives a
@@ -154,7 +156,7 @@ The last column is measured by booting each one twice, with the clock and the
 randomness pinned so the two runs differ in nothing but the signal, and then
 comparing what the visitor is left carrying. The 5 it changes carry a
 field for it to change - OneTrust's own `browserGpcFlag`, InMobi's
-legitimate interest, Osano's opt-out. The 7 it does not have nowhere to
+legitimate interest, Osano's opt-out. The 8 it does not have nowhere to
 put it: every category is refused with or without the signal either way.
 
 ## What each one does to a parked tag
@@ -193,5 +195,6 @@ uBlock Origin does the blocking.
 [consent-rr] cookiebot-reject 1.0.1 necessary=true denied=preferences,statistics,marketing iab=off cookie=written
 [consent-rr] securiti-reject 1.0.0 consents=none tenant=read gcm=denied cookie=written
 [consent-rr] transcend-reject 1.1.0 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
+[consent-rr] pubtech-reject 1.0.0 pc=0-000 tcf=refused cc=AA/default ac=empty queues=drained gtm=sent
 [consent-rr] usercentrics-reject 1.4.0 settings=sROYKApBP lang=de revoked=none gcm=denied gpc=off cmp=v3 answered=true iab=off gpp=off data=written
 ```

@@ -258,6 +258,13 @@ const FIXTURES = [
         },
     },
     {
+        resource: 'pubtech-reject.js',
+        cmp: 'PubTech CMP',
+        page: '<html lang="it"><head>' +
+            '<script type="module" src="https://cmp.pubtech.ai/312/pubtech-cmp-v2-esm.js"></' + 'script>' +
+            '</head><body><p>x</p></body></html>',
+    },
+    {
         resource: 'usercentrics-reject.js',
         cmp: 'Usercentrics',
         page: '<html lang="de"><head>' +

@@ -11,7 +11,8 @@ clicked, and the page's consent API answers normally.
 
 Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**,
 **InMobi Choice** (formerly Quantcast Choice), **Osano**, **Civic Cookie
-Control**, **Cookiebot**, **Securiti**, **Transcend** and **Usercentrics**.
+Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics** and
+**PubTech**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -24,6 +25,7 @@ Control**, **Cookiebot**, **Securiti**, **Transcend** and **Usercentrics**.
 | `cookiebot-reject.js` | Cookiebot: their own default state, which is already a refusal - `necessary` true, `preferences`, `statistics` and `marketing` false - with `CookieConsent` answering and parked tags left parked. |
 | `securiti-reject.js` | Securiti: a refusal recorded in their own `__privaci_cookie_consents`, with the API their loader parks answering instead of queueing for an SDK that never arrives. |
 | `transcend-reject.js` | Transcend: no banner, and the refusal recorded through airgap's own API - which leaves airgap itself in place, blocking by that refusal. |
+| `pubtech-reject.js` | PubTech CMP: no banner, their publisher-cookie string with every choice off, and `__tcfapi` answering a refusal the IAB's own library agrees is one. |
 | `usercentrics-reject.js` | Usercentrics: no banner, and no service consented in the record their own blocker reads - which leaves that blocker in place, blocking by it. A service a returning visitor had accepted is revoked by name. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
@@ -53,18 +55,19 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/pubtech-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -78,8 +81,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.23.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.23.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.24.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.24.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -97,8 +100,9 @@ files, not described.
    [`filters/cookiebot.txt`](filters/cookiebot.txt) and
    [`filters/securiti.txt`](filters/securiti.txt) and
    [`filters/transcend.txt`](filters/transcend.txt) and
-   [`filters/usercentrics.txt`](filters/usercentrics.txt) into *My filters*, or
-   host them and subscribe via *Import*.
+   [`filters/usercentrics.txt`](filters/usercentrics.txt) and
+   [`filters/pubtech.txt`](filters/pubtech.txt) into *My filters*, or host them
+   and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
 loads OneTrust there is no request to redirect - uBO's lists neuter
@@ -964,6 +968,64 @@ it.
   page reads them once the CMP is replaced, and the sibling domain gets this
   resource too.
 
+## PubTech CMP
+
+```
+||cmp.pubtech.ai/*/pubtech-cmp-*.js$script,redirect=pubtech-reject.js
+```
+
+One file is the whole CMP - the TCF API, the banner, the vendor lists it goes
+on to fetch - and the tenant's configuration is inlined at the top of that very
+file as `window.__pub_tech_cmp_config`. So replacing it takes the configuration
+with it, which decides what a refusal can state.
+
+Two tenants were read, 312 and 466. They differ in configuration and agree on
+the identity, so it is hard-coded: **cmpId 352, cmpVersion 6, vendor list 178,
+policy version 5**. `@iabtcf/core` decodes the string in the tests and every
+vector in it is empty.
+
+What the configuration took with it is recovered from the visitor instead of
+guessed:
+
+| | theirs | without it |
+| --- | --- | --- |
+| `publisherCountryCode` | `IT` on both tenants | read back out of an existing TC string, else `AA` |
+| `publisherCookieVersion` | `3` on one, `22` on the other | read back out of an existing pcstring, else `0`, which is their own fallback |
+
+Their publisher-cookie string is their own codec - the version, a `-`, then one
+character each for feature, user-experience and measurement cookies, with `1`
+enabled and `0` disabled - so a full refusal is `<version>-000` and
+`technicalCookies`, which has no character, stays on as their necessary
+category. The TC string goes in `euconsent-v2` and the additional-consent
+string in `ac_euconsent-v2`, left empty in both the cookie and localStorage
+because it lists the Google vendors a visitor consented to and this one
+consented to none.
+
+**The part worth getting right is their consent queue.** A page registers
+callbacks by pushing onto `__pub_tech_cmp_on_consent_queue`, and their drainer
+calls each one, records the arguments, then **replaces `push`** so a callback
+registered later fires at once with those same arguments:
+
+```js
+r[e].latestArgs = n;                       // their lt()
+r[e].push = async function(cb) { cb(...r[e].latestArgs); Array.prototype.push.call(r[e], cb) };
+```
+
+Page code gated on consent is waiting on exactly that, so it is reproduced
+rather than left hanging - both that queue and the `__pre` one - along with
+their two GTM events.
+
+### Deliberate gaps
+
+- **No GPP.** Their bundle has no `__gpp` at all, so there is none to put back.
+- **Their entry is a module.** `<script type="module">` from a `data:` URI may
+  be declined by the browser, and a user resource is served as one. The
+  scriptlet form is the reliable shape there, and `filters/pubtech.txt` says so.
+- **The asset host is left alone**: the vendor lists and the publisher-cookie
+  declarations are fetched by the CMP this replaces, so nothing asks for them,
+  and a rule for them would only break a banner on a page where their CMP is
+  still running.
+
 ## Development
 
 ```sh
@@ -995,7 +1057,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.24.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token
