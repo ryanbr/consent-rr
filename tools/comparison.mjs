@@ -241,6 +241,30 @@ const FIXTURES = [
             '<script id="s" data-tenant-uuid="t-1" data-domain-uuid="d-1"></' + 'script>' +
             '</head><body><p>x</p></body></html>',
     },
+    {
+        resource: 'transcend-reject.js',
+        cmp: 'Transcend',
+        page: '<html lang="en"><body><p>x</p></body></html>',
+        // Their engine, which the resource records the refusal through. Its
+        // requireAuth is off, as a tenant's is when its own manager records a
+        // choice nobody clicked.
+        drive: w => {
+            w.eval('window.airgap = { loadOptions: { requireAuth: "off" },' +
+                ' readyQueue: [], ready: function(c) { c(window.airgap); },' +
+                ' getConsent: function() { return { purposes: {' +
+                ' Advertising: "Auto", Analytics: true, Functional: true,' +
+                ' SaleOfInfo: false } }; },' +
+                ' setConsent: function() { return true; } };');
+        },
+    },
+    {
+        resource: 'usercentrics-reject.js',
+        cmp: 'Usercentrics',
+        page: '<html lang="de"><head>' +
+            '<script id="usercentrics-cmp" data-settings-id="sROYKApBP" data-language="de" src="https://web.eu1.cmp.usercentrics.eu/ui/loader.js"></' + 'script>' +
+            '<script id="stat" type="text/plain" data-usercentrics="Google Analytics" src="https://s.example/s.js"></' + 'script>' +
+            '</head><body><p>x</p></body></html>',
+    },
 ];
 
 const bootResource = async (fixture, source, gpc) => {
@@ -261,6 +285,27 @@ const bootResource = async (fixture, source, gpc) => {
             value: true, configurable: true,
         });
     }
+    // Both runs have to differ only in the signal, so the two things that
+    // would differ anyway are pinned: the clock, because these records carry a
+    // timestamp, and the randomness, because some of them mint a visitor id.
+    w.eval('(function() {' +
+        'var fixed = 1790000000000;' +
+        'var Real = window.Date;' +
+        'function Fixed() {' +
+        ' if ( arguments.length === 0 ) { return new Real(fixed); }' +
+        ' return new (Function.prototype.bind.apply(' +
+        '  Real, [ null ].concat(Array.prototype.slice.call(arguments))))();' +
+        '}' +
+        'Fixed.now = function() { return fixed; };' +
+        'Fixed.parse = Real.parse; Fixed.UTC = Real.UTC;' +
+        'Fixed.prototype = Real.prototype;' +
+        'window.Date = Fixed;' +
+        'var n = 0;' +
+        'Math.random = function() { n += 1; return (n % 97) / 97; };' +
+        'try { window.crypto.randomUUID = function() {' +
+        ' n += 1; return "00000000-0000-4000-8000-" + String(n).padStart(12, "0");' +
+        '}; } catch (ex) {}' +
+        '})();');
     // What a page with Google's tag has. Some of these call gtag and some push
     // to the layer directly; with this here the column measures the same thing
     // for all of them.
@@ -269,6 +314,10 @@ const bootResource = async (fixture, source, gpc) => {
     if ( typeof source.drive === 'function' ) { source.drive(w); }
     // How each tag was parked, before anything ran: these consent managers
     // park in two different ways, and freed means something different for each.
+    const keysBefore = new Set();
+    for ( let i = 0; i < w.localStorage.length; i += 1 ) {
+        keysBefore.add(w.localStorage.key(i));
+    }
     const TAG_IDS = [ 'nec', 'stat', 'ads', 'content' ];
     const parkedAs = {};
     for ( const id of TAG_IDS ) {
@@ -338,10 +387,22 @@ const bootResource = async (fixture, source, gpc) => {
     const freed = TAG_IDS
         .filter(id => doc.getElementById(id) !== null)
         .map(id => id + ': ' + state(id));
+    const stored = [];
+    const values = {};
+    for ( let i = 0; i < w.localStorage.length; i += 1 ) {
+        const key = w.localStorage.key(i);
+        if ( keysBefore.has(key) === false ) { stored.push(key); }
+        values[key] = w.localStorage.getItem(key);
+    }
+    stored.sort();
     return {
         bytes: code.length,
         installed,
         cookies,
+        stored,
+        // Everything the visitor is left carrying, values and all, which is
+        // what the GPC column compares.
+        record: JSON.stringify([ doc.cookie, values ]),
         consentMode: consentMode !== undefined
             ? consentMode[1] + ' ' + Object.entries(consentMode[2] || {})
                 .filter(pair => pair[1] === 'granted')
@@ -361,8 +422,10 @@ for ( const fixture of FIXTURES ) {
         : fixture;
     const plain = await bootResource(fixture, source, false);
     const withGpc = await bootResource(fixture, source, true);
-    const same = JSON.stringify([ plain.cookies, plain.tcString, plain.console ]) ===
-        JSON.stringify([ withGpc.cookies, withGpc.tcString, withGpc.console ]);
+    // What it stored and what it sent - not what it said. A resource whose
+    // console line mentions the signal has not thereby changed its answer.
+    const same = JSON.stringify([ plain.record, plain.tcString ]) ===
+        JSON.stringify([ withGpc.record, withGpc.tcString ]);
     crossRows.push({ fixture, plain, gpcChanges: same === false });
 }
 
@@ -442,7 +505,7 @@ Sizes: ${MODES.map(m => '`' + m + '` ' +
 
 # Every resource, side by side
 
-Seven consent managers, ten resources. Each one was booted on a page its own
+${new Set(crossRows.map(row => row.fixture.cmp)).size} consent managers, ${crossRows.length} resources. Each one was booted on a page its own
 consent manager would recognise, and the rows below are what it did there - the
 globals it defined, the cookies it wrote, the signals it sent. A resource that
 shares a page with another (the OneTrust three, the Civic two) was measured on
@@ -464,12 +527,15 @@ ${crossRows.map(row =>
 
 ## What each one stores and sends
 
-| Resource | Cookies written | Google consent mode | IAB APIs | GPC changes it |
-| --- | --- | --- | --- | --- |
+| Resource | Cookies written | In localStorage | Google consent mode | IAB APIs | GPC changes it |
+| --- | --- | --- | --- | --- | --- |
 ${crossRows.map(row =>
     '| `' + row.fixture.resource.replace('.js', '') + '` | ' +
     (row.plain.cookies.length !== 0
         ? row.plain.cookies.map(n => '`' + n + '`').join(', ')
+        : '-') + ' | ' +
+    (row.plain.stored.length !== 0
+        ? row.plain.stored.map(n => '`' + n + '`').join(', ')
         : '-') + ' | ' +
     (row.plain.consentMode !== ''
         ? row.plain.consentMode.replace(/^(default|update) ?/, '$1: granted ') +
@@ -482,9 +548,14 @@ ${crossRows.map(row =>
 ).join('\n')}
 
 Every one of them refuses; what differs is what each consent manager gives a
-page to read, and therefore what a refusal has to answer. The three that GPC
-changes carry a legitimate-interest or opt-out field for it to change - the
-categories are refused with or without the signal.
+page to read, and therefore what a refusal has to answer.
+
+The last column is measured by booting each one twice, with the clock and the
+randomness pinned so the two runs differ in nothing but the signal, and then
+comparing what the visitor is left carrying. The ${crossRows.filter(row => row.gpcChanges).length} it changes carry a
+field for it to change - OneTrust's own \`browserGpcFlag\`, InMobi's
+legitimate interest, Osano's opt-out. The ${crossRows.filter(row => row.gpcChanges === false).length} it does not have nowhere to
+put it: every category is refused with or without the signal either way.
 
 ## What each one does to a parked tag
 

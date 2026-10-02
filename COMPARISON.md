@@ -109,7 +109,7 @@ Sizes: `reject` 36.1 KB, `reject-unblock` 36.1 KB, `accept` 36.1 KB.
 
 # Every resource, side by side
 
-Seven consent managers, ten resources. Each one was booted on a page its own
+9 consent managers, 12 resources. Each one was booted on a page its own
 consent manager would recognise, and the rows below are what it did there - the
 globals it defined, the cookies it wrote, the signals it sent. A resource that
 shares a page with another (the OneTrust three, the Civic two) was measured on
@@ -127,26 +127,35 @@ the same fixture as its sibling.
 | `civic-reject-unblock` | 22.8 KB | `CookieControl` |
 | `cookiebot-reject` | 14.4 KB | `CookieConsent`, `Cookiebot`, `uetq`, `CB_OnTagsExecuted_Processed` |
 | `securiti-reject` | 8.2 KB | `SecuritiSDK`, `__ScrtSdkApiOps`, `initCmp`, `setConsentBannerParams`, `showConsentPreferencesPopup`, `overrideThemeMatching` +4 more |
+| `transcend-reject` | 5.2 KB | - |
+| `usercentrics-reject` | 10.3 KB | `__ucCmp`, `UC_UI` |
 
 ## What each one stores and sends
 
-| Resource | Cookies written | Google consent mode | IAB APIs | GPC changes it |
-| --- | --- | --- | --- | --- |
-| `onetrust-reject` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2` | - | `__tcfapi`, `__gpp` | yes |
-| `onetrust-accept` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2` | - | `__tcfapi`, `__gpp` | no |
-| `onetrust-reject-unblock` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2` | - | `__tcfapi`, `__gpp` | yes |
-| `cookieinformation-reject` | `CookieInformationConsent` | - | - | no |
-| `inmobi-reject` | `euconsent-v2`, `IABGPP_HDR_GppString` | - | `__tcfapi`, `__gpp`, `__uspapi` | yes |
-| `osano-reject` | `osano_consentmanager`, `osano_consentmanager_uuid` | default: granted security_storage, functionality_storage | `__tcfapi`, `__gpp`, `__uspapi` | yes |
-| `civic-reject` | `CookieControl` | - | - | no |
-| `civic-reject-unblock` | `CookieControl` | - | - | no |
-| `cookiebot-reject` | `CookieConsent` | update: granted security_storage | - | no |
-| `securiti-reject` | `__privaci_cookie_consents`, `__privaci_cookie_consent_uuid` | update: granted security_storage | - | no |
+| Resource | Cookies written | In localStorage | Google consent mode | IAB APIs | GPC changes it |
+| --- | --- | --- | --- | --- | --- |
+| `onetrust-reject` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2` | `cookieChoiceMade` | - | `__tcfapi`, `__gpp` | yes |
+| `onetrust-accept` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2` | `cookieChoiceMade` | - | `__tcfapi`, `__gpp` | yes |
+| `onetrust-reject-unblock` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2` | `cookieChoiceMade` | - | `__tcfapi`, `__gpp` | yes |
+| `cookieinformation-reject` | `CookieInformationConsent` | - | - | - | no |
+| `inmobi-reject` | `euconsent-v2`, `IABGPP_HDR_GppString` | - | - | `__tcfapi`, `__gpp`, `__uspapi` | yes |
+| `osano-reject` | `osano_consentmanager`, `osano_consentmanager_uuid` | `osano_consentmanager`, `osano_consentmanager_uuid` | default: granted security_storage, functionality_storage | `__tcfapi`, `__gpp`, `__uspapi` | yes |
+| `civic-reject` | `CookieControl` | - | - | - | no |
+| `civic-reject-unblock` | `CookieControl` | - | - | - | no |
+| `cookiebot-reject` | `CookieConsent` | - | update: granted security_storage | - | no |
+| `securiti-reject` | `__privaci_cookie_consents`, `__privaci_cookie_consent_uuid` | - | update: granted security_storage | - | no |
+| `transcend-reject` | - | - | - | - | no |
+| `usercentrics-reject` | - | `ucData` | update: granted nothing | - | no |
 
 Every one of them refuses; what differs is what each consent manager gives a
-page to read, and therefore what a refusal has to answer. The three that GPC
-changes carry a legitimate-interest or opt-out field for it to change - the
-categories are refused with or without the signal.
+page to read, and therefore what a refusal has to answer.
+
+The last column is measured by booting each one twice, with the clock and the
+randomness pinned so the two runs differ in nothing but the signal, and then
+comparing what the visitor is left carrying. The 5 it changes carry a
+field for it to change - OneTrust's own `browserGpcFlag`, InMobi's
+legitimate interest, Osano's opt-out. The 7 it does not have nowhere to
+put it: every category is refused with or without the signal either way.
 
 ## What each one does to a parked tag
 
@@ -162,6 +171,7 @@ its necessary category, on the fixtures that have them.
 | `civic-reject` | `stat: parked`, `content: parked` |
 | `civic-reject-unblock` | `stat: parked`, `content: freed` |
 | `cookiebot-reject` | `nec: freed`, `stat: parked` |
+| `usercentrics-reject` | `stat: parked` |
 
 Where a consent manager parks tags in the markup, a refusal leaves them parked -
 except the ones gated on nothing but a necessary category, which its own script
@@ -182,4 +192,6 @@ uBlock Origin does the blocking.
 [consent-rr] civic-reject-unblock 1.4.0 mode=gdpr revoked=analytics accepted=embedded iab=off cookie=written
 [consent-rr] cookiebot-reject 1.0.0 necessary=true denied=preferences,statistics,marketing iab=off cookie=written
 [consent-rr] securiti-reject 1.0.0 consents=none tenant=read gcm=denied cookie=written
+[consent-rr] transcend-reject 1.1.0 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
+[consent-rr] usercentrics-reject 1.0.0 settings=sROYKApBP lang=de revoked=none gcm=denied gpc=off data=written
 ```

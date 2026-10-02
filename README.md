@@ -11,7 +11,7 @@ clicked, and the page's consent API answers normally.
 
 Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**,
 **InMobi Choice** (formerly Quantcast Choice), **Osano**, **Civic Cookie
-Control**, **Cookiebot**, **Securiti** and **Transcend**.
+Control**, **Cookiebot**, **Securiti**, **Transcend** and **Usercentrics**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -24,6 +24,7 @@ Control**, **Cookiebot**, **Securiti** and **Transcend**.
 | `cookiebot-reject.js` | Cookiebot: their own default state, which is already a refusal - `necessary` true, `preferences`, `statistics` and `marketing` false - with `CookieConsent` answering and parked tags left parked. |
 | `securiti-reject.js` | Securiti: a refusal recorded in their own `__privaci_cookie_consents`, with the API their loader parks answering instead of queueing for an SDK that never arrives. |
 | `transcend-reject.js` | Transcend: no banner, and the refusal recorded through airgap's own API - which leaves airgap itself in place, blocking by that refusal. |
+| `usercentrics-reject.js` | Usercentrics: no banner, and no service consented in the record their own blocker reads - which leaves that blocker in place, blocking by it. A service a returning visitor had accepted is revoked by name. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -52,17 +53,18 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/usercentrics-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -76,8 +78,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.18.1/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.18.1/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.19.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.19.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -94,8 +96,9 @@ files, not described.
    [`filters/civic.txt`](filters/civic.txt) and
    [`filters/cookiebot.txt`](filters/cookiebot.txt) and
    [`filters/securiti.txt`](filters/securiti.txt) and
-   [`filters/transcend.txt`](filters/transcend.txt) into *My filters*, or host
-   them and subscribe via *Import*.
+   [`filters/transcend.txt`](filters/transcend.txt) and
+   [`filters/usercentrics.txt`](filters/usercentrics.txt) into *My filters*, or
+   host them and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
 loads OneTrust there is no request to redirect - uBO's lists neuter
@@ -753,6 +756,74 @@ definition, so the callback queued there is one it drains.
   never names it. Replacing the engine would drop its blocking and mean
   reimplementing the API it exposes.
 
+## Usercentrics
+
+```
+||cmp.usercentrics.eu/ui/loader.js$script,redirect=usercentrics-reject.js
+```
+
+**Replace the CMP, not the blocker.** Usercentrics also ships in two halves,
+and they come from different hosts: `loader.js` off
+`web.<region>.cmp.usercentrics.eu` is the CMP, which reads its configuration
+off its own script tag and fetches the SDK, a legislation-specific controller
+and the banner - around 450 kB across four files. `uc-block.bundle.js` off
+`privacy-proxy.usercentrics.eu` is the blocker, and it carries a list of some
+111 providers with the patterns that match their scripts, iframes, images and
+embeds.
+
+What makes this work is where the blocker gets its answer. Not from the CMP -
+out of storage:
+
+```js
+getCMPv3Settings() {                       // uc-block.bundle.js
+    const i = JSON.parse(localStorage.getItem('ucData'));
+    return i?.consent?.services ?? {};
+}
+```
+
+and its own rule is that `disabledProviders` is every provider **not** in its
+whitelist, where the whitelist holds the ids that have consent. So a service it
+was never told about stays blocked, and a refusal does not have to name the
+tenant's services to be complete. Their own deny-all record agrees: the
+`ucString` a denied visitor carries decompresses to `"status":"ALL_DENIED"`
+with `"serviceIds":[]`.
+
+Booted against the real bundle, that leaves 89 script patterns and 86 iframe
+patterns disabled, nothing whitelisted, and the record their blocker reads
+written by this instead of by them.
+
+**A returning visitor is the case an empty record cannot carry**, and it is
+worth the extra work. The blocker builds its whitelist at construction from
+whatever is already in storage, and its `setItem` hook only visits the ids
+present in the value written over it - so an empty map says nothing about the
+two services that visitor had accepted and they stay consented. The ids are in
+that old record, so each one is named with `consent: false`, which is what
+their own deny-all writes too. Both shapes are read: `ucData` for a v3 page and
+`uc_settings`, their v2 key, because the blocker falls back to its v2 branch
+whenever it cannot see a loader tag - which is what a scriptlet injection looks
+like. No v2 record is invented where the page has none.
+
+It works in either position. Served in place of `loader.js` it runs after the
+blocker, and the write tells it. Injected as a scriptlet it runs first, and the
+blocker reads the refusal at construction instead.
+
+### Deliberate gaps
+
+- **The service names are only known where the visitor had accepted**, since
+  that is the only place they appear. A first visit writes an empty map, so a
+  site driving a preference centre off `getServicesBaseInfo()` sees an empty
+  list rather than a list of refusals. Nothing is granted either way.
+- **No `ucString`.** That is their cross-domain record, lz-string-compressed,
+  and it is what carries a decision to a sibling domain. It is not written:
+  nothing on the page reads it once the CMP is replaced, and the sibling domain
+  gets this resource too.
+- **No IAB layer.** A TCF tenant's `__tcfapi` comes from the SDK this keeps out,
+  and a TC string is not something to invent - the same reason as Cookiebot and
+  Securiti.
+- **v2 is not targeted.** The older CMP off `app.usercentrics.eu/browser-ui/`
+  has its own API and its own record; only the `uc_settings` revocation above
+  touches anything of its.
+
 ## Development
 
 ```sh
@@ -784,7 +855,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

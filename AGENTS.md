@@ -175,13 +175,24 @@ README, a test, a tool - lands on `main` with no bump, no tag and no release.
 So before reaching for `npm version`, check there is anything to ship:
 
 ```sh
-git diff --stat <last tag> -- dist/      # empty means do not bump
+git status --short dist/                 # a new resource is untracked
+git diff --stat <last tag> -- dist/      # both empty means do not bump
 ```
+
+Both of them, because `git diff` against a tag cannot see an untracked file, so
+a whole new resource looks like nothing to ship.
 
 Empty means the resources are byte-identical to the last release, pinned URLs
 still serve the right file, and a new version would only move the pins and
-publish release notes for a file nobody needs again. v1.18.1 was released that
+publish release notes for a file nobody needs again. 1.18.1 was released that
 way by mistake; it shipped a filter line and two paragraphs.
+
+The pins come in two shapes now - `consent-rr/v<version>/` for raw GitHub and
+the name, an `@`, the version and a slash for the CDNs - and a bump has to move
+both. The build fails on either being stale, which is how the CDN pair was
+caught. Do not sweep a version string across these files blindly: the sentence
+above names a release rather than pinning one, and a sweep rewrote it to say
+the wrong release had been the mistake.
 
 Each consent manager has its own version under `resourceVersions` in
 `package.json`; the repo's `version` is what releases are named after. Bump the

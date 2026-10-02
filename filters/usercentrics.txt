@@ -1,0 +1,68 @@
+! Title: consent-rr - Usercentrics
+! Description: Replaces Usercentrics' loader.js with a stub that records a
+!              refusal in the record their own blocker reads.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! Usercentrics ships in two halves and only one of them is replaced here.
+!
+! loader.js is the CMP: it reads the configuration off its own script tag,
+! fetches the SDK, the controller and the banner - around 450kB across four
+! files - and renders the dialog. That is what this stands in for, so none of
+! it is requested.
+!
+! The regional host varies by tenant (eu1, us1 and the rest), which the leading
+! || covers.
+! -----------------------------------------------------------------------------
+||cmp.usercentrics.eu/ui/loader.js$script,redirect=usercentrics-reject.js
+
+! -----------------------------------------------------------------------------
+! Leave uc-block.bundle.js alone.
+!
+! That is the other half: their blocker, served from
+! privacy-proxy.usercentrics.eu, and it is the thing that enforces a refusal
+! rather than the CMP. It carries a list of some 111 providers with the
+! patterns that match their scripts, iframes, images and embeds, and its own
+! rule is
+!
+!   disabled = every provider NOT in the whitelist
+!
+! where the whitelist holds the service ids that have consent. It builds that
+! whitelist out of localStorage, not out of the CMP, so with the CMP replaced
+! by a refusal it blocks everything - 89 script patterns and 86 iframe patterns
+! in the bundle sampled. Blocking or nooping this file would switch that off
+! and leave uBlock Origin to do all of it alone, so it is deliberately kept.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Where a redirect cannot land.
+!
+! A user resource is served as a data: URI, so a site whose CSP omits data: for
+! scripts refuses it - nothing of ours runs while the banner is gone anyway,
+! because the redirect kept the loader out. The scriptlet form is injected
+! rather than fetched, so the directive does not apply to it.
+!
+! The same line covers a tenant serving the CMP through their privacy proxy on
+! its own domain, where there is no usercentrics.eu url to match:
+!
+! example.com##+js(usercentrics-reject)
+!
+! Injected that way it runs before the blocker rather than after, which the
+! resource handles - the blocker then reads the refusal out of storage at
+! construction instead of being told about it.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! The loader is what asks for these, so with it replaced they are never
+! requested. They only matter where something else loads them: the SDK, the
+! legislation-specific controller, the banner views and their stylesheet.
+! -----------------------------------------------------------------------------
+||cmp.usercentrics.eu/ui/v/*/WebSdk.lib.*.js$script,redirect=noopjs
+||cmp.usercentrics.eu/ui/*CmpController.*.js$script,redirect=noopjs
+||cmp.usercentrics.eu/ui/*CmpView.*.js$script,redirect=noopjs
+||cmp.usercentrics.eu/ui/*.css$stylesheet,redirect=noopcss
