@@ -176,6 +176,11 @@ The other side of that: a release needs a version of its own, always. npm will
 not take a version twice, so publishing is what a bump is for - the question is
 never whether to bump a release, only whether this push is one.
 
+That holds for a publish by hand as much as for a release. Dispatching
+`publish.yml` without bumping first does nothing at all: the version is already
+on npm, so the run skips the publish step and says so. Bump, push, then
+dispatch.
+
 So before reaching for `npm version`, check there is anything to ship:
 
 ```sh

@@ -60,14 +60,16 @@ jobs:
           fi
 
       # Re-publishing a version is not possible, so a release republished or a
-      # dispatch run twice should do nothing rather than fail.
+      # dispatch run twice should do nothing rather than fail. A dispatch meant
+      # to ship something therefore needs the version bumped first, and the
+      # notice below says so rather than leaving a silent no-op.
       - name: is this version already on npm
         id: published
         run: |
           name=$(node -p 'require("./package.json").name')
           version=$(node -p 'require("./package.json").version')
           if npm view "$name@$version" version >/dev/null 2>&1; then
-            echo "::notice::$name@$version is already published - nothing to do"
+            echo "::notice::$name@$version is already published - nothing to do. A publish ships a new version only: bump it, push, then dispatch again."
             echo 'skip=true' >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
