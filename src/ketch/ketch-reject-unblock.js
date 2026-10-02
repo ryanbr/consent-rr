@@ -18,13 +18,15 @@
 
     Home: https://github.com/ryanbr/consent-rr
 
-    Stands in for Ketch's boot.js. No banner, their SDK never fetched, their
-    command queue answering a refusal, and an existing record revoked.
+    Ketch, for a site that withholds content until a purpose is consented to.
+    Stored and sent are the same refusal as ketch-reject.js - their record
+    denied, their Google consent mode denied - while the API answers the page
+    that every purpose is consented, so the content is released.
 
 */
 
 (function() {
     'use strict';
     // @include lib/ketch-core.js
-    consentRRKetch(false);
+    consentRRKetch(true);
 })();

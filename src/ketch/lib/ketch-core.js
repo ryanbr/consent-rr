@@ -75,7 +75,7 @@
 
 */
 
-function consentRRKetch() {
+function consentRRKetch(unblockAll) {
     const w = window;
     const doc = w.document;
     const VERSION = '@@VERSION@@';
@@ -210,15 +210,59 @@ function consentRRKetch() {
     const stored = store();
 
     // The shape their own retrieveConsent() answers with nothing recorded,
-    // plus the codes this knows about, all refused.
+    // plus the codes this knows about, all refused. This is what goes into
+    // the record and the data layer in either mode: what is stored and what
+    // is sent says no.
     const purposes = ( ) => {
         const out = {};
         for ( const code of codes ) { out[code] = false; }
         return out;
     };
 
+    // The unblock mode answers the page differently, and only the page: every
+    // purpose reads as consented, including the ones this cannot know the
+    // names of. A site gating content on one of them - realtruck reads
+    // consent.purposes.optional - lets it through, while the record and the
+    // consent-mode signal still refuse.
+    //
+    // The keys cannot be enumerated in advance, so this answers by key rather
+    // than by list. The handful of names that are not purposes are left to
+    // the object underneath, because a truthy "then" would make an awaited
+    // answer hang and a truthy "toJSON" would break stringifying it.
+    const NOT_PURPOSES = [
+        'then', 'catch', 'finally', 'toJSON', 'toString', 'valueOf',
+        'constructor', 'hasOwnProperty', 'isPrototypeOf',
+        'propertyIsEnumerable', 'toLocaleString', 'length', 'inspect',
+    ];
+
+    const permissive = ( ) => {
+        const base = {};
+        for ( const code of codes ) { base[code] = true; }
+        if ( typeof Proxy !== 'function' ) { return base; }
+        try {
+            return new Proxy(base, {
+                get(target, property) {
+                    if ( typeof property !== 'string' ) {
+                        return target[property];
+                    }
+                    if ( NOT_PURPOSES.indexOf(property) !== -1 ) {
+                        return target[property];
+                    }
+                    return true;
+                },
+                has( ) {
+                    return true;
+                },
+            });
+        } catch(ex) {
+        }
+        return base;
+    };
+
+    const reported = ( ) => (unblockAll === true ? permissive() : purposes());
+
     const consent = ( ) => ({
-        purposes: purposes(),
+        purposes: reported(),
         vendors: [],
         googleVendors: [],
         vendorConsents: { tcf: {}, google: {} },
@@ -314,6 +358,10 @@ function consentRRKetch() {
         // Their router's names.
         showConsent: resolved(undefined),
         showPreferences: resolved(undefined),
+        // Routed too, and what a site calls to open their banner - realtruck
+        // does. An earlier reading of their router missed it because its body
+        // is not one of the one-line delegations the others are.
+        showExperience: resolved(undefined),
         setIdentities: resolved(undefined),
         setUserAttributes: resolved(undefined),
         reinit: resolved(undefined),
@@ -444,6 +492,7 @@ function consentRRKetch() {
         w.console.info(
             '[consent-rr] ' + NAME + ' ' + VERSION +
             ' purposes=' + (codes.length !== 0 ? codes.length + ' denied' : 'none known') +
+            (unblockAll === true ? ' surface=granted stored=denied' : '') +
             ' record=' + stored +
             ' gcm=' + pushed +
             ' queue=' + (installed ? 'ready' : 'refused') +

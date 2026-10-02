@@ -25,9 +25,12 @@ const BOOT = 'window.semaphore = window.semaphore || [];' +
     'window.semaphore.unshift([ "init", { organization: { code: "x" } } ]);';
 
 let reject;
+let unblock;
 
 before(async ( ) => {
-    reject = (await loadResources()).get('ketch-reject.js');
+    const resources = await loadResources();
+    reject = resources.get('ketch-reject.js');
+    unblock = resources.get('ketch-reject-unblock.js');
 });
 
 const plain = value => JSON.parse(JSON.stringify(value));
@@ -63,13 +66,21 @@ const GRANTED = {
 /******************************************************************************/
 
 describe('ketch-reject', ( ) => {
-    it('ships as one resource, in the format uBO parses', async ( ) => {
+    it('ships as two resources, in the format uBO parses', async ( ) => {
         const names = Array.from((await loadResources()).keys())
             .filter(name => name.startsWith('ketch-'));
-        assert.deepEqual(names, [ 'ketch-reject.js' ]);
+        assert.deepEqual(names,
+            [ 'ketch-reject-unblock.js', 'ketch-reject.js' ]);
+        for ( const code of [ reject, unblock ] ) {
+            assert.equal(/^[ \t]*$/m.test(code), false);
+            assert.equal(/[^\x20-\x7e\t\n]/.test(code), false);
+        }
         assert.equal(/^[ \t]*$/m.test(reject), false);
         assert.equal(/[^\x20-\x7e\t\n]/.test(reject), false);
         assert.ok(reject.includes("const VERSION = '" + versions.ketch + "'"));
+        // One line apart: the mode, and nothing else.
+        assert.ok(reject.includes('consentRRKetch(false)'));
+        assert.ok(unblock.includes('consentRRKetch(true)'));
     });
 
     it('takes over their queue the way their SDK does', ( ) => {
@@ -284,7 +295,9 @@ describe('ketch-reject', ( ) => {
             'setProfilePreferences', 'getEnvironment', 'getGeoIP',
             'getIdentities', 'getJurisdiction', 'getJurisdictionForRegion',
             'getRegionInfo', 'getIsDisplayed', 'setIdentities',
-            'setUserAttributes', 'showConsent', 'showPreferences', 'reinit',
+            'setUserAttributes', 'showConsent', 'showPreferences',
+            // Routed as well, and what realtruck calls to open their banner.
+            'showExperience', 'reinit',
             'handleKeyboardEvent', 'returnKeyboardControl', 'registerPlugin',
             'on', 'off', 'onConsent',
         ] ) {
@@ -354,6 +367,104 @@ describe('ketch-reject', ( ) => {
 
 /******************************************************************************/
 
+describe('ketch-reject-unblock', ( ) => {
+    // realtruck.com's own gate, verbatim from their bundle: the video is
+    // withheld until consent.purposes.optional reads true, and an update
+    // event saying otherwise reloads the page.
+    const SITE = 'window.semaphore = window.semaphore || [];' +
+        'window.ketch = function() { window.semaphore.push(arguments); };' +
+        'window.__hasConsent = null;' +
+        'window.__reloads = 0;' +
+        'window.ketch("on", "consent", function(e) {' +
+        ' window.__hasConsent = (e && e.purposes && e.purposes.optional)' +
+        '  || false; });' +
+        'window.ketch("on", "userConsentUpdated", function(e) {' +
+        ' if ( !(e && e.purposes && e.purposes.optional) ) {' +
+        '  window.__reloads += 1; } });';
+
+    const onSite = (code, options = {}) => runDom(
+        code, 'https://realtruck.com/america-250/', PAGE,
+        w => {
+            w.localStorage.setItem('_ketch_consent_v1_', encode(GRANTED));
+            if ( typeof options.before === 'function' ) { options.before(w); }
+            w.eval(SITE);
+        }
+    );
+
+    it('releases what the site withheld', ( ) => {
+        const w = onSite(unblock).window;
+        // Their gate reads a purpose code this cannot know the name of, so
+        // the answer is by key rather than by list.
+        assert.equal(w.__hasConsent, true);
+        const blocked = onSite(reject).window;
+        assert.equal(blocked.__hasConsent, false);
+    });
+
+    it('answers true for a purpose it has never heard of', async ( ) => {
+        const w = onSite(unblock).window;
+        const consent = await w.semaphore.ketch.getConsent();
+        assert.equal(consent.purposes.optional, true);
+        assert.equal(consent.purposes.something_else_entirely, true);
+        // Only the codes it actually knows are enumerable, so stringifying
+        // the answer does not invent a list.
+        assert.deepEqual(plain(consent.purposes), {
+            analytics: true,
+            behavioral_advertising: true,
+            essential_services: true,
+        });
+    });
+
+    it('leaves the object methods alone, so an await does not hang',
+        async ( ) => {
+            const w = onSite(unblock).window;
+            const consent = await w.semaphore.ketch.getConsent();
+            // A truthy "then" would make an awaited answer hang, and a truthy
+            // "toJSON" would break stringifying it, so those read through to
+            // the object underneath rather than answering true.
+            assert.equal(typeof consent.purposes.then, 'undefined');
+            assert.equal(typeof consent.purposes.toJSON, 'undefined');
+            assert.equal(typeof consent.purposes.hasOwnProperty, 'function');
+            // And awaiting it really does resolve rather than hang.
+            const awaited = await Promise.resolve(consent.purposes);
+            assert.equal(awaited.optional, true);
+        }
+    );
+
+    it('stores and sends the same refusal as reject does', ( ) => {
+        const w = onSite(unblock).window;
+        const stored = decode(w.localStorage.getItem('_ketch_consent_v1_'));
+        // Stored: denied, code for code.
+        assert.equal(stored.analytics.status, 'denied');
+        assert.equal(stored.behavioral_advertising.status, 'denied');
+        // Sent: denied, and their permit events say so too.
+        const gcm = Array.from(w.dataLayer[0])[2];
+        assert.equal(gcm.analytics_storage, 'denied');
+        assert.equal(gcm.ad_storage, 'denied');
+        const permit = w.dataLayer.find(entry => entry.event === 'ketchPermitChanged');
+        assert.equal(permit.analytics, false);
+    });
+
+    it('never fires the update event that reloads their page', ( ) => {
+        const w = onSite(unblock).window;
+        // Their listener reloads when an update says the purpose is off. This
+        // emits consent once and never userConsentUpdated, so that path is
+        // not taken - in either mode.
+        assert.equal(w.__reloads, 0);
+        assert.equal(onSite(reject).window.__reloads, 0);
+    });
+
+    it('says which way round it is', ( ) => {
+        let out;
+        onSite(unblock, { before: w_ => { out = lines(w_); } });
+        assert.ok(out[0].includes(' surface=granted stored=denied'), out[0]);
+        let other;
+        onSite(reject, { before: w_ => { other = lines(w_); } });
+        assert.equal(other[0].includes(' surface='), false, other[0]);
+    });
+});
+
+/******************************************************************************/
+
 describe('filters, ketch', ( ) => {
     it('replaces the loader and noops the sdk it would fetch', ( ) => {
         const active = filtersText.split('\n')
@@ -363,6 +474,10 @@ describe('filters, ketch', ( ) => {
             '||global.ketchcdn.com/web/v3/config/*/boot.js' +
                 '$script,redirect=ketch-reject.js',
             '||cdn.ketchjs.com/ketchtag/*/ketch-sdk.js$script,redirect=noopjs',
+            // realtruck withholds video behind consent.purposes.optional, and
+            // the higher priority is what makes this win over the rule above.
+            '||global.ketchcdn.com/web/v3/config/*/boot.js' +
+                '$script,redirect=ketch-reject-unblock.js:10,domain=realtruck.com',
         ]);
     });
 

@@ -276,6 +276,7 @@ const FIXTURES = [
                 })));
         },
     },
+    { resource: 'ketch-reject-unblock.js', cmp: 'Ketch', sameAs: 'ketch-reject.js' },
     {
         resource: 'termly-reject.js',
         cmp: 'Termly',

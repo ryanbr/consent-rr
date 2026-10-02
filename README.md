@@ -26,6 +26,7 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `securiti-reject.js` | Securiti: a refusal recorded in their own `__privaci_cookie_consents`, with the API their loader parks answering instead of queueing for an SDK that never arrives. |
 | `transcend-reject.js` | Transcend: no banner, and the refusal recorded through airgap's own API - which leaves airgap itself in place, blocking by that refusal. |
 | `ketch-reject.js` | Ketch: their 1.9MB SDK never fetched, their command queue answering a refusal, and a returning visitor's record revoked code by code. |
+| `ketch-reject-unblock.js` | Ketch, for a site that withholds content until a purpose is consented to: the same stored and sent refusal, while the API tells the page every purpose is on. |
 | `termly-reject.js` | Termly: no banner, their own opted-in record - essential alone - with their denied Google consent mode, and the tags their auto-blocker parked left parked. |
 | `pubtech-reject.js` | PubTech CMP: no banner, their publisher-cookie string with every choice off, and `__tcfapi` answering a refusal the IAB's own library agrees is one. |
 | `usercentrics-reject.js` | Usercentrics: no banner, and no service consented in the record their own blocker reads - which leaves that blocker in place, blocking by it. A service a returning visitor had accepted is revoked by name. |
@@ -57,21 +58,22 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/ketch-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -85,8 +87,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.26.1/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.26.1/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.27.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.27.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -1159,6 +1161,38 @@ place those are visible. On a first visit nothing is written, which is their own
 behaviour: `setPublicConsent()` returns without writing when the map comes out
 empty.
 
+### For a site that withholds content
+
+```
+||global.ketchcdn.com/web/v3/config/*/boot.js$script,redirect=ketch-reject-unblock.js:10,domain=realtruck.com
+```
+
+`ketch-reject-unblock.js` is **reject's record with accept's page surface**,
+the same trade as OneTrust's and Civic's: what is stored and what is sent are
+the refusal, field for field, while the API tells the page every purpose is
+consented so the content is released. The cost is precisely that - whatever the
+site had withheld now runs, and uBlock Origin is what filters its requests.
+
+The site's own gate decides what has to be answered, and theirs reads a single
+purpose code:
+
+```js
+window.ketch("on", "consent", e => { hasConsent = e?.purposes?.optional || false })
+window.ketch("on", "userConsentUpdated", e => { c && !e?.purposes?.optional && location.reload() })
+```
+
+Two things follow. The code is the property's own, so the answer cannot be a
+list of names prepared in advance - it answers **by key**, and a purpose it has
+never heard of reads as consented, while only the codes it actually knows stay
+enumerable so stringifying the answer invents nothing. And `userConsentUpdated`
+is never emitted: that second listener reloads the page when an update says the
+purpose is off, which would be a reload for every page view. A test holds both
+modes to firing `consent` once and that event never.
+
+The names that are not purposes - `then`, `toJSON` and the object's own methods
+- read through to the object underneath rather than answering true, because a
+truthy `then` makes an awaited answer hang.
+
 ### Deliberate gaps
 
 - **No IAB layer.** Their SDK carries `__tcfapi`, `__gpp` and `__uspapi`, each
@@ -1204,7 +1238,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.1/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

@@ -35,6 +35,28 @@
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
+! For a site that withholds content until a purpose is consented to.
+!
+! ketch-reject-unblock.js stores and sends the same refusal as the resource
+! above - their record denied, their Google consent mode denied - while the API
+! answers the page that every purpose is consented, so the content is released.
+! The cost is precisely that: whatever the site had withheld now runs, and
+! uBlock Origin is what filters its requests.
+!
+! realtruck.com gates video on consent.purposes.optional, read straight out of
+! their own bundle:
+!
+!   window.ketch("on", "consent", e => { hasConsent = e?.purposes?.optional })
+!
+! so the unblock resource is what releases it there. The higher redirect
+! priority is what makes it win over the general rule above.
+! -----------------------------------------------------------------------------
+||global.ketchcdn.com/web/v3/config/*/boot.js$script,redirect=ketch-reject-unblock.js:10,domain=realtruck.com
+
+! Any other site that withholds content the same way:
+! ||global.ketchcdn.com/web/v3/config/*/boot.js$script,redirect=ketch-reject-unblock.js:10,domain=example.com
+
+! -----------------------------------------------------------------------------
 ! Where a redirect cannot land, or a property loads the SDK directly without
 ! the loader, the scriptlet form covers it:
 !
