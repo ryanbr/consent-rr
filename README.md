@@ -811,7 +811,8 @@ blocker reads the refusal at construction instead.
 **Both generations are covered**, because they keep the record in different
 places and both are still deployed. v3 is `web.<region>.cmp.usercentrics.eu`,
 `ucData`, and `__ucCmp` with `UC_UI` beside it. v2 is
-`app.usercentrics.eu/browser-ui/<version>/` - 3.108.0 sampled - `uc_settings`
+`app.usercentrics.eu/browser-ui/<version>/` - 3.108.0 and 3.64.0 sampled, and
+their contract is the same bar one unused key - `uc_settings`
 in the shape its own `mapSettings` builds, and `UC_UI` as the whole API, 31
 methods of it, with no `__ucCmp` and no `UC_CMP_API_READY`:
 

@@ -618,6 +618,8 @@ describe('filters, usercentrics', ( ) => {
             'https://web.us1.cmp.usercentrics.eu/ui/loader.js',
             'https://app.usercentrics.eu/browser-ui/latest/loader.js',
             'https://app.usercentrics.eu/browser-ui/3.108.0/loader.js',
+            // An older v2 in the field, whose contract is the same.
+            'https://app.usercentrics.eu/browser-ui/3.64.0/loader.js',
         ] ) {
             assert.ok(loader.some(p => matches(p, url)), 'no rule matches ' + url);
         }
@@ -628,6 +630,7 @@ describe('filters, usercentrics', ( ) => {
             'https://web.eu1.cmp.usercentrics.eu/ui/v/4.20.0/GdprCmpController.f1f19c11.js',
             'https://web.eu1.cmp.usercentrics.eu/ui/TvGdprCmpView.f7414e25.js',
             'https://app.usercentrics.eu/browser-ui/3.108.0/index.module.js',
+            'https://app.usercentrics.eu/browser-ui/3.64.0/index.module.js',
             'https://app.usercentrics.eu/browser-ui/3.108.0/DefaultData-7f0b0555-acd2e380.js',
             'https://app.usercentrics.eu/browser-ui/3.108.0/DefaultUI-2bbb4e62-44e08cee.js',
             'https://app.usercentrics.eu/browser-ui/3.108.0/FirstLayerCustomization-28c9b0b9-c05da1fc.js',
@@ -636,14 +639,19 @@ describe('filters, usercentrics', ( ) => {
         ] ) {
             assert.ok(noops.some(p => matches(p, url)), 'no noop rule for ' + url);
         }
-        // And none of them matches the blocker.
-        for ( const pattern of lines_ ) {
-            assert.equal(
-                matches(pattern,
-                    'https://privacy-proxy.usercentrics.eu/latest/uc-block.bundle.js'),
-                false,
-                pattern + ' matches the blocker'
-            );
+        // And none of them matches the blocker, at either of the paths it is
+        // served from - a tenant may pin its version - or its translations,
+        // which are what the placeholders it leaves behind are written in.
+        for ( const url of [
+            'https://privacy-proxy.usercentrics.eu/latest/uc-block.bundle.js',
+            'https://privacy-proxy.usercentrics.eu/3.3.10/uc-block.bundle.js',
+            'https://privacy-proxy.usercentrics.eu/latest/en.json',
+        ] ) {
+            for ( const pattern of lines_ ) {
+                assert.equal(
+                    matches(pattern, url), false, pattern + ' matches ' + url
+                );
+            }
         }
     });
 });

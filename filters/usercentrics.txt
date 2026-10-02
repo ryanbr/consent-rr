@@ -55,8 +55,11 @@
 ! Leave uc-block.bundle.js alone.
 !
 ! That is the other half: their blocker, served from
-! privacy-proxy.usercentrics.eu, and it is the thing that enforces a refusal
-! rather than the CMP. It carries a list of some 111 providers with the
+! privacy-proxy.usercentrics.eu - at /latest/ or at a pinned version, 3.3.10
+! seen in the field, both the same mechanism - and it is the thing that
+! enforces a refusal rather than the CMP. Its translations come off the same
+! host, /latest/<lang>.json, and are what the placeholders it leaves behind
+! are written in, so they are left alone too. It carries a list of some 111 providers with the
 ! patterns that match their scripts, iframes, images and embeds, and its own
 ! rule is
 !
