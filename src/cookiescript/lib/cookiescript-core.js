@@ -62,6 +62,13 @@
       navigator.doNotTrack      read, but only to report it to their collector
                                 as &dnt= - never to decide anything. Nothing
                                 is reported here.
+      their reject-all path     Kt(): instance.onReject(), then the events
+                                CookieScriptReject and
+                                CookieScriptCurrentState carrying
+                                currentState(), then the strict category freed
+                                and CookieScriptConsentUpdated[strict] pushed.
+                                CookieScriptAcceptAll is their accept-all
+                                event and has no business firing here.
 
 */
 
@@ -278,6 +285,12 @@ function consentRRCookieScript() {
         onReject: noop,
         onClose: noop,
         onChange: noop,
+        // Their own instance fields, which page code reads.
+        dispatchEventNames: [],
+        currentLang: null,
+        iabCMP: null,
+        tcString: undefined,
+        googleAcString: undefined,
     };
 
     let installed = false;
@@ -291,15 +304,38 @@ function consentRRCookieScript() {
     } catch(ex) {
     }
 
-    // Their own load event, which a page may be waiting on.
-    const fire = name => {
+    const fire = (name, detail) => {
         try {
-            w.dispatchEvent(new w.CustomEvent(name));
+            const event = detail === undefined
+                ? new w.CustomEvent(name)
+                : new w.CustomEvent(name, { detail });
+            w.dispatchEvent(event);
         } catch(ex) {
         }
     };
+
+    // Their load event, which goes out as soon as they are there.
     fire('CookieScriptLoaded');
-    fire('CookieScriptAcceptAll');
+
+    // The rest is their reject-all path, in their order - the callback the
+    // page may have set, then the refusal, then the state. It waits a tick:
+    // a page assigns CookieScript.instance.onReject in the script after
+    // theirs, which has not run yet at this point.
+    const announce = ( ) => {
+        try {
+            if ( typeof instance.onReject === 'function' ) {
+                instance.onReject();
+            }
+        } catch(ex) {
+        }
+        fire('CookieScriptReject');
+        fire('CookieScriptCurrentState', instance.currentState());
+    };
+    try {
+        w.setTimeout(announce, 0);
+    } catch(ex) {
+        announce();
+    }
 
     try {
         w.console.info(

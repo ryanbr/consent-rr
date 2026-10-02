@@ -8,7 +8,9 @@
 
 import { strict as assert } from 'node:assert';
 import { before, describe, it } from 'node:test';
-import { cookies, filtersText, loadResources, runDom, versions } from './helpers.mjs';
+import {
+    cookies, filtersText, loadResources, runDom, settle, versions,
+} from './helpers.mjs';
 
 const URL = 'https://www.example.com/';
 
@@ -190,18 +192,52 @@ describe('cookiescript-reject', ( ) => {
             []);
     });
 
-    it('fires the events a page may be waiting on', ( ) => {
+    it('fires their reject path, and not their accept one', async ( ) => {
         const seen = [];
-        boot({
+        const w = boot({
             before: w_ => {
                 w_.__seen = seen;
-                for ( const name of [ 'CookieScriptLoaded', 'CookieScriptAcceptAll' ] ) {
-                    w_.addEventListener(name, ( ) => { w_.__seen.push(name); });
+                for ( const name of [
+                    'CookieScriptLoaded', 'CookieScriptReject',
+                    'CookieScriptCurrentState', 'CookieScriptAcceptAll',
+                    'CookieScriptAccept',
+                ] ) {
+                    w_.addEventListener(name, ev => {
+                        w_.__seen.push([ name, ev.detail && ev.detail.action ]);
+                    });
                 }
             },
-        });
-        assert.deepEqual(plain(seen),
-            [ 'CookieScriptLoaded', 'CookieScriptAcceptAll' ]);
+        }).window;
+        // Their load event goes out at once; the rest is their Kt(), the
+        // reject-all path, which waits a tick so a page assigning its
+        // callback in the script after theirs is still heard.
+        // detail is null rather than undefined on a CustomEvent with none.
+        assert.deepEqual(plain(seen), [ [ 'CookieScriptLoaded', null ] ]);
+        w.eval('window.__calls = [];' +
+            'window.CookieScript.instance.onReject = function() {' +
+            ' window.__calls.push("onReject"); };');
+        await settle(10);
+        assert.deepEqual(plain(seen), [
+            [ 'CookieScriptLoaded', null ],
+            [ 'CookieScriptReject', null ],
+            [ 'CookieScriptCurrentState', 'reject' ],
+        ]);
+        // Their own order: the page's callback, then the events.
+        assert.deepEqual(plain(w.__calls), [ 'onReject' ]);
+        // CookieScriptAcceptAll is their accept-all event. An earlier pass
+        // fired it on a refusal, which is page code being told the opposite
+        // of what was recorded.
+        assert.equal(seen.some(entry => entry[0].indexOf('Accept') !== -1), false);
+    });
+
+    it('carries their own instance fields', ( ) => {
+        const w = boot().window;
+        const instance = w.CookieScript.instance;
+        assert.deepEqual(plain(instance.dispatchEventNames), []);
+        assert.equal(instance.currentLang, null);
+        assert.equal(instance.iabCMP, null);
+        assert.equal(instance.tcString, undefined);
+        assert.equal(instance.googleAcString, undefined);
     });
 
     it('does nothing the second time it is injected', ( ) => {
