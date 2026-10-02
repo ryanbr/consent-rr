@@ -17,6 +17,11 @@ const TAG = '<script id="usercentrics-cmp" data-settings-id="sROYKApBP"' +
     ' data-language="de"' +
     ' src="https://web.eu1.cmp.usercentrics.eu/ui/loader.js"></script>';
 
+// Their v2 entry: another host, another record, and UC_UI as the whole API.
+const TAG_V2 = '<script id="usercentrics-cmp" data-settings-id="sROYKApBP"' +
+    ' data-language="de"' +
+    ' src="https://app.usercentrics.eu/browser-ui/latest/loader.js"></script>';
+
 const page = (head = TAG) => '<!doctype html><html lang="en"><head>' + head +
     '</head><body><p id="content">x</p></body></html>';
 
@@ -238,9 +243,67 @@ describe('usercentrics-reject', ( ) => {
             [ 'HkocEodjb7', 'XYQZBUojc' ]);
     });
 
-    it('invents no v2 record where the page has none', ( ) => {
+    it('invents no v2 record on a page that is plainly v3', ( ) => {
+        // There the blocker reads ucData, so a v2 record would be noise.
         const w = asLoader().window;
         assert.equal(w.localStorage.getItem('uc_settings'), null);
+    });
+
+    it('writes their v2 record where that is the one being read', ( ) => {
+        let out;
+        const w = asLoader({
+            head: TAG_V2,
+            before: w_ => { out = lines(w_); },
+        }).window;
+        // Their own mapSettings shape, with nothing consented.
+        assert.deepEqual(
+            plain(JSON.parse(w.localStorage.getItem('uc_settings'))),
+            {
+                controllerId: '',
+                id: 'sROYKApBP',
+                language: 'de',
+                services: [],
+            }
+        );
+        assert.ok(out[0].includes(' cmp=v2 '), out[0]);
+        assert.ok(out[0].includes(' v2=written'), out[0]);
+        // v2 has no __ucCmp: UC_UI is the whole API there, so a page feature
+        // detecting one is not told it has the other.
+        assert.equal(w.__ucCmp, undefined);
+        assert.equal(typeof w.UC_UI, 'object');
+        // And the blocker, which cannot see a v3 tag, reads the v2 record.
+        assert.equal(w.uc.whitelisted.size, 0);
+        assert.equal(w.uc.disabled().length, 4);
+    });
+
+    it('announces no v3 API on a v2 page', ( ) => {
+        const seen = [];
+        asLoader({
+            head: TAG_V2,
+            before: w_ => {
+                for ( const name of [ 'UC_CMP_API_READY', 'UC_UI_INITIALIZED' ] ) {
+                    w_.addEventListener(name, ( ) => { seen.push(name); });
+                }
+            },
+        });
+        // Their v2 fires UC_UI_INITIALIZED and has no UC_CMP_API_READY at all.
+        assert.deepEqual(plain(seen), [ 'UC_UI_INITIALIZED' ]);
+    });
+
+    it('writes both records where the generation cannot be told', ( ) => {
+        let out;
+        const w = asScriptlet({
+            head: '',
+            before: w_ => { out = lines(w_); },
+        }).window;
+        // Injected, so there is no tag of either kind to read - and the
+        // blocker takes its v2 branch precisely then.
+        assert.ok(out[0].includes(' cmp=unknown '), out[0]);
+        assert.deepEqual(plain(data(w).consent.services), {});
+        assert.deepEqual(
+            plain(JSON.parse(w.localStorage.getItem('uc_settings')).services), []
+        );
+        assert.equal(w.uc.whitelisted.size, 0);
     });
 
     it('marks the CMP loaded by writing, as their own CMP does', ( ) => {
@@ -318,6 +381,12 @@ describe('usercentrics-reject', ( ) => {
         // Theirs answer undefined on a v3 page, so these do too.
         assert.equal(w.UC_UI.getSettingsCore(), undefined);
         assert.deepEqual(plain(w.UC_UI.getSettingsLabels()), {});
+        // Synchronous, as v2's are: a page calling .toUpperCase() on the
+        // answer would break on a promise.
+        assert.equal(w.UC_UI.getActiveLanguage(), 'de');
+        assert.equal(w.UC_UI.getControllerId(), '');
+        assert.equal(w.UC_UI.isConsentRequired(), false);
+        assert.equal(w.UC_UI.getThirdPartyCount(), 0);
     });
 
     it('fires their events, in their order', ( ) => {
@@ -443,7 +512,7 @@ describe('usercentrics-reject', ( ) => {
             out[0],
             '[consent-rr] usercentrics-reject ' + versions.usercentrics +
             ' settings=sROYKApBP lang=de revoked=none gcm=denied gpc=off' +
-            ' data=written'
+            ' cmp=v3 data=written'
         );
     });
 
@@ -478,6 +547,9 @@ describe('filters, usercentrics', ( ) => {
         assert.deepEqual(ours, [
             '||cmp.usercentrics.eu/ui/loader.js' +
                 '$script,redirect=usercentrics-reject.js',
+            // Their v2 CMP, which keeps its record somewhere else.
+            '||app.usercentrics.eu/browser-ui/*/loader.js' +
+                '$script,redirect=usercentrics-reject.js',
         ]);
         // Their blocker is what enforces the refusal, so no rule may touch it.
         for ( const line of active ) {
@@ -501,6 +573,8 @@ describe('filters, usercentrics', ( ) => {
         for ( const url of [
             'https://web.eu1.cmp.usercentrics.eu/ui/loader.js',
             'https://web.us1.cmp.usercentrics.eu/ui/loader.js',
+            'https://app.usercentrics.eu/browser-ui/latest/loader.js',
+            'https://app.usercentrics.eu/browser-ui/3.108.0/loader.js',
         ] ) {
             assert.ok(loader.some(p => matches(p, url)), 'no rule matches ' + url);
         }
@@ -510,6 +584,12 @@ describe('filters, usercentrics', ( ) => {
             'https://web.eu1.cmp.usercentrics.eu/ui/v/4.20.0/WebSdk.lib.8e67814b.js',
             'https://web.eu1.cmp.usercentrics.eu/ui/v/4.20.0/GdprCmpController.f1f19c11.js',
             'https://web.eu1.cmp.usercentrics.eu/ui/TvGdprCmpView.f7414e25.js',
+            'https://app.usercentrics.eu/browser-ui/3.108.0/index.module.js',
+            'https://app.usercentrics.eu/browser-ui/3.108.0/DefaultData-7f0b0555-acd2e380.js',
+            'https://app.usercentrics.eu/browser-ui/3.108.0/DefaultUI-2bbb4e62-44e08cee.js',
+            'https://app.usercentrics.eu/browser-ui/3.108.0/FirstLayerCustomization-28c9b0b9-c05da1fc.js',
+            'https://app.usercentrics.eu/browser-ui/3.108.0/ButtonsCustomization-34692263-5eed371e.js',
+            'https://app.usercentrics.eu/browser-ui/3.108.0/SecondLayerUI-3c2663ff-719b82ee.js',
         ] ) {
             assert.ok(noops.some(p => matches(p, url)), 'no noop rule for ' + url);
         }

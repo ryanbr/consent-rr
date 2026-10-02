@@ -53,18 +53,18 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/usercentrics-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -78,8 +78,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.19.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.19.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.20.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.20.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -760,6 +760,7 @@ definition, so the callback queued there is one it drains.
 
 ```
 ||cmp.usercentrics.eu/ui/loader.js$script,redirect=usercentrics-reject.js
+||app.usercentrics.eu/browser-ui/*/loader.js$script,redirect=usercentrics-reject.js
 ```
 
 **Replace the CMP, not the blocker.** Usercentrics also ships in two halves,
@@ -807,6 +808,31 @@ It works in either position. Served in place of `loader.js` it runs after the
 blocker, and the write tells it. Injected as a scriptlet it runs first, and the
 blocker reads the refusal at construction instead.
 
+**Both generations are covered**, because they keep the record in different
+places and both are still deployed. v3 is `web.<region>.cmp.usercentrics.eu`,
+`ucData`, and `__ucCmp` with `UC_UI` beside it. v2 is
+`app.usercentrics.eu/browser-ui/<version>/` - 3.108.0 sampled - `uc_settings`
+in the shape its own `mapSettings` builds, and `UC_UI` as the whole API, 31
+methods of it, with no `__ucCmp` and no `UC_CMP_API_READY`:
+
+```js
+mapSettings(t, n) {                        // index.module.js, v2
+    return { controllerId: t.controllerId, id: t.id, language: t.selectedLanguage,
+             services: mapServices(n), version: t.version };
+}
+```
+
+The generation is read off the script the page loads the CMP from, and the
+record that generation's blocker reads is the one written - so a v2 page is not
+handed a v3 API it would not otherwise have. Where there is no such script,
+because this was injected rather than served, both records go in: the blocker
+picks its branch off the DOM, and with no tag at all that is the v2 branch.
+Booted against the real bundle on a v2 page, that is again nothing whitelisted
+and 89 script patterns left disabled.
+
+Their v2 gtag push is the same `window.dataLayer.push(arguments)`, and v2
+touches no cookie at all - `document.cookie` appears nowhere in its 464 kB.
+
 ### Deliberate gaps
 
 - **The service names are only known where the visitor had accepted**, since
@@ -820,9 +846,13 @@ blocker reads the refusal at construction instead.
 - **No IAB layer.** A TCF tenant's `__tcfapi` comes from the SDK this keeps out,
   and a TC string is not something to invent - the same reason as Cookiebot and
   Securiti.
-- **v2 is not targeted.** The older CMP off `app.usercentrics.eu/browser-ui/`
-  has its own API and its own record; only the `uc_settings` revocation above
-  touches anything of its.
+- **The legacy CMP before v2 is not targeted.** The blocker still has a branch
+  for it - `window.usercentrics.getConsents()`, off
+  `usercentrics.eu/latest/main.js` - and nothing here answers that. v2 does not
+  define `window.usercentrics` either, so this is the generation before it.
+- **Their `uc_user_interaction` and `uc_interaction_type` are not written.**
+  Their own SDK reads those to decide whether to re-prompt, and with the SDK
+  replaced nothing does; the blocker never looks at them.
 
 ## Development
 
@@ -855,7 +885,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.19.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

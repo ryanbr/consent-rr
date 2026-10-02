@@ -46,6 +46,22 @@
                           analyticsStorage, pushed as gtag pushes: the
                           arguments object into window.dataLayer
 
+    Two generations are in the field and they keep their record in different
+    places, so both are written where it is not clear which one a page is:
+      v3                  web.<region>.cmp.usercentrics.eu/ui/loader.js, the
+                          record in ucData, the API __ucCmp with UC_UI beside
+                          it, and UC_CMP_API_READY before the rest
+      v2                  app.usercentrics.eu/browser-ui/<version>/, 3.108.0
+                          sampled, the record in uc_settings in the shape its
+                          own mapSettings builds - { controllerId, id,
+                          language, services: [ { history, id, processorId,
+                          status } ], version } - and UC_UI alone, 31 methods
+                          of it, with no __ucCmp and no UC_CMP_API_READY. Its
+                          gtag push is the same arguments object, and it
+                          touches no cookie at all.
+    The blocker reads uc_settings on any page where it cannot see a v3 loader
+    tag, which is a v2 page and equally an injection with no tag at all.
+
     The service ids are the part no page can supply. They come back from their
     settings API, keyed per tenant, so a first visit can only write an empty
     services map - which is enough, because the blocker's disabledProviders is
@@ -79,6 +95,22 @@ function consentRRUsercentrics() {
     // Their localStorageService key, and the v2 one their blocker still reads.
     const DATA = 'ucData';
     const SETTINGS = 'uc_settings';
+
+    // Which generation the page carries, by the script it loads the CMP from.
+    // Neither means it was injected rather than served, and then both records
+    // are written: the blocker picks its branch off the DOM, not off storage.
+    const srcs = ( ) => {
+        try {
+            return Array.from(doc.querySelectorAll('script[src]'))
+                .map(node => node.getAttribute('src') || '');
+        } catch(ex) {
+        }
+        return [];
+    };
+    const sources = srcs();
+    const isV3 = sources.some(src => src.includes('.cmp.usercentrics.eu/ui/'));
+    const isV2 = isV3 === false &&
+        sources.some(src => src.includes('usercentrics.eu/browser-ui'));
 
     // Their own script tag lookup, which also carries the configuration.
     const tag = doc.getElementById('usercentrics-cmp');
@@ -203,19 +235,31 @@ function consentRRUsercentrics() {
         return 'refused';
     };
 
-    // Their v2 record is only rewritten where the page already has one: the
-    // blocker reads it whenever it cannot see a loader tag, and a status left
-    // true there would keep that service whitelisted. None is invented.
+    // Their v2 record, in the shape their own mapSettings builds. It is the
+    // only one the blocker reads on a page without a v3 loader tag, so it is
+    // written there rather than only corrected: for a v2 page, and for an
+    // injection where the generation cannot be told. On a page that is plainly
+    // v3 it is left alone unless one is already there, where a status left
+    // true would keep that service whitelisted.
     const storeLegacy = ( ) => {
         const legacy = refused.legacy;
-        if ( legacy === null ) { return 'absent'; }
-        if ( Array.isArray(legacy.services) === false ) { return 'absent'; }
+        const existing = legacy !== null && Array.isArray(legacy.services);
+        if ( existing === false && isV3 ) { return 'absent'; }
         try {
-            const services = legacy.services.map(service => {
-                if ( service === null || typeof service !== 'object' ) { return service; }
-                return Object.assign({}, service, { status: false });
-            });
-            const next = JSON.stringify(Object.assign({}, legacy, { services }));
+            const services = existing
+                ? legacy.services.map(service => {
+                    if ( service === null || typeof service !== 'object' ) {
+                        return service;
+                    }
+                    return Object.assign({}, service, { status: false });
+                })
+                : [];
+            const base = existing ? legacy : {
+                controllerId: '',
+                id: settingsId,
+                language: record.ui.language,
+            };
+            const next = JSON.stringify(Object.assign({}, base, { services }));
             if ( w.localStorage.getItem(SETTINGS) === next ) { return 'kept'; }
             w.localStorage.setItem(SETTINGS, next);
             return 'written';
@@ -321,10 +365,15 @@ function consentRRUsercentrics() {
         getTCFVendors: ( ) => undefined,
         areAllConsentsAccepted: ( ) => false,
         areAllRequiredConsentsAccepted: ( ) => false,
-        getControllerId: resolved(''),
-        getActiveLanguage: resolved(record.ui.language),
+        // Synchronous, as v2's are: a page doing getActiveLanguage()
+        // .toUpperCase() breaks on a promise, while awaiting a plain value is
+        // fine either way.
+        getControllerId: ( ) => '',
+        getActiveLanguage: ( ) => record.ui.language,
+        getThirdPartyCount: ( ) => 0,
         getConsentDetails: cmp.getConsentDetails,
-        isConsentRequired: resolved(false),
+        isConsentRequired: ( ) => false,
+        restoreUserSession: resolved(undefined),
         acceptService: resolved(undefined),
         acceptServices: resolved(undefined),
         rejectService: resolved(undefined),
@@ -356,9 +405,13 @@ function consentRRUsercentrics() {
         return false;
     };
 
-    define('__ucCmp', cmp);
-    // Their order: the API exists, and is announced, before anything else.
-    fire('UC_CMP_API_READY');
+    // v2 has neither of these - UC_UI is the whole API there - so a page that
+    // is plainly v2 is not told it has a v3 one.
+    if ( isV2 === false ) {
+        define('__ucCmp', cmp);
+        // Their order: the API exists, and is announced, before anything else.
+        fire('UC_CMP_API_READY');
+    }
 
     const stored = store();
     const storedLegacy = storeLegacy();
@@ -381,6 +434,7 @@ function consentRRUsercentrics() {
             ' revoked=' + (Object.keys(refused.services).length || 'none') +
             ' gcm=' + (pushed ? 'denied' : 'refused') +
             ' gpc=' + (gpc ? 'on' : 'off') +
+            ' cmp=' + (isV3 ? 'v3' : (isV2 ? 'v2' : 'unknown')) +
             ' data=' + stored +
             (storedLegacy !== 'absent' ? ' v2=' + storedLegacy : '')
         );

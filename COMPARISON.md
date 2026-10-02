@@ -128,7 +128,7 @@ the same fixture as its sibling.
 | `cookiebot-reject` | 14.4 KB | `CookieConsent`, `Cookiebot`, `uetq`, `CB_OnTagsExecuted_Processed` |
 | `securiti-reject` | 8.2 KB | `SecuritiSDK`, `__ScrtSdkApiOps`, `initCmp`, `setConsentBannerParams`, `showConsentPreferencesPopup`, `overrideThemeMatching` +4 more |
 | `transcend-reject` | 5.2 KB | - |
-| `usercentrics-reject` | 10.3 KB | `__ucCmp`, `UC_UI` |
+| `usercentrics-reject` | 11.2 KB | `__ucCmp`, `UC_UI` |
 
 ## What each one stores and sends
 
@@ -193,5 +193,5 @@ uBlock Origin does the blocking.
 [consent-rr] cookiebot-reject 1.0.0 necessary=true denied=preferences,statistics,marketing iab=off cookie=written
 [consent-rr] securiti-reject 1.0.0 consents=none tenant=read gcm=denied cookie=written
 [consent-rr] transcend-reject 1.1.0 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
-[consent-rr] usercentrics-reject 1.0.0 settings=sROYKApBP lang=de revoked=none gcm=denied gpc=off data=written
+[consent-rr] usercentrics-reject 1.1.0 settings=sROYKApBP lang=de revoked=none gcm=denied gpc=off cmp=v3 data=written
 ```

@@ -22,6 +22,14 @@
 ||cmp.usercentrics.eu/ui/loader.js$script,redirect=usercentrics-reject.js
 
 ! -----------------------------------------------------------------------------
+! Their v2 CMP, still widely deployed: a different host, a different loader,
+! and the record in uc_settings rather than ucData. 3.108.0 was the version
+! sampled. The resource tells the two apart by the script the page loads the
+! CMP from, and writes the record that generation's blocker reads.
+! -----------------------------------------------------------------------------
+||app.usercentrics.eu/browser-ui/*/loader.js$script,redirect=usercentrics-reject.js
+
+! -----------------------------------------------------------------------------
 ! Leave uc-block.bundle.js alone.
 !
 ! That is the other half: their blocker, served from
@@ -66,3 +74,7 @@
 ||cmp.usercentrics.eu/ui/*CmpController.*.js$script,redirect=noopjs
 ||cmp.usercentrics.eu/ui/*CmpView.*.js$script,redirect=noopjs
 ||cmp.usercentrics.eu/ui/*.css$stylesheet,redirect=noopcss
+||app.usercentrics.eu/browser-ui/*/index.module.js$script,redirect=noopjs
+||app.usercentrics.eu/browser-ui/*/Default*.js$script,redirect=noopjs
+||app.usercentrics.eu/browser-ui/*/*Customization-*.js$script,redirect=noopjs
+||app.usercentrics.eu/browser-ui/*/SecondLayerUI-*.js$script,redirect=noopjs
