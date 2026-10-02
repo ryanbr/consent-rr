@@ -54,6 +54,35 @@
                                 action already recorded nothing consults it.
                                 Writing it would claim a banner was shown that
                                 never was.
+      a() / Cn()                their writer puts consenttime on the record
+                                whenever action is written, from e.consentTime
+                                - a literal in the bundle, so tenant config
+                                rather than a clock. Cn() then reads it back:
+                                a record whose consenttime is older than that
+                                constant has the consent cookie removed, on
+                                every domain and path they can reach. So a
+                                guess at consenttime can undo the refusal it
+                                came with, and this writes none - a record
+                                without the field never reaches that branch.
+      qt() and yt()             their two refusal paths, and they disagree on
+                                the shape of categories: reject-all writes
+                                JSON.stringify([]) and saving a selection with
+                                nothing ticked writes a('categories', []).
+                                Records off real sites carry the array, their
+                                U() answers ['strict'] for both, and the array
+                                is what this writes.
+      Mt()                      their teardown, run on every load before they
+                                inject a banner: the stylesheet
+                                style[data-type="cookiescriptstyles"] and the
+                                markup [data-cs-id="cookiescript_injected"],
+                                #cookiescript_injected_fsd and
+                                #cookiescript_badge all come out. A page that
+                                ships their banner in its own html relies on
+                                it, and the full-screen one is position:fixed
+                                over the viewport at z-index 999996 - left
+                                there it takes the page's scrolling with it.
+                                They inject a fresh banner afterwards; a
+                                refusal injects nothing.
       the unblocker             one sweep over every parked kind, run from
                                 Ve() at load and then once more 500ms later,
                                 which is how an element that parsed after the
@@ -184,9 +213,25 @@ function consentRRCookieScript() {
         } catch(ex) {
         }
         previous.action = 'reject';
-        // Theirs is a JSON string inside the record, and a reject-all makes it
-        // the empty list.
-        previous.categories = JSON.stringify([]);
+        // Their two refusal buttons write this field in two different shapes:
+        // reject-all through qt() writes JSON.stringify([]), the string, and
+        // saving a selection with nothing ticked goes through yt(), which
+        // writes a('categories', []) - the bare array. Records off real sites
+        // carry the array, and their own U() ends up at the same ['strict']
+        // either way, so the array is what this writes: a page parsing the
+        // record itself gets something it can iterate rather than a
+        // two-character string.
+        previous.categories = [];
+        // In every refusal record from the field, and inert in their code:
+        // they set it where the banner goes up and read it only on the branch
+        // for a visitor who has not decided.
+        previous.bannershown = 1;
+        // consenttime and key are deliberately not invented. key is issued by
+        // their collector, and consenttime is a tenant constant their Cn()
+        // compares against: a record whose consenttime is older than the
+        // tenant's configured consentTime has the whole consent cookie
+        // deleted, so a guess at it can undo the refusal. Both are carried
+        // forward where the visitor already has them.
         return previous;
     };
 
@@ -304,9 +349,54 @@ function consentRRCookieScript() {
         return value.split(STRICT).join('').trim() === '';
     };
 
+    // Their Mt(), which runs on every load before they inject anything: the
+    // stylesheet and the banner markup they may already find on the page come
+    // out. A page that ships their banner in its own HTML - server-rendered,
+    // or served from a cache - therefore relies on this, and the full-screen
+    // one is position:fixed over the whole viewport at z-index 999996, so
+    // left in place it takes the page's scrolling with it. They then inject a
+    // fresh banner; a refusal injects nothing.
+    const THEIRS = [
+        'style[data-type="cookiescriptstyles"]',
+        '[data-cs-id="cookiescript_injected"]',
+        '#cookiescript_injected',
+        '#cookiescript_injected_fsd',
+        '#cookiescript_badge',
+    ];
+
+    const removeTheirs = ( ) => {
+        let removed = 0;
+        for ( const selector of THEIRS ) {
+            try {
+                for ( const element of Array.from(doc.querySelectorAll(selector)) ) {
+                    element.parentNode.removeChild(element);
+                    removed += 1;
+                }
+            } catch(ex) {
+            }
+        }
+        // Their overlay class, which is what their stylesheet hangs
+        // overflow: hidden and height: 100vh on. The stylesheet above is
+        // normally what makes it bite, but a page carrying its own copy of
+        // their css would stay locked without this.
+        try {
+            for ( const element of [ doc.documentElement, doc.body ] ) {
+                if ( element === null ) { continue; }
+                if ( element.classList.contains('cookiescript_overlay') === false ) {
+                    continue;
+                }
+                element.classList.remove('cookiescript_overlay');
+                removed += 1;
+            }
+        } catch(ex) {
+        }
+        return removed;
+    };
+
     const sweep = ( ) => {
         let freed = 0;
         let reload = false;
+        let removed = removeTheirs();
         try {
             const parked = doc.querySelectorAll('[data-cookiescript="accepted"]');
             for ( const element of Array.from(parked) ) {
@@ -328,7 +418,7 @@ function consentRRCookieScript() {
             }
         } catch(ex) {
         }
-        return { freed, reload };
+        return { freed, reload, removed };
     };
 
     // Their ready event, dispatched again on a document that has had one
@@ -360,12 +450,13 @@ function consentRRCookieScript() {
     // the point their script tag is reached the rest of the page is not.
     const sweepLater = ( ) => {
         const pass = sweep();
-        if ( pass.freed === 0 ) { return; }
+        if ( pass.freed === 0 && pass.removed === 0 ) { return; }
         if ( pass.reload ) { announceReady(); }
         try {
             w.console.info(
                 '[consent-rr] ' + NAME + ' ' + VERSION +
                 ' freed=+' + pass.freed +
+                ' removed=+' + pass.removed +
                 ' ready=' + (pass.reload ? 'redispatched' : 'unchanged')
             );
         } catch(ex) {
@@ -374,6 +465,7 @@ function consentRRCookieScript() {
 
     const first = sweep();
     const freed = first.freed;
+    const removed = first.removed;
     if ( first.reload ) { announceReady(); }
 
     try {
@@ -436,12 +528,42 @@ function consentRRCookieScript() {
 
     const noop = ( ) => undefined;
 
+    // Their own currentState, field for field: action off the record, key
+    // only where the record carries one, and categories from their U(), which
+    // parses the stored string and then adds strict - so their state after a
+    // refusal is ['strict'], not []. A page asking the instance what is
+    // allowed has to be told the same thing.
+    const state = ( ) => {
+        const answer = { action: 'reject' };
+        const key = stored.record.key;
+        if ( key ) { answer.key = key; }
+        const categories = [];
+        // Their U() parses the stored value, which is what this writes an
+        // array into - exactly as their own yt() does - so the parse throws
+        // and the answer is strict alone, theirs for theirs. The catch is
+        // load-bearing for that reason.
+        try {
+            const parsed = JSON.parse(stored.record.categories);
+            if ( Array.isArray(parsed) ) {
+                for ( const name of parsed ) {
+                    if ( name !== '' && categories.indexOf(name) === -1 ) {
+                        categories.push(name);
+                    }
+                }
+            }
+        } catch(ex) {
+        }
+        if ( categories.indexOf(STRICT) === -1 ) { categories.push(STRICT); }
+        answer.categories = categories;
+        return answer;
+    };
+
     // Their instance, under their own method names. The ones that would show
     // the banner or record a decision do neither.
     const instance = {
         consentRR: VERSION,
         version: 0,
-        currentState: ( ) => ({ action: 'reject', categories: [] }),
+        currentState: ( ) => state(),
         expireDays: ( ) => DAYS,
         hash: ( ) => '',
         categories: ( ) => CATEGORIES.slice(),
@@ -535,9 +657,10 @@ function consentRRCookieScript() {
     try {
         w.console.info(
             '[consent-rr] ' + NAME + ' ' + VERSION +
-            ' action=reject categories=none' +
+            ' action=reject categories=' + state().categories.join(',') +
             ' cookie=' + stored.how +
             ' freed=' + freed +
+            ' removed=' + removed +
             ' gcm=' + pushed +
             ' api=' + (installed ? 'ready' : 'refused')
         );

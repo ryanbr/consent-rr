@@ -72,13 +72,60 @@ describe('cookiescript-reject', ( ) => {
         assert.ok(reject.includes("const VERSION = '" + versions.cookiescript + "'"));
     });
 
-    it('writes the record their own reject-all writes', ( ) => {
+    it('writes the record their own refusal writes', ( ) => {
         const w = boot().window;
-        // Their a() builds it field by field, and categories is a JSON string
-        // inside the record rather than an array.
+        // Their save-with-nothing-ticked path, yt(), writes
+        // a('categories', []) - the bare array, which is what refusal records
+        // off real sites carry - and their a() puts bannershown alongside it.
+        // consenttime and key are absent: a first refusal has no key from
+        // their collector, and consenttime is a tenant constant.
         assert.deepEqual(plain(record(w)), {
             action: 'reject',
-            categories: '[]',
+            categories: [],
+            bannershown: 1,
+        });
+    });
+
+    it('lands on the record a real refusal leaves', ( ) => {
+        // Captured from a site running their own script, refusing through
+        // their banner. Everything in it that a refusal decides is written
+        // here; everything in it that comes from their tenant config or their
+        // collector is carried, not invented.
+        const REAL = {
+            googleconsentmap: {
+                ad_storage: 'targeting',
+                analytics_storage: 'performance',
+                ad_personalization: 'targeting',
+                ad_user_data: 'targeting',
+                functionality_storage: 'functionality',
+                personalization_storage: 'functionality',
+                security_storage: 'functionality',
+            },
+            bannershown: 1,
+            action: 'reject',
+            consenttime: 1770372134,
+            categories: [],
+            key: '8d649403-0c2b-4948-af88-b9842cb7a1df',
+        };
+        // The same visitor, with that record already on them, accepting
+        // nothing: what this writes has to be that record again.
+        const w = boot({
+            before: w_ => {
+                w_.document.cookie = 'CookieScriptConsent=' +
+                    encodeURIComponent(JSON.stringify(
+                        Object.assign({}, REAL, {
+                            action: 'accept',
+                            categories: '["strict","targeting","performance"]',
+                        })
+                    ));
+            },
+        }).window;
+        assert.deepEqual(plain(record(w)), REAL);
+        // And their state off it, which is their U() plus their key.
+        assert.deepEqual(plain(w.CookieScript.instance.currentState()), {
+            action: 'reject',
+            key: REAL.key,
+            categories: [ 'strict' ],
         });
     });
 
@@ -101,7 +148,7 @@ describe('cookiescript-reject', ( ) => {
         assert.equal(stored.key, 'abc123');
         assert.equal(stored.consenttime, 1770372134);
         assert.equal(stored.action, 'reject');
-        assert.equal(stored.categories, '[]');
+        assert.deepEqual(plain(stored.categories), []);
     });
 
     it('frees what they never block, by their own every-category rule', ( ) => {
@@ -209,7 +256,7 @@ describe('cookiescript-reject', ( ) => {
         assert.equal(kept.key, THEIR_RECORD.key);
         assert.equal(kept.bannershown, 1);
         assert.equal(kept.action, 'reject');
-        assert.equal(kept.categories, '[]');
+        assert.deepEqual(plain(kept.categories), []);
     });
 
     it('grants a key their map puts on the category they never block', ( ) => {
@@ -261,8 +308,12 @@ describe('cookiescript-reject', ( ) => {
         ] ) {
             assert.equal(typeof instance[name], 'function', name);
         }
+        // Theirs: action off the record, and categories from their U(),
+        // which parses the stored string and then adds strict - so a refusal
+        // leaves strict allowed, and saying [] here would tell a page that
+        // nothing at all is.
         assert.deepEqual(plain(instance.currentState()),
-            { action: 'reject', categories: [] });
+            { action: 'reject', categories: [ 'strict' ] });
         // Theirs, from getCMPId().
         assert.equal(instance.getCMPId(), 374);
         assert.equal(instance.expireDays(), 90);
@@ -279,7 +330,7 @@ describe('cookiescript-reject', ( ) => {
         assert.equal(record(w).action, 'reject');
         assert.equal(node(w, 'ads').getAttribute('type'), 'text/plain');
         assert.deepEqual(plain(w.CookieScript.instance.currentState().categories),
-            []);
+            [ 'strict' ]);
     });
 
     it('fires their reject path, and not their accept one', async ( ) => {
@@ -484,6 +535,77 @@ describe('cookiescript-reject', ( ) => {
         assert.deepEqual(order, [ 'interactive', 'interactive' ]);
     });
 
+    it('takes out the banner markup a page already carries', ( ) => {
+        // Their own Mt() does this on every load before injecting a fresh
+        // banner. A page that ships their markup itself - server-rendered or
+        // from a cache - is left with a position:fixed full-screen overlay
+        // over everything if it is not removed, and the page cannot scroll.
+        let out;
+        const html = '<!doctype html><html class="cookiescript_overlay"><head>' +
+            '<style data-type="cookiescriptstyles">' +
+            '.cookiescript_overlay{overflow:hidden;height:100vh}</style>' +
+            '</head><body>' +
+            '<div data-cs-id="cookiescript_injected" id="cookiescript_injected">' +
+            'banner</div>' +
+            '<div id="cookiescript_injected_fsd">dialog</div>' +
+            '<div id="cookiescript_badge">badge</div>' +
+            '<p id="content">x</p></body></html>';
+        const w = boot({ html, before: w_ => { out = lines(w_); } }).window;
+        assert.equal(w.document.querySelector('style[data-type="cookiescriptstyles"]'), null);
+        assert.equal(w.document.querySelector('[data-cs-id="cookiescript_injected"]'), null);
+        assert.equal(node(w, 'cookiescript_injected_fsd'), null);
+        assert.equal(node(w, 'cookiescript_badge'), null);
+        // Their overlay class, which is what carries the overflow rule.
+        assert.equal(
+            w.document.documentElement.classList.contains('cookiescript_overlay'),
+            false
+        );
+        // The page itself is untouched.
+        assert.equal(node(w, 'content').textContent, 'x');
+        assert.ok(out[0].includes(' removed=5'), out[0]);
+    });
+
+    it('takes out banner markup that arrives later too', async ( ) => {
+        let out;
+        const dom = boot({
+            html: '<!doctype html><html><head></head><body></body></html>',
+            before: w_ => { out = lines(w_); },
+        });
+        const w = dom.window;
+        assert.ok(out[0].includes(' removed=0'), out[0]);
+        w.document.body.insertAdjacentHTML('beforeend',
+            '<div id="cookiescript_injected_fsd">dialog</div>');
+        await settle(700);
+        assert.equal(node(w, 'cookiescript_injected_fsd'), null);
+        assert.ok(out.some(l => l.includes(' removed=+1')), out.join(' | '));
+    });
+
+    it('carries their key into the state where the record has one', ( ) => {
+        const w = boot({
+            before: w_ => {
+                w_.document.cookie = 'CookieScriptConsent=' +
+                    encodeURIComponent(JSON.stringify({
+                        action: 'reject',
+                        categories: '[]',
+                        key: '2e22a4ca-0d64-448d-87aa-481848181e20',
+                        consenttime: 1770372134,
+                    }));
+            },
+        }).window;
+        // Theirs puts key on the state only when the record carries one - it
+        // comes back from their collector, so a first refusal has none.
+        assert.deepEqual(plain(w.CookieScript.instance.currentState()), {
+            action: 'reject',
+            key: '2e22a4ca-0d64-448d-87aa-481848181e20',
+            categories: [ 'strict' ],
+        });
+        assert.equal(
+            Object.keys(plain(boot().window.CookieScript.instance.currentState()))
+                .indexOf('key'),
+            -1
+        );
+    });
+
     it('does nothing the second time it is injected', ( ) => {
         const w = boot().window;
         const before_ = w.document.cookie;
@@ -500,8 +622,8 @@ describe('cookiescript-reject', ( ) => {
         assert.equal(
             out[0],
             '[consent-rr] cookiescript-reject ' + versions.cookiescript +
-            ' action=reject categories=none cookie=written freed=2' +
-            ' gcm=nogtag api=ready'
+            ' action=reject categories=strict cookie=written freed=2' +
+            ' removed=0 gcm=nogtag api=ready'
         );
     });
 
@@ -516,7 +638,7 @@ describe('cookiescript-reject', ( ) => {
         // Their bundle reads it, but only to put &dnt= on a request to their
         // collector - never to decide anything. Nothing is reported here.
         assert.equal(record(w).action, 'reject');
-        assert.equal(record(w).categories, '[]');
+        assert.deepEqual(plain(record(w).categories), []);
     });
 });
 
