@@ -11,7 +11,7 @@ clicked, and the page's consent API answers normally.
 
 Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**,
 **InMobi Choice** (formerly Quantcast Choice), **Osano**, **Civic Cookie
-Control**, **Cookiebot** and **Securiti**.
+Control**, **Cookiebot**, **Securiti** and **Transcend**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -23,6 +23,7 @@ Control**, **Cookiebot** and **Securiti**.
 | `civic-reject-unblock.js` | Civic, for a site that withholds content until a category is on: accepts the categories that do not read as tracking, refuses the ones that do, and still refuses the IAB layer. |
 | `cookiebot-reject.js` | Cookiebot: their own default state, which is already a refusal - `necessary` true, `preferences`, `statistics` and `marketing` false - with `CookieConsent` answering and parked tags left parked. |
 | `securiti-reject.js` | Securiti: a refusal recorded in their own `__privaci_cookie_consents`, with the API their loader parks answering instead of queueing for an SDK that never arrives. |
+| `transcend-reject.js` | Transcend: no banner, and the refusal recorded through airgap's own API - which leaves airgap itself in place, blocking by that refusal. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -642,6 +643,63 @@ the old cookie before this takes over.
   fetches `sdk-stub.js` and the SDK implements `__tcfapi`. None of that is put
   back, for the same reason as Cookiebot: the identity is not in any file
   served here, and a TC string is not something to invent.
+
+## Transcend
+
+```
+||transcend-cdn.com/cm/*/ui.js$script,redirect=transcend-reject.js
+```
+
+**Replace the banner, not the engine.** Transcend ships in two halves, and the
+page loads the engine first: `airgap.js` is the init script, and it carries the
+tenant's whole configuration - the purposes, the cookie-to-purpose table, the
+allowed hosts - and blocks requests and cookies itself, by consent. `ui.js` is
+the banner, 390 kB of Preact, which airgap fetches only when it decides to
+prompt.
+
+So this stands in for `ui.js`: nothing is rendered, and the refusal is recorded
+through airgap's own API, which leaves the engine in place as the thing
+enforcing it.
+
+```js
+airgap.ready(ag => {
+    const purposes = ag.getConsent().purposes;   // the tenant's own names
+    …                                            // every one of them false
+    ag.setConsent(null, refused, { confirmed: true, prompted: true, timestamp });
+});
+```
+
+The purpose names never have to be known: `getConsent()` hands them over,
+including their tri-state `"Auto"`, which becomes an explicit no. `null` as the
+auth is what a site's own consent manager passes when a choice was not made by
+clicking - Costco's does exactly that, which is how we know a tenant with auth
+off accepts a decision recorded this way.
+
+Because airgap only fetches `ui.js` when it wants to prompt, the timing works
+out: a visitor with nothing recorded gets the prompt, which is this, which
+records the refusal; a visitor who already has it recorded never triggers the
+fetch, and there is nothing to do.
+
+It works in either position. Served in place of `ui.js` it runs with airgap
+already ready. Injected as a scriptlet it runs at `document_start`, before
+`airgap.js` - the first script on the page - has executed, and installs their
+own stub shape, `{ readyQueue, ready }`, which `airgap.js` spreads over its own
+definition, so the callback queued there is one it drains.
+
+### Deliberate gaps
+
+- **A tenant that requires a trusted event** gets `Authorization proof is
+  untrusted` from its own airgap, and the refusal is written to their `tcm`
+  cookie instead, in the shape one of their own cookies carries. The console
+  line says which way it went - `via=setConsent` or `via=cookie`.
+- **A site with a consent UI of its own** - Costco builds one on airgap rather
+  than using `ui.js` - reads the same refusal, so it has nothing to prompt for,
+  but it may ask before airgap has got as far as fetching `ui.js`. The scriptlet
+  form records the refusal before anything renders; `filters/transcend.txt` has
+  the lines.
+- **`airgap.js` is deliberately left alone**, and a test asserts the filter list
+  never names it. Replacing the engine would drop its blocking and mean
+  reimplementing the API it exposes.
 
 ## Development
 
