@@ -65,6 +65,30 @@ const decode = w => TCString.decode(tcData(w).tcString);
 // width, cmpVersion at bit 90.
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
+const patchBits = (tcString, offset, bits) => {
+    const parts = tcString.split('.');
+    let stream = '';
+    for ( const character of parts[0] ) {
+        stream += B64.indexOf(character).toString(2).padStart(6, '0');
+    }
+    stream = stream.slice(0, offset) + bits +
+        stream.slice(offset + bits.length);
+    while ( stream.length % 6 !== 0 ) { stream += '0'; }
+    let out = '';
+    for ( let i = 0; i < stream.length; i += 6 ) {
+        out += B64.charAt(parseInt(stream.slice(i, i + 6), 2));
+    }
+    parts[0] = out;
+    return parts.join('.');
+};
+
+// The publisher country sits at bit 201, two six-bit letters.
+const withPublisherCC = (tcString, country) => patchBits(
+    tcString, 201,
+    (country.charCodeAt(0) - 65).toString(2).padStart(6, '0') +
+    (country.charCodeAt(1) - 65).toString(2).padStart(6, '0')
+);
+
 const withCmpVersion = (tcString, version) => {
     const parts = tcString.split('.');
     let bits = '';
@@ -204,6 +228,25 @@ describe('appconsent', ( ) => {
         assert.equal(decode(boot(reject).window).cmpVersion, 33);
     });
 
+    it('keeps the publisher country a visitor already carries', ( ) => {
+        const first = boot(reject).window;
+        const theirs = withPublisherCC(
+            first.localStorage.getItem('IABTCF_TCString'), 'DE'
+        );
+        let out;
+        const w = boot(reject, {
+            before: w_ => {
+                out = lines(w_);
+                w_.localStorage.setItem('IABTCF_TCString', theirs);
+            },
+        }).window;
+        // It is the publisher's, not theirs, so a string already carrying one
+        // is where it comes from - FR is only the fallback.
+        assert.equal(decode(w).publisherCountryCode, 'DE');
+        assert.equal(w.localStorage.getItem('IABTCF_PublisherCC'), 'DE');
+        assert.ok(out[0].includes(' cc=DE '), out[0]);
+    });
+
     it('answers what their stub was asked before it was replaced', ( ) => {
         const w = boot(accept, {
             before: w_ => {
@@ -236,48 +279,56 @@ describe('appconsent', ( ) => {
         assert.deepEqual(plain(other), [ null, false ]);
     });
 
-    it('records their own state beside it', ( ) => {
+    it('leaves their own state alone', ( ) => {
+        // Its shape comes back with a configuration this never fetches, and
+        // the fields a decision would consist of are not in their bundle at
+        // all - hasConsent and consentedAll appear nowhere in it. The answer
+        // lives in the IABTCF_ keys and in __tcfapi instead.
         const w = boot(accept).window;
-        const state = JSON.parse(w.localStorage.getItem('appconsent'));
-        assert.equal(state.tcString, tcData(w).tcString);
-        assert.equal(state.hasConsent, true);
-        assert.equal(state.consentedAll, true);
-        const refusing = boot(reject).window;
-        const refused = JSON.parse(refusing.localStorage.getItem('appconsent'));
-        assert.equal(refused.hasConsent, false);
-        assert.equal(refused.consentedAll, false);
-    });
-
-    it('keeps what their state already held', ( ) => {
-        const w = boot(reject, {
+        assert.equal(w.localStorage.getItem('appconsent'), null);
+        const kept = boot(reject, {
             before: w_ => {
                 w_.localStorage.setItem('appconsent', JSON.stringify({
-                    appKey: 'abc', somethingElse: 1,
+                    appKey: 'abc',
                 }));
             },
         }).window;
-        const state = JSON.parse(w.localStorage.getItem('appconsent'));
-        assert.equal(state.appKey, 'abc');
-        assert.equal(state.somethingElse, 1);
-        assert.equal(state.hasConsent, false);
+        assert.deepEqual(
+            plain(JSON.parse(kept.localStorage.getItem('appconsent'))),
+            { appKey: 'abc' }
+        );
     });
 
-    it('answers their global, without rendering or changing the answer',
-        async ( ) => {
-            const w = boot(accept).window;
-            assert.equal(typeof w.appconsent, 'object');
-            assert.equal(await w.appconsent.isReady(), true);
-            assert.equal(await w.appconsent.isGdprApplies(), true);
-            assert.equal(await w.appconsent.getTCString(), tcData(w).tcString);
-            assert.equal(await w.appconsent.hasConsent(), true);
-            // Theirs would open the banner; there is none to open.
-            assert.equal(await w.appconsent.present(), undefined);
-            // And a refusing resource is not talked into granting.
-            const refusing = boot(reject).window;
-            assert.equal(await refusing.appconsent.consentAll(), false);
-            assert.equal(decode(refusing).purposeConsents.size, 0);
+    it('answers their global, under their own method names', async ( ) => {
+        const w = boot(accept).window;
+        assert.equal(typeof w.appconsent, 'object');
+        // Read off their manager class rather than guessed: these are its
+        // names.
+        for ( const name of [
+            'init', 'startCMP', 'initIAB', 'setConfiguration', 'update',
+            'updateExtraPurpose', 'show', 'noShow', 'presentNotice',
+            'retryShow', 'accept', 'deny', 'fakedeny', 'setExternalIds',
+            'getExternalIds', 'getUuid', 'isFloatingNeedUpdate',
+            'extraFloatingAllowed',
+        ] ) {
+            assert.equal(typeof w.appconsent[name], 'function', name);
         }
-    );
+        // Not theirs, so not invented here.
+        for ( const name of [
+            'getConsents', 'getTCString', 'isGdprApplies', 'consentAll',
+            'rejectAll', 'present', 'close',
+        ] ) {
+            assert.equal(w.appconsent[name], undefined, name);
+        }
+        // Theirs would show the banner or record a decision; these do
+        // neither, and the answer already recorded does not move.
+        assert.equal(await w.appconsent.show(), undefined);
+        assert.equal(await w.appconsent.accept(), undefined);
+        const refusing = boot(reject).window;
+        assert.equal(await refusing.appconsent.accept(), undefined);
+        assert.equal(decode(refusing).purposeConsents.size, 0);
+        assert.deepEqual(plain(await refusing.appconsent.getExternalIds()), {});
+    });
 
     it('does nothing the second time it is injected', ( ) => {
         const w = boot(reject).window;
@@ -296,8 +347,7 @@ describe('appconsent', ( ) => {
         assert.equal(
             out[0],
             '[consent-rr] appconsent-reject ' + versions.appconsent +
-            ' tcf=refused cmp=2/33/default cc=FR keys=17 state=written' +
-            ' drained=0'
+            ' tcf=refused cmp=2/33/default cc=FR keys=17 drained=0'
         );
         let granting;
         boot(accept, { before: w_ => { granting = lines(w_); } });

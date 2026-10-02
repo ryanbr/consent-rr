@@ -25,13 +25,29 @@
 
     Read off that bundle rather than from documentation:
 
-      localStorage.appconsent    their own state, JSON
+      localStorage.appconsent    their own state, JSON - left alone, see below
       the IABTCF_ keys           the standard set, in localStorage, each a
                                  string of "0" and "1" built by their
                                  lt(set, length)
       __tcfapi                   the embedded cmpapi, with the locator frame
                                  and the queue a stub keeps
       cmpId 2                    hard-coded in their TC model builder
+      their manager's methods    init, startCMP, initIAB, setConfiguration,
+                                 update, updateExtraPurpose, show, noShow,
+                                 presentNotice, retryShow, accept, deny,
+                                 fakedeny, setExternalIds, getExternalIds,
+                                 getUuid, isFloatingNeedUpdate and
+                                 extraFloatingAllowed. Those are the names, so
+                                 those are what the global answers; an earlier
+                                 pass put eleven methods there of which eight
+                                 appear nowhere in their bundle.
+
+    Their own state is not written. Its shape comes back with the
+    configuration this never fetches, and the fields a decision would consist
+    of are not visible in the bundle - hasConsent and consentedAll, which an
+    earlier pass wrote into it, appear nowhere in there at all. The answer
+    lives in the IABTCF_ keys and in __tcfapi, which is where a vendor looks;
+    their UI is the only thing that reads that state, and it is not here.
 
     Two modes, one line apart:
 
@@ -59,7 +75,6 @@ function consentRRAppConsent(grantAll) {
         if ( w.__tcfapi.consentRR !== undefined ) { return; }
     }
 
-    const STATE = 'appconsent';
     const TC_KEY = 'IABTCF_TCString';
 
     const read = name => {
@@ -101,36 +116,6 @@ function consentRRAppConsent(grantAll) {
     };
 
     const stored = store();
-
-    // Their own state, which their banner chunks read. Only the fields a
-    // decision consists of are set: the rest comes back with a configuration
-    // this never fetches, and inventing it would not make their UI work - the
-    // UI is not here.
-    const state = ( ) => {
-        let previous = null;
-        try {
-            const raw = read(STATE);
-            if ( raw !== '' ) { previous = JSON.parse(raw); }
-        } catch(ex) {
-        }
-        const next = previous !== null && typeof previous === 'object'
-            ? previous
-            : {};
-        next.consentRR = VERSION;
-        next.tcString = tcf.tcString;
-        next.consentString = tcf.tcString;
-        next.hasConsent = tcf.granted;
-        next.consentedAll = tcf.granted;
-        next.lastUpdated = new Date().toISOString();
-        try {
-            w.localStorage.setItem(STATE, JSON.stringify(next));
-            return 'written';
-        } catch(ex) {
-        }
-        return 'refused';
-    };
-
-    const statewritten = state();
 
     const listeners = new Map();
     let nextId = 0;
@@ -247,24 +232,33 @@ function consentRRAppConsent(grantAll) {
         }, call.parameter);
     });
 
-    // Their global, so a page that calls it does not throw on a function that
-    // went away with the bundle. Nothing here renders, and nothing here
-    // changes the answer already recorded.
-    const settled = ( ) => Promise.resolve(tcf.granted);
+    // Their global, so a page calling it does not throw on a function that
+    // went away with the bundle. The names are their manager's own, and the
+    // ones that would render, record or re-ask resolve without doing any of
+    // it: the answer is already in the keys above and does not change.
+    const nothing = ( ) => Promise.resolve(undefined);
     try {
         w.appconsent = Object.assign({}, w.appconsent, {
             consentRR: VERSION,
-            getConsent: ( ) => Promise.resolve(tcf.tcData()),
-            getTCString: ( ) => Promise.resolve(tcf.tcString),
-            isReady: ( ) => Promise.resolve(true),
-            isGdprApplies: ( ) => Promise.resolve(true),
-            hasConsent: settled,
-            consentAll: settled,
-            rejectAll: settled,
-            present: ( ) => Promise.resolve(undefined),
-            open: ( ) => Promise.resolve(undefined),
-            close: ( ) => Promise.resolve(undefined),
-            clear: ( ) => Promise.resolve(undefined),
+            init: nothing,
+            startCMP: nothing,
+            initIAB: nothing,
+            setConfiguration: nothing,
+            update: nothing,
+            updateExtraPurpose: nothing,
+            show: nothing,
+            noShow: nothing,
+            presentNotice: nothing,
+            retryShow: nothing,
+            // Theirs record a decision. This one is already recorded.
+            accept: nothing,
+            deny: nothing,
+            fakedeny: nothing,
+            setExternalIds: nothing,
+            getExternalIds: ( ) => Promise.resolve({}),
+            getUuid: ( ) => Promise.resolve(''),
+            isFloatingNeedUpdate: ( ) => Promise.resolve(false),
+            extraFloatingAllowed: ( ) => Promise.resolve(false),
         });
     } catch(ex) {
     }
@@ -278,7 +272,6 @@ function consentRRAppConsent(grantAll) {
             (tcf.reusedIdentity ? '' : '/default') +
             ' cc=' + tcf.publisherCC +
             ' keys=' + stored +
-            ' state=' + statewritten +
             ' drained=' + answered
         );
     } catch(ex) {

@@ -128,8 +128,8 @@ the same fixture as its sibling.
 | `cookiebot-reject` | 14.7 KB | `CookieConsent`, `Cookiebot`, `uetq`, `CB_OnTagsExecuted_Processed` |
 | `securiti-reject` | 8.2 KB | `SecuritiSDK`, `__ScrtSdkApiOps`, `initCmp`, `setConsentBannerParams`, `showConsentPreferencesPopup`, `overrideThemeMatching` +4 more |
 | `transcend-reject` | 5.2 KB | - |
-| `appconsent-reject` | 15.3 KB | `__tcfapi`, `appconsent` |
-| `appconsent-accept` | 15.3 KB | `__tcfapi`, `appconsent` |
+| `appconsent-reject` | 14.6 KB | `__tcfapi`, `appconsent` |
+| `appconsent-accept` | 14.6 KB | `__tcfapi`, `appconsent` |
 | `ketch-reject` | 13.0 KB | - |
 | `ketch-reject-unblock` | 13.0 KB | - |
 | `termly-reject` | 9.2 KB | `Termly` |
@@ -151,8 +151,8 @@ the same fixture as its sibling.
 | `cookiebot-reject` | `CookieConsent` | - | update: granted security_storage | - | no |
 | `securiti-reject` | `__privaci_cookie_consents`, `__privaci_cookie_consent_uuid` | - | update: granted security_storage | - | no |
 | `transcend-reject` | - | - | - | - | no |
-| `appconsent-reject` | - | `IABTCF_CmpSdkID`, `IABTCF_CmpSdkVersion`, `IABTCF_DisclosedVendors`, `IABTCF_PolicyVersion` +14 more | - | `__tcfapi` | no |
-| `appconsent-accept` | - | `IABTCF_CmpSdkID`, `IABTCF_CmpSdkVersion`, `IABTCF_DisclosedVendors`, `IABTCF_PolicyVersion` +14 more | - | `__tcfapi` | no |
+| `appconsent-reject` | - | `IABTCF_CmpSdkID`, `IABTCF_CmpSdkVersion`, `IABTCF_DisclosedVendors`, `IABTCF_PolicyVersion` +13 more | - | `__tcfapi` | no |
+| `appconsent-accept` | - | `IABTCF_CmpSdkID`, `IABTCF_CmpSdkVersion`, `IABTCF_DisclosedVendors`, `IABTCF_PolicyVersion` +13 more | - | `__tcfapi` | no |
 | `ketch-reject` | `_ketch_consent_v1_` | - | update: granted security_storage | - | no |
 | `ketch-reject-unblock` | `_ketch_consent_v1_` | - | update: granted security_storage | - | no |
 | `termly-reject` | - | `TERMLY_API_CACHE` | default: granted security_storage | - | no |
@@ -206,8 +206,8 @@ uBlock Origin does the blocking.
 [consent-rr] cookiebot-reject 1.0.1 necessary=true denied=preferences,statistics,marketing iab=off cookie=written
 [consent-rr] securiti-reject 1.0.0 consents=none tenant=read gcm=denied cookie=written
 [consent-rr] transcend-reject 1.1.0 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
-[consent-rr] appconsent-reject 1.0.0 tcf=refused cmp=2/33/default cc=FR keys=17 state=written drained=0
-[consent-rr] appconsent-accept 1.0.0 tcf=granted cmp=2/33/default cc=FR keys=17 state=written drained=0
+[consent-rr] appconsent-reject 1.0.1 tcf=refused cmp=2/33/default cc=FR keys=17 drained=0
+[consent-rr] appconsent-accept 1.0.1 tcf=granted cmp=2/33/default cc=FR keys=17 drained=0
 [consent-rr] ketch-reject 1.1.1 purposes=2 denied record=revoked gcm=denied queue=ready drained=0
 [consent-rr] ketch-reject 1.1.1 purposes=2 denied surface=granted stored=denied record=revoked gcm=denied queue=ready drained=0
 [consent-rr] termly-reject 1.0.0 consented=essential denied=advertising,analytics,performance,social_networking,unclassified dns=true gcm=denied freed=1 api=ready tcf=off cache=written
