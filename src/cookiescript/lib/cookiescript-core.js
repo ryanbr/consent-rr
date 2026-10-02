@@ -24,6 +24,15 @@
 
     Read off that bundle rather than from documentation:
 
+      b() / Ke() / mn()         their three has-consent tests, and all that
+                                any of them reads is action and categories:
+                                b() is action "accept" or "reject", Ke() is
+                                "accept", mn() is "accept" with every category
+                                present. So the two fields this writes are a
+                                complete decision to their own code. key is
+                                not invented here: it comes back from their
+                                collector (a('key', e.key)) and nothing of
+                                theirs requires it.
       CookieScriptConsent       their cookie, plain JSON, written by
                                 a(name, value) one field at a time -
                                   { action, categories, consenttime, key }
@@ -45,6 +54,28 @@
                                 action already recorded nothing consults it.
                                 Writing it would claim a banner was shown that
                                 never was.
+      the unblocker             one sweep over every parked kind, run from
+                                Ve() at load and then once more 500ms later,
+                                which is how an element that parsed after the
+                                first pass still gets freed. There is no
+                                observer. Each kind has its own attribute -
+                                img and iframe src, embed src and reinserted,
+                                object data and reinserted, link href, and a
+                                script replaced by a fresh node - and
+                                [data-cookienotice] whose categories are all
+                                allowed is hidden.
+      data-reload="true"        on a parked script, their flag for a page that
+                                needs the ready event again: freeing one sets
+                                their s, and s calls Vt(), which dispatches
+                                DOMContentLoaded on the document a second
+                                time. A script freed after the real event has
+                                passed registers its listener too late to hear
+                                it, so without this the page never finishes
+                                setting itself up - its scrolling among the
+                                rest. Reported from the field: scrolling gone
+                                on a first visit, fine after a refresh, which
+                                is the same script arriving from cache early
+                                enough to catch the real event.
       the categories            functionality, targeting, strict, performance
                                 and unclassified, with strict the one that is
                                 never refused
@@ -189,62 +220,172 @@ function consentRRCookieScript() {
 
     // Their freeing routine, kind by kind: a fresh element carrying every
     // attribute, the type back to text/javascript, the marker gone.
+    // Which attribute carries the parked url, by tag, and whether the element
+    // has to go back into the document for it to take. All of it theirs: img
+    // and iframe are src, embed is src and reinserted, object is data and
+    // reinserted, link is href. A script is replaced by a fresh node, because
+    // an attribute written onto one the parser has already been past does not
+    // make it run.
+    const HANDLERS = {
+        IMG: { attribute: 'src', from: 'data-src' },
+        IFRAME: { attribute: 'src', from: 'data-src' },
+        EMBED: { attribute: 'src', from: 'data-src', reinsert: true },
+        OBJECT: { attribute: 'data', from: 'data-data', reinsert: true },
+        LINK: { attribute: 'href', from: 'data-href' },
+    };
+
+    // Their own reinsert: the markup goes in after the element, then the
+    // element goes.
+    const reinsert = element => {
+        const html = element.outerHTML;
+        element.insertAdjacentHTML('afterend', html);
+        element.parentNode.removeChild(element);
+    };
+
+    const freeScript = element => {
+        const fresh = doc.createElement('script');
+        fresh.innerHTML = element.innerHTML;
+        for ( const attribute of Array.from(element.attributes) ) {
+            fresh.setAttribute(attribute.name, attribute.value);
+        }
+        fresh.setAttribute('type', 'text/javascript');
+        fresh.removeAttribute('data-cookiescript');
+        // Theirs parks a script by its type alone, so src comes over with the
+        // other attributes. A tenant that parks the url too is handled as
+        // well.
+        const src = element.getAttribute('data-src');
+        if ( src ) {
+            fresh.setAttribute('src', src);
+            fresh.removeAttribute('data-src');
+        }
+        element.parentNode.replaceChild(fresh, element);
+        // Their flag for a script whose page needs the ready event again.
+        return element.getAttribute('data-reload') === 'true';
+    };
+
+    // null where nothing was freed, otherwise whether the page asked for the
+    // ready event along with it.
     const free = element => {
         try {
-            const tag = element.tagName;
-            if ( tag === 'SCRIPT' ) {
-                const fresh = doc.createElement('script');
-                fresh.innerHTML = element.innerHTML;
-                for ( const attribute of Array.from(element.attributes) ) {
-                    fresh.setAttribute(attribute.name, attribute.value);
-                }
-                fresh.setAttribute('type', 'text/javascript');
-                fresh.removeAttribute('data-cookiescript');
-                const src = element.getAttribute('data-src');
-                if ( src ) {
-                    fresh.setAttribute('src', src);
-                    fresh.removeAttribute('data-src');
-                }
-                element.parentNode.replaceChild(fresh, element);
-                return true;
+            if ( element.tagName === 'SCRIPT' ) {
+                return freeScript(element);
             }
-            const src = element.getAttribute('data-src');
-            if ( src ) {
-                element.setAttribute('src', src);
-                element.removeAttribute('data-src');
+            const handler = HANDLERS[element.tagName];
+            const from = handler !== undefined ? handler.from : 'data-src';
+            const attribute = handler !== undefined ? handler.attribute : 'src';
+            const url = element.getAttribute(from);
+            if ( url ) {
+                element.setAttribute(attribute, url);
+                element.removeAttribute(from);
             }
-            const href = element.getAttribute('data-href');
-            if ( href ) {
-                element.setAttribute('href', href);
-                element.removeAttribute('data-href');
+            // A tag they have no handler for still gets freed, by whichever
+            // of the two url attributes it carries.
+            if ( handler === undefined ) {
+                const href = element.getAttribute('data-href');
+                if ( href ) {
+                    element.setAttribute('href', href);
+                    element.removeAttribute('data-href');
+                }
             }
             element.removeAttribute('data-cookiescript');
-            return true;
+            if ( handler !== undefined && handler.reinsert === true ) {
+                reinsert(element);
+            }
+            return false;
         } catch(ex) {
         }
-        return false;
+        return null;
     };
 
     // Only where every category on the element is allowed, which is their own
     // test: they strip the allowed names and skip anything left over.
-    const freeStrict = ( ) => {
+    const allowed = value => {
+        if ( value === null || value === '' ) { return true; }
+        return value.split(STRICT).join('').trim() === '';
+    };
+
+    const sweep = ( ) => {
         let freed = 0;
+        let reload = false;
         try {
             const parked = doc.querySelectorAll('[data-cookiescript="accepted"]');
             for ( const element of Array.from(parked) ) {
-                let categories = element.getAttribute('data-cookiecategory');
-                if ( categories !== null && categories !== '' ) {
-                    categories = categories.split(STRICT).join('').trim();
-                    if ( categories !== '' ) { continue; }
+                const categories = element.getAttribute('data-cookiecategory');
+                if ( allowed(categories) === false ) { continue; }
+                const asked = free(element);
+                if ( asked === null ) { continue; }
+                freed += 1;
+                if ( asked ) { reload = true; }
+            }
+            // Their last handler: a notice about a category that is allowed
+            // has nothing left to say.
+            const notices = doc.querySelectorAll('[data-cookienotice]');
+            for ( const element of Array.from(notices) ) {
+                if ( allowed(element.getAttribute('data-cookienotice')) === false ) {
+                    continue;
                 }
-                if ( free(element) ) { freed += 1; }
+                element.style.display = 'none';
             }
         } catch(ex) {
         }
-        return freed;
+        return { freed, reload };
     };
 
-    const freed = freeStrict();
+    // Their ready event, dispatched again on a document that has had one
+    // already. A script freed after the real event went past registers its
+    // listener too late to ever hear it, and their data-reload flag is what a
+    // page marks such a script with - page scrolling being routinely one of
+    // the things that listener sets up. Deferred while the document is still
+    // parsing, so the real event goes first.
+    const announceReady = ( ) => {
+        const dispatch = ( ) => {
+            try {
+                doc.dispatchEvent(new w.Event('DOMContentLoaded', {
+                    bubbles: true,
+                    cancelable: true,
+                }));
+            } catch(ex) {
+            }
+        };
+        if ( doc.readyState === 'loading' ) {
+            doc.addEventListener('DOMContentLoaded', dispatch, { once: true });
+            return;
+        }
+        dispatch();
+    };
+
+    // Theirs sweeps at load and then once more half a second later, which is
+    // how an element that parsed after it still gets freed. This sweeps now
+    // for whatever is already there, and then on their schedule, because at
+    // the point their script tag is reached the rest of the page is not.
+    const sweepLater = ( ) => {
+        const pass = sweep();
+        if ( pass.freed === 0 ) { return; }
+        if ( pass.reload ) { announceReady(); }
+        try {
+            w.console.info(
+                '[consent-rr] ' + NAME + ' ' + VERSION +
+                ' freed=+' + pass.freed +
+                ' ready=' + (pass.reload ? 'redispatched' : 'unchanged')
+            );
+        } catch(ex) {
+        }
+    };
+
+    const first = sweep();
+    const freed = first.freed;
+    if ( first.reload ) { announceReady(); }
+
+    try {
+        if ( doc.readyState === 'loading' ) {
+            doc.addEventListener('DOMContentLoaded', sweepLater, { once: true });
+        }
+        if ( doc.readyState !== 'complete' ) {
+            w.addEventListener('load', sweepLater, { once: true });
+        }
+        w.setTimeout(sweepLater, 500);
+    } catch(ex) {
+    }
 
     // Their consent-mode keys, with the category each is mapped to where the
     // record says so. A key is granted only where its category survives a

@@ -7,6 +7,7 @@
 */
 
 import { strict as assert } from 'node:assert';
+import { JSDOM } from 'jsdom';
 import { before, describe, it } from 'node:test';
 import {
     cookies, filtersText, loadResources, runDom, settle, versions,
@@ -327,6 +328,160 @@ describe('cookiescript-reject', ( ) => {
         assert.equal(instance.iabCMP, null);
         assert.equal(instance.tcString, undefined);
         assert.equal(instance.googleAcString, undefined);
+    });
+
+    it('sweeps again later, for what had not parsed yet', async ( ) => {
+        // At the point their script tag is reached the rest of the page is
+        // not there, so the first sweep sees nothing. Theirs runs at load and
+        // again half a second later; this is that second pass.
+        let out;
+        const dom = boot({
+            html: '<!doctype html><html><head></head><body></body></html>',
+            before: w_ => { out = lines(w_); },
+        });
+        const w = dom.window;
+        assert.ok(out[0].includes(' freed=0'), out[0]);
+        w.document.body.insertAdjacentHTML('beforeend',
+            '<script id="late" type="text/plain" data-cookiescript="accepted"' +
+            ' data-cookiecategory="strict" data-src="https://n.test/n.js">' +
+            '</scr' + 'ipt>' +
+            '<iframe id="lateframe" data-cookiescript="accepted"' +
+            ' data-cookiecategory="targeting" data-src="https://e.test/e">' +
+            '</iframe>');
+        await settle(700);
+        assert.equal(node(w, 'late').getAttribute('src'), 'https://n.test/n.js');
+        assert.equal(node(w, 'late').getAttribute('type'), 'text/javascript');
+        // And the refused one is still parked.
+        assert.equal(node(w, 'lateframe').hasAttribute('src'), false);
+        assert.ok(out.some(l => l.includes(' freed=+1')), out.join(' | '));
+    });
+
+    it('dispatches their ready event again for a data-reload script',
+    async ( ) => {
+        let out;
+        const dom = boot({
+            html: '<!doctype html><html><head></head><body></body></html>',
+            before: w_ => { out = lines(w_); },
+        });
+        const w = dom.window;
+        // Wait for the real event to be gone, then listen like a script that
+        // was freed too late to hear it.
+        await settle(50);
+        const heard = [];
+        w.document.addEventListener('DOMContentLoaded', ev => {
+            heard.push(ev.bubbles);
+        });
+        w.document.body.insertAdjacentHTML('beforeend',
+            '<script id="late" type="text/plain" data-cookiescript="accepted"' +
+            ' data-cookiecategory="strict" data-reload="true"' +
+            ' data-src="https://n.test/n.js"></scr' + 'ipt>');
+        await settle(700);
+        assert.deepEqual(heard, [ true ]);
+        assert.ok(out.some(l => l.includes(' ready=redispatched')),
+            out.join(' | '));
+    });
+
+    it('leaves the ready event alone without their flag', async ( ) => {
+        let out;
+        const dom = boot({
+            html: '<!doctype html><html><head></head><body></body></html>',
+            before: w_ => { out = lines(w_); },
+        });
+        const w = dom.window;
+        await settle(50);
+        const heard = [];
+        w.document.addEventListener('DOMContentLoaded', ( ) => {
+            heard.push(1);
+        });
+        w.document.body.insertAdjacentHTML('beforeend',
+            '<script id="late" type="text/plain" data-cookiescript="accepted"' +
+            ' data-cookiecategory="strict" data-src="https://n.test/n.js">' +
+            '</scr' + 'ipt>');
+        await settle(700);
+        assert.deepEqual(heard, []);
+        assert.ok(out.some(l => l.includes(' ready=unchanged')),
+            out.join(' | '));
+    });
+
+    it('frees the tags theirs frees, by the attribute theirs uses', ( ) => {
+        const html = '<!doctype html><html><head>' +
+            '<link id="css" data-cookiescript="accepted"' +
+            ' data-cookiecategory="strict" rel="stylesheet"' +
+            ' data-href="https://s.test/s.css">' +
+            '</head><body>' +
+            '<object id="obj" data-cookiescript="accepted"' +
+            ' data-cookiecategory="strict" data-data="https://o.test/o.swf">' +
+            '</object>' +
+            '<embed id="emb" data-cookiescript="accepted"' +
+            ' data-cookiecategory="strict" data-src="https://m.test/m.swf">' +
+            '<object id="objad" data-cookiescript="accepted"' +
+            ' data-cookiecategory="targeting" data-data="https://o.test/a.swf">' +
+            '</object>' +
+            '<div id="notice" data-cookienotice="strict">no cookies</div>' +
+            '<div id="adnotice" data-cookienotice="targeting">no ads</div>' +
+            '</body></html>';
+        const w = boot({ html }).window;
+        // link is href, object is data - not src, which is what theirs uses
+        // for img, iframe and embed.
+        assert.equal(node(w, 'css').getAttribute('href'), 'https://s.test/s.css');
+        assert.equal(node(w, 'obj').getAttribute('data'), 'https://o.test/o.swf');
+        assert.equal(node(w, 'emb').getAttribute('src'), 'https://m.test/m.swf');
+        assert.equal(node(w, 'objad').hasAttribute('data'), false);
+        // Their notice handler, with their category rule on it.
+        assert.equal(node(w, 'notice').style.display, 'none');
+        assert.equal(node(w, 'adnotice').style.display, '');
+    });
+
+    it('puts back the two tags theirs reinserts', ( ) => {
+        const html = '<!doctype html><html><head></head><body>' +
+            '<object id="obj" data-cookiescript="accepted"' +
+            ' data-cookiecategory="strict" data-data="https://o.test/o.swf">' +
+            '</object>' +
+            '<embed id="emb" data-cookiescript="accepted"' +
+            ' data-cookiecategory="strict" data-src="https://m.test/m.swf">' +
+            '<iframe id="frame" data-cookiescript="accepted"' +
+            ' data-cookiecategory="strict" data-src="https://e.test/e">' +
+            '</iframe></body></html>';
+        const dom = new JSDOM(html, { runScripts: 'outside-only', url: URL });
+        const w = dom.window;
+        const was = {
+            obj: node(w, 'obj'),
+            emb: node(w, 'emb'),
+            frame: node(w, 'frame'),
+        };
+        w.eval(reject);
+        // A url written onto an embed or object in place does not take, so
+        // theirs puts the markup back - the node in the document is a new
+        // one. An iframe takes it, and theirs leaves the node alone.
+        assert.equal(w.document.contains(was.obj), false);
+        assert.equal(w.document.contains(was.emb), false);
+        assert.equal(w.document.contains(was.frame), true);
+        assert.equal(node(w, 'obj').getAttribute('data'), 'https://o.test/o.swf');
+        assert.equal(node(w, 'emb').getAttribute('src'), 'https://m.test/m.swf');
+    });
+
+    it('waits for the real ready event before dispatching one', async ( ) => {
+        // Injected while the document is still parsing, with their flag
+        // already on the page: the page's own listener must not be called
+        // before the event it was waiting for.
+        const html = '<!doctype html><html><head></head><body>' +
+            '<script id="late" type="text/plain" data-cookiescript="accepted"' +
+            ' data-cookiecategory="strict" data-reload="true"' +
+            ' data-src="https://n.test/n.js"></scr' + 'ipt></body></html>';
+        const dom = new JSDOM(html, { runScripts: 'outside-only', url: URL });
+        const w = dom.window;
+        const order = [];
+        assert.equal(w.document.readyState, 'loading');
+        w.document.addEventListener('DOMContentLoaded', ( ) => {
+            order.push(w.document.readyState);
+        });
+        w.eval(reject);
+        await settle(700);
+        // Two calls, and neither while the document was still parsing: the
+        // real event comes first and ours goes on its back, as a later
+        // listener on it. Dispatching at injection time instead would have
+        // called the page with readyState 'loading'.
+        assert.deepEqual(order, [ 'interactive', 'interactive' ]);
     });
 
     it('does nothing the second time it is injected', ( ) => {

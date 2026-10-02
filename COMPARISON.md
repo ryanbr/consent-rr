@@ -128,7 +128,7 @@ the same fixture as its sibling.
 | `cookiebot-reject` | 14.7 KB | `CookieConsent`, `Cookiebot`, `uetq`, `CB_OnTagsExecuted_Processed` |
 | `securiti-reject` | 8.2 KB | `SecuritiSDK`, `__ScrtSdkApiOps`, `initCmp`, `setConsentBannerParams`, `showConsentPreferencesPopup`, `overrideThemeMatching` +4 more |
 | `transcend-reject` | 5.2 KB | - |
-| `cookiescript-reject` | 9.2 KB | `CookieScript` |
+| `cookiescript-reject` | 11.9 KB | `CookieScript` |
 | `appconsent-reject` | 16.6 KB | `__tcfapi`, `appconsent` |
 | `appconsent-accept` | 16.6 KB | `__tcfapi`, `appconsent` |
 | `ketch-reject` | 13.0 KB | - |
@@ -209,7 +209,7 @@ uBlock Origin does the blocking.
 [consent-rr] cookiebot-reject 1.0.1 necessary=true denied=preferences,statistics,marketing iab=off cookie=written
 [consent-rr] securiti-reject 1.0.0 consents=none tenant=read gcm=denied cookie=written
 [consent-rr] transcend-reject 1.1.0 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
-[consent-rr] cookiescript-reject 1.0.2 action=reject categories=none cookie=written freed=1 gcm=denied/default api=ready
+[consent-rr] cookiescript-reject 1.0.3 action=reject categories=none cookie=written freed=1 gcm=denied/default api=ready
 [consent-rr] appconsent-reject 1.0.4 tcf=refused cmp=2/33/default cc=FR keys=17 state=absent drained=0
 [consent-rr] appconsent-accept 1.0.4 tcf=granted cmp=2/33/default cc=FR keys=17 state=absent drained=0
 [consent-rr] ketch-reject 1.1.1 purposes=2 denied record=revoked gcm=denied queue=ready drained=0
