@@ -34,6 +34,8 @@ describe('resources file', ( ) => {
         assert.deepEqual(
             Array.from(resources.keys()).sort(),
             [
+                'appconsent-accept.js',
+                'appconsent-reject.js',
                 'civic-reject-unblock.js',
                 'civic-reject.js',
                 'cookiebot-reject.js',

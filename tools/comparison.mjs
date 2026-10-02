@@ -258,6 +258,14 @@ const FIXTURES = [
         },
     },
     {
+        resource: 'appconsent-reject.js',
+        cmp: 'AppConsent',
+        page: '<html lang="fr"><head>' +
+            '<script src="https://cdn.appconsent.io/tcf2-clear/current/core.bundle.js"></' + 'script>' +
+            '</head><body><p>x</p></body></html>',
+    },
+    { resource: 'appconsent-accept.js', cmp: 'AppConsent', sameAs: 'appconsent-reject.js' },
+    {
         resource: 'ketch-reject.js',
         cmp: 'Ketch',
         page: '<html lang="en"><head>' +
@@ -572,7 +580,10 @@ ${crossRows.map(row =>
         ? row.plain.cookies.map(n => '`' + n + '`').join(', ')
         : '-') + ' | ' +
     (row.plain.stored.length !== 0
-        ? row.plain.stored.map(n => '`' + n + '`').join(', ')
+        ? row.plain.stored.slice(0, 4).map(n => '`' + n + '`').join(', ') +
+            (row.plain.stored.length > 4
+                ? ' +' + (row.plain.stored.length - 4) + ' more'
+                : '')
         : '-') + ' | ' +
     (row.plain.consentMode !== ''
         ? row.plain.consentMode.replace(/^(default|update) ?/, '$1: granted ') +

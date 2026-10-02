@@ -12,7 +12,7 @@ clicked, and the page's consent API answers normally.
 Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**,
 **InMobi Choice** (formerly Quantcast Choice), **Osano**, **Civic Cookie
 Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
-**PubTech**, **Termly** and **Ketch**.
+**PubTech**, **Termly**, **Ketch** and **AppConsent**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -25,6 +25,8 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `cookiebot-reject.js` | Cookiebot: their own default state, which is already a refusal - `necessary` true, `preferences`, `statistics` and `marketing` false - with `CookieConsent` answering and parked tags left parked. |
 | `securiti-reject.js` | Securiti: a refusal recorded in their own `__privaci_cookie_consents`, with the API their loader parks answering instead of queueing for an SDK that never arrives. |
 | `transcend-reject.js` | Transcend: no banner, and the refusal recorded through airgap's own API - which leaves airgap itself in place, blocking by that refusal. |
+| `appconsent-reject.js` | AppConsent: nothing consented, their `IABTCF_` keys saying so, and `__tcfapi` answering instead of a stub nothing will replace. |
+| `appconsent-accept.js` | AppConsent, granting - for a consent-or-pay wall that keeps the page shut until the answer is yes. Every purpose and vendor consented, and a vendor handed that string may act on it. |
 | `ketch-reject.js` | Ketch: their 1.9MB SDK never fetched, their command queue answering a refusal, and a returning visitor's record revoked code by code. |
 | `ketch-reject-unblock.js` | Ketch, for a site that withholds content until a purpose is consented to: the same stored and sent refusal, while the API tells the page every purpose is on. |
 | `termly-reject.js` | Termly: no banner, their own opted-in record - essential alone - with their denied Google consent mode, and the tags their auto-blocker parked left parked. |
@@ -58,22 +60,24 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/appconsent-accept.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -87,8 +91,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.27.1/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.27.1/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.28.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.28.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -109,8 +113,9 @@ files, not described.
    [`filters/usercentrics.txt`](filters/usercentrics.txt) and
    [`filters/pubtech.txt`](filters/pubtech.txt) and
    [`filters/termly.txt`](filters/termly.txt) and
-   [`filters/ketch.txt`](filters/ketch.txt) into *My filters*, or host them and
-   subscribe via *Import*.
+   [`filters/ketch.txt`](filters/ketch.txt) and
+   [`filters/appconsent.txt`](filters/appconsent.txt) into *My filters*, or
+   host them and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
 loads OneTrust there is no request to redirect - uBO's lists neuter
@@ -1215,6 +1220,67 @@ is told no rather than being sent down an iterate path that throws.
   then only in a jurisdiction their `gpc` plugin lists, where it maps to a set
   of purposes to deny. This refuses with or without any of that.
 
+## AppConsent
+
+```
+||cdn.appconsent.io/tcf2-clear/*/core.bundle.js$script,redirect=appconsent-reject.js
+||cdn.appconsent.io/tcf2-clear/*/*.bundle.js$script,redirect=noopjs
+```
+
+Their core bundle is the whole CMP - the TCF API with the IAB's own `cmpapi`
+embedded, their state, and the loader for the banner chunks it fetches
+afterwards. Replacing the core means those chunks are never asked for; the
+second rule only matters where something else requests one.
+
+The identity comes from their own TC model builder, which hard-codes it:
+
+```js
+n.cmpId = 2;                               // core.bundle.js, twice
+n.publisherCountryCode = "FR";
+n.lastUpdated = new Date(t.setUTCHours(0, 0, 0, 0));   // midnight UTC
+n.setAllVendorsDisclosed();
+```
+
+so every string carries `cmpId 2`, policy version 5, and every vendor as
+disclosed - up to the **4000** their own vendor cap falls back to. `cmpVersion`
+and the publisher country come back with a configuration a replaced bundle
+never fetches, so both are read out of a string the visitor already carries
+where there is one, and otherwise default to theirs (33, matching the bundle
+series, and `FR`).
+
+Beside `__tcfapi` they keep the standard **`IABTCF_` keys** in localStorage -
+seventeen of them - each a string of `0` and `1`, one character per id, built
+by their `lt(set, length)`. Those are written here the same way, which is what
+a vendor or an in-app bridge reads when it does not ask the API.
+
+### Granting, for a wall that charges for a refusal
+
+```
+||cdn.appconsent.io/tcf2-clear/*/core.bundle.js$script,redirect=appconsent-accept.js:10,domain=example.com
+```
+
+`appconsent-accept.js` is the same resource one line apart, and it **grants**:
+every purpose, every legitimate interest, both special features, every vendor
+to 4000, and the publisher purposes - in the string and in their keys. It is
+for a consent-or-pay wall, where refusing is what keeps the page shut.
+
+The trade is real and worth stating plainly: **a vendor handed that string is
+entitled to act on it**, exactly as with `onetrust-accept.js`. What makes it
+worth having is that uBlock Origin still filters what those vendors request -
+the string says yes, the network says no. Use it per site, never globally.
+
+### Deliberate gaps
+
+- **No GPP and no US privacy string.** Neither appears anywhere in their
+  bundle, so there is none to put back.
+- **Their own state is only partly written.** `localStorage.appconsent` holds
+  their store, most of which arrives with the configuration this never
+  fetches. The fields a decision consists of are set and whatever was already
+  there is kept; the rest would be invented, and their UI - which is what
+  would read it - is not here.
+- **GPC and DNT are not read**, because they do not read them either: neither
+  `globalPrivacyControl` nor `doNotTrack` appears in their bundle.
+
 ## Development
 
 ```sh
@@ -1246,7 +1312,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

@@ -1,0 +1,38 @@
+! Title: consent-rr - AppConsent
+! Description: Replaces AppConsent's core bundle with a stub that answers
+!              __tcfapi and writes their IABTCF_ keys.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! The core bundle is their whole CMP: the TCF API with the IAB's own cmpapi
+! embedded, their state, and the loader for the banner chunks it fetches
+! afterwards. The path carries either "current" or a version.
+! -----------------------------------------------------------------------------
+||cdn.appconsent.io/tcf2-clear/*/core.bundle.js$script,redirect=appconsent-reject.js
+
+! -----------------------------------------------------------------------------
+! Those chunks - 1284, 5572, 6648 and 807 in the version sampled - are the
+! banner. The core is what asks for them, so with it replaced none is
+! requested; this line only matters where something else does.
+! -----------------------------------------------------------------------------
+||cdn.appconsent.io/tcf2-clear/*/*.bundle.js$script,redirect=noopjs
+
+! -----------------------------------------------------------------------------
+! For a site that makes a refusal cost something.
+!
+! appconsent-accept.js grants: every purpose, every legitimate interest, both
+! special features and every vendor, in the string and in their IABTCF_ keys.
+! It is for a consent-or-pay wall that keeps the page shut until the answer is
+! yes - and the trade is real, because a vendor handed that string is entitled
+! to act on it. uBlock Origin still filters what those vendors request, which
+! is the only reason this is worth having.
+!
+! Per site, and never globally:
+!
+! ||cdn.appconsent.io/tcf2-clear/*/core.bundle.js$script,redirect=appconsent-accept.js:10,domain=example.com
+! -----------------------------------------------------------------------------
