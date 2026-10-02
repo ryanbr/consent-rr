@@ -148,8 +148,35 @@
                                 where it does not, the fallback grants
                                 security_storage alone and the console says it
                                 was a default.
+      j()                       the record's cookie name, which is the
+                                data-cs-cookiename attribute off a script tag
+                                where the tenant set one and
+                                CookieScriptConsent otherwise. A redirected
+                                script keeps its attributes in the document,
+                                so both that and their we - the tenant hash in
+                                the /s/<hash>.js url, which their hash() hands
+                                back - are readable here.
       90 days, host minus www   their expiry and their cookie domain,
-                                window.location.host.replace(/^www\./, "")
+                                window.location.host.replace(/^www\./, "").
+                                Both are their defaults: gt and ke are tenant
+                                configuration, so a tenant that set a longer
+                                expiry or a wider cookie domain gets the
+                                default here. Neither is recoverable from the
+                                page.
+      their selectors           per tag, and two details a bare
+                                [data-cookiescript="accepted"] misses: a
+                                script has to still be typed text/plain, and
+                                with a non-empty allowed list the element has
+                                to carry data-cookiecategory at all - so
+                                something parked without a category stays
+                                parked. They park img, script, iframe, embed,
+                                object and link, and nothing else is touched.
+      Ve()                      runs the sweep and then once more 500ms
+                                later, and it is called at load. On a real
+                                page load is long past 500ms after their
+                                script tag, so both pairs matter: one now and
+                                one shortly after, then one at load and one
+                                shortly after that.
       [data-cookiescript="accepted"]  what their auto-blocker parks, with the
                                 real url in data-src and scripts typed
                                 text/plain. Freeing one copies every attribute
@@ -196,7 +223,40 @@ function consentRRCookieScript() {
         if ( w.CookieScript.consentRR !== undefined ) { return; }
     }
 
-    const COOKIE = 'CookieScriptConsent';
+    // Their j(): the record's cookie name comes off a script tag where the
+    // tenant set one, and is CookieScriptConsent otherwise. Writing the
+    // default name on a tenant that configured its own leaves a record
+    // nothing reads.
+    const cookieName = ( ) => {
+        try {
+            const tag = doc.querySelector('script[data-cs-cookiename]');
+            if ( tag !== null ) {
+                const name = tag.getAttribute('data-cs-cookiename');
+                if ( name !== null && name !== '' ) { return name; }
+            }
+        } catch(ex) {
+        }
+        return 'CookieScriptConsent';
+    };
+
+    // Their we, the tenant's own hash, which their hash() hands back. A
+    // redirected script keeps its original src attribute in the document, so
+    // it is still readable here.
+    const tenantHash = ( ) => {
+        try {
+            const tags = doc.querySelectorAll('script[src]');
+            for ( const tag of Array.from(tags) ) {
+                const match = /cookie-script\.com\/s\/([0-9a-f]{8,})\./.exec(
+                    tag.getAttribute('src') || ''
+                );
+                if ( match !== null ) { return match[1]; }
+            }
+        } catch(ex) {
+        }
+        return '';
+    };
+
+    const COOKIE = cookieName();
     const TC_KEY = 'CookieScriptConsentString';
     const DAYS = 90;
     const STRICT = 'strict';
@@ -224,13 +284,13 @@ function consentRRCookieScript() {
         return '';
     };
 
+    // Whether the visitor already carried a refusal before this ran, which
+    // is what the reload below is gated on.
+    let decided = false;
+
     // Their record, one field at a time as their a() builds it. Whatever was
     // already in it is kept: their key comes back from their collector, which
     // nothing here talks to.
-    // Whether the visitor already carried a decision before this ran, which
-    // is what their own reload is gated on here.
-    let decided = false;
-
     const record = ( ) => {
         let previous = {};
         try {
@@ -243,7 +303,10 @@ function consentRRCookieScript() {
             }
         } catch(ex) {
         }
-        decided = previous.action === 'reject' || previous.action === 'accept';
+        // Only a refusal already on the record makes the reload pointless.
+        // A visitor who had accepted has a page rendered with its tags let
+        // through, and their own oe() reloads on that change too.
+        decided = previous.action === 'reject';
         previous.action = 'reject';
         // Their two refusal buttons write this field in two different shapes:
         // reject-all through qt() writes JSON.stringify([]), the string, and
@@ -347,27 +410,17 @@ function consentRRCookieScript() {
             if ( element.tagName === 'SCRIPT' ) {
                 return freeScript(element);
             }
+            // Every tag the selector below can return has a handler here,
+            // because that selector is built from these tags - which are the
+            // ones their blocker parks, and the only ones they free.
             const handler = HANDLERS[element.tagName];
-            const from = handler !== undefined ? handler.from : 'data-src';
-            const attribute = handler !== undefined ? handler.attribute : 'src';
-            const url = element.getAttribute(from);
+            const url = element.getAttribute(handler.from);
             if ( url ) {
-                element.setAttribute(attribute, url);
-                element.removeAttribute(from);
-            }
-            // A tag they have no handler for still gets freed, by whichever
-            // of the two url attributes it carries.
-            if ( handler === undefined ) {
-                const href = element.getAttribute('data-href');
-                if ( href ) {
-                    element.setAttribute('href', href);
-                    element.removeAttribute('data-href');
-                }
+                element.setAttribute(handler.attribute, url);
+                element.removeAttribute(handler.from);
             }
             element.removeAttribute('data-cookiescript');
-            if ( handler !== undefined && handler.reinsert === true ) {
-                reinsert(element);
-            }
+            if ( handler.reinsert === true ) { reinsert(element); }
             return false;
         } catch(ex) {
         }
@@ -425,12 +478,26 @@ function consentRRCookieScript() {
         return removed;
     };
 
+    // Their own selectors, tag by tag. Two details theirs has that a bare
+    // [data-cookiescript="accepted"] does not: a script has to still be typed
+    // text/plain, and with a non-empty allowed list - strict, here - the
+    // element has to carry data-cookiecategory at all, so something parked
+    // without a category is left parked rather than let through.
+    const PARKED = [
+        'img[data-cookiescript="accepted"][data-cookiecategory]',
+        'script[type="text/plain"][data-cookiescript="accepted"][data-cookiecategory]',
+        'iframe[data-cookiescript="accepted"][data-cookiecategory]',
+        'embed[data-cookiescript="accepted"][data-cookiecategory]',
+        'object[data-cookiescript="accepted"][data-cookiecategory]',
+        'link[data-cookiescript="accepted"][data-cookiecategory]',
+    ].join(',');
+
     const sweep = ( ) => {
         let freed = 0;
         let reload = false;
         let removed = removeTheirs();
         try {
-            const parked = doc.querySelectorAll('[data-cookiescript="accepted"]');
+            const parked = doc.querySelectorAll(PARKED);
             for ( const element of Array.from(parked) ) {
                 const categories = element.getAttribute('data-cookiecategory');
                 if ( allowed(categories) === false ) { continue; }
@@ -505,7 +572,12 @@ function consentRRCookieScript() {
             doc.addEventListener('DOMContentLoaded', sweepLater, { once: true });
         }
         if ( doc.readyState !== 'complete' ) {
-            w.addEventListener('load', sweepLater, { once: true });
+            w.addEventListener('load', ( ) => {
+                sweepLater();
+                // Their Ve() runs the sweep and then once more 500ms later,
+                // so a tag injected just after load is still caught.
+                try { w.setTimeout(sweepLater, 500); } catch(ex) {}
+            }, { once: true });
         }
         w.setTimeout(sweepLater, 500);
     } catch(ex) {
@@ -594,10 +666,13 @@ function consentRRCookieScript() {
     // the banner or record a decision do neither.
     const instance = {
         consentRR: VERSION,
-        version: 0,
+        // Theirs is a build number, which page code compares against. The
+        // most recent one seen in a served bundle is the floor: zero would
+        // fail every "at least this build" test a page makes.
+        version: 20260210,
         currentState: ( ) => state(),
         expireDays: ( ) => DAYS,
-        hash: ( ) => '',
+        hash: ( ) => tenantHash(),
         categories: ( ) => CATEGORIES.slice(),
         show: noop,
         hide: noop,
@@ -622,7 +697,18 @@ function consentRRCookieScript() {
         setCMPCookie: noop,
         getGoogleACStringCookie: ( ) => '',
         setGoogleACStringCookie: noop,
-        getCookieValueForQueryArg: ( ) => '',
+        // Theirs hands back name=value for carrying the record across
+        // domains, from the cookie name their j() resolved.
+        getCookieValueForQueryArg: ( ) => {
+            try {
+                const value = readCookie(COOKIE);
+                if ( value ) {
+                    return COOKIE + '=' + encodeURIComponent(value);
+                }
+            } catch(ex) {
+            }
+            return '';
+        },
         getGeoTargeting: ( ) => '',
         isCdn: ( ) => true,
         applyTranslation: noop,

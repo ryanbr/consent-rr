@@ -316,6 +316,8 @@ describe('cookiescript-reject', ( ) => {
             { action: 'reject', categories: [ 'strict' ] });
         // Theirs, from getCMPId().
         assert.equal(instance.getCMPId(), 374);
+        // Theirs is a build number page code compares against, never zero.
+        assert.ok(instance.version >= 20260210, String(instance.version));
         assert.equal(instance.expireDays(), 90);
         assert.deepEqual(plain(instance.categories()), [
             'functionality', 'targeting', 'strict', 'performance',
@@ -740,6 +742,115 @@ describe('cookiescript-reject', ( ) => {
         assert.deepEqual(blocked.navigations, []);
         assert.ok(blocked.out[0].includes(' cookie=refused'), blocked.out[0]);
         assert.ok(blocked.out[0].includes(' reload=nocookie'), blocked.out[0]);
+    });
+
+    it('writes the record under the cookie name the tenant configured', ( ) => {
+        // Their j(): the name comes off a script tag where one is set. The
+        // default name on such a tenant is a record nothing reads.
+        const html = '<!doctype html><html><head>' +
+            '<script data-cs-cookiename="MyConsent" src="https://cdn.cookie-script.com' +
+            '/s/e879476f7846d0f3101e83b498791e52.js"></scr' + 'ipt>' +
+            '</head><body><p id="content">x</p></body></html>';
+        const w = boot({ html }).window;
+        const named = cookies(w).get('MyConsent');
+        assert.equal(cookies(w).get('CookieScriptConsent'), undefined);
+        assert.equal(JSON.parse(decodeURIComponent(named)).action, 'reject');
+        // Their getCookieValueForQueryArg, which carries the record to
+        // another domain, uses the same name.
+        assert.equal(
+            w.CookieScript.instance.getCookieValueForQueryArg(),
+            'MyConsent=' + encodeURIComponent(named)
+        );
+        // And their hash(), off the src a redirected script still carries.
+        assert.equal(w.CookieScript.instance.hash(),
+            'e879476f7846d0f3101e83b498791e52');
+    });
+
+    it('leaves parked things their own selectors do not reach', ( ) => {
+        const html = '<!doctype html><html><head></head><body>' +
+            // No category at all: with strict allowed their selector requires
+            // the attribute, so theirs never frees this.
+            '<iframe id="nocat" data-cookiescript="accepted"' +
+            ' data-src="https://e.test/e"></iframe>' +
+            // A script no longer typed text/plain is outside their selector.
+            '<script id="typed" type="text/javascript"' +
+            ' data-cookiescript="accepted" data-cookiecategory="strict"' +
+            ' data-src="https://n.test/n.js"></scr' + 'ipt>' +
+            // A tag their blocker never parks.
+            '<div id="div" data-cookiescript="accepted"' +
+            ' data-cookiecategory="strict" data-src="https://d.test/d"></div>' +
+            '<p id="content">x</p></body></html>';
+        let out;
+        const w = boot({ html, before: w_ => { out = lines(w_); } }).window;
+        assert.equal(node(w, 'nocat').hasAttribute('src'), false);
+        assert.equal(node(w, 'nocat').getAttribute('data-cookiescript'), 'accepted');
+        assert.equal(node(w, 'typed').hasAttribute('src'), false);
+        assert.equal(node(w, 'div').hasAttribute('src'), false);
+        assert.equal(node(w, 'div').getAttribute('data-cookiescript'), 'accepted');
+        assert.ok(out[0].includes(' freed=0'), out[0]);
+    });
+
+    it('reloads for a visitor who had accepted', ( ) => {
+        // Their oe() reloads on a decision changing, and this change matters
+        // most: the page was rendered with its tags let through.
+        const accepted = bootWatchingNavigation(PAGE, w_ => {
+            w_.document.cookie = 'CookieScriptConsent=' +
+                encodeURIComponent(JSON.stringify({
+                    action: 'accept',
+                    categories: '["strict","targeting"]',
+                    bannershown: 1,
+                }));
+        });
+        assert.deepEqual(accepted.navigations,
+            [ 'Not implemented: navigation to another Document' ]);
+        assert.ok(accepted.out[0].includes(' reload=reloading'), accepted.out[0]);
+    });
+
+    it('schedules their extra pass off load, not just off injection',
+    async ( ) => {
+        // Theirs runs the sweep and then once more 500ms later, and the one
+        // that matters is the pair at load: on a real page load is long past
+        // the 500ms after injection, so a single early timer leaves the gap
+        // their second pass exists to cover. jsdom reaches load in a few
+        // milliseconds, which no amount of waiting can separate - so this
+        // pins the schedule instead of the timing.
+        const timers = [];
+        const dom = boot({
+            html: '<!doctype html><html><head></head><body></body></html>',
+            before: w_ => {
+                const real = w_.setTimeout;
+                w_.setTimeout = (fn, delay) => {
+                    timers.push([ delay, w_.document.readyState ]);
+                    return real.call(w_, fn, delay);
+                };
+            },
+        });
+        await settle(900);
+        const halves = timers.filter(entry => entry[0] === 500);
+        assert.equal(halves.length, 2, JSON.stringify(timers));
+        // The first goes on while the document is still parsing, the second
+        // once it is loaded.
+        assert.equal(halves[0][1], 'loading');
+        assert.equal(halves[1][1], 'complete');
+        dom.window.setTimeout = undefined;
+    });
+
+    it('sweeps once more after load, as their Ve() does', async ( ) => {
+        const dom = boot({
+            html: '<!doctype html><html><head></head><body></body></html>',
+        });
+        const w = dom.window;
+        // A tag that appears at load, which is what their extra pass 500ms
+        // after it is there for. Their own last chance is load+500 too, so
+        // this is their window and not a longer one.
+        w.addEventListener('load', ( ) => {
+            w.document.body.insertAdjacentHTML('beforeend',
+                '<iframe id="afterload" data-cookiescript="accepted"' +
+                ' data-cookiecategory="strict" data-src="https://e.test/e">' +
+                '</iframe>');
+        });
+        await settle(900);
+        assert.equal(node(w, 'afterload').getAttribute('src'), 'https://e.test/e');
     });
 
     it('does nothing the second time it is injected', ( ) => {
