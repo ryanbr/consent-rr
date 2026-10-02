@@ -61,25 +61,25 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/cookiescript-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -93,8 +93,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.29.4/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.29.4/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.29.5/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.29.5/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -1420,7 +1420,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.4/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.5/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

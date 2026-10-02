@@ -7,7 +7,7 @@
 */
 
 import { strict as assert } from 'node:assert';
-import { JSDOM } from 'jsdom';
+import { JSDOM, VirtualConsole } from 'jsdom';
 import { before, describe, it } from 'node:test';
 import {
     cookies, filtersText, loadResources, runDom, settle, versions,
@@ -333,6 +333,68 @@ describe('cookiescript-reject', ( ) => {
             [ 'strict' ]);
     });
 
+    it('fires their events where a page listens for them', async ( ) => {
+        // Their s() dispatches on the document. A page hooks them with
+        // document.addEventListener, which an event dispatched at the window
+        // never reaches - so this listens exactly where a page does, and the
+        // window listener below it only hears them because theirs bubble.
+        const onDocument = [];
+        const onWindow = [];
+        const w = boot({
+            before: w_ => {
+                w_.__d = onDocument;
+                w_.__w = onWindow;
+                for ( const name of [
+                    'CookieScriptLoaded', 'CookieScriptReject',
+                    'CookieScriptCurrentState', 'CookieScriptCategory-strict',
+                ] ) {
+                    w_.document.addEventListener(name, ev => {
+                        w_.__d.push([ name, ev.target === w_.document, ev.bubbles ]);
+                    });
+                    w_.addEventListener(name, ( ) => { w_.__w.push(name); });
+                }
+            },
+        }).window;
+        await settle(10);
+        assert.deepEqual(plain(onDocument), [
+            [ 'CookieScriptLoaded', true, true ],
+            [ 'CookieScriptReject', true, true ],
+            [ 'CookieScriptCurrentState', true, true ],
+            [ 'CookieScriptCategory-strict', true, true ],
+        ]);
+        // Their p() also puts the category name on the instance and the data
+        // layer, which is what a tag manager reads.
+        assert.deepEqual(plain(w.CookieScript.instance.dispatchEventNames),
+            [ 'CookieScriptCategory-strict' ]);
+        assert.ok(
+            w.dataLayer.some(entry => entry.event === 'CookieScriptCategory-strict'),
+            JSON.stringify(plain(w.dataLayer))
+        );
+        assert.deepEqual(plain(onWindow), [
+            'CookieScriptLoaded', 'CookieScriptReject',
+            'CookieScriptCurrentState', 'CookieScriptCategory-strict',
+        ]);
+    });
+
+    it('creates their data global the way their bundle does', ( ) => {
+        const w = boot().window;
+        // Theirs: if(!window.CookieScriptData){window.CookieScriptData={...}}
+        assert.deepEqual(plain(w.CookieScriptData), {
+            enabledConsentMode: false,
+            useGoogleTemplate: false,
+            correctGoogleTemplateTrigger: false,
+            gtagRequiredCategory: null,
+            gtagCorrectOrder: null,
+            gtagDefaultConsent: null,
+            isVerifyGoogleConsentMode: false,
+        });
+        // And a page that set its own keeps it.
+        const mine = boot({
+            before: w_ => { w_.eval('window.CookieScriptData = { mine: 1 };'); },
+        }).window;
+        assert.deepEqual(plain(mine.CookieScriptData), { mine: 1 });
+    });
+
     it('fires their reject path, and not their accept one', async ( ) => {
         const seen = [];
         const w = boot({
@@ -606,6 +668,80 @@ describe('cookiescript-reject', ( ) => {
         );
     });
 
+    // A reload is a navigation, which jsdom reports rather than performs, so
+    // that report is the evidence it was asked for.
+    const bootWatchingNavigation = (html, before) => {
+        const navigations = [];
+        const virtualConsole = new VirtualConsole();
+        virtualConsole.on('jsdomError', ex => { navigations.push(ex.message); });
+        const dom = new JSDOM(html || PAGE, {
+            runScripts: 'outside-only', url: URL, virtualConsole,
+        });
+        const out = lines(dom.window);
+        if ( typeof before === 'function' ) { before(dom.window); }
+        dom.window.eval(reject);
+        return { w: dom.window, navigations, out };
+    };
+
+    it('reloads the page once, as their own refusal does', ( ) => {
+        // Their qt() and yt() both end in oe(), which reloads: a page is
+        // rendered with tags parked before a decision exists, and only a
+        // fresh render with the record in place comes back unparked.
+        const first = bootWatchingNavigation();
+        assert.deepEqual(first.navigations,
+            [ 'Not implemented: navigation to another Document' ]);
+        assert.ok(first.out[0].includes(' reload=reloading'), first.out[0]);
+    });
+
+    it('does not reload a visitor who had already decided', ( ) => {
+        const again = bootWatchingNavigation(PAGE, w_ => {
+            w_.document.cookie = 'CookieScriptConsent=' +
+                encodeURIComponent(JSON.stringify({
+                    action: 'reject', categories: [], bannershown: 1,
+                }));
+        });
+        assert.deepEqual(again.navigations, []);
+        assert.ok(again.out[0].includes(' reload=had'), again.out[0]);
+    });
+
+    it('does not reload twice in a session on a record that will not stick',
+    ( ) => {
+        const second = bootWatchingNavigation(PAGE, w_ => {
+            w_.sessionStorage.setItem('consent-rr-cookiescript', '1');
+        });
+        assert.deepEqual(second.navigations, []);
+        assert.ok(second.out[0].includes(' reload=done'), second.out[0]);
+    });
+
+    it('does not reload a page from inside one of its frames', ( ) => {
+        const dom = new JSDOM(
+            '<!doctype html><html><body><iframe id="f"></iframe></body></html>',
+            { runScripts: 'outside-only', url: URL }
+        );
+        const frame = dom.window.document.getElementById('f').contentWindow;
+        const out = lines(frame);
+        frame.eval(reject);
+        // The frame reason comes before the record one, so this is the guard
+        // being read and not a side effect of jsdom refusing the write in an
+        // about:blank frame.
+        assert.ok(out[0].includes(' reload=framed'), out[0]);
+    });
+
+    it('does not reload where the record did not land', ( ) => {
+        // A reload with nothing recorded comes back to the same page in the
+        // same state, and asks again.
+        const blocked = bootWatchingNavigation(PAGE, w_ => {
+            Object.defineProperty(w_.document, 'cookie', {
+                get: ( ) => '',
+                set: ( ) => {},
+                configurable: true,
+            });
+        });
+        assert.deepEqual(blocked.navigations, []);
+        assert.ok(blocked.out[0].includes(' cookie=refused'), blocked.out[0]);
+        assert.ok(blocked.out[0].includes(' reload=nocookie'), blocked.out[0]);
+    });
+
     it('does nothing the second time it is injected', ( ) => {
         const w = boot().window;
         const before_ = w.document.cookie;
@@ -623,7 +759,7 @@ describe('cookiescript-reject', ( ) => {
             out[0],
             '[consent-rr] cookiescript-reject ' + versions.cookiescript +
             ' action=reject categories=strict cookie=written freed=2' +
-            ' removed=0 gcm=nogtag api=ready'
+            ' removed=0 gcm=nogtag api=ready reload=reloading'
         );
     });
 

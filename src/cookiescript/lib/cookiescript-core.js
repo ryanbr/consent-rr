@@ -71,6 +71,33 @@
                                 Records off real sites carry the array, their
                                 U() answers ['strict'] for both, and the array
                                 is what this writes.
+      oe()                      the end of both their refusal paths, qt() and
+                                yt(): window.location.reload(), or the same
+                                once their collector answers with the consent
+                                key. Their decision reloads the page, and that
+                                is not incidental - tags are parked in markup
+                                rendered before any decision existed, and only
+                                a fresh render with the record in place brings
+                                them back unparked. Freeing elements in place
+                                cannot reach a server-side integration that
+                                reads the cookie. Reported from the field:
+                                scrolling gone with this resource, fine after
+                                a refresh, which is their own mechanism done
+                                by hand.
+      s(name, detail)           their dispatcher: a CustomEvent with bubbles
+                                and cancelable set, dispatched on
+                                window.document. A page hooks these with
+                                document.addEventListener, which an event
+                                dispatched at the window never reaches, so the
+                                target is the whole point.
+      p(category)               the per-category announcement their refusal
+                                makes for strict: the name onto
+                                instance.dispatchEventNames, out as the event
+                                CookieScriptCategory-strict, and onto the data
+                                layer.
+      window.CookieScriptData   created by their bundle when absent, with
+                                their defaults - a page reading a field off it
+                                would otherwise throw.
       Mt()                      their teardown, run on every load before they
                                 inject a banner: the stylesheet
                                 style[data-type="cookiescriptstyles"] and the
@@ -200,6 +227,10 @@ function consentRRCookieScript() {
     // Their record, one field at a time as their a() builds it. Whatever was
     // already in it is kept: their key comes back from their collector, which
     // nothing here talks to.
+    // Whether the visitor already carried a decision before this ran, which
+    // is what their own reload is gated on here.
+    let decided = false;
+
     const record = ( ) => {
         let previous = {};
         try {
@@ -212,6 +243,7 @@ function consentRRCookieScript() {
             }
         } catch(ex) {
         }
+        decided = previous.action === 'reject' || previous.action === 'accept';
         previous.action = 'reject';
         // Their two refusal buttons write this field in two different shapes:
         // reject-all through qt() writes JSON.stringify([]), the string, and
@@ -613,6 +645,19 @@ function consentRRCookieScript() {
     let installed = false;
     try {
         const previous = w.CookieScript;
+        // Theirs, created the same way they create it, with their defaults:
+        // a page reading a field off it would otherwise throw.
+        if ( !w.CookieScriptData ) {
+            w.CookieScriptData = {
+                enabledConsentMode: false,
+                useGoogleTemplate: false,
+                correctGoogleTemplateTrigger: false,
+                gtagRequiredCategory: null,
+                gtagCorrectOrder: null,
+                gtagDefaultConsent: null,
+                isVerifyGoogleConsentMode: false,
+            };
+        }
         w.CookieScript = Object.assign(
             typeof previous === 'object' && previous !== null ? previous : {},
             { consentRR: VERSION, instance }
@@ -621,12 +666,17 @@ function consentRRCookieScript() {
     } catch(ex) {
     }
 
+    // Their s(name, detail), which dispatches on the document and bubbles.
+    // An event dispatched at the window instead never reaches a
+    // document.addEventListener, which is how a page hooks them, so it would
+    // be heard by nobody.
     const fire = (name, detail) => {
         try {
-            const event = detail === undefined
-                ? new w.CustomEvent(name)
-                : new w.CustomEvent(name, { detail });
-            w.dispatchEvent(event);
+            w.document.dispatchEvent(new w.CustomEvent(name, {
+                bubbles: true,
+                cancelable: true,
+                detail,
+            }));
         } catch(ex) {
         }
     };
@@ -647,12 +697,66 @@ function consentRRCookieScript() {
         }
         fire('CookieScriptReject');
         fire('CookieScriptCurrentState', instance.currentState());
+        // Their p(category), which their refusal calls for strict: the name
+        // goes on the instance, out as an event, and onto the data layer.
+        const name = 'CookieScriptCategory-' + STRICT;
+        if ( instance.dispatchEventNames.indexOf(name) === -1 ) {
+            instance.dispatchEventNames.push(name);
+            fire(name);
+            try {
+                if ( Array.isArray(w.dataLayer) === false ) { w.dataLayer = []; }
+                w.dataLayer.push({ event: name });
+            } catch(ex) {
+            }
+        }
     };
     try {
         w.setTimeout(announce, 0);
     } catch(ex) {
         announce();
     }
+
+    // Their own refusal ends in oe(), which reloads the page - either at once
+    // or, where they are waiting on their collector for the consent key, when
+    // that comes back. Both of their refusal paths, qt() and yt(), call it.
+    // That is the whole point of it: tags are parked before a decision
+    // exists, and a page rendered again with the record in place comes back
+    // unparked, which freeing elements in place cannot do - a server-side
+    // integration reading the cookie is never reached otherwise.
+    //
+    // So this reloads once, and only where that is both needed and safe:
+    //   - the visitor had no decision before this ran, so a returning
+    //     refusal never reloads anything
+    //   - the record verifiably landed, or a reload would come straight back
+    //     to the same state and go round again
+    //   - the top document, so an embedded frame is not reloaded under its
+    //     page
+    //   - and a marker in session storage, so even a record that will not
+    //     persist costs one reload rather than a loop
+    const RELOADED = 'consent-rr-cookiescript';
+
+    const reload = ( ) => {
+        if ( decided ) { return 'had'; }
+        try {
+            if ( w.top !== w.self ) { return 'framed'; }
+        } catch(ex) {
+            return 'framed';
+        }
+        if ( stored.how !== 'written' ) { return 'nocookie'; }
+        try {
+            if ( w.sessionStorage.getItem(RELOADED) !== null ) { return 'done'; }
+            w.sessionStorage.setItem(RELOADED, '1');
+        } catch(ex) {
+        }
+        try {
+            w.location.reload();
+            return 'reloading';
+        } catch(ex) {
+        }
+        return 'refused';
+    };
+
+    const reloading = reload();
 
     try {
         w.console.info(
@@ -662,7 +766,8 @@ function consentRRCookieScript() {
             ' freed=' + freed +
             ' removed=' + removed +
             ' gcm=' + pushed +
-            ' api=' + (installed ? 'ready' : 'refused')
+            ' api=' + (installed ? 'ready' : 'refused') +
+            ' reload=' + reloading
         );
     } catch(ex) {
     }
