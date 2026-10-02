@@ -34,7 +34,10 @@ const AIRGAP = 'window.__calls = [];' +
     ' confirmed: false, prompted: false, updated: false }; };' +
     'window.airgap.setConsent = function(auth, purposes, options) {' +
     ' window.__calls.push([ auth, purposes, options ]);' +
-    ' window.__purposes = purposes; return window.__setConsentResult !== false; };';
+    ' window.__purposes = purposes; return window.__setConsentResult !== false; };' +
+    // Their own signal set, built from the browser's.
+    'window.airgap.getPrivacySignals = function() {' +
+    ' return new Set(navigator.globalPrivacyControl ? [ "GPC" ] : []); };';
 
 // Their ready() once airgap is loaded: the callback runs at once.
 const READY_NOW = 'window.airgap.ready = function(c) { c(window.airgap); };';
@@ -171,6 +174,39 @@ describe('transcend-reject', ( ) => {
         assert.ok(out[0].endsWith(' refused=(none) via=nothing to refuse'), out[0]);
         assert.equal(w.__called, undefined);
         assert.equal(cookies(w).has('tcm'), false);
+    });
+
+    it('leaves the privacy signals to airgap, which is whose they are', ( ) => {
+        // airgap builds its own signal set from navigator.globalPrivacyControl
+        // and doNotTrack, and applies it per purpose from the tenant's config -
+        // a purpose whose defaultConsent is "Auto" follows the signal. Setting
+        // every purpose to an explicit false is at or below whatever that would
+        // reach, so there is nothing here for the signal to change.
+        const withSignal = asUi({
+            before: w_ => {
+                Object.defineProperty(w_.navigator, 'globalPrivacyControl', {
+                    value: true,
+                    configurable: true,
+                });
+            },
+        }).window;
+        const without = asUi().window;
+        const sent = w => {
+            const [ , purposes, options ] = w.__calls[0];
+            const copy = plain(options);
+            delete copy.timestamp;
+            return JSON.stringify([ plain(purposes), copy ]);
+        };
+        assert.equal(sent(withSignal), sent(without));
+        assert.deepEqual(plain(withSignal.__calls[0][1]).Advertising, false);
+        // And the signal itself is still airgap's to report, untouched: a site
+        // reading it still sees GPC, which is how a site's own notice about
+        // having honoured it keeps working.
+        assert.deepEqual(
+            Array.from(withSignal.airgap.getPrivacySignals()),
+            [ 'GPC' ]
+        );
+        assert.deepEqual(Array.from(without.airgap.getPrivacySignals()), []);
     });
 
     it('says on the console what it did', ( ) => {
