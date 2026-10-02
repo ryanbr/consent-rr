@@ -12,17 +12,21 @@
 ! One file is the whole CMP: the TCF API, the banner, the vendor lists it goes
 ! on to fetch, and the tenant's own configuration, which is inlined at the top
 ! of that very file as window.__pub_tech_cmp_config. The path carries the
-! tenant id - 312 and 466 seen in the field - and the bundle name has varied
-! (pubtech-cmp-v2-esm.js), so both are wildcarded.
+! tenant id - 312, 466, 121, 356 and 188 seen in the field - and they ship two
+! builds under two names, pubtech-cmp-v2-esm.js and pubtech-cmp-v2.js, so both
+! parts are wildcarded.
 ! -----------------------------------------------------------------------------
 ||cmp.pubtech.ai/*/pubtech-cmp-*.js$script,redirect=pubtech-reject.js
 
 ! -----------------------------------------------------------------------------
-! Their entry is a module - <script type="module" src="..."> - and a user
-! resource is served as a data: URI. If a browser declines to run a module from
-! one, nothing of ours runs, so the scriptlet form is the reliable shape here:
-! it is injected rather than fetched, and runs at document_start, before their
-! bundle would have.
+! Their module build is one of two: pubtech-cmp-v2-esm.js is loaded as
+! <script type="module" src="...">, while pubtech-cmp-v2.js is an ordinary
+! script and has no such question.
+!
+! A user resource is served as a data: URI, and if a browser declines to run a
+! module from one then nothing of ours runs. So on a module tenant the
+! scriptlet form is the reliable shape: it is injected rather than fetched, and
+! runs at document_start, before their bundle would have.
 !
 ! example.com##+js(pubtech-reject)
 ! -----------------------------------------------------------------------------

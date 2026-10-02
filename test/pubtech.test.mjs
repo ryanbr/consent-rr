@@ -172,6 +172,21 @@ describe('pubtech-reject', ( ) => {
         }
     );
 
+    it('writes no publisher restrictions, and says why', ( ) => {
+        // Their own string carries more here on a tenant with legitimate
+        // interest switched off, which is four of the five sampled: they
+        // unset the legitimate-interest vectors and then restrict purposes 2
+        // and up to REQUIRE_CONSENT. This writes the empty vectors and not
+        // the restrictions - a vendor with neither consent nor legitimate
+        // interest has no basis either way, and a malformed restriction block
+        // would cost the whole string its parse.
+        const w = boot().window;
+        const decoded = TCString.decode(tcData(w).tcString);
+        assert.equal(decoded.publisherRestrictions.numRestrictions, 0);
+        assert.equal(decoded.purposeLegitimateInterests.size, 0);
+        assert.equal(decoded.vendorLegitimateInterests.size, 0);
+    });
+
     it('leaves the additional-consent string empty, in both places', ( ) => {
         const w = boot().window;
         // It lists the Google vendors a visitor consented to, and this one
@@ -321,6 +336,11 @@ describe('filters, pubtech', ( ) => {
         for ( const url of [
             'https://cmp.pubtech.ai/312/pubtech-cmp-v2-esm.js',
             'https://cmp.pubtech.ai/466/pubtech-cmp-v2-esm.js',
+            'https://cmp.pubtech.ai/121/pubtech-cmp-v2-esm.js',
+            'https://cmp.pubtech.ai/356/pubtech-cmp-v2-esm.js',
+            // A tenant on their classic build rather than the module one,
+            // where a redirect has no module question to answer.
+            'https://cmp.pubtech.ai/188/pubtech-cmp-v2.js',
         ] ) {
             assert.ok(rules.some(r => matches(r, url)), 'no rule matches ' + url);
         }

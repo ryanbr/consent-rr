@@ -979,10 +979,11 @@ on to fetch - and the tenant's configuration is inlined at the top of that very
 file as `window.__pub_tech_cmp_config`. So replacing it takes the configuration
 with it, which decides what a refusal can state.
 
-Two tenants were read, 312 and 466. They differ in configuration and agree on
-the identity, so it is hard-coded: **cmpId 352, cmpVersion 6, vendor list 178,
-policy version 5**. `@iabtcf/core` decodes the string in the tests and every
-vector in it is empty.
+Five tenants were read - 312, 466, 121, 356 and 188 - across both builds they
+ship, the module one and the classic `pubtech-cmp-v2.js`. They differ in
+configuration and agree on the identity, so it is hard-coded: **cmpId 352,
+cmpVersion 6, vendor list 178, policy version 5**. `@iabtcf/core` decodes the
+string in the tests and every vector in it is empty.
 
 What the configuration took with it is recovered from the visitor instead of
 guessed:
@@ -990,7 +991,7 @@ guessed:
 | | theirs | without it |
 | --- | --- | --- |
 | `publisherCountryCode` | `IT` on both tenants | read back out of an existing TC string, else `AA` |
-| `publisherCookieVersion` | `3` on one, `22` on the other | read back out of an existing pcstring, else `0`, which is their own fallback |
+| `publisherCookieVersion` | `3`, `3`, `6`, `22`, `3` across the five | read back out of an existing pcstring, else `0`, which is their own fallback |
 
 Their publisher-cookie string is their own codec - the version, a `-`, then one
 character each for feature, user-experience and measurement cookies, with `1`
@@ -1018,9 +1019,18 @@ their two GTM events.
 ### Deliberate gaps
 
 - **No GPP.** Their bundle has no `__gpp` at all, so there is none to put back.
-- **Their entry is a module.** `<script type="module">` from a `data:` URI may
-  be declined by the browser, and a user resource is served as one. The
-  scriptlet form is the reliable shape there, and `filters/pubtech.txt` says so.
+- **No publisher restrictions.** Their own string carries more here on a
+  tenant with legitimate interest switched off, which is four of the five
+  sampled: they unset the legitimate-interest vectors and then restrict
+  purposes 2 and up to `REQUIRE_CONSENT`. This writes the empty vectors and
+  not the restrictions - a vendor with neither consent nor legitimate interest
+  has no basis either way, and a malformed restriction block would cost the
+  whole string its parse. A test pins that choice.
+- **Their module build is one of two.** `pubtech-cmp-v2-esm.js` is a module and
+  `pubtech-cmp-v2.js` is not; tenant 188 serves the latter. A `data:` URI
+  module script may be declined by the browser, and a user resource is served
+  as one, so on a module tenant the scriptlet form is the reliable shape -
+  `filters/pubtech.txt` says so. The classic build has no such question.
 - **The asset host is left alone**: the vendor lists and the publisher-cookie
   declarations are fetched by the CMP this replaces, so nothing asks for them,
   and a rule for them would only break a banner on a page where their CMP is
