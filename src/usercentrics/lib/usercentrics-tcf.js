@@ -210,6 +210,48 @@ function consentRRUsercentricsTcf(language, previous) {
         return out;
     };
 
+    const falseList = count => {
+        const out = [];
+        for ( let id = 1; id <= count; id++ ) { out.push(false); }
+        return out;
+    };
+
+    // The same answer again in the field names @iabgpp/cmpapi parses a tcfeuv2
+    // section into, for whatever asks __gpp instead of __tcfapi.
+    const section = {
+        Version: 2,
+        Created: new Date(midnight).toISOString(),
+        LastUpdated: new Date(midnight).toISOString(),
+        CmpId: CMP_ID,
+        CmpVersion: CMP_VERSION,
+        ConsentScreen: 0,
+        ConsentLanguage: consentLanguage,
+        VendorListVersion: VENDOR_LIST_VERSION,
+        PolicyVersion: POLICY_VERSION,
+        IsServiceSpecific: serviceSpecific,
+        UseNonStandardStacks: false,
+        SpecialFeatureOptins: falseList(12),
+        PurposeConsents: falseList(24),
+        PurposeLegitimateInterests: falseList(24),
+        PurposeOneTreatment: false,
+        PublisherCountryCode: publisherCC,
+        VendorConsents: [],
+        VendorLegitimateInterests: [],
+        PublisherRestrictions: [],
+        PublisherPurposesSegmentType: 3,
+        PublisherConsents: falseList(24),
+        PublisherLegitimateInterests: falseList(24),
+        NumCustomPurposes: 0,
+        PublisherCustomConsents: [],
+        PublisherCustomLegitimateInterests: [],
+        // The two optional vendor segments are not written, and the reference
+        // implementation reports them empty when a string leaves them out.
+        VendorsDisclosedSegmentType: 1,
+        VendorsDisclosed: [],
+        VendorsAllowedSegmentType: 2,
+        VendorsAllowed: [],
+    };
+
     // What a vendor asking __tcfapi is handed. Nothing in it is granted.
     const tcData = ( ) => ({
         tcString,
@@ -324,6 +366,8 @@ function consentRRUsercentricsTcf(language, previous) {
     return {
         tcString,
         cmpId: CMP_ID,
+        cmpVersion: CMP_VERSION,
+        section,
         reusedIdentity: theirs !== null,
         install,
         // The record their own storage service keeps. The AC string is left

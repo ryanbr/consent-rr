@@ -28,6 +28,7 @@
 (function() {
     'use strict';
     // @include lib/usercentrics-tcf.js
+    // @include lib/usercentrics-gpp.js
     // @include lib/usercentrics-core.js
     consentRRUsercentrics();
 })();

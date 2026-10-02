@@ -8,6 +8,7 @@
 
 import { strict as assert } from 'node:assert';
 import { before, describe, it } from 'node:test';
+import { GppModel } from '@iabgpp/cmpapi';
 import { TCString } from '@iabtcf/core';
 import { filtersText, loadResources, runDom, versions } from './helpers.mjs';
 
@@ -556,7 +557,7 @@ describe('usercentrics-reject', ( ) => {
             out[0],
             '[consent-rr] usercentrics-reject ' + versions.usercentrics +
             ' settings=sROYKApBP lang=de revoked=none gcm=denied gpc=off' +
-            ' cmp=v3 answered=true iab=off data=written'
+            ' cmp=v3 answered=true iab=off gpp=off data=written'
         );
     });
 
@@ -794,6 +795,186 @@ describe('usercentrics-reject, the IAB layer', ( ) => {
         w.__tcfapi('removeEventListener', 2, ok => { removed = ok; },
             added.listenerId);
         assert.equal(removed, true);
+    });
+
+    it('adds no GPP where the page shows no sign of it', ( ) => {
+        // GPP is a setting of its own on their side, so it does not follow
+        // TCF: a page with the TCF stub alone gets the TCF layer only.
+        let out;
+        const w = withStub({ before: w_ => { out = lines(w_); } }).window;
+        assert.equal(w.__gpp, undefined);
+        assert.ok(out[0].includes(' gpp=off'), out[0]);
+    });
+
+    const withGpp = (options = {}) => withStub(Object.assign({}, options, {
+        before: w_ => {
+            if ( typeof options.before === 'function' ) { options.before(w_); }
+            w_.eval('window.__gppStubCalls = [];' +
+                'window.__gpp = function(cmd, cb, p) {' +
+                ' if ( cmd === "queue" ) { return window.__gppStubCalls; }' +
+                ' window.__gppStubCalls.push([ cmd, cb, p ]);' +
+                '};');
+        },
+    }));
+
+    const gppPing = w => {
+        let data;
+        w.__gpp('ping', value => { data = value; });
+        return data;
+    };
+
+    it('answers __gpp with the section the reference parse agrees with', ( ) => {
+        let out;
+        const w = withGpp({ before: w_ => { out = lines(w_); } }).window;
+        assert.ok(out[0].includes(' gpp=refused gppvia=stub'), out[0]);
+        const data = gppPing(w);
+        assert.equal(data.gppVersion, '1.1');
+        assert.equal(data.cmpStatus, 'loaded');
+        assert.equal(data.signalStatus, 'ready');
+        assert.deepEqual(plain(data.sectionList), [ 2 ]);
+        assert.deepEqual(plain(data.applicableSections), [ 2 ]);
+        // Theirs, verbatim, even though only the first is carried.
+        assert.deepEqual(plain(data.supportedAPIs),
+            [ '2:tcfeuv2', '5:tcfcav1', '6:uspv1' ]);
+        assert.ok(data.gppString.startsWith('DBABMA~'));
+
+        // The IAB's own library, parsing what this built: every field of the
+        // section it reports has to match the one handed to callers.
+        const model = new GppModel();
+        model.decode(data.gppString);
+        assert.deepEqual(model.getSectionIds(), [ 2 ]);
+        const reference = JSON.parse(
+            JSON.stringify(model.getSection('tcfeuv2'))
+        );
+        let mine;
+        w.__gpp('getSection', value => { mine = value; }, 'tcfeuv2');
+        assert.deepEqual(JSON.parse(JSON.stringify(mine)), reference);
+        assert.equal(reference.CmpId, 5);
+        assert.deepEqual(reference.PurposeConsents, new Array(24).fill(false));
+        assert.deepEqual(
+            reference.PurposeLegitimateInterests, new Array(24).fill(false)
+        );
+        assert.deepEqual(reference.VendorConsents, []);
+        assert.deepEqual(reference.VendorLegitimateInterests, []);
+    });
+
+    it('carries the identity the TCF layer resolved into GPP as well', ( ) => {
+        const first = withStub().window;
+        const prior = patch(tcData(first).tcString, {
+            cmpId: 318, cmpVersion: 1, vendorListVersion: 42, publisherCC: 'DE',
+        });
+        const w = withGpp({
+            before: w_ => {
+                w_.localStorage.setItem('uc_tcf', JSON.stringify({
+                    acString: '', tcString: prior, timestamp: 1, vendors: [],
+                }));
+            },
+        }).window;
+        const data = gppPing(w);
+        // Their own API is built with the TCF identity, so this reports it.
+        assert.equal(data.cmpId, 318);
+        assert.equal(data.cmpVersion, 1);
+        const model = new GppModel();
+        model.decode(data.gppString);
+        assert.equal(model.getSection('tcfeuv2').CmpId, 318);
+    });
+
+    it('answers the GPP commands, and refuses the one that is not one', ( ) => {
+        const w = withGpp().window;
+        const answers = {};
+        const take = name => (value, success) => {
+            answers[name] = { value, success };
+        };
+        w.__gpp('hasSection', take('has'), 'tcfeuv2');
+        w.__gpp('hasSection', take('hasNot'), 'usnat');
+        w.__gpp('getField', take('field'), 'tcfeuv2.PublisherCountryCode');
+        w.__gpp('getField', take('noField'), 'tcfeuv2.Nonsense');
+        w.__gpp('getGPPData', take('gppData'));
+        assert.equal(answers.has.value, true);
+        assert.equal(answers.hasNot.value, false);
+        assert.equal(answers.field.value, 'AA');
+        assert.equal(answers.field.success, true);
+        assert.equal(answers.noField.success, false);
+        // Not a command in GPP 1.1, and the reference implementation refuses
+        // it, so this does too.
+        assert.equal(answers.gppData.success, false);
+    });
+
+    it('answers what the GPP stub had already been asked', ( ) => {
+        // A publisher's stub parks calls until a CMP arrives, and their own
+        // CmpApi drains them. One queued before this ran is answered, not
+        // left sitting in an array nothing will read again.
+        const w = withGpp({
+            before: w_ => {
+                w_.eval('window.__gppAnswers = [];');
+            },
+        }).window;
+        // Re-stub, queue a ping, then re-run: the same path a real page takes.
+        w.eval('window.__gppStubCalls = [];' +
+            'window.__gpp = function(cmd, cb, p) {' +
+            ' if ( cmd === "queue" ) { return window.__gppStubCalls; }' +
+            ' window.__gppStubCalls.push([ cmd, cb, p ]);' +
+            '};');
+        w.eval('window.__gpp("ping", function(data, ok) {' +
+            ' window.__gppAnswers.push([ data && data.cmpStatus, ok ]); });');
+        assert.deepEqual(plain(w.__gppAnswers), []);
+        w.eval('window.__ucCmp = undefined;');
+        w.eval(reject);
+        assert.deepEqual(plain(w.__gppAnswers), [ [ 'loaded', true ] ]);
+    });
+
+    it('registers and removes a GPP listener', ( ) => {
+        const w = withGpp().window;
+        let registered;
+        w.__gpp('addEventListener', value => { registered = value; });
+        assert.equal(registered.eventName, 'listenerRegistered');
+        assert.equal(registered.data, true);
+        assert.deepEqual(plain(registered.pingData.sectionList), [ 2 ]);
+        let removed;
+        w.__gpp('removeEventListener', value => { removed = value; },
+            registered.listenerId);
+        assert.equal(removed.eventName, 'listenerRemoved');
+        assert.equal(removed.data, true);
+    });
+
+    it('installs GPP off a locator frame, and adds one where there is none',
+        ( ) => {
+            let out;
+            const w = withStub({
+                before: w_ => {
+                    out = lines(w_);
+                    const frame = w_.document.createElement('iframe');
+                    frame.name = '__gppLocator';
+                    w_.document.body.appendChild(frame);
+                },
+            }).window;
+            assert.ok(out[0].includes(' gppvia=locator'), out[0]);
+            assert.equal(typeof w.__gpp, 'function');
+            // And where the evidence was the stub instead, the frame their own
+            // API creates is created here too, for a cross-frame caller.
+            const other = withGpp().window;
+            assert.notEqual(other.frames.__gppLocator, undefined);
+        }
+    );
+
+    it('says GPP has no section to carry without a TCF string', ( ) => {
+        // GPP evidence alone: section 2's payload is the TC string, and the US
+        // and Canadian sections need a jurisdiction this never learns.
+        let out;
+        const w = asLoader({
+            before: w_ => {
+                out = lines(w_);
+                w_.eval('window.__gpp = function() {};');
+            },
+        }).window;
+        assert.ok(out[0].includes(' iab=off'), out[0]);
+        assert.ok(out[0].includes(' gpp=nosection'), out[0]);
+        assert.equal(typeof w.__gpp, 'function');
+        let answered = 'untouched';
+        w.__gpp('ping', value => { answered = value; });
+        // Their stub is left exactly as it was, rather than replaced by one
+        // that would answer with an empty string.
+        assert.equal(answered, 'untouched');
     });
 
     it('says no to a command it does not implement', ( ) => {

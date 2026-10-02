@@ -53,18 +53,18 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/usercentrics-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -78,8 +78,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.22.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.22.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.23.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.23.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -910,6 +910,30 @@ vendors }`, with the AC string left empty rather than invented: it lists
 Google's additional-consent vendors, a refusal consents to none of them, and
 their own resurface check reads an empty one as nothing to compare.
 
+**GPP carries the same refusal**, as `DBABMA~<tc string>` - section 2,
+`tcfeuv2`, whose payload is that string. `@iabgpp/cmpapi` decodes what this
+builds and the test compares its parse field for field against what callers
+are handed, so a drift in either shows up. `supportedAPIs` is theirs verbatim,
+`["2:tcfeuv2","5:tcfcav1","6:uspv1"]`, even though only the first is carried,
+and the identity is the one the TCF layer resolved, because their own
+`CmpApi` is built from the same pair:
+
+```js
+this.cmpId = tcf2.cmpId || 5;            // browser-sdk
+this.cmpVersion = tcf2.cmpVersion || 3;
+this.gppApi = new CmpApi(this.cmpId, this.cmpVersion);
+```
+
+GPP is a setting of its own on their side, `gppEnabled`, so it does **not**
+follow TCF: it goes in on its own evidence, a `__gpp` stub or a `__gppLocator`
+frame, and a page with the TCF stub alone gets the TCF layer only. Where there
+is GPP evidence but no TC string there is no section to carry, so their stub is
+left exactly as it was rather than replaced by one answering with an empty
+string. A queued call on their stub is answered on the way in, and the locator
+frame their own API creates is created here too. `getGPPData` is refused,
+because it is not a command in GPP 1.1 and the reference implementation refuses
+it.
+
 ### Deliberate gaps
 
 - **The service names are only known where the visitor had accepted**, since
@@ -920,9 +944,9 @@ their own resurface check reads an empty one as nothing to compare.
   and it is what carries a decision to a sibling domain. It is not written:
   nothing on the page reads it once the CMP is replaced, and the sibling domain
   gets this resource too.
-- **No GPP layer.** Their `__gpp` is a separate surface, enabled per tenant,
-  declaring `supportedAPIs: ["2:tcfeuv2","5:tcfcav1","6:uspv1"]`. The TCF layer
-  below does not put it back.
+- **No US or Canadian GPP section.** Which one applies needs the jurisdiction
+  their location lookup returns, and a replaced CMP never makes it. Section 2
+  is carried, and `hasSection("usnat")` answers false rather than guessing.
 - **The legacy CMP before v2 is not targeted.** The blocker still has a branch
   for it - `window.usercentrics.getConsents()`, off
   `usercentrics.eu/latest/main.js` - and nothing here answers that. v2 does not
@@ -971,7 +995,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.23.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

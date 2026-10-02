@@ -475,7 +475,24 @@ function consentRRUsercentrics() {
         return '';
     };
 
+    // GPP is a setting of its own on their side - gppEnabled, with the API
+    // built from the same identity as the TCF one - so it goes in on its own
+    // evidence rather than following TCF: the stub a publisher puts there, or
+    // the locator frame a cross-frame caller looks for.
+    const gppWanted = ( ) => {
+        try {
+            if ( typeof w.__gpp === 'function' ) { return 'stub'; }
+        } catch(ex) {
+        }
+        try {
+            if ( w.frames.__gppLocator !== undefined ) { return 'locator'; }
+        } catch(ex) {
+        }
+        return '';
+    };
+
     const tcfEvidence = tcfWanted();
+    const gppEvidence = gppWanted();
     let tcf = null;
     if ( tcfEvidence !== '' ) {
         try {
@@ -507,6 +524,23 @@ function consentRRUsercentrics() {
                 (kept ? '' : ' tcfrecord=refused')
             : 'refused/noapi';
     }
+    // The GPP form of the same refusal, carrying the same string in section 2.
+    // Without a TCF string there is no section to carry, and the US sections
+    // need a jurisdiction this never learns, so it waits on the TCF layer.
+    let gpp = 'off';
+    if ( gppEvidence !== '' ) {
+        if ( tcf === null ) {
+            gpp = 'nosection';
+        } else {
+            try {
+                gpp = consentRRUsercentricsGpp(
+                    tcf.tcString, tcf.section, tcf.cmpId, tcf.cmpVersion
+                ) !== '' ? 'refused' : 'refused/noapi';
+            } catch(ex) {
+                gpp = 'refused/noapi';
+            }
+        }
+    }
     define('UC_UI', ui);
 
     if ( settingsId !== '' ) {
@@ -529,6 +563,8 @@ function consentRRUsercentrics() {
             ' answered=' + (answered ? 'true' : 'refused') +
             ' iab=' + iab +
             (tcfEvidence !== '' ? ' tcf=' + tcfEvidence : '') +
+            ' gpp=' + gpp +
+            (gppEvidence !== '' ? ' gppvia=' + gppEvidence : '') +
             ' data=' + stored +
             (storedLegacy !== 'absent' ? ' v2=' + storedLegacy : '')
         );
