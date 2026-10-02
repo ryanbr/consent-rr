@@ -81,6 +81,27 @@ const ENTRIES = [
     [ 19, 2, 2, 1, 1, 'Identify devices based on information actively requested' ],
 ];
 
+// And their continue-without-accepting record, which is the one that forwards
+// to the consent wall: every consentable and every vendor at -1, status and
+// legitimate interest alike.
+const THEIR_REFUSAL = {
+    consents: {
+        consentables: ENTRIES.map(
+            ([ id, iab_id, type, , , name ]) => ({
+                id, iab_id, type, status: -1, legintStatus: -1,
+                name: { values: { en: name } }, vendors_number: 100,
+            })
+        ),
+        vendors: [
+            {
+                consentables: [ 1, 2, 3, 4, 7 ], legintables: [], flexibles: [ 2, 7 ],
+                urls: {}, id: 1, iab_id: 1, name: '', status: -1,
+                legintStatus: -1, type: 0,
+            },
+        ],
+    },
+};
+
 const THEIR_STATE = {
     consents: {
         consentables: ENTRIES.map(
@@ -372,6 +393,64 @@ describe('appconsent', ( ) => {
             [ 1 ]);
         assert.deepEqual(plain(state.consents.vendors.map(e => e.legintStatus)),
             [ 1 ]);
+    });
+
+    it('reject writes the record their own skip button writes', ( ) => {
+        // Continue without accepting is what forwards to their consent wall,
+        // and this is the record it leaves: everything at -1. Starting from
+        // their accepted one, reject arrives at exactly that.
+        const w = boot(reject, {
+            before: w_ => {
+                w_.localStorage.setItem('appconsent',
+                    JSON.stringify(THEIR_STATE));
+            },
+        }).window;
+        const ours = JSON.parse(w.localStorage.getItem('appconsent')).consents;
+        const theirs = THEIR_REFUSAL.consents;
+        assert.deepEqual(
+            plain(ours.consentables.map(e => [ e.status, e.legintStatus ])),
+            plain(theirs.consentables.map(e => [ e.status, e.legintStatus ]))
+        );
+        assert.deepEqual(
+            plain(ours.vendors.map(e => [ e.status, e.legintStatus ])),
+            plain(theirs.vendors.map(e => [ e.status, e.legintStatus ]))
+        );
+    });
+
+    it('accept grants from their refused record, purposes and all', ( ) => {
+        // The case that matters at a wall: the visitor refused, so this runs
+        // with their refusal already stored.
+        const w = boot(accept, {
+            before: w_ => {
+                w_.localStorage.setItem('appconsent',
+                    JSON.stringify(THEIR_REFUSAL));
+            },
+        }).window;
+        const ours = JSON.parse(w.localStorage.getItem('appconsent')).consents;
+        assert.deepEqual(
+            plain(ours.consentables.map(e => e.status)),
+            ENTRIES.map(( ) => 1)
+        );
+        assert.deepEqual(plain(ours.vendors.map(e => e.status)), [ 1 ]);
+        // Which purposes may be taken on legitimate interest is TCF policy,
+        // not a tenant's data - 2, 7, 8, 9, 10 and 11 - so those are granted
+        // even though the record it started from said -1 for everything.
+        const purposes = ours.consentables.filter(e => e.type === 0);
+        assert.deepEqual(
+            plain(purposes.map(e => [ e.iab_id, e.legintStatus ])),
+            [ [ 1, -1 ], [ 2, 1 ], [ 3, -1 ], [ 7, 1 ], [ 11, 1 ] ]
+        );
+        // The three non-purpose entries their own accepted record grants are
+        // left as they were, because what their basis for granting them is
+        // cannot be seen from outside that record: a feature has no
+        // legitimate interest in TCF at all. This is the one field where
+        // granting from a refusal is not byte-identical to theirs.
+        const others = ours.consentables.filter(e => e.type !== 0);
+        assert.deepEqual(
+            plain(others.map(e => [ e.type, e.iab_id, e.legintStatus ])),
+            [ [ 1, 1, -1 ], [ 1, 2, -1 ], [ 3, 1, -1 ], [ 3, 2, -1 ],
+                [ 2, 1, -1 ], [ 2, 2, -1 ] ]
+        );
     });
 
     it('leaves their own state alone where there is none', ( ) => {

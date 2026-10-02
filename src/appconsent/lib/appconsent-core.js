@@ -103,10 +103,19 @@ function consentRRAppConsent(grantAll) {
     // and their own validator refuses anything but -1, 0 and 1.
     const ALLOWED = 1;
     const DISALLOWED = -1;
-    // Their enum again: legintStatus -1 is not-applicable rather than no,
-    // and a real accepted state carries it on purposes 1, 3, 4, 5 and 6 - the
-    // set their own code calls out - and on features, special purposes and
-    // special features besides. It is left as it is either way.
+    // legintStatus -1 means two different things depending on the record it
+    // is in: not-applicable in an accepted one, refused in a refused one. So
+    // granting from a refused record cannot tell from the field alone which
+    // entries could carry a legitimate interest.
+    //
+    // For purposes it does not have to: which ones may be taken on legitimate
+    // interest is TCF policy rather than a tenant's data, and it is 2, 7, 8,
+    // 9, 10 and 11 - exactly where a real accepted record carries a yes.
+    // Everything else keeps whatever it had, because their own representation
+    // of features, special purposes and special features is theirs to state
+    // and only that record knows it.
+    const PURPOSE = 0;
+    const LEGITIMATE_INTEREST_PURPOSES = [ 2, 7, 8, 9, 10, 11 ];
 
     const read = name => {
         try {
@@ -170,13 +179,16 @@ function consentRRAppConsent(grantAll) {
             if ( entry === null || typeof entry !== 'object' ) { return; }
             entry.status = status;
             if ( entry.legintStatus !== undefined ) {
-                // A -1 stays a -1: that is their not-applicable, and their own
-                // accepted state carries it on entries of every type. Only an
-                // entry that already had a legitimate interest gets one.
-                entry.legintStatus = entry.legintStatus === DISALLOWED ||
-                    tcf.granted === false
-                    ? DISALLOWED
-                    : ALLOWED;
+                if ( tcf.granted === false ) {
+                    entry.legintStatus = DISALLOWED;
+                } else {
+                    const policy = entry.type === PURPOSE &&
+                        LEGITIMATE_INTEREST_PURPOSES.indexOf(entry.iab_id) !== -1;
+                    const had = entry.legintStatus !== DISALLOWED;
+                    entry.legintStatus = policy || had
+                        ? ALLOWED
+                        : DISALLOWED;
+                }
             }
             touched += 1;
         };
