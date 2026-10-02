@@ -52,17 +52,17 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/transcend-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -671,10 +671,23 @@ airgap.ready(ag => {
 ```
 
 The purpose names never have to be known: `getConsent()` hands them over,
-including their tri-state `"Auto"`, which becomes an explicit no. `null` as the
-auth is what a site's own consent manager passes when a choice was not made by
-clicking - Costco's does exactly that, which is how we know a tenant with auth
-off accepts a decision recorded this way.
+including their tri-state `"Auto"`, which becomes an explicit no. Four tenants
+sampled - Costco, Airtable and two others - have between four and seven
+purposes, and no two sets are the same; Airtable's include `Marketing`, `Sales`
+and `EnrichmentConsent`.
+
+**How the decision is authorised** is their `requireAuth` option, and all four
+leave it on. So the auth is their own load branch:
+
+```js
+Bp = e => isTrusted(e) && e.type === "load" && e.timeStamp <= <init time>
+```
+
+a trusted `load` event, which every page fires - their path for a decision
+nobody clicked. That is waited for rather than guessed at, and the refusal
+lands on the current page. Where a tenant does set `requireAuth: "off"`, `null`
+is proof enough and no waiting is needed; asking `loadOptions` first keeps their
+own *Authorization proof is untrusted* out of the console everywhere else.
 
 Because airgap only fetches `ui.js` when it wants to prompt, the timing works
 out: a visitor with nothing recorded gets the prompt, which is this, which
@@ -696,10 +709,10 @@ definition, so the callback queued there is one it drains.
 
 ### Deliberate gaps
 
-- **A tenant that requires a trusted event** gets `Authorization proof is
-  untrusted` from its own airgap, and the refusal is written to their `tcm`
-  cookie instead, in the shape one of their own cookies carries. The console
-  line says which way it went - `via=setConsent` or `via=cookie`.
+- **Injected after the page has loaded**, that trusted event has been and gone,
+  and the refusal goes to their `tcm` cookie instead - in the shape one of their
+  own cookies carries, read on the next page rather than this one. The console
+  line says which way it went: `via=setConsent`, `via=load` or `via=cookie`.
 - **A site with a consent UI of its own** - Costco builds one on airgap rather
   than using `ui.js` - reads the same refusal, so it has nothing to prompt for,
   but it may ask before airgap has got as far as fetching `ui.js`. The scriptlet
@@ -740,7 +753,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.1/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

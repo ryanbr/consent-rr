@@ -8,7 +8,9 @@
 
 import { strict as assert } from 'node:assert';
 import { before, describe, it } from 'node:test';
-import { cookies, filtersText, loadResources, runDom, versions } from './helpers.mjs';
+import {
+    cookies, filtersText, loadResources, runDom, settle, versions,
+} from './helpers.mjs';
 
 const URL = 'https://www.costco.ca/shop';
 
@@ -25,19 +27,34 @@ const PURPOSES = {
 
 // airgap as their own file installs it, with getConsent and setConsent
 // behaving as theirs do.
-const AIRGAP = 'window.__calls = [];' +
-    'window.__purposes = ' + JSON.stringify(PURPOSES) + ';' +
-    'window.airgap = Object.assign({ readyQueue: [],' +
-    ' ready(c) { this.readyQueue.push(c); } }, window.airgap);' +
-    'window.airgap.getConsent = function() {' +
-    ' return { purposes: Object.assign({}, window.__purposes),' +
-    ' confirmed: false, prompted: false, updated: false }; };' +
-    'window.airgap.setConsent = function(auth, purposes, options) {' +
-    ' window.__calls.push([ auth, purposes, options ]);' +
-    ' window.__purposes = purposes; return window.__setConsentResult !== false; };' +
-    // Their own signal set, built from the browser's.
-    'window.airgap.getPrivacySignals = function() {' +
-    ' return new Set(navigator.globalPrivacyControl ? [ "GPC" ] : []); };';
+// requireAuth off, so null is proof enough - the shape a tenant has when its
+// own consent manager records a choice nobody clicked.
+const AIRGAP = airgap('off');
+
+// Their check, as airgap makes it: null passes only where requireAuth is off,
+// and otherwise the auth must be a trusted event of type load.
+function airgap(requireAuth) {
+    return 'window.__calls = [];' +
+        'window.__purposes = ' + JSON.stringify(PURPOSES) + ';' +
+        'window.airgap = Object.assign({ readyQueue: [],' +
+        ' ready(c) { this.readyQueue.push(c); } }, window.airgap);' +
+        'window.airgap.loadOptions = ' +
+        JSON.stringify({ requireAuth }) + ';' +
+        'window.airgap.getConsent = function() {' +
+        ' return { purposes: Object.assign({}, window.__purposes),' +
+        ' confirmed: false, prompted: false, updated: false }; };' +
+        'window.airgap.setConsent = function(auth, purposes, options) {' +
+        ' window.__calls.push([ auth, purposes, options ]);' +
+        ' if ( window.__setConsentResult === false ) { return false; }' +
+        ' var ok = ' + (requireAuth === 'off'
+            ? 'true'
+            : '!!(auth && auth.type === "load" && auth.isTrusted)') + ';' +
+        ' if ( ok ) { window.__purposes = purposes; }' +
+        ' return ok; };' +
+        // Their own signal set, built from the browser's.
+        'window.airgap.getPrivacySignals = function() {' +
+        ' return new Set(navigator.globalPrivacyControl ? [ "GPC" ] : []); };';
+}
 
 // Their ready() once airgap is loaded: the callback runs at once.
 const READY_NOW = 'window.airgap.ready = function(c) { c(window.airgap); };';
@@ -123,15 +140,98 @@ describe('transcend-reject', ( ) => {
         assert.deepEqual(plain(w.__calls[0][1]).Analytics, false);
     });
 
+    it('records it with the page own load event where auth is required',
+        async ( ) => {
+            // Four tenants sampled all leave requireAuth on, so this is the
+            // ordinary path: their own load branch takes a trusted load event,
+            // which every page fires, and the refusal lands on this page.
+            let out;
+            const dom = runDom(
+                reject, URL, '<html><body><p>x</p></body></html>',
+                w_ => {
+                    out = lines(w_);
+                    w_.eval(airgap(undefined) + READY_NOW);
+                }
+            );
+            const w = dom.window;
+            // Nothing recorded yet, and nothing said: it is waiting for load.
+            assert.equal(w.__calls.length, 0);
+            await settle(120);
+            assert.equal(w.__calls.length, 1);
+            const [ auth, purposes ] = w.__calls[0];
+            assert.equal(auth.type, 'load');
+            assert.equal(auth.isTrusted, true);
+            assert.deepEqual(plain(purposes).Analytics, false);
+            assert.ok(out[0].endsWith(' via=load'), out[0]);
+            // Their API took it, so their cookie is theirs to write.
+            assert.equal(cookies(w).has('tcm'), false);
+        }
+    );
+
+    it('asks for no proof it does not need, where auth is off', ( ) => {
+        let out;
+        const w = asUi({ before: w_ => { out = lines(w_); } }).window;
+        // One attempt, with null, and no waiting: asking their loadOptions
+        // first keeps their own "Authorization proof is untrusted" out of the
+        // console everywhere else.
+        assert.equal(w.__calls.length, 1);
+        assert.equal(w.__calls[0][0], null);
+        assert.ok(out[0].endsWith(' via=setConsent'), out[0]);
+    });
+
+    it('falls back to their cookie if that event is refused as well', async ( ) => {
+        let out;
+        const dom = runDom(reject, URL, '<html><body><p>x</p></body></html>',
+            w_ => {
+                out = lines(w_);
+                w_.eval(airgap(undefined) + READY_NOW);
+                // A tenant whose airgap will not take it even then.
+                w_.eval('window.__setConsentResult = false;');
+            }
+        );
+        const w = dom.window;
+        await settle(120);
+        // It tried with the load event, was refused, and wrote their cookie.
+        assert.equal(w.__calls.length, 1);
+        assert.equal(w.__calls[0][0].type, 'load');
+        assert.ok(out[0].endsWith(' via=cookie'), out[0]);
+        assert.deepEqual(JSON.parse(cookies(w).get('tcm')).purposes.Analytics, false);
+    });
+
+    it('falls back to their cookie once that event has gone', ( ) => {
+        let out;
+        // Injected after load, which is the one case where their load branch
+        // is out of reach.
+        const dom = runDom(reject, URL, '<html><body><p>x</p></body></html>',
+            w_ => {
+                out = lines(w_);
+                w_.eval(airgap(undefined) + READY_NOW);
+                Object.defineProperty(w_.document, 'readyState', {
+                    value: 'complete',
+                    configurable: true,
+                });
+            }
+        );
+        const w = dom.window;
+        assert.ok(out[0].endsWith(' via=cookie'), out[0]);
+        const record = JSON.parse(cookies(w).get('tcm'));
+        assert.equal(record.confirmed, true);
+        assert.deepEqual(record.purposes.Analytics, false);
+    });
+
     it('writes their cookie where a tenant will not take it programmatically',
         ( ) => {
             let out;
             const w = asUi({
                 before: w_ => {
                     out = lines(w_);
-                    // What their airgap answers when the tenant requires a
-                    // trusted event: refused, with a message of its own.
+                    // What their airgap answers when it will not take this at
+                    // all: refused, with a message of its own.
                     w_.eval('window.__setConsentResult = false;');
+                    Object.defineProperty(w_.document, 'readyState', {
+                        value: 'complete',
+                        configurable: true,
+                    });
                 },
             }).window;
             assert.ok(out[0].endsWith(' via=cookie'), out[0]);

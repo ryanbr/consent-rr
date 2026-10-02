@@ -49,9 +49,18 @@
                             here: whatever the tenant calls them, they are all
                             set to false
 
-    Where a tenant does require a trusted event, setConsent refuses and says so.
-    The refusal is then written to their tcm cookie directly, in the shape one
-    of their own cookies carries, and the console line says which way it went.
+    Which auth their setConsent will take is their requireAuth option, and it is
+    on unless a tenant turns it off - four tenants sampled all left it on. So
+    the auth is their own load branch:
+
+        isTrusted(e) && e.type === "load" && e.timeStamp <= <init time>
+
+    a trusted load event, which every page fires - their path for a decision
+    nobody clicked. That is waited for rather than guessed at, and it records
+    the refusal on this page. Where the page has already loaded by the time
+    this runs, that event has gone, and the refusal is written to their tcm
+    cookie instead - which is read on the next page rather than this one. The
+    console line says which way it went: setConsent, load or cookie.
 
 */
 
@@ -177,21 +186,48 @@ function consentRRTranscend() {
             announce(names, 'nothing to refuse');
             return;
         }
-        let accepted = false;
-        try {
-            // Their own signature, and the auth a site's own manager passes
-            // when a choice was not made by clicking.
-            accepted = airgap.setConsent(null, refused, {
-                confirmed: true,
-                prompted: true,
-                timestamp: new Date().toISOString(),
-            }) !== false;
-        } catch(ex) {
-        }
-        if ( accepted ) {
+        const options = ( ) => ({
+            confirmed: true,
+            prompted: true,
+            timestamp: new Date().toISOString(),
+        });
+        const record = auth => {
+            try {
+                return airgap.setConsent(auth, refused, options()) !== false;
+            } catch(ex) {
+            }
+            return false;
+        };
+
+        // Their requireAuth option decides whether a decision needs proof of a
+        // real interaction. Where it is off, null is proof enough - which is
+        // what a site's own manager passes for a choice nobody clicked - and
+        // asking first keeps their own "Authorization proof is untrusted" out
+        // of the console on every other tenant.
+        const authOff = airgap.loadOptions !== null &&
+            typeof airgap.loadOptions === 'object' &&
+            airgap.loadOptions.requireAuth === 'off';
+        if ( authOff && record(null) ) {
             announce(names, 'setConsent');
             return;
         }
+
+        // Otherwise their check wants a trusted event, and their own load
+        // branch takes one: isTrusted, of type load, which is what every page
+        // fires. That is the path for a decision not made by clicking, and it
+        // lands on this page rather than the next.
+        if ( doc.readyState !== 'complete' ) {
+            w.addEventListener('load', ev => {
+                if ( record(ev) ) {
+                    announce(names, 'load');
+                    return;
+                }
+                announce(names, writeCookie(refused) ? 'cookie' : 'refused');
+            }, { once: true });
+            return;
+        }
+        // Loaded already, so that event has been and gone: their cookie is
+        // what is left, and it is read on the next page rather than this one.
         announce(names, writeCookie(refused) ? 'cookie' : 'refused');
     };
 
