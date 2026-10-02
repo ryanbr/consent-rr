@@ -52,17 +52,17 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/transcend-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -649,6 +649,7 @@ the old cookie before this takes over.
 ```
 ||transcend-cdn.com/cm*/*/ui.js$script,redirect=transcend-reject.js
 ||transcend-cdn.com/cm*/*/uiV2.js$script,redirect=transcend-reject.js
+||assets.mayoclinic.org/content/dam/cpm-transcend/ui.js$script,redirect=transcend-reject.js
 ```
 
 **Replace the banner, not the engine.** Transcend ships in two halves, and the
@@ -671,13 +672,15 @@ airgap.ready(ag => {
 ```
 
 The purpose names never have to be known: `getConsent()` hands them over,
-including their tri-state `"Auto"`, which becomes an explicit no. Four tenants
-sampled - Costco, Airtable and two others - have between four and seven
-purposes, and no two sets are the same; Airtable's include `Marketing`, `Sales`
-and `EnrichmentConsent`.
+including their tri-state `"Auto"`, which becomes an explicit no. Eight tenants
+sampled - Costco, Airtable, Mayo Clinic and five others - have between four and
+seven purposes, and barely any two sets are the same; Airtable's include
+`Marketing`, `Sales` and `EnrichmentConsent`, and others add `Video` or
+`GcmAdvanced`. The resource was run against all eight and refuses every purpose
+of each.
 
-**How the decision is authorised** is their `requireAuth` option, and all four
-leave it on. So the auth is their own load branch:
+**How the decision is authorised** is their `requireAuth` option, and not one
+of the eight sets it. So the auth is their own load branch:
 
 ```js
 Bp = e => isTrusted(e) && e.type === "load" && e.timeStamp <= <init time>
@@ -700,6 +703,17 @@ regime and under a different prefix - Airtable's is
 `[{"url":"uiV2.js","kind":"ui"}]` served from `/cm-test/`. The engine and the
 API are the same in both, so the resource is too; only the filename and the
 path move, and a test checks the rules against a real url of each kind.
+
+**And the bundle need not be on their CDN at all.** airgap takes the UI from
+`loadOptions.ui`, so a tenant can point that anywhere: Mayo Clinic's airgap
+config names the usual `/cm/<id>/ui.js`, yet the page overrides it and serves
+the banner from `assets.mayoclinic.org`, which no `transcend-cdn.com` rule can
+reach. That one is named above. For any other site that does the same, the
+scriptlet form needs no url:
+
+```
+example.com##+js(transcend-reject)
+```
 
 It works in either position. Served in place of the banner it runs with airgap
 already ready. Injected as a scriptlet it runs at `document_start`, before
@@ -753,7 +767,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.18.1/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

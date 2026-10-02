@@ -39,6 +39,25 @@
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
+! Self-hosted banners.
+!
+! A tenant may serve the bundle from its own assets rather than the CDN, at a
+! path of its own choosing - Mayo Clinic does, while its engine still comes from
+! transcend-cdn.com - so no rule above can reach it and it needs naming:
+! -----------------------------------------------------------------------------
+||assets.mayoclinic.org/content/dam/cpm-transcend/ui.js$script,redirect=transcend-reject.js
+
+! -----------------------------------------------------------------------------
+! Where the banner cannot be found at all.
+!
+! A tenant that both self-hosts and names the file something of its own leaves
+! nothing to match on. The scriptlet does not need to find it: it records the
+! refusal through airgap before the banner is ever fetched.
+!
+! example.com##+js(transcend-reject)
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
 ! Served first-party.
 !
 ! A tenant may serve the same files from its own host by CNAME - Costco uses

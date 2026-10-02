@@ -347,6 +347,10 @@ describe('filters, transcend', ( ) => {
         assert.deepEqual(ours, [
             '||transcend-cdn.com/cm*/*/ui.js$script,redirect=transcend-reject.js',
             '||transcend-cdn.com/cm*/*/uiV2.js$script,redirect=transcend-reject.js',
+            // A tenant serving the bundle from its own assets, which no rule
+            // above can reach.
+            '||assets.mayoclinic.org/content/dam/cpm-transcend/ui.js' +
+                '$script,redirect=transcend-reject.js',
         ]);
         // airgap.js is the engine, and the thing that enforces the refusal.
         assert.equal(active.includes('airgap.js'), false);
@@ -368,6 +372,10 @@ describe('filters, transcend', ( ) => {
         const urls = [
             'https://transcend-cdn.com/cm/27549f25-ae97-4ab1-93cc-40599429e806/ui.js',
             'https://transcend-cdn.com/cm-test/619e6e3b-1a5c-4516-be11-6d77bdcbd717/uiV2.js',
+            // ef49a3f1 names its ui relatively, "ui.js", which resolves here.
+            'https://transcend-cdn.com/cm/ef49a3f1-d8c1-47d6-88fc-50e41130631f/ui.js',
+            // And one served from the tenant's own assets.
+            'https://assets.mayoclinic.org/content/dam/cpm-transcend/ui.js',
         ];
         for ( const url of urls ) {
             assert.ok(
