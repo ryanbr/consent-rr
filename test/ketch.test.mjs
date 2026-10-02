@@ -244,12 +244,70 @@ describe('ketch-reject', ( ) => {
         assert.deepEqual(plain(w.__late), [ 0 ]);
     });
 
+    it('hands out a fresh answer every time it is asked', async ( ) => {
+        // A page mutating what it was given would otherwise be mutating the
+        // answer every later caller gets - and the mutation it would most
+        // likely make is granting itself something. Theirs builds a fresh
+        // object per call.
+        const w = boot({
+            before: w_ => {
+                w_.localStorage.setItem('_ketch_consent_v1_', encode(GRANTED));
+            },
+        }).window;
+        const first = await w.semaphore.ketch.getConsent();
+        first.purposes.analytics = true;
+        first.vendors.push('a-vendor');
+        const second = await w.semaphore.ketch.getConsent();
+        assert.notEqual(first, second);
+        assert.equal(second.purposes.analytics, false);
+        assert.deepEqual(plain(second.vendors), []);
+        // The same for the configuration they answer with.
+        const config = await w.semaphore.ketch.getConfig();
+        config.purposes.push({ code: 'injected' });
+        assert.deepEqual(plain((await w.semaphore.ketch.getConfig()).purposes), []);
+        // And for the listener payload.
+        w.eval('window.__seen = [];' +
+            'window.ketch("on", "consent", function(c) {' +
+            ' c.purposes.analytics = true; window.__seen.push(c); });' +
+            'window.ketch("on", "consent", function(c) {' +
+            ' window.__seen.push(c.purposes.analytics); });');
+        assert.equal(plain(w.__seen)[1], false);
+    });
+
+    it('answers the command names their router actually routes', ( ) => {
+        const w = boot().window;
+        const router = w.semaphore.ketch;
+        // Read off their router rather than guessed: these are its own names.
+        for ( const name of [
+            'getConfig', 'getFullConfig', 'getConsent', 'getConsentNoCache',
+            'getSubscriptions', 'getProfilePreferences',
+            'setProfilePreferences', 'getEnvironment', 'getGeoIP',
+            'getIdentities', 'getJurisdiction', 'getJurisdictionForRegion',
+            'getRegionInfo', 'getIsDisplayed', 'setIdentities',
+            'setUserAttributes', 'showConsent', 'showPreferences', 'reinit',
+            'handleKeyboardEvent', 'returnKeyboardControl', 'registerPlugin',
+            'on', 'off', 'onConsent',
+        ] ) {
+            assert.equal(typeof router[name], 'function', name);
+        }
+        // And the two their SDK object spells out, since semaphore.ketch is
+        // that object in their world.
+        assert.equal(typeof router.showConsentExperience, 'function');
+        assert.equal(typeof router.showPreferenceExperience, 'function');
+        // Not theirs, so not invented here.
+        assert.equal(router.once, undefined);
+        assert.equal(router.emit, undefined);
+        assert.equal(router.setEnvironment, undefined);
+    });
+
     it('grants nothing when the page asks it to show or save', async ( ) => {
         const w = boot({
             before: w_ => {
                 w_.localStorage.setItem('_ketch_consent_v1_', encode(GRANTED));
             },
         }).window;
+        await w.semaphore.ketch.showConsent();
+        await w.semaphore.ketch.showPreferences();
         await w.semaphore.ketch.showConsentExperience();
         await w.semaphore.ketch.setConsent({ purposes: { analytics: true } });
         const stored = decode(w.localStorage.getItem('_ketch_consent_v1_'));

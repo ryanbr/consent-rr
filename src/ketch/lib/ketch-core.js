@@ -37,7 +37,23 @@
       the router               push() takes a string or an array-like whose
                                first element is the command. Trailing function
                                arguments are the resolve and reject callbacks,
-                               which is how ketch("getConsent", fn) works.
+                               which is how ketch("getConsent", fn) works. Its
+                               commands are getConfig, getFullConfig,
+                               getConsent, getConsentNoCache, getSubscriptions,
+                               getProfilePreferences, setProfilePreferences,
+                               getEnvironment, getGeoIP, getIdentities,
+                               getJurisdiction, getJurisdictionForRegion,
+                               getRegionInfo, getIsDisplayed, setIdentities,
+                               setUserAttributes, showConsent, showPreferences,
+                               reinit, handleKeyboardEvent,
+                               returnKeyboardControl, registerPlugin, on, off
+                               and their deprecated on<Event> spellings. Note
+                               showConsent and showPreferences rather than the
+                               longer names their SDK object uses - and no emit
+                               or once, which their router does not route.
+      semaphore.ketch          their SDK instance rather than that router, so
+                               the longer spellings belong there. One object
+                               answers both here, carrying each set of names.
       the consent object       { purposes, vendors, googleVendors,
                                vendorConsents: { tcf, google } } - their own
                                retrieveConsent() answers exactly that shape
@@ -267,33 +283,47 @@ function consentRRKetch() {
         }
     };
 
+    // A primitive can be handed out as often as asked. An object cannot: a
+    // page that mutates what it was given would be mutating the answer every
+    // later caller gets, and the mutation it would most likely make is
+    // granting itself something. Theirs builds a fresh one per call, so this
+    // does too.
     const resolved = value => ( ) => Promise.resolve(value);
+    const fresh = make => ( ) => Promise.resolve(make());
+    const empty = ( ) => ({});
+    const config = ( ) => ({ purposes: [] });
 
     // Their router's commands, answering a refusal. The ones that would show
     // an experience or record a decision resolve without doing either.
     const commands = {
-        getConsent: resolved(consent()),
-        getConsentNoCache: resolved(consent()),
-        getConfig: resolved({ purposes: [] }),
-        getFullConfig: resolved({ purposes: [] }),
-        getEnvironment: resolved({ code: 'production' }),
-        getGeoIP: resolved({}),
-        getIdentities: resolved({}),
-        getJurisdiction: resolved({ code: '' }),
-        getJurisdictionForRegion: resolved({ code: '' }),
+        getConsent: fresh(consent),
+        getConsentNoCache: fresh(consent),
+        getConfig: fresh(config),
+        getFullConfig: fresh(config),
+        getEnvironment: fresh(( ) => ({ code: 'production' })),
+        getGeoIP: fresh(empty),
+        getIdentities: fresh(empty),
+        getJurisdiction: fresh(( ) => ({ code: '' })),
+        getJurisdictionForRegion: fresh(( ) => ({ code: '' })),
         getRegionInfo: resolved(''),
-        getSubscriptions: resolved({}),
-        getProfilePreferences: resolved({}),
+        getSubscriptions: fresh(empty),
+        getProfilePreferences: fresh(empty),
         setProfilePreferences: resolved(undefined),
         getIsDisplayed: resolved(false),
-        setConsent: resolved(consent()),
-        setEnvironment: resolved(undefined),
-        setJurisdiction: resolved(undefined),
+        setConsent: fresh(consent),
+        // Their router's names.
+        showConsent: resolved(undefined),
+        showPreferences: resolved(undefined),
+        setIdentities: resolved(undefined),
+        setUserAttributes: resolved(undefined),
+        reinit: resolved(undefined),
+        registerPlugin: resolved(undefined),
+        handleKeyboardEvent: resolved(undefined),
+        returnKeyboardControl: resolved(undefined),
+        // And the spellings their SDK object carries, which is what
+        // semaphore.ketch is in their world.
         showConsentExperience: resolved(undefined),
         showPreferenceExperience: resolved(undefined),
-        showExperience: resolved(undefined),
-        hideExperience: resolved(undefined),
-        emit: resolved(undefined),
         on: (name, callback) => {
             if ( typeof callback === 'function' ) {
                 if ( listeners.has(name) === false ) { listeners.set(name, []); }
@@ -309,7 +339,8 @@ function consentRRKetch() {
             }
             return Promise.resolve();
         },
-        once: (name, callback) => commands.on(name, callback),
+        // once is deliberately absent: their router does not route it, and a
+        // page written against their SDK never calls it.
         off: (name, callback) => {
             const callbacks = listeners.get(name);
             if ( Array.isArray(callbacks) ) {
