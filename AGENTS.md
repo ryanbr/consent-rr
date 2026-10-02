@@ -168,10 +168,27 @@ line rules and joined the way uBO joins several resource URLs.
 
 ## Releasing
 
+**Most pushes are not releases.** Push as often as you like; a version is only
+for a push that changes what a user fetches. Everything else - a filter list, the
+README, a test, a tool - lands on `main` with no bump, no tag and no release.
+
+So before reaching for `npm version`, check there is anything to ship:
+
+```sh
+git diff --stat <last tag> -- dist/      # empty means do not bump
+```
+
+Empty means the resources are byte-identical to the last release, pinned URLs
+still serve the right file, and a new version would only move the pins and
+publish release notes for a file nobody needs again. v1.18.1 was released that
+way by mistake; it shipped a filter line and two paragraphs.
+
 Each consent manager has its own version under `resourceVersions` in
 `package.json`; the repo's `version` is what releases are named after. Bump the
 family's entry when its resources change, and not otherwise - a version on a stub
 means that stub changed.
+
+When `dist/` really has changed:
 
 ```sh
 # bump resourceVersions.<family> if that family's resources changed
