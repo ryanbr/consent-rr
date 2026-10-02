@@ -109,7 +109,7 @@ Sizes: `reject` 36.1 KB, `reject-unblock` 36.1 KB, `accept` 36.1 KB.
 
 # Every resource, side by side
 
-13 consent managers, 18 resources. Each one was booted on a page its own
+14 consent managers, 19 resources. Each one was booted on a page its own
 consent manager would recognise, and the rows below are what it did there - the
 globals it defined, the cookies it wrote, the signals it sent. A resource that
 shares a page with another (the OneTrust three, the Civic two) was measured on
@@ -128,6 +128,7 @@ the same fixture as its sibling.
 | `cookiebot-reject` | 14.7 KB | `CookieConsent`, `Cookiebot`, `uetq`, `CB_OnTagsExecuted_Processed` |
 | `securiti-reject` | 8.2 KB | `SecuritiSDK`, `__ScrtSdkApiOps`, `initCmp`, `setConsentBannerParams`, `showConsentPreferencesPopup`, `overrideThemeMatching` +4 more |
 | `transcend-reject` | 5.2 KB | - |
+| `cookiescript-reject` | 7.9 KB | `CookieScript` |
 | `appconsent-reject` | 16.6 KB | `__tcfapi`, `appconsent` |
 | `appconsent-accept` | 16.6 KB | `__tcfapi`, `appconsent` |
 | `ketch-reject` | 13.0 KB | - |
@@ -151,6 +152,7 @@ the same fixture as its sibling.
 | `cookiebot-reject` | `CookieConsent` | - | update: granted security_storage | - | no |
 | `securiti-reject` | `__privaci_cookie_consents`, `__privaci_cookie_consent_uuid` | - | update: granted security_storage | - | no |
 | `transcend-reject` | - | - | - | - | no |
+| `cookiescript-reject` | `CookieScriptConsent` | - | update: granted security_storage | - | no |
 | `appconsent-reject` | - | `IABTCF_CmpSdkID`, `IABTCF_CmpSdkVersion`, `IABTCF_DisclosedVendors`, `IABTCF_PolicyVersion` +13 more | - | `__tcfapi` | no |
 | `appconsent-accept` | - | `IABTCF_CmpSdkID`, `IABTCF_CmpSdkVersion`, `IABTCF_DisclosedVendors`, `IABTCF_PolicyVersion` +13 more | - | `__tcfapi` | no |
 | `ketch-reject` | `_ketch_consent_v1_` | - | update: granted security_storage | - | no |
@@ -166,7 +168,7 @@ The last column is measured by booting each one twice, with the clock and the
 randomness pinned so the two runs differ in nothing but the signal, and then
 comparing what the visitor is left carrying. The 5 it changes carry a
 field for it to change - OneTrust's own `browserGpcFlag`, InMobi's
-legitimate interest, Osano's opt-out. The 13 it does not have nowhere to
+legitimate interest, Osano's opt-out. The 14 it does not have nowhere to
 put it: every category is refused with or without the signal either way.
 
 ## What each one does to a parked tag
@@ -183,6 +185,7 @@ its necessary category, on the fixtures that have them.
 | `civic-reject` | `stat: parked`, `content: parked` |
 | `civic-reject-unblock` | `stat: parked`, `content: freed` |
 | `cookiebot-reject` | `nec: freed`, `stat: parked` |
+| `cookiescript-reject` | `nec: freed`, `stat: parked` |
 | `termly-reject` | `nec: freed`, `stat: parked` |
 | `usercentrics-reject` | `stat: parked` |
 
@@ -206,6 +209,7 @@ uBlock Origin does the blocking.
 [consent-rr] cookiebot-reject 1.0.1 necessary=true denied=preferences,statistics,marketing iab=off cookie=written
 [consent-rr] securiti-reject 1.0.0 consents=none tenant=read gcm=denied cookie=written
 [consent-rr] transcend-reject 1.1.0 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
+[consent-rr] cookiescript-reject 1.0.0 action=reject categories=none cookie=written freed=1 gcm=denied api=ready
 [consent-rr] appconsent-reject 1.0.4 tcf=refused cmp=2/33/default cc=FR keys=17 state=absent drained=0
 [consent-rr] appconsent-accept 1.0.4 tcf=granted cmp=2/33/default cc=FR keys=17 state=absent drained=0
 [consent-rr] ketch-reject 1.1.1 purposes=2 denied record=revoked gcm=denied queue=ready drained=0

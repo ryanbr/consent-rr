@@ -40,6 +40,7 @@ describe('resources file', ( ) => {
                 'civic-reject.js',
                 'cookiebot-reject.js',
                 'cookieinformation-reject.js',
+                'cookiescript-reject.js',
                 'inmobi-reject.js',
                 'ketch-reject-unblock.js',
                 'ketch-reject.js',

@@ -1,0 +1,39 @@
+! Title: consent-rr - CookieScript
+! Description: Replaces CookieScript's per-site bundle with a stub that records
+!              their own reject-all and leaves their parked tags parked.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! One per-site bundle is the whole CMP - the banner, the auto-blocker, the
+! tenant's configuration and the loader for their IAB SDK. The path carries a
+! hash of the site's own configuration.
+! -----------------------------------------------------------------------------
+||cdn.cookie-script.com/s/*.js$script,redirect=cookiescript-reject.js
+
+! -----------------------------------------------------------------------------
+! Their IAB SDK, which the bundle fetches only for a TCF tenant. With the
+! bundle replaced nothing asks for it.
+! -----------------------------------------------------------------------------
+||cdn.cookie-script.com/iabtcf/*/sdk_cmp.js$script,redirect=noopjs
+
+! -----------------------------------------------------------------------------
+! The vendor lists are left alone.
+!
+!   cdn.cookie-script.com/iabtcf/<version>/vendor-list.json
+!   cdn.cookie-script.com/iabtcf/<version>/google-vendors.json
+!
+! The SDK is what asks for them, so with it kept out neither is requested. A
+! rule for them would only matter on a site whose CMP still runs, and there it
+! would break the banner rather than refuse anything.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Where a redirect cannot land, the scriptlet form covers it:
+!
+! example.com##+js(cookiescript-reject)
+! -----------------------------------------------------------------------------

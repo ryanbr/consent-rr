@@ -12,7 +12,7 @@ clicked, and the page's consent API answers normally.
 Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**,
 **InMobi Choice** (formerly Quantcast Choice), **Osano**, **Civic Cookie
 Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
-**PubTech**, **Termly**, **Ketch** and **AppConsent**.
+**PubTech**, **Termly**, **Ketch**, **AppConsent** and **CookieScript**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -25,6 +25,7 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `cookiebot-reject.js` | Cookiebot: their own default state, which is already a refusal - `necessary` true, `preferences`, `statistics` and `marketing` false - with `CookieConsent` answering and parked tags left parked. |
 | `securiti-reject.js` | Securiti: a refusal recorded in their own `__privaci_cookie_consents`, with the API their loader parks answering instead of queueing for an SDK that never arrives. |
 | `transcend-reject.js` | Transcend: no banner, and the refusal recorded through airgap's own API - which leaves airgap itself in place, blocking by that refusal. |
+| `cookiescript-reject.js` | CookieScript: their own reject-all record in their cookie, their consent mode denied, and the tags their auto-blocker parked left parked. |
 | `appconsent-reject.js` | AppConsent: nothing consented, their `IABTCF_` keys saying so, and `__tcfapi` answering instead of a stub nothing will replace. |
 | `appconsent-accept.js` | AppConsent, granting - for a consent-or-pay wall that keeps the page shut until the answer is yes. Every purpose and vendor consented, and a vendor handed that string may act on it. |
 | `ketch-reject.js` | Ketch: their 1.9MB SDK never fetched, their command queue answering a refusal, and a returning visitor's record revoked code by code. |
@@ -60,24 +61,25 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/cookiescript-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -91,8 +93,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.28.4/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.28.4/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.29.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.29.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -114,7 +116,8 @@ files, not described.
    [`filters/pubtech.txt`](filters/pubtech.txt) and
    [`filters/termly.txt`](filters/termly.txt) and
    [`filters/ketch.txt`](filters/ketch.txt) and
-   [`filters/appconsent.txt`](filters/appconsent.txt) into *My filters*, or
+   [`filters/appconsent.txt`](filters/appconsent.txt) and
+   [`filters/cookiescript.txt`](filters/cookiescript.txt) into *My filters*, or
    host them and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
@@ -1318,6 +1321,60 @@ the string says yes, the network says no. Use it per site, never globally.
 - **GPC and DNT are not read**, because they do not read them either: neither
   `globalPrivacyControl` nor `doNotTrack` appears in their bundle.
 
+## CookieScript
+
+```
+||cdn.cookie-script.com/s/*.js$script,redirect=cookiescript-reject.js
+||cdn.cookie-script.com/iabtcf/*/sdk_cmp.js$script,redirect=noopjs
+```
+
+One per-site bundle is the whole CMP - banner, auto-blocker, the tenant's
+configuration, and the loader for their IAB SDK - with a hash of that
+configuration in the path. Replacing it keeps the SDK and its vendor lists
+from being asked for at all.
+
+Their record is a cookie, `CookieScriptConsent`, written field by field by
+their own `a(name, value)` and read back as plain JSON. A reject-all writes:
+
+```json
+{ "action": "reject", "categories": "[]" }
+```
+
+with `categories` a JSON string inside the record rather than an array, which
+is their shape rather than a convenience here. Their `key`, which comes back
+from their own collector, and their `consenttime`, which is configuration, are
+left exactly as they were - nothing here talks to that collector. Ninety days,
+on `window.location.host` with a leading `www.` dropped, both theirs.
+
+**Their parked tags stay parked, bar the category they never block.** The
+auto-blocker parks `[data-cookiescript="accepted"]` elements with the url in
+`data-src` and scripts typed `text/plain`. The subtlety is the filter: theirs
+frees an element only when **every** category on it is allowed - it strips the
+allowed names out of `data-cookiecategory` and skips whatever is left - so a
+tag marked `"strict targeting"` stays parked where a tag marked `"strict"`
+goes in. A test pins that distinction, and a mutation turning it into *any*
+category is caught.
+
+Their two data-layer events go out, `CookieScriptConsentUpdated[strict]` and
+`CookieScriptGoogleConsentUpdated`, and their consent mode is denied through
+the page's own `gtag` - where there is none, the console says `gcm=nogtag`
+rather than inventing one.
+
+### Deliberate gaps
+
+- **No IAB layer.** Their TCF SDK is a separate file, fetched only for a TCF
+  tenant, and the identity it needs is `cmpId 374` - which `getCMPId()`
+  answers here - but the vendor list it would encode against comes with the
+  configuration this replaces. The TC string lives in
+  `localStorage.CookieScriptConsentString`, and their own banner text says the
+  TCF signal is read only when the `CookieScriptConsent` cookie is present: so
+  the cookie is what this writes, and the string is left alone.
+- **Nothing is reported to their collector.** Their bundle reads
+  `navigator.doNotTrack` for exactly one purpose, to put `&dnt=` on a request
+  to `consent.cookie-script.com/collect` along with the consent text. No
+  request is made here, with or without the signal, and a test pins that the
+  refusal is the same either way.
+
 ## Development
 
 ```sh
@@ -1349,7 +1406,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.28.4/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

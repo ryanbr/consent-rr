@@ -258,6 +258,16 @@ const FIXTURES = [
         },
     },
     {
+        resource: 'cookiescript-reject.js',
+        cmp: 'CookieScript',
+        page: '<html lang="en"><head>' +
+            '<script src="https://cdn.cookie-script.com/s/abc123.js"></' + 'script>' +
+            '</head><body>' +
+            '<script id="nec" type="text/plain" data-cookiescript="accepted" data-cookiecategory="strict" data-src="https://n.example/n.js"></' + 'script>' +
+            '<script id="stat" type="text/plain" data-cookiescript="accepted" data-cookiecategory="performance" data-src="https://s.example/s.js"></' + 'script>' +
+            '<p>x</p></body></html>',
+    },
+    {
         resource: 'appconsent-reject.js',
         cmp: 'AppConsent',
         page: '<html lang="fr"><head>' +
