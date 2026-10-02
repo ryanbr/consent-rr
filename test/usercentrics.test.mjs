@@ -1054,6 +1054,17 @@ describe('filters, usercentrics', ( ) => {
             'https://privacy-proxy.usercentrics.eu/latest/uc-block.bundle.js',
             'https://privacy-proxy.usercentrics.eu/3.3.10/uc-block.bundle.js',
             'https://privacy-proxy.usercentrics.eu/latest/en.json',
+            // Their browser-sdk is a library a site calls, so no rule may
+            // take it away, and the cross-domain bridge is an iframe their
+            // own CMP points at - a v2 page loads it from a browser-sdk
+            // version of its own, 4.64.0 beside 3.108.0 in the field.
+            'https://app.usercentrics.eu/browser-sdk/4.53.0/bundle.js',
+            'https://app.usercentrics.eu/browser-sdk/4.64.0/cross-domain-bridge.html',
+            // And the fetches a running SDK needs answered rather than broken.
+            'https://api.usercentrics.eu/settings/GXjugz_sV/latest/de.json',
+            'https://api.usercentrics.eu/tcfac/acp.json',
+            'https://aggregator.service.usercentrics.eu/aggregate/de?templates=x@1.0.0',
+            'https://consent-api.service.consent.usercentrics.eu/consent/uw/3',
         ] ) {
             for ( const pattern of lines_ ) {
                 assert.equal(
