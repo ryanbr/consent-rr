@@ -128,7 +128,7 @@ the same fixture as its sibling.
 | `cookiebot-reject` | 14.4 KB | `CookieConsent`, `Cookiebot`, `uetq`, `CB_OnTagsExecuted_Processed` |
 | `securiti-reject` | 8.2 KB | `SecuritiSDK`, `__ScrtSdkApiOps`, `initCmp`, `setConsentBannerParams`, `showConsentPreferencesPopup`, `overrideThemeMatching` +4 more |
 | `transcend-reject` | 5.2 KB | - |
-| `usercentrics-reject` | 11.2 KB | `__ucCmp`, `UC_UI` |
+| `usercentrics-reject` | 11.7 KB | `__ucCmp`, `UC_UI` |
 
 ## What each one stores and sends
 
@@ -145,7 +145,7 @@ the same fixture as its sibling.
 | `cookiebot-reject` | `CookieConsent` | - | update: granted security_storage | - | no |
 | `securiti-reject` | `__privaci_cookie_consents`, `__privaci_cookie_consent_uuid` | - | update: granted security_storage | - | no |
 | `transcend-reject` | - | - | - | - | no |
-| `usercentrics-reject` | - | `ucData` | update: granted nothing | - | no |
+| `usercentrics-reject` | - | `ucData`, `uc_interaction_type`, `uc_user_interaction` | update: granted nothing | - | no |
 
 Every one of them refuses; what differs is what each consent manager gives a
 page to read, and therefore what a refusal has to answer.
@@ -193,5 +193,5 @@ uBlock Origin does the blocking.
 [consent-rr] cookiebot-reject 1.0.0 necessary=true denied=preferences,statistics,marketing iab=off cookie=written
 [consent-rr] securiti-reject 1.0.0 consents=none tenant=read gcm=denied cookie=written
 [consent-rr] transcend-reject 1.1.0 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
-[consent-rr] usercentrics-reject 1.1.0 settings=sROYKApBP lang=de revoked=none gcm=denied gpc=off cmp=v3 data=written
+[consent-rr] usercentrics-reject 1.2.0 settings=sROYKApBP lang=de revoked=none gcm=denied gpc=off cmp=v3 answered=true data=written
 ```

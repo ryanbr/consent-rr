@@ -306,6 +306,17 @@ describe('usercentrics-reject', ( ) => {
         assert.equal(w.uc.whitelisted.size, 0);
     });
 
+    it('records that the question was answered, their way', ( ) => {
+        // Their setUserActionPerformed(true). An SDK this did not replace -
+        // their browser-sdk is a library a site calls, not a loader - reads
+        // this and leaves the visitor alone instead of prompting again.
+        const w = asLoader().window;
+        assert.equal(w.localStorage.getItem('uc_user_interaction'), 'true');
+        assert.equal(w.localStorage.getItem('uc_interaction_type'), 'user');
+        // Answered, not accepted: the record beside it consents to nothing.
+        assert.deepEqual(plain(data(w).consent.services), {});
+    });
+
     it('marks the CMP loaded by writing, as their own CMP does', ( ) => {
         const w = asLoader().window;
         // Their setItem hook, which is how the blocker learns a CMP is there.
@@ -512,7 +523,7 @@ describe('usercentrics-reject', ( ) => {
             out[0],
             '[consent-rr] usercentrics-reject ' + versions.usercentrics +
             ' settings=sROYKApBP lang=de revoked=none gcm=denied gpc=off' +
-            ' cmp=v3 data=written'
+            ' cmp=v3 answered=true data=written'
         );
     });
 

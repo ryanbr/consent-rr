@@ -59,8 +59,23 @@
                           of it, with no __ucCmp and no UC_CMP_API_READY. Its
                           gtag push is the same arguments object, and it
                           touches no cookie at all.
+      browser-sdk        app.usercentrics.eu/browser-sdk/<version>/bundle.js,
+                          4.53.0 sampled: the same storage keys as v2, but a
+                          library rather than a loader - UMD, global UC_SDK,
+                          no banner of its own - so the site calls it and
+                          builds its own UI. It is not replaced; what makes a
+                          refusal hold there is that it is recorded the way
+                          their own code records one.
     The blocker reads uc_settings on any page where it cannot see a v3 loader
     tag, which is a v2 page and equally an injection with no tag at all.
+
+    Their own "the visitor answered" state, which is what stops a re-prompt
+    where the SDK is still running rather than replaced:
+      setUserActionPerformed(t)   uc_user_interaction = JSON.stringify(t), and
+                                  uc_interaction_type = "user" when true
+      fetchUserActionPerformed()  "true" === uc_user_interaction
+    So those two go in beside the record. Nothing stubbed here reads them; they
+    are for the SDK that is not.
 
     The service ids are the part no page can supply. They come back from their
     settings API, keyed per tenant, so a first visit can only write an empty
@@ -95,6 +110,9 @@ function consentRRUsercentrics() {
     // Their localStorageService key, and the v2 one their blocker still reads.
     const DATA = 'ucData';
     const SETTINGS = 'uc_settings';
+    // Their record of the visitor having answered at all.
+    const INTERACTION = 'uc_user_interaction';
+    const INTERACTION_TYPE = 'uc_interaction_type';
 
     // Which generation the page carries, by the script it loads the CMP from.
     // Neither means it was injected rather than served, and then both records
@@ -413,8 +431,22 @@ function consentRRUsercentrics() {
         fire('UC_CMP_API_READY');
     }
 
+    // Their setUserActionPerformed(true), which is a decision having been
+    // made - not a decision to accept. An SDK this did not replace reads it
+    // and leaves the visitor alone.
+    const storeInteraction = ( ) => {
+        try {
+            w.localStorage.setItem(INTERACTION, JSON.stringify(true));
+            w.localStorage.setItem(INTERACTION_TYPE, 'user');
+            return w.localStorage.getItem(INTERACTION) === 'true';
+        } catch(ex) {
+        }
+        return false;
+    };
+
     const stored = store();
     const storedLegacy = storeLegacy();
+    const answered = storeInteraction();
     const pushed = pushGcm();
     define('UC_UI', ui);
 
@@ -435,6 +467,7 @@ function consentRRUsercentrics() {
             ' gcm=' + (pushed ? 'denied' : 'refused') +
             ' gpc=' + (gpc ? 'on' : 'off') +
             ' cmp=' + (isV3 ? 'v3' : (isV2 ? 'v2' : 'unknown')) +
+            ' answered=' + (answered ? 'true' : 'refused') +
             ' data=' + stored +
             (storedLegacy !== 'absent' ? ' v2=' + storedLegacy : '')
         );

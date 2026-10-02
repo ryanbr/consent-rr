@@ -53,18 +53,18 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.0/dist/usercentrics-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -78,8 +78,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.20.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.20.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.21.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.21.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -833,6 +833,37 @@ and 89 script patterns left disabled.
 Their v2 gtag push is the same `window.dataLayer.push(arguments)`, and v2
 touches no cookie at all - `document.cookie` appears nowhere in its 464 kB.
 
+**A third flavour is a library rather than a loader.** Their browser-sdk -
+`app.usercentrics.eu/browser-sdk/<version>/bundle.js`, 4.53.0 sampled - is UMD
+with a global `UC_SDK` and no banner of its own: the site calls it and builds
+its own UI. There is nothing to stand in for, so it is not replaced, and no
+rule names it. What makes a refusal hold there is that it is recorded the way
+their own code records one:
+
+```js
+setUserActionPerformed(t) {                // browser-sdk, and v2
+    localStorage.setItem('uc_user_interaction', JSON.stringify(t));
+    if (t) localStorage.setItem('uc_interaction_type', 'user');
+}
+fetchUserActionPerformed() { return 'true' === localStorage.getItem('uc_user_interaction'); }
+```
+
+so both of those go in beside the record. **Answered, not accepted**: the
+record beside them consents to nothing, and the SDK reading it leaves the
+visitor alone rather than prompting again. It keeps the same `uc_settings` that
+v2 does, so the blocker needs nothing else. The scriptlet form is what to use
+on such a site - `example.com##+js(usercentrics-reject)` - since there is no
+CMP script to redirect.
+
+Its settings and template fetches are left alone too
+(`api.usercentrics.eu/settings/<id>/latest/<lang>.json` and
+`aggregator.service.usercentrics.eu/aggregate/<lang>?templates=...`): a
+replaced CMP never asks for either, and a running SDK fares worse with them
+broken than answered. That aggregate url is also where the service ids come
+from, and they are global template ids pinned per tenant -
+`HkocEodjb7@52.11.43` is Google Analytics, `H1Vl5NidjWX@40.18.46` their own
+CMP.
+
 ### Deliberate gaps
 
 - **The service names are only known where the visitor had accepted**, since
@@ -850,9 +881,11 @@ touches no cookie at all - `document.cookie` appears nowhere in its 464 kB.
   for it - `window.usercentrics.getConsents()`, off
   `usercentrics.eu/latest/main.js` - and nothing here answers that. v2 does not
   define `window.usercentrics` either, so this is the generation before it.
-- **Their `uc_user_interaction` and `uc_interaction_type` are not written.**
-  Their own SDK reads those to decide whether to re-prompt, and with the SDK
-  replaced nothing does; the blocker never looks at them.
+- **No cross-domain record.** Their `cross-domain-bridge.html`, an iframe on
+  their own origin, is how a decision reaches a sibling domain, and v3's
+  lz-string `ucString` is what it carries. Neither is written: nothing on the
+  page reads them once the CMP is replaced, and the sibling domain gets this
+  resource too.
 
 ## Development
 
@@ -885,7 +918,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.20.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

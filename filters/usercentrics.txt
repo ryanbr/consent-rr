@@ -30,6 +30,28 @@
 ||app.usercentrics.eu/browser-ui/*/loader.js$script,redirect=usercentrics-reject.js
 
 ! -----------------------------------------------------------------------------
+! Their browser-sdk is a library, so it is not replaced.
+!
+!   app.usercentrics.eu/browser-sdk/<version>/bundle.js   (4.53.0 sampled)
+!
+! UMD, global UC_SDK, and no banner of its own: the site calls it and builds
+! its own UI on top. Redirecting it would take away functions that site's own
+! code calls, so there is deliberately no rule for it. The scriptlet form is
+! what covers such a site - it records the refusal, and their own keys, which
+! the SDK then reads:
+!
+! example.com##+js(usercentrics-reject)
+!
+! Its settings and template fetches are left alone for the same reason:
+!
+!   api.usercentrics.eu/settings/<settingsId>/latest/<lang>.json
+!   aggregator.service.usercentrics.eu/aggregate/<lang>?templates=<id>@<ver>,...
+!
+! A replaced CMP never asks for either. A running SDK needs them, and would
+! fare worse with them broken than with them answered.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
 ! Leave uc-block.bundle.js alone.
 !
 ! That is the other half: their blocker, served from
