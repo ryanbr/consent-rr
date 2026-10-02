@@ -141,10 +141,99 @@ describe('cookiescript-reject', ( ) => {
                 analytics_storage: 'denied',
                 functionality_storage: 'denied',
                 personalization_storage: 'denied',
-                // The one that maps to the category they never block.
+                // Their default map puts this one on a category they never
+                // block. A tenant that maps it elsewhere is the test below.
                 security_storage: 'granted',
             },
         ] ]);
+    });
+
+    // A real record, from saving their banner without accepting. Their map is
+    // the tenant's, and on this one nothing lands on strict - not even
+    // security_storage, which goes to functionality.
+    const THEIR_RECORD = {
+        googleconsentmap: {
+            ad_storage: 'targeting',
+            analytics_storage: 'performance',
+            ad_personalization: 'targeting',
+            ad_user_data: 'targeting',
+            functionality_storage: 'functionality',
+            personalization_storage: 'functionality',
+            security_storage: 'functionality',
+        },
+        bannershown: 1,
+        action: 'reject',
+        consenttime: 1770372134,
+        categories: [],
+        key: '2e22a4ca-0d64-448d-87aa-481848181e20',
+    };
+
+    const withRecord = (map, extra = {}) => ({
+        before: w_ => {
+            const value = JSON.stringify(
+                Object.assign({}, THEIR_RECORD, { googleconsentmap: map }, extra)
+            );
+            w_.document.cookie = 'CookieScriptConsent=' +
+                encodeURIComponent(value);
+            w_.eval('window.dataLayer = []; window.__gtag = [];' +
+                'window.gtag = function() {' +
+                ' window.__gtag.push(Array.from(arguments)); };');
+        },
+    });
+
+    it('takes the consent-mode keys from the tenant\'s own map', ( ) => {
+        let out;
+        const options = withRecord(THEIR_RECORD.googleconsentmap);
+        const before_ = options.before;
+        options.before = w_ => { out = lines(w_); before_(w_); };
+        const w = boot(options).window;
+        // Every key denied, security_storage included: their map sends it to
+        // functionality, and a refusal refuses functionality. Hardcoding it
+        // granted would have granted more than their own refusal does.
+        assert.deepEqual(plain(w.__gtag), [ [
+            'consent', 'update', {
+                ad_storage: 'denied',
+                analytics_storage: 'denied',
+                ad_personalization: 'denied',
+                ad_user_data: 'denied',
+                functionality_storage: 'denied',
+                personalization_storage: 'denied',
+                security_storage: 'denied',
+            },
+        ] ]);
+        assert.ok(out[0].includes(' gcm=denied/theirs'), out[0]);
+        // Their fields are carried, the map among them.
+        const kept = record(w);
+        assert.deepEqual(kept.googleconsentmap, THEIR_RECORD.googleconsentmap);
+        assert.equal(kept.key, THEIR_RECORD.key);
+        assert.equal(kept.bannershown, 1);
+        assert.equal(kept.action, 'reject');
+        assert.equal(kept.categories, '[]');
+    });
+
+    it('grants a key their map puts on the category they never block', ( ) => {
+        const map = Object.assign({}, THEIR_RECORD.googleconsentmap, {
+            security_storage: 'strict',
+        });
+        const w = boot(withRecord(map)).window;
+        const pushed = plain(w.__gtag)[0][2];
+        assert.equal(pushed.security_storage, 'granted');
+        assert.equal(pushed.functionality_storage, 'denied');
+        assert.equal(pushed.ad_storage, 'denied');
+    });
+
+    it('falls back to its own keys where their map is unusable', ( ) => {
+        for ( const map of [ {}, null, 'strict', 7 ] ) {
+            let out;
+            const options = withRecord(map);
+            const before_ = options.before;
+            options.before = w_ => { out = lines(w_); before_(w_); };
+            const w = boot(options).window;
+            const pushed = plain(w.__gtag)[0][2];
+            assert.equal(pushed.security_storage, 'granted', String(map));
+            assert.equal(pushed.ad_storage, 'denied', String(map));
+            assert.ok(out[0].includes(' gcm=denied/default'), out[0]);
+        }
     });
 
     it('says so on the data layer even where the page has no gtag', ( ) => {

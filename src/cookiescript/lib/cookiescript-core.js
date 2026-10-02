@@ -30,10 +30,37 @@
                                 with categories a JSON string of its own. A
                                 reject-all writes action "reject" and
                                 categories "[]", and consenttime only where
-                                their configuration carries one.
+                                their configuration carries one. The string is
+                                what their reader wants: it does
+                                JSON.parse(d('categories')) and falls back to
+                                its own empty answer when that throws. One
+                                real record, saved from their banner without
+                                accepting, carries the bare array [] instead -
+                                which their own reader cannot parse and so
+                                falls back from. This writes the string.
+      bannershown               in that record too, set to 1 where their code
+                                put the banner up. It is left alone: they set
+                                it on the branch for a visitor who has not
+                                decided, and read it nowhere else, so with an
+                                action already recorded nothing consults it.
+                                Writing it would claim a banner was shown that
+                                never was.
       the categories            functionality, targeting, strict, performance
                                 and unclassified, with strict the one that is
                                 never refused
+      googleconsentmap          in the record, mapping each consent-mode key
+                                to one of their categories - a real one reads
+                                ad_storage: targeting, analytics_storage:
+                                performance, functionality_storage,
+                                personalization_storage and security_storage:
+                                functionality. So which keys a refusal grants
+                                is the tenant's mapping rather than a constant:
+                                on that site even security_storage is theirs
+                                to deny, because functionality is refused.
+                                Where the record carries the map it is used;
+                                where it does not, the fallback grants
+                                security_storage alone and the console says it
+                                was a default.
       90 days, host minus www   their expiry and their cookie domain,
                                 window.location.host.replace(/^www\./, "")
       [data-cookiescript="accepted"]  what their auto-blocker parks, with the
@@ -133,7 +160,8 @@ function consentRRCookieScript() {
     };
 
     const store = ( ) => {
-        const value = JSON.stringify(record()).replace(/=/g, '%3D');
+        const next = record();
+        const value = JSON.stringify(next).replace(/=/g, '%3D');
         const domain = cookieDomain();
         const expires = new Date(Date.now() + DAYS * 86400000).toUTCString();
         const secure = w.location.protocol === 'https:' ? '; secure' : '';
@@ -143,13 +171,18 @@ function consentRRCookieScript() {
             if ( domain !== '' ) {
                 doc.cookie = COOKIE + '=' + value + attributes +
                     '; domain=' + domain;
-                if ( readCookie(COOKIE) === value ) { return 'written'; }
+                if ( readCookie(COOKIE) === value ) {
+                    return { how: 'written', record: next };
+                }
             }
             doc.cookie = COOKIE + '=' + value + attributes;
-            return readCookie(COOKIE) === value ? 'written' : 'refused';
+            return {
+                how: readCookie(COOKIE) === value ? 'written' : 'refused',
+                record: next,
+            };
         } catch(ex) {
         }
-        return 'refused';
+        return { how: 'refused', record: next };
     };
 
     const stored = store();
@@ -213,23 +246,44 @@ function consentRRCookieScript() {
 
     const freed = freeStrict();
 
+    // Their consent-mode keys, with the category each is mapped to where the
+    // record says so. A key is granted only where its category survives a
+    // refusal, which is strict and nothing else.
+    const DEFAULT_GCM = {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+        functionality_storage: 'denied',
+        personalization_storage: 'denied',
+        security_storage: 'granted',
+    };
+
+    const consentMode = ( ) => {
+        const map = stored.record.googleconsentmap;
+        if ( map === null || typeof map !== 'object' ) {
+            return { state: DEFAULT_GCM, from: 'default' };
+        }
+        const state = {};
+        let keys = 0;
+        for ( const key of Object.keys(map) ) {
+            state[key] = map[key] === STRICT ? 'granted' : 'denied';
+            keys += 1;
+        }
+        if ( keys === 0 ) { return { state: DEFAULT_GCM, from: 'default' }; }
+        return { state, from: 'theirs' };
+    };
+
     // Their data-layer events, with the one category that survives a refusal.
     const pushEvents = ( ) => {
+        const mode = consentMode();
         try {
             if ( Array.isArray(w.dataLayer) === false ) { w.dataLayer = []; }
             w.dataLayer.push({ event: 'CookieScriptConsentUpdated[strict]' });
             if ( typeof w.gtag === 'function' ) {
-                w.gtag('consent', 'update', {
-                    ad_storage: 'denied',
-                    ad_user_data: 'denied',
-                    ad_personalization: 'denied',
-                    analytics_storage: 'denied',
-                    functionality_storage: 'denied',
-                    personalization_storage: 'denied',
-                    security_storage: 'granted',
-                });
+                w.gtag('consent', 'update', mode.state);
                 w.dataLayer.push({ event: 'CookieScriptGoogleConsentUpdated' });
-                return 'denied';
+                return 'denied/' + mode.from;
             }
             return 'nogtag';
         } catch(ex) {
@@ -341,7 +395,7 @@ function consentRRCookieScript() {
         w.console.info(
             '[consent-rr] ' + NAME + ' ' + VERSION +
             ' action=reject categories=none' +
-            ' cookie=' + stored +
+            ' cookie=' + stored.how +
             ' freed=' + freed +
             ' gcm=' + pushed +
             ' api=' + (installed ? 'ready' : 'refused')
