@@ -61,28 +61,41 @@ const tcData = w => {
 const decode = w => TCString.decode(tcData(w).tcString);
 
 // A real state, captured from a site after accepting with none of this in
-// play. Their enum is ALLOWED 1, PENDING 0, DISALLOWED -1, type 0 a purpose,
-// and legintStatus -1 against the purposes that have no legitimate interest.
+// play. Their enum is ALLOWED 1, PENDING 0, DISALLOWED -1, and the four types
+// it carries are 0 purpose, 1 feature, 2 special feature, 3 special purpose.
+// legintStatus -1 is their not-applicable, and it appears against entries of
+// every one of those types - not only the purposes their own [1,3,4,5,6]
+// names - which is why it is never turned into a yes.
+const ENTRIES = [
+    // id, iab_id, type, status, legintStatus, name
+    [ 1, 1, 0, 1, -1, 'Store and/or access information on a device' ],
+    [ 2, 2, 0, 1, 1, 'Use limited data to select advertising' ],
+    [ 3, 3, 0, 1, -1, 'Create profiles for personalised advertising' ],
+    [ 7, 7, 0, 1, 1, 'Measure advertising performance' ],
+    [ 11, 11, 0, 1, 1, 'Use limited data to select content' ],
+    [ 12, 1, 1, 1, -1, 'Match and combine data from other data sources' ],
+    [ 13, 2, 1, 1, 1, 'Link different devices' ],
+    [ 15, 1, 3, 1, -1, 'Ensure security, prevent and detect fraud, and fix errors' ],
+    [ 16, 2, 3, 1, 1, 'Deliver and present advertising and content' ],
+    [ 18, 1, 2, 1, -1, 'Use precise geolocation data' ],
+    [ 19, 2, 2, 1, 1, 'Identify devices based on information actively requested' ],
+];
+
 const THEIR_STATE = {
     consents: {
-        consentables: [
+        consentables: ENTRIES.map(
+            ([ id, iab_id, type, status, legintStatus, name ]) => ({
+                id, iab_id, type, status, legintStatus,
+                name: { values: { en: name } }, vendors_number: 100,
+            })
+        ),
+        vendors: [
             {
-                id: 1, iab_id: 1,
-                name: { values: { en: 'Store and/or access information on a device' } },
-                vendors_number: 228, status: 1, legintStatus: -1, type: 0,
-            },
-            {
-                id: 2, iab_id: 2,
-                name: { values: { en: 'Use limited data to select advertising' } },
-                vendors_number: 205, status: 1, legintStatus: 1, type: 0,
-            },
-            {
-                id: 7, iab_id: 7,
-                name: { values: { en: 'Measure advertising performance' } },
-                vendors_number: 199, status: 1, legintStatus: 1, type: 0,
+                consentables: [ 1, 2, 3, 4, 7 ], legintables: [], flexibles: [ 2, 7 ],
+                urls: {}, id: 1, iab_id: 1, name: '', status: 1,
+                legintStatus: 1, type: 0,
             },
         ],
-        vendors: [ { id: 755, iab_id: 755, status: 1 } ],
     },
 };
 
@@ -318,7 +331,7 @@ describe('appconsent', ( ) => {
         // Their own status enum, every consentable and every vendor.
         assert.deepEqual(
             plain(state.consents.consentables.map(e => e.status)),
-            [ -1, -1, -1 ]
+            ENTRIES.map(( ) => -1)
         );
         assert.deepEqual(plain(state.consents.vendors.map(e => e.status)),
             [ -1 ]);
@@ -327,8 +340,12 @@ describe('appconsent', ( ) => {
             state.consents.consentables[0].name.values.en,
             'Store and/or access information on a device'
         );
-        assert.equal(state.consents.consentables[0].vendors_number, 228);
-        assert.ok(out[0].includes(' state=denied 4'), out[0]);
+        assert.equal(state.consents.consentables[0].vendors_number, 100);
+        // And a vendor's declared ids are its own, not something to rewrite.
+        assert.deepEqual(plain(state.consents.vendors[0].consentables),
+            [ 1, 2, 3, 4, 7 ]);
+        assert.ok(out[0].includes(' state=denied ' + (ENTRIES.length + 1)),
+            out[0]);
     });
 
     it('grants that state in accept mode, minus the impossible', ( ) => {
@@ -341,16 +358,19 @@ describe('appconsent', ( ) => {
         const state = JSON.parse(w.localStorage.getItem('appconsent'));
         assert.deepEqual(
             plain(state.consents.consentables.map(e => e.status)),
-            [ 1, 1, 1 ]
+            ENTRIES.map(( ) => 1)
         );
-        // Purposes 1, 3, 4, 5 and 6 have no legitimate interest - their own
-        // list - so one marked not-applicable stays that way rather than
-        // being granted something that does not exist.
+        // The legitimate-interest pattern is theirs, field for field: a -1 is
+        // their not-applicable and stays one, on features and special
+        // purposes and special features as much as on a purpose. Their own
+        // accepted state claims none of those, so neither does this.
         assert.deepEqual(
             plain(state.consents.consentables.map(e => e.legintStatus)),
-            [ -1, 1, 1 ]
+            ENTRIES.map(entry => entry[4])
         );
         assert.deepEqual(plain(state.consents.vendors.map(e => e.status)),
+            [ 1 ]);
+        assert.deepEqual(plain(state.consents.vendors.map(e => e.legintStatus)),
             [ 1 ]);
     });
 

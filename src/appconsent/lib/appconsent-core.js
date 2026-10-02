@@ -35,10 +35,17 @@
                                  PENDING 0, DISALLOWED -1, MIXED 2 - and a
                                  validator in the bundle that insists a status
                                  is -1, 0 or 1. type 0 is a purpose and type 2
-                                 a special feature, which is how their own
-                                 code filters them. Their [1,3,4,5,6] is the
-                                 set of purposes with no legitimate interest,
-                                 which is why those carry legintStatus -1.
+                                 a special feature, 1 a feature and 3 a
+                                 special purpose - a real accepted state
+                                 carries all four. legintStatus -1 is "not
+                                 applicable" and appears against far more than
+                                 the purposes their [1,3,4,5,6] names: in an
+                                 accepted state it sits on features, special
+                                 purposes and special features too. So a -1 is
+                                 never turned into a yes here, whatever the
+                                 entry is: their own accepted record does not
+                                 claim one, and inventing applicability is not
+                                 this resource's business.
       the IABTCF_ keys           the standard set, in localStorage, each a
                                  string of "0" and "1" built by their
                                  lt(set, length)
@@ -96,9 +103,10 @@ function consentRRAppConsent(grantAll) {
     // and their own validator refuses anything but -1, 0 and 1.
     const ALLOWED = 1;
     const DISALLOWED = -1;
-    // Their X: the purposes that have no legitimate interest, which is why a
-    // real record carries legintStatus -1 against them.
-    const NO_LEGITIMATE_INTEREST = [ 1, 3, 4, 5, 6 ];
+    // Their enum again: legintStatus -1 is not-applicable rather than no,
+    // and a real accepted state carries it on purposes 1, 3, 4, 5 and 6 - the
+    // set their own code calls out - and on features, special purposes and
+    // special features besides. It is left as it is either way.
 
     const read = name => {
         try {
@@ -162,11 +170,11 @@ function consentRRAppConsent(grantAll) {
             if ( entry === null || typeof entry !== 'object' ) { return; }
             entry.status = status;
             if ( entry.legintStatus !== undefined ) {
-                // Theirs is not applicable for those purposes, and stays so.
-                const absent = entry.legintStatus === DISALLOWED &&
-                    entry.type === 0 &&
-                    NO_LEGITIMATE_INTEREST.indexOf(entry.iab_id) !== -1;
-                entry.legintStatus = absent || tcf.granted === false
+                // A -1 stays a -1: that is their not-applicable, and their own
+                // accepted state carries it on entries of every type. Only an
+                // entry that already had a legitimate interest gets one.
+                entry.legintStatus = entry.legintStatus === DISALLOWED ||
+                    tcf.granted === false
                     ? DISALLOWED
                     : ALLOWED;
             }
