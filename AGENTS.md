@@ -9,7 +9,7 @@ pointed at it. The notes below are the things that have actually gone wrong.
 - One directory per consent manager under `src/`, shared code in its `lib/`.
   `dist/` stays flat: uBO addresses a resource by name alone. Four families so
   far: `onetrust/`, `cookieinformation/`, `inmobi/`, `osano/`, `civic/` and
-  `cookiebot/` and `securiti/`.
+  `cookiebot/`, `securiti/` and `transcend/`.
 - `src/onetrust/lib/onetrust-core.js` - OneTrust's own API, cookies, banner
   removal, tag revival. Shared by its resources.
 - `src/onetrust/lib/onetrust-tcf.js`, `.../onetrust-gpp.js` - the IAB layers.
@@ -114,6 +114,12 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   data-cbid=… data-framework=…>` carries the site's settings, and a redirected
   resource can read them: `document.currentScript` is that element. Injected as
   a scriptlet there is none, so fall back to the lookup their own code does.
+- **Record the decision through the CMP's own API where it has one.** Transcend
+  splits into an engine that blocks and a banner that asks; replacing the banner
+  and calling `airgap.setConsent` leaves the engine in place to enforce the
+  refusal, which is better than anything a stub could do instead. Look for that
+  split before deciding what to replace - Securiti's auto-blocker is the same
+  shape, and nooping either would weaken the result.
 - **And some keep it on a server.** Securiti's categories are per-tenant ids
   fetched from their CDN, so a refusal cannot name them - but it does not have
   to: their readers ask whether an id is set in the record's map, and an empty

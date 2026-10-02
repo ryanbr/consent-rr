@@ -1,0 +1,57 @@
+! Title: consent-rr - Transcend
+! Description: Replaces Transcend's ui.js with a stub that records a refusal
+!              through airgap's own API, instead of building a banner.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! Replace the banner, not the engine.
+!
+! Transcend ships in two halves. airgap.js is the engine and carries the
+! tenant's whole configuration - the purposes, the cookie-to-purpose table, the
+! allowed hosts - and it blocks requests and cookies itself, by consent. ui.js
+! is the banner, 390kB of Preact, which airgap loads only when it decides to
+! prompt.
+!
+! So airgap.js is deliberately left alone: with a refusal recorded it is the
+! thing enforcing it. Replacing it would drop that blocking and mean
+! reimplementing the API it exposes.
+! -----------------------------------------------------------------------------
+||transcend-cdn.com/cm/*/ui.js$script,redirect=transcend-reject.js
+
+! -----------------------------------------------------------------------------
+! Served first-party.
+!
+! A tenant may serve the same files from its own host by CNAME - Costco uses
+! consent.costco.ca - and those need naming per site:
+!
+! ||consent.costco.ca/cm/*/ui.js$script,redirect=transcend-reject.js
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Sites with a consent UI of their own.
+!
+! A site may build its own banner on airgap rather than use ui.js - Costco's
+! costco-consent-manager.iife.js does, and calls setConsent(null, ...) itself,
+! which is how we know a tenant with auth off takes a decision that was not
+! made by clicking.
+!
+! Such a banner reads the same refusal, so it has nothing to prompt for - but it
+! may ask before airgap has got as far as loading ui.js. Injecting the scriptlet
+! at document_start records the refusal before anything renders, and the
+! redirect above then has nothing left to do:
+!
+! costco.ca##+js(transcend-reject)
+! costco.com##+js(transcend-reject)
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! ui.js is what asks for these, so with the banner replaced they are not
+! fetched. The cross-domain frame is what syncs a decision between a tenant's
+! domains; with a refusal recorded, a refusal is what it syncs.
+! -----------------------------------------------------------------------------
+||transcend-cdn.com/cm/*/metadata.json$xhr,redirect=noopjson

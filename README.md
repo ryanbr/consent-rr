@@ -51,16 +51,17 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/transcend-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -80,7 +81,8 @@ files, not described.
    [`filters/osano.txt`](filters/osano.txt) and
    [`filters/civic.txt`](filters/civic.txt) and
    [`filters/cookiebot.txt`](filters/cookiebot.txt) and
-   [`filters/securiti.txt`](filters/securiti.txt) into *My filters*, or host
+   [`filters/securiti.txt`](filters/securiti.txt) and
+   [`filters/transcend.txt`](filters/transcend.txt) into *My filters*, or host
    them and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
@@ -672,7 +674,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.16.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.17.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

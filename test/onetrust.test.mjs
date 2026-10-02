@@ -44,6 +44,7 @@ describe('resources file', ( ) => {
                 'onetrust-reject.js',
                 'osano-reject.js',
                 'securiti-reject.js',
+                'transcend-reject.js',
             ]
         );
     });
