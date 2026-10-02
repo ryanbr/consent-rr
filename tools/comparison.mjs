@@ -258,6 +258,25 @@ const FIXTURES = [
         },
     },
     {
+        resource: 'ketch-reject.js',
+        cmp: 'Ketch',
+        page: '<html lang="en"><head>' +
+            '<script src="https://global.ketchcdn.com/web/v3/config/org/prop/boot.js"></' + 'script>' +
+            '</head><body><p>x</p></body></html>',
+        // Their boot leaves this on the page before the SDK arrives, and a
+        // returning visitor's record is what carries the purpose codes.
+        drive: w => {
+            w.eval('window.semaphore = window.semaphore || [];' +
+                'window.ketch = function() { window.semaphore.push(arguments); };' +
+                'window.semaphore.unshift([ "init", { organization: { code: "x" } } ]);');
+            w.localStorage.setItem('_ketch_consent_v1_',
+                w.btoa(JSON.stringify({
+                    analytics: { status: 'granted' },
+                    behavioral_advertising: { status: 'granted' },
+                })));
+        },
+    },
+    {
         resource: 'termly-reject.js',
         cmp: 'Termly',
         page: '<html lang="en"><head>' +

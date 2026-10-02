@@ -12,7 +12,7 @@ clicked, and the page's consent API answers normally.
 Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**,
 **InMobi Choice** (formerly Quantcast Choice), **Osano**, **Civic Cookie
 Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
-**PubTech** and **Termly**.
+**PubTech**, **Termly** and **Ketch**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -25,6 +25,7 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `cookiebot-reject.js` | Cookiebot: their own default state, which is already a refusal - `necessary` true, `preferences`, `statistics` and `marketing` false - with `CookieConsent` answering and parked tags left parked. |
 | `securiti-reject.js` | Securiti: a refusal recorded in their own `__privaci_cookie_consents`, with the API their loader parks answering instead of queueing for an SDK that never arrives. |
 | `transcend-reject.js` | Transcend: no banner, and the refusal recorded through airgap's own API - which leaves airgap itself in place, blocking by that refusal. |
+| `ketch-reject.js` | Ketch: their 1.9MB SDK never fetched, their command queue answering a refusal, and a returning visitor's record revoked code by code. |
 | `termly-reject.js` | Termly: no banner, their own opted-in record - essential alone - with their denied Google consent mode, and the tags their auto-blocker parked left parked. |
 | `pubtech-reject.js` | PubTech CMP: no banner, their publisher-cookie string with every choice off, and `__tcfapi` answering a refusal the IAB's own library agrees is one. |
 | `usercentrics-reject.js` | Usercentrics: no banner, and no service consented in the record their own blocker reads - which leaves that blocker in place, blocking by it. A service a returning visitor had accepted is revoked by name. |
@@ -56,20 +57,21 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/ketch-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -83,8 +85,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.25.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.25.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.26.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.26.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -104,8 +106,9 @@ files, not described.
    [`filters/transcend.txt`](filters/transcend.txt) and
    [`filters/usercentrics.txt`](filters/usercentrics.txt) and
    [`filters/pubtech.txt`](filters/pubtech.txt) and
-   [`filters/termly.txt`](filters/termly.txt) into *My filters*, or host them
-   and subscribe via *Import*.
+   [`filters/termly.txt`](filters/termly.txt) and
+   [`filters/ketch.txt`](filters/ketch.txt) into *My filters*, or host them and
+   subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
 loads OneTrust there is no request to redirect - uBO's lists neuter
@@ -1105,6 +1108,67 @@ denied but `security_storage`. It goes out through their gtag, which is
   consent-mode defaults, while one without gets everything released. This
   refuses either way.
 
+## Ketch
+
+```
+||global.ketchcdn.com/web/v3/config/*/boot.js$script,redirect=ketch-reject.js
+||cdn.ketchjs.com/ketchtag/*/ketch-sdk.js$script,redirect=noopjs
+```
+
+**Replace the loader and the rest never arrives.** `boot.js` inlines the
+property's configuration and a country-to-jurisdiction table, puts their
+command queue on the page, and then fetches the SDK - 1.9 MB of it - which goes
+on to fetch `config.json`, a geo lookup and the vendor list. Replacing the
+loader means none of that is requested, so the second rule above only matters
+where a property names the SDK directly.
+
+**Their queue is the contract worth reproducing**, because page code waits on
+it:
+
+```js
+window.semaphore = window.semaphore || [];              // boot.js
+window.ketch = function() { window.semaphore.push(arguments) };
+window.semaphore.unshift(["init", config]);
+```
+
+Their SDK shifts that `init` entry off, drains whatever the page queued behind
+it, then replaces `semaphore.push` with its own router and sets
+`semaphore.ketch` and `semaphore.loaded`. All of that happens here too, with
+the router answering a refusal - including their argument convention, where
+trailing functions are the resolve and reject callbacks, so
+`ketch("getConsent", fn)` works. `getConsent()` answers the shape their own
+`retrieveConsent()` returns when nothing is recorded:
+
+```js
+{ purposes: {}, vendors: [], googleVendors: [], vendorConsents: { tcf: {}, google: {} } }
+```
+
+**The purpose codes are what a replaced loader cannot know** - they arrive in
+the `config.json` the SDK fetches. So the refusal is expressed where it does
+not need them: the API answers nothing consented, and Google consent mode goes
+out denied with their two data-layer events, `ketchPermitChanged` and
+`switchbitPermitChanged`. The public record, `_ketch_consent_v1_` - base64 JSON
+of `{ <code>: { status, canonicalPurposes } }`, in localStorage and a cookie -
+is rewritten only where the visitor already has one, with every status flipped
+to `denied` and their canonical purposes kept, since that record is the only
+place those are visible. On a first visit nothing is written, which is their own
+behaviour: `setPublicConsent()` returns without writing when the map comes out
+empty.
+
+### Deliberate gaps
+
+- **No IAB layer.** Their SDK carries `__tcfapi`, `__gpp` and `__uspapi`, each
+  switched on by a plugin in the property configuration that a replaced loader
+  never sees, and the identity those strings need comes with it. Nothing is put
+  back; a page waiting on one gets nothing rather than an invented string.
+- **A property that loads the SDK without the loader** gets no stub from the
+  redirect, since there is no `boot.js` request to replace. The scriptlet form
+  covers it, and `filters/ketch.txt` says so.
+- **GPC changes their side, not this one.** They read it strictly -
+  `navigator.globalPrivacyControl === true` **and** a `gpcsignal` cookie - and
+  then only in a jurisdiction their `gpc` plugin lists, where it maps to a set
+  of purposes to deny. This refuses with or without any of that.
+
 ## Development
 
 ```sh
@@ -1136,7 +1200,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.25.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.26.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

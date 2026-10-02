@@ -39,6 +39,7 @@ describe('resources file', ( ) => {
                 'cookiebot-reject.js',
                 'cookieinformation-reject.js',
                 'inmobi-reject.js',
+                'ketch-reject.js',
                 'onetrust-accept.js',
                 'onetrust-reject-unblock.js',
                 'onetrust-reject.js',

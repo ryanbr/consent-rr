@@ -1,0 +1,42 @@
+! Title: consent-rr - Ketch
+! Description: Replaces Ketch's boot.js with a stub that answers their command
+!              queue with a refusal, and keeps their SDK out.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! boot.js is the loader: it inlines the property's configuration and a
+! country-to-jurisdiction table, puts their command queue on the page, and then
+! fetches the SDK. The path carries the organization and the property.
+! -----------------------------------------------------------------------------
+||global.ketchcdn.com/web/v3/config/*/boot.js$script,redirect=ketch-reject.js
+
+! -----------------------------------------------------------------------------
+! Their SDK, 1.9MB of it, which the loader would have fetched. With the loader
+! replaced nothing asks for it, so this line only matters where a property
+! names it directly - and there it would start without the init entry their
+! queue needs and throw.
+! -----------------------------------------------------------------------------
+||cdn.ketchjs.com/ketchtag/*/ketch-sdk.js$script,redirect=noopjs
+
+! -----------------------------------------------------------------------------
+! The config and the geo lookup are left alone.
+!
+!   global.ketchcdn.com/web/v3/config/<org>/<property>/<env>/.../config.json
+!   global.ketchcdn.com/web/v3/ip
+!
+! The SDK is what asks for both, so with it kept out neither is requested. A
+! rule for them would only matter on a property whose SDK still runs, and there
+! it would break the banner rather than refuse anything.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Where a redirect cannot land, or a property loads the SDK directly without
+! the loader, the scriptlet form covers it:
+!
+! example.com##+js(ketch-reject)
+! -----------------------------------------------------------------------------
