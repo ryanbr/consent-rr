@@ -875,9 +875,20 @@ CMP.
   and it is what carries a decision to a sibling domain. It is not written:
   nothing on the page reads it once the CMP is replaced, and the sibling domain
   gets this resource too.
-- **No IAB layer.** A TCF tenant's `__tcfapi` comes from the SDK this keeps out,
-  and a TC string is not something to invent - the same reason as Cookiebot and
-  Securiti.
+- **No IAB layer** where the CMP is replaced. A TCF tenant's `__tcfapi` and
+  `__gpp` come from the SDK a redirect keeps out, so a page waiting on one gets
+  nothing. Unlike Cookiebot and Securiti, the reason is no longer that their
+  identity is unknown: it is `cmpId: 31` in their own bundle, beside a `__gpp`
+  stub declaring `supportedAPIs: ["2:tcfeuv2","5:tcfcav1","6:uspv1"]`, and
+  their TCF record is `uc_tcf` = `{ acString, tcString, timestamp, vendors }`.
+  So a refusing layer is buildable here, as OneTrust, InMobi and Osano have
+  one; it is simply not built yet. On a browser-sdk site it is moot, because
+  their own SDK is still the thing answering.
+- **Whether a tenant is TCF at all cannot be read from the page.** It comes
+  back from their settings API as `framework: "TCF2"` or `"UK_TCF2"`, which a
+  replaced CMP never fetches - so an IAB layer would have to be gated on
+  evidence the page carries, such as a `__tcfapiLocator` frame or a `uc_tcf`
+  record already in storage.
 - **The legacy CMP before v2 is not targeted.** The blocker still has a branch
   for it - `window.usercentrics.getConsents()`, off
   `usercentrics.eu/latest/main.js` - and nothing here answers that. v2 does not

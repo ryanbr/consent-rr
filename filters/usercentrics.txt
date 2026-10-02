@@ -42,13 +42,20 @@
 !
 ! example.com##+js(usercentrics-reject)
 !
-! Its settings and template fetches are left alone for the same reason:
+! Its fetches are left alone for the same reason:
 !
 !   api.usercentrics.eu/settings/<settingsId>/latest/<lang>.json
+!   api.usercentrics.eu/settings/<settingsId>/latest/languages.json
+!   api.usercentrics.eu/tcfac/acp.json
 !   aggregator.service.usercentrics.eu/aggregate/<lang>?templates=<id>@<ver>,...
+!   consent-api.service.consent.usercentrics.eu/consent/uw/<n>
+!   app.usercentrics.eu/browser-sdk/<version>/cross-domain-bridge.html
 !
-! A replaced CMP never asks for either. A running SDK needs them, and would
-! fare worse with them broken than with them answered.
+! A replaced CMP never asks for any of them. A running SDK needs them, and
+! would fare worse with them broken than with them answered - the last two are
+! where it files the decision and how it shares one across domains, and a save
+! it thinks failed is a visitor it may ask again. acp.json is Google's
+! additional-consent list, which only a TCF tenant fetches.
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
