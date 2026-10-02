@@ -394,6 +394,20 @@ function consentRRCookiebot() {
     const noopfn = function() {
     }.bind();
 
+    // Their setDNTState, which is the browser's signal or cookies being off -
+    // and not a consent state: everything is refused with or without it. A
+    // page reading CookieConsent.doNotTrack gets the same answer theirs gives.
+    const doNotTrack = ( ) => {
+        try {
+            const nav = w.navigator;
+            if ( nav.doNotTrack === 'yes' || nav.doNotTrack === '1' ) { return true; }
+            if ( nav.msDoNotTrack === '1' ) { return true; }
+            if ( nav.cookieEnabled === false ) { return true; }
+        } catch(ex) {
+        }
+        return false;
+    };
+
     const cookieConsent = {
         name: COOKIE,
         consent,
@@ -407,7 +421,7 @@ function consentRRCookiebot() {
         // Their own responseMode for a record with nothing consented to.
         responseMode: 'leveloptin',
         method: 'explicit',
-        doNotTrack: false,
+        doNotTrack: doNotTrack(),
         isOutsideEU: false,
         isOutOfRegion: false,
         consentLevel: 'strict',

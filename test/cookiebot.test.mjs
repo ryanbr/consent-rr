@@ -362,6 +362,36 @@ describe('cookiebot-reject', ( ) => {
         assert.equal(w.Cookiebot.consentRR.version, versions.cookiebot);
     });
 
+    it('mirrors their DNT state rather than claiming it is off', ( ) => {
+        // Their setDNTState: the browser's signal, or cookies being off. Not a
+        // consent state - everything is refused either way - but a page
+        // reading CookieConsent.doNotTrack should get what theirs gives.
+        const plainRun = open().window;
+        assert.equal(plainRun.CookieConsent.doNotTrack, false);
+        for ( const value of [ '1', 'yes' ] ) {
+            const w = open({
+                before: w_ => {
+                    Object.defineProperty(w_.navigator, 'doNotTrack', {
+                        value, configurable: true,
+                    });
+                },
+            }).window;
+            assert.equal(w.CookieConsent.doNotTrack, true, 'doNotTrack=' + value);
+            // And the refusal is unchanged by it.
+            assert.equal(w.CookieConsent.consent.statistics, false);
+            assert.equal(w.CookieConsent.consent.necessary, true);
+        }
+        // Theirs counts cookies being unavailable as the same thing.
+        const noCookies = open({
+            before: w_ => {
+                Object.defineProperty(w_.navigator, 'cookieEnabled', {
+                    value: false, configurable: true,
+                });
+            },
+        }).window;
+        assert.equal(noCookies.CookieConsent.doNotTrack, true);
+    });
+
     it('does nothing the second time it is injected', async ( ) => {
         const dom = open();
         const w = dom.window;

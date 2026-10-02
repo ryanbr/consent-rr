@@ -505,6 +505,38 @@ describe('usercentrics-reject', ( ) => {
         assert.equal(parked.type, 'text/plain');
     });
 
+    it('writes through a storage hook that throws the first time', ( ) => {
+        // Their blocker patches Storage.prototype.setItem and its hook runs
+        // before the real write. On a page still carrying the legacy script
+        // tag it throws every time: that script is gone from their CDN, so
+        // window.usercentrics never exists and the hook's first act is to ask
+        // it for the service list. It sets its own loaded flag before that, so
+        // a second attempt gets through - and the record would otherwise be
+        // silently missing.
+        let thrown = 0;
+        const w = asLoader({
+            before: w_ => {
+                w_.eval('(function() {' +
+                    'var real = Storage.prototype.setItem;' +
+                    'var tripped = false;' +
+                    'window.__thrown = 0;' +
+                    'Storage.prototype.setItem = function(key, value) {' +
+                    ' if ( tripped === false && key.indexOf("uc") === 0 ) {' +
+                    '  tripped = true; window.__thrown += 1;' +
+                    '  throw new TypeError("t.includes is not a function");' +
+                    ' }' +
+                    ' return real.call(this, key, value);' +
+                    '};' +
+                    '})();');
+            },
+        }).window;
+        thrown = w.__thrown;
+        assert.equal(thrown, 1);
+        // The record landed anyway.
+        assert.deepEqual(plain(data(w).consent.services), {});
+        assert.equal(w.localStorage.getItem('uc_user_interaction'), 'true');
+    });
+
     it('does nothing the second time it is injected', ( ) => {
         const dom = asLoader();
         const w = dom.window;

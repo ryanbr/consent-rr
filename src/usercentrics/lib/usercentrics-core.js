@@ -173,6 +173,28 @@ function consentRRUsercentrics() {
         analyticsStorage: 'denied',
     };
 
+    // Writing can throw, because the blocker patches Storage.prototype.setItem
+    // and its hook runs before the real write. On a page still carrying the
+    // legacy script tag it does throw every time: that script is gone from
+    // their CDN now, so window.usercentrics never exists, and the hook's first
+    // act is to ask it for the service list. The hook sets its own loaded flag
+    // before that, so a second attempt skips the branch and lands - and the
+    // record would otherwise be silently missing.
+    const write = (name, value_) => {
+        for ( let attempt = 0; attempt < 2; attempt += 1 ) {
+            try {
+                w.localStorage.setItem(name, value_);
+                return w.localStorage.getItem(name) === value_;
+            } catch(ex) {
+            }
+        }
+        try {
+            return w.localStorage.getItem(name) === value_;
+        } catch(ex) {
+        }
+        return false;
+    };
+
     const read = name => {
         try {
             const raw = w.localStorage.getItem(name);
@@ -246,11 +268,10 @@ function consentRRUsercentrics() {
     const store = ( ) => {
         try {
             if ( w.localStorage.getItem(DATA) === value ) { return 'kept'; }
-            w.localStorage.setItem(DATA, value);
-            return w.localStorage.getItem(DATA) === value ? 'written' : 'refused';
         } catch(ex) {
+            return 'refused';
         }
-        return 'refused';
+        return write(DATA, value) ? 'written' : 'refused';
     };
 
     // Their v2 record, in the shape their own mapSettings builds. It is the
@@ -279,8 +300,7 @@ function consentRRUsercentrics() {
             };
             const next = JSON.stringify(Object.assign({}, base, { services }));
             if ( w.localStorage.getItem(SETTINGS) === next ) { return 'kept'; }
-            w.localStorage.setItem(SETTINGS, next);
-            return 'written';
+            return write(SETTINGS, next) ? 'written' : 'refused';
         } catch(ex) {
         }
         return 'refused';
@@ -435,13 +455,9 @@ function consentRRUsercentrics() {
     // made - not a decision to accept. An SDK this did not replace reads it
     // and leaves the visitor alone.
     const storeInteraction = ( ) => {
-        try {
-            w.localStorage.setItem(INTERACTION, JSON.stringify(true));
-            w.localStorage.setItem(INTERACTION_TYPE, 'user');
-            return w.localStorage.getItem(INTERACTION) === 'true';
-        } catch(ex) {
-        }
-        return false;
+        const marked = write(INTERACTION, JSON.stringify(true));
+        write(INTERACTION_TYPE, 'user');
+        return marked;
     };
 
     const stored = store();

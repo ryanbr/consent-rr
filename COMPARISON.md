@@ -125,10 +125,10 @@ the same fixture as its sibling.
 | `osano-reject` | 34.0 KB | `Osano`, `__uspapi`, `__tcfapi`, `__gpp` |
 | `civic-reject` | 22.8 KB | `CookieControl` |
 | `civic-reject-unblock` | 22.8 KB | `CookieControl` |
-| `cookiebot-reject` | 14.4 KB | `CookieConsent`, `Cookiebot`, `uetq`, `CB_OnTagsExecuted_Processed` |
+| `cookiebot-reject` | 14.7 KB | `CookieConsent`, `Cookiebot`, `uetq`, `CB_OnTagsExecuted_Processed` |
 | `securiti-reject` | 8.2 KB | `SecuritiSDK`, `__ScrtSdkApiOps`, `initCmp`, `setConsentBannerParams`, `showConsentPreferencesPopup`, `overrideThemeMatching` +4 more |
 | `transcend-reject` | 5.2 KB | - |
-| `usercentrics-reject` | 11.7 KB | `__ucCmp`, `UC_UI` |
+| `usercentrics-reject` | 11.9 KB | `__ucCmp`, `UC_UI` |
 
 ## What each one stores and sends
 
@@ -190,8 +190,8 @@ uBlock Origin does the blocking.
 [consent-rr] osano-reject 1.1.0 consent=ESSENTIAL denied=STORAGE,MARKETING,PERSONALIZATION,ANALYTICS,OPT_OUT tcf=refused li=kept gpp=refused usp=1--- cookie=written
 [consent-rr] civic-reject 1.4.0 mode=gdpr revoked=analytics,embedded iab=off cookie=written
 [consent-rr] civic-reject-unblock 1.4.0 mode=gdpr revoked=analytics accepted=embedded iab=off cookie=written
-[consent-rr] cookiebot-reject 1.0.0 necessary=true denied=preferences,statistics,marketing iab=off cookie=written
+[consent-rr] cookiebot-reject 1.0.1 necessary=true denied=preferences,statistics,marketing iab=off cookie=written
 [consent-rr] securiti-reject 1.0.0 consents=none tenant=read gcm=denied cookie=written
 [consent-rr] transcend-reject 1.1.0 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
-[consent-rr] usercentrics-reject 1.2.0 settings=sROYKApBP lang=de revoked=none gcm=denied gpc=off cmp=v3 answered=true data=written
+[consent-rr] usercentrics-reject 1.2.1 settings=sROYKApBP lang=de revoked=none gcm=denied gpc=off cmp=v3 answered=true data=written
 ```
