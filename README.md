@@ -53,18 +53,18 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.1/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.1/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.1/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.1/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.1/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.1/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.1/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.1/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.1/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.1/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.1/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.1/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/usercentrics-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -78,8 +78,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.21.1/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.21.1/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.22.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.22.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -865,6 +865,51 @@ from, and they are global template ids pinned per tenant -
 `HkocEodjb7@52.11.43` is Google Analytics, `H1Vl5NidjWX@40.18.46` their own
 CMP.
 
+### The IAB layer
+
+A TCF tenant's `__tcfapi` comes from the SDK a redirect keeps out, so a page
+waiting on one would get nothing. It is answered, with a refusal:
+
+```
+cmpId=5 cmpVersion=3 policy=5 isServiceSpecific=true
+purposeConsents=0 purposeLegitimateInterests=0
+vendorConsents=0 vendorLegitimateInterests=0 specialFeatureOptins=0
+```
+
+decoded there by `@iabtcf/core` in the tests rather than by this repo's reading
+of the spec. Every vector is empty because **that is their own deny-all**:
+`denyAllDisclosed()` calls `unsetAllVendorConsents`,
+`unsetAllVendorLegitimateInterests`, and then unsets purpose consents and
+purpose legitimate interests too. InMobi's refusal keeps legitimate interest
+because InMobi's own default does; this one objects because theirs does.
+
+`gdprApplies` is the one field that is not a refusal but a claim about the law,
+and it says GDPR applies - a vendor told otherwise may process with no consent
+at all. A mutation flipping it survived the first pass of tests, which is why
+it has an assertion of its own now.
+
+**The identity is the part a replaced CMP cannot know.** It is per tenant:
+`tcf2.cmpId` and `tcf2.cmpVersion` come back from their settings API, and the
+two tenants sampled read `318`/`1` and `null`/`null`. So where the visitor
+already carries a `uc_tcf` string, the identity is read back out of it - cmpId,
+cmpVersion, list version, publisher country, scope - and reused exactly. Where
+there is none, their own fallback is used, `cmpId = tcf2.cmpId || 5` and
+`cmpVersion = tcf2.cmpVersion || 3`, and the console says `iab=refused/default`
+rather than `iab=refused`.
+
+**Whether a tenant is TCF at all cannot be read either** - it comes back as
+`framework: "TCF2"` - so the layer goes in on evidence the page carries: a
+`uc_tcf` record from a previous visit, the `__tcfapi` stub a TCF publisher puts
+there, or a `__tcfapiLocator` frame. A tenant that is not TCF has none of them
+and gets nothing added that their own CMP would not have had. Whatever the
+page's stub had queued is answered on the way in, rather than left in a queue
+nothing will read.
+
+The record goes in their own `uc_tcf`, `{ acString, tcString, timestamp,
+vendors }`, with the AC string left empty rather than invented: it lists
+Google's additional-consent vendors, a refusal consents to none of them, and
+their own resurface check reads an empty one as nothing to compare.
+
 ### Deliberate gaps
 
 - **The service names are only known where the visitor had accepted**, since
@@ -875,20 +920,9 @@ CMP.
   and it is what carries a decision to a sibling domain. It is not written:
   nothing on the page reads it once the CMP is replaced, and the sibling domain
   gets this resource too.
-- **No IAB layer** where the CMP is replaced. A TCF tenant's `__tcfapi` and
-  `__gpp` come from the SDK a redirect keeps out, so a page waiting on one gets
-  nothing. Unlike Cookiebot and Securiti, the reason is no longer that their
-  identity is unknown: it is `cmpId: 31` in their own bundle, beside a `__gpp`
-  stub declaring `supportedAPIs: ["2:tcfeuv2","5:tcfcav1","6:uspv1"]`, and
-  their TCF record is `uc_tcf` = `{ acString, tcString, timestamp, vendors }`.
-  So a refusing layer is buildable here, as OneTrust, InMobi and Osano have
-  one; it is simply not built yet. On a browser-sdk site it is moot, because
-  their own SDK is still the thing answering.
-- **Whether a tenant is TCF at all cannot be read from the page.** It comes
-  back from their settings API as `framework: "TCF2"` or `"UK_TCF2"`, which a
-  replaced CMP never fetches - so an IAB layer would have to be gated on
-  evidence the page carries, such as a `__tcfapiLocator` frame or a `uc_tcf`
-  record already in storage.
+- **No GPP layer.** Their `__gpp` is a separate surface, enabled per tenant,
+  declaring `supportedAPIs: ["2:tcfeuv2","5:tcfcav1","6:uspv1"]`. The TCF layer
+  below does not put it back.
 - **The legacy CMP before v2 is not targeted.** The blocker still has a branch
   for it - `window.usercentrics.getConsents()`, off
   `usercentrics.eu/latest/main.js` - and nothing here answers that. v2 does not
@@ -937,7 +971,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.21.1/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.22.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

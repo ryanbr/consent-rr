@@ -8,6 +8,7 @@
 
 import { strict as assert } from 'node:assert';
 import { before, describe, it } from 'node:test';
+import { TCString } from '@iabtcf/core';
 import { filtersText, loadResources, runDom, versions } from './helpers.mjs';
 
 const URL = 'https://example.de/';
@@ -555,7 +556,7 @@ describe('usercentrics-reject', ( ) => {
             out[0],
             '[consent-rr] usercentrics-reject ' + versions.usercentrics +
             ' settings=sROYKApBP lang=de revoked=none gcm=denied gpc=off' +
-            ' cmp=v3 answered=true data=written'
+            ' cmp=v3 answered=true iab=off data=written'
         );
     });
 
@@ -576,6 +577,232 @@ describe('usercentrics-reject', ( ) => {
         assert.ok(out[0].includes(' gpc=on'), out[0]);
         assert.deepEqual(plain(data(w).consent.services), {});
         assert.equal(data(w).gcm.adStorage, 'denied');
+    });
+});
+
+/******************************************************************************/
+
+// Their core segment's first fields are fixed width, so a string can be
+// rewritten to carry another tenant's identity without an encoder - which is
+// what a returning visitor's record holds, and what this has to read back.
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+const bitsOf = core => {
+    let bits = '';
+    for ( const character of core ) {
+        bits += B64.indexOf(character).toString(2).padStart(6, '0');
+    }
+    return bits;
+};
+
+const fromBits = bits => {
+    let padded = bits;
+    while ( padded.length % 6 !== 0 ) { padded += '0'; }
+    let out = '';
+    for ( let i = 0; i < padded.length; i += 6 ) {
+        out += B64.charAt(parseInt(padded.slice(i, i + 6), 2));
+    }
+    return out;
+};
+
+const patch = (tcString, fields) => {
+    const parts = tcString.split('.');
+    let bits = bitsOf(parts[0]);
+    const put = (offset, width, value) => {
+        bits = bits.slice(0, offset) +
+            value.toString(2).padStart(width, '0').slice(-width) +
+            bits.slice(offset + width);
+    };
+    const putLetters = (offset, letters) => {
+        for ( let i = 0; i < 2; i += 1 ) {
+            put(offset + i * 6, 6, letters.charCodeAt(i) - 65);
+        }
+    };
+    if ( fields.cmpId !== undefined ) { put(78, 12, fields.cmpId); }
+    if ( fields.cmpVersion !== undefined ) { put(90, 12, fields.cmpVersion); }
+    if ( fields.vendorListVersion !== undefined ) {
+        put(120, 12, fields.vendorListVersion);
+    }
+    if ( fields.publisherCC !== undefined ) {
+        putLetters(201, fields.publisherCC);
+    }
+    parts[0] = fromBits(bits);
+    return parts.join('.');
+};
+
+describe('usercentrics-reject, the IAB layer', ( ) => {
+    const withStub = (options = {}) => asLoader(Object.assign({}, options, {
+        before: w_ => {
+            if ( typeof options.before === 'function' ) { options.before(w_); }
+            // The stub a TCF publisher puts on the page before its CMP loads.
+            w_.eval('window.__tcfapiStubCalls = [];' +
+                'window.__tcfapi = function() {' +
+                ' var a = arguments;' +
+                ' if ( a.length === 0 ) { return window.__tcfapiStubCalls; }' +
+                ' window.__tcfapiStubCalls.push(a);' +
+                '};');
+        },
+    }));
+
+    const tcData = w => {
+        let data;
+        w.__tcfapi('getTCData', 2, d => { data = d; });
+        return data;
+    };
+
+    it('adds nothing where the page shows no sign of TCF', ( ) => {
+        // Whether a tenant is TCF comes back from their settings API, which a
+        // replaced CMP never fetches - so a page with no stub, no locator and
+        // no record gets no layer it would not otherwise have had.
+        let out;
+        const w = asLoader({ before: w_ => { out = lines(w_); } }).window;
+        assert.equal(w.__tcfapi, undefined);
+        assert.equal(w.localStorage.getItem('uc_tcf'), null);
+        assert.ok(out[0].includes(' iab=off'), out[0]);
+        assert.equal(out[0].includes(' tcf='), false, out[0]);
+    });
+
+    it('answers a page carrying their stub, refusing everything', ( ) => {
+        let out;
+        const w = withStub({ before: w_ => { out = lines(w_); } }).window;
+        assert.equal(typeof w.__tcfapi, 'function');
+        assert.ok(out[0].includes(' iab=refused/default tcf=stub'), out[0]);
+        // The one field that is not a refusal but a claim about the law: a
+        // vendor told GDPR does not apply may process without consent at all,
+        // so this says it does.
+        const data = tcData(w);
+        assert.equal(data.gdprApplies, true);
+        assert.equal(data.eventStatus, 'tcloaded');
+        assert.equal(data.cmpStatus, 'loaded');
+        assert.equal(data.purpose.consents[1], false);
+        assert.equal(data.purpose.legitimateInterests[2], false);
+        assert.deepEqual(plain(data.vendor.consents), {});
+        // Decoded by the IAB's own library, not by this test's reading of it.
+        const decoded = TCString.decode(data.tcString);
+        assert.equal(decoded.cmpId, 5);          // their own fallback
+        assert.equal(decoded.cmpVersion, 3);
+        assert.equal(decoded.policyVersion, 5);  // hard-coded in their model
+        assert.equal(decoded.isServiceSpecific, true);
+        assert.equal(decoded.consentLanguage, 'DE');
+        // Their deny-all unsets all four of these, so all four are empty.
+        assert.equal(decoded.purposeConsents.size, 0);
+        assert.equal(decoded.purposeLegitimateInterests.size, 0);
+        assert.equal(decoded.vendorConsents.size, 0);
+        assert.equal(decoded.vendorLegitimateInterests.size, 0);
+        assert.equal(decoded.specialFeatureOptins.size, 0);
+        assert.equal(decoded.publisherConsents.size, 0);
+        assert.equal(decoded.publisherLegitimateInterests.size, 0);
+    });
+
+    it('keeps their record, with no additional-consent string invented', ( ) => {
+        const w = withStub().window;
+        const record = JSON.parse(w.localStorage.getItem('uc_tcf'));
+        assert.deepEqual(Object.keys(record).sort(),
+            [ 'acString', 'tcString', 'timestamp', 'vendors' ]);
+        // Their shape. The AC string lists Google's additional-consent
+        // vendors, and a refusal consents to none - theirs reads an empty one
+        // as nothing to compare, which is what stops it resurfacing the UI.
+        assert.equal(record.acString, '');
+        assert.deepEqual(plain(record.vendors), []);
+        assert.equal(record.tcString, tcData(w).tcString);
+        assert.equal(typeof record.timestamp, 'number');
+    });
+
+    it('reuses the identity a returning visitor already carries', ( ) => {
+        // A tenant's own cmpId is in their settings - 318 with cmpVersion 1 on
+        // the TCF tenant sampled - so it cannot be known here. Where the
+        // visitor has a string already, it is read back out of that.
+        const first = withStub().window;
+        const prior = patch(tcData(first).tcString, {
+            cmpId: 318,
+            cmpVersion: 1,
+            vendorListVersion: 42,
+            publisherCC: 'DE',
+        });
+        let out;
+        const w = asLoader({
+            before: w_ => {
+                out = lines(w_);
+                w_.localStorage.setItem('uc_tcf', JSON.stringify({
+                    acString: '', tcString: prior, timestamp: 1, vendors: [],
+                }));
+            },
+        }).window;
+        // The record alone is evidence enough; no stub needed.
+        assert.ok(out[0].includes(' iab=refused tcf=record'), out[0]);
+        const decoded = TCString.decode(tcData(w).tcString);
+        assert.equal(decoded.cmpId, 318);
+        assert.equal(decoded.cmpVersion, 1);
+        assert.equal(decoded.vendorListVersion, 42);
+        assert.equal(decoded.publisherCountryCode, 'DE');
+        // And it is still a refusal, whoever it is attributed to.
+        assert.equal(decoded.purposeConsents.size, 0);
+        assert.equal(decoded.vendorConsents.size, 0);
+    });
+
+    it('installs on a locator frame as well', ( ) => {
+        let out;
+        const w = asLoader({
+            before: w_ => {
+                out = lines(w_);
+                const frame = w_.document.createElement('iframe');
+                frame.name = '__tcfapiLocator';
+                w_.document.body.appendChild(frame);
+            },
+        }).window;
+        assert.ok(out[0].includes(' tcf=locator'), out[0]);
+        assert.equal(typeof w.__tcfapi, 'function');
+    });
+
+    it('answers what the page asked before it arrived', ( ) => {
+        const seen = [];
+        const w = withStub({
+            before: w_ => {
+                w_.__consentRRSeen = seen;
+            },
+        }).window;
+        // Queue a call the way a publisher's stub does, then re-run: the
+        // resource drains it rather than leaving it unanswered.
+        w.eval('window.__tcfapiStubCalls = [];' +
+            'window.__tcfapi = function() {' +
+            ' var a = arguments;' +
+            ' if ( a.length === 0 ) { return window.__tcfapiStubCalls; }' +
+            ' window.__tcfapiStubCalls.push(a);' +
+            '};');
+        w.eval('window.__answers = [];' +
+            'window.__tcfapi("getTCData", 2, function(d, ok) {' +
+            ' window.__answers.push([ d && d.tcString !== "", ok ]); });');
+        assert.equal(w.__answers.length, 0);
+        w.eval('window.__ucCmp = undefined;');
+        w.eval(reject);
+        assert.deepEqual(plain(w.__answers), [ [ true, true ] ]);
+    });
+
+    it('answers ping, and takes a listener off again', ( ) => {
+        const w = withStub().window;
+        let ping;
+        w.__tcfapi('ping', 2, data => { ping = data; });
+        assert.equal(ping.cmpLoaded, true);
+        assert.equal(ping.cmpStatus, 'loaded');
+        assert.equal(ping.gdprApplies, true);
+        assert.equal(ping.tcfPolicyVersion, 5);
+        let added;
+        w.__tcfapi('addEventListener', 2, data => { added = data; });
+        assert.equal(added.eventStatus, 'tcloaded');
+        assert.equal(typeof added.listenerId, 'number');
+        let removed;
+        w.__tcfapi('removeEventListener', 2, ok => { removed = ok; },
+            added.listenerId);
+        assert.equal(removed, true);
+    });
+
+    it('says no to a command it does not implement', ( ) => {
+        const w = withStub().window;
+        let answered;
+        w.__tcfapi('getInAppTCData', 2, (data, ok) => {
+            answered = [ data, ok ];
+        });
+        assert.deepEqual(plain(answered), [ null, false ]);
     });
 });
 

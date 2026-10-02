@@ -113,6 +113,8 @@ function consentRRUsercentrics() {
     // Their record of the visitor having answered at all.
     const INTERACTION = 'uc_user_interaction';
     const INTERACTION_TYPE = 'uc_interaction_type';
+    // Their TCF record, which only a TCF tenant has.
+    const TCF = 'uc_tcf';
 
     // Which generation the page carries, by the script it loads the CMP from.
     // Neither means it was injected rather than served, and then both records
@@ -451,6 +453,38 @@ function consentRRUsercentrics() {
         fire('UC_CMP_API_READY');
     }
 
+    // Whether this tenant is TCF cannot be read from the page: it comes back
+    // from their settings API as framework TCF2, which a replaced CMP never
+    // fetches. So the layer goes in on evidence the page carries instead -
+    // the stub or locator frame a TCF publisher puts there, or a uc_tcf
+    // record from a previous visit. On a tenant that is not TCF there is
+    // neither, and nothing is added that their own CMP would not have.
+    const tcfWanted = ( ) => {
+        try {
+            if ( read(TCF) !== null ) { return 'record'; }
+        } catch(ex) {
+        }
+        try {
+            if ( typeof w.__tcfapi === 'function' ) { return 'stub'; }
+        } catch(ex) {
+        }
+        try {
+            if ( w.frames.__tcfapiLocator !== undefined ) { return 'locator'; }
+        } catch(ex) {
+        }
+        return '';
+    };
+
+    const tcfEvidence = tcfWanted();
+    let tcf = null;
+    if ( tcfEvidence !== '' ) {
+        try {
+            tcf = consentRRUsercentricsTcf(record.ui.language, read(TCF));
+        } catch(ex) {
+            tcf = null;
+        }
+    }
+
     // Their setUserActionPerformed(true), which is a decision having been
     // made - not a decision to accept. An SDK this did not replace reads it
     // and leaves the visitor alone.
@@ -464,6 +498,15 @@ function consentRRUsercentrics() {
     const storedLegacy = storeLegacy();
     const answered = storeInteraction();
     const pushed = pushGcm();
+    let iab = 'off';
+    if ( tcf !== null ) {
+        const kept = write(TCF, JSON.stringify(tcf.record()));
+        const installed = tcf.install();
+        iab = installed
+            ? 'refused' + (tcf.reusedIdentity ? '' : '/default') +
+                (kept ? '' : ' tcfrecord=refused')
+            : 'refused/noapi';
+    }
     define('UC_UI', ui);
 
     if ( settingsId !== '' ) {
@@ -484,6 +527,8 @@ function consentRRUsercentrics() {
             ' gpc=' + (gpc ? 'on' : 'off') +
             ' cmp=' + (isV3 ? 'v3' : (isV2 ? 'v2' : 'unknown')) +
             ' answered=' + (answered ? 'true' : 'refused') +
+            ' iab=' + iab +
+            (tcfEvidence !== '' ? ' tcf=' + tcfEvidence : '') +
             ' data=' + stored +
             (storedLegacy !== 'absent' ? ' v2=' + storedLegacy : '')
         );
