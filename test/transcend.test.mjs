@@ -25,6 +25,15 @@ const PURPOSES = {
     Functional: true,
 };
 
+// Another tenant's, from their own cookie: four purposes, none of them the
+// tri-state, and none of the names the set above shares.
+const IGG_PURPOSES = {
+    SaleOfInfo: false,
+    Analytics: false,
+    Functional: false,
+    Advertising: false,
+};
+
 // airgap as their own file installs it, with getConsent and setConsent
 // behaving as theirs do.
 // requireAuth off, so null is proof enough - the shape a tenant has when its
@@ -33,9 +42,9 @@ const AIRGAP = airgap('off');
 
 // Their check, as airgap makes it: null passes only where requireAuth is off,
 // and otherwise the auth must be a trusted event of type load.
-function airgap(requireAuth) {
+function airgap(requireAuth, purposes = PURPOSES) {
     return 'window.__calls = [];' +
-        'window.__purposes = ' + JSON.stringify(PURPOSES) + ';' +
+        'window.__purposes = ' + JSON.stringify(purposes) + ';' +
         'window.airgap = Object.assign({ readyQueue: [],' +
         ' ready(c) { this.readyQueue.push(c); } }, window.airgap);' +
         'window.airgap.loadOptions = ' +
@@ -113,6 +122,64 @@ describe('transcend-reject', ( ) => {
         assert.equal(options.confirmed, true);
         assert.equal(options.prompted, true);
         assert.ok(/^\d{4}-\d{2}-\d{2}T/.test(options.timestamp));
+    });
+
+    it('refuses a tenant that shares none of those names', ( ) => {
+        // Indiegogo's four, none of them the tri-state. Nothing here knows
+        // them; they arrive from their own getConsent.
+        const w = runDom(reject, 'https://www.indiegogo.com/',
+            '<html><body><p>x</p></body></html>',
+            w_ => { w_.eval(airgap('off', IGG_PURPOSES) + READY_NOW); }
+        ).window;
+        assert.equal(w.__calls.length, 1);
+        assert.deepEqual(plain(w.__calls[0][1]), {
+            SaleOfInfo: false,
+            Analytics: false,
+            Functional: false,
+            Advertising: false,
+        });
+    });
+
+    it('writes the record their own banner writes for a refusal', ( ) => {
+        // A genuine cookie from a site running their banner, with this
+        // resource nowhere near it: their UI's own record of a full refusal.
+        const theirs = {
+            purposes: {
+                SaleOfInfo: false,
+                Analytics: false,
+                Functional: false,
+                Advertising: false,
+            },
+            timestamp: '2026-10-02T01:33:15.268Z',
+            confirmed: true,
+            prompted: true,
+            updated: true,
+        };
+        const w = runDom(reject, 'https://www.indiegogo.com/',
+            '<html><body><p>x</p></body></html>',
+            w_ => {
+                w_.eval(airgap(undefined, IGG_PURPOSES) + READY_NOW);
+                // Their airgap refusing the decision, so the cookie is the
+                // only way left to record it.
+                w_.eval('window.__setConsentResult = false;');
+                Object.defineProperty(w_.document, 'readyState', {
+                    value: 'complete',
+                    configurable: true,
+                });
+            }
+        ).window;
+        const ours = JSON.parse(cookies(w).get('tcm'));
+        assert.deepEqual(Object.keys(ours).sort(), Object.keys(theirs).sort());
+        assert.deepEqual(ours.purposes, theirs.purposes);
+        assert.equal(ours.confirmed, theirs.confirmed);
+        assert.equal(ours.prompted, theirs.prompted);
+        assert.ok(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(ours.timestamp));
+        // The one field that differs, and the only one that may: theirs says
+        // the decision replaced an earlier one, this one is the first record.
+        // airgap takes it either way - its parser coerces with !!, and their
+        // own schema has confirmed and timestamp required with updated
+        // optional - and it is reported upstream rather than enforced.
+        assert.equal(ours.updated, false);
     });
 
     it('builds no banner, and leaves airgap to do the blocking', ( ) => {

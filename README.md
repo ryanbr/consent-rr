@@ -724,9 +724,14 @@ definition, so the callback queued there is one it drains.
 ### Deliberate gaps
 
 - **Injected after the page has loaded**, that trusted event has been and gone,
-  and the refusal goes to their `tcm` cookie instead - in the shape one of their
-  own cookies carries, read on the next page rather than this one. The console
-  line says which way it went: `via=setConsent`, `via=load` or `via=cookie`.
+  and the refusal goes to their `tcm` cookie instead - read on the next page
+  rather than this one. The console line says which way it went:
+  `via=setConsent`, `via=load` or `via=cookie`. That record is the one their own
+  banner writes: a genuine cookie from a ninth site, taken with none of this in
+  play, carries the same fields with the same values for a full refusal, bar
+  `updated` - which says the decision replaced an earlier one, is `false` for a
+  first record, and which airgap coerces and reports rather than enforces. A
+  test holds ours against it.
 - **A site with a consent UI of its own** - Costco builds one on airgap rather
   than using `ui.js` - reads the same refusal, so it has nothing to prompt for,
   but it may ask before airgap has got as far as fetching `ui.js`. The scriptlet
