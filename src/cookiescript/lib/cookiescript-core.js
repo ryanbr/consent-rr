@@ -163,14 +163,22 @@
                                 expiry or a wider cookie domain gets the
                                 default here. Neither is recoverable from the
                                 page.
-      their selectors           per tag, and two details a bare
-                                [data-cookiescript="accepted"] misses: a
-                                script has to still be typed text/plain, and
-                                with a non-empty allowed list the element has
-                                to carry data-cookiecategory at all - so
-                                something parked without a category stays
-                                parked. They park img, script, iframe, embed,
-                                object and link, and nothing else is touched.
+      their selectors           per tag, and theirs carry two conditions a
+                                bare [data-cookiescript="accepted"] does not:
+                                a script typed text/plain, and - once the
+                                allowed list is non-empty, which a refusal
+                                makes it - data-cookiecategory present at all.
+                                Matching that exactly was tried and the field
+                                answered: a page that worked stopped
+                                scrolling, because the element it needs wears
+                                no category. So the category rule decides
+                                here, on its own. Nothing refused escapes
+                                that way - a declared category has to be
+                                strict, and unclassified, their own bucket for
+                                a tracker they could not identify, is refused
+                                like the rest. No category at all is not one
+                                of their buckets; it is markup the site wrote
+                                itself.
       Ve()                      runs the sweep and then once more 500ms
                                 later, and it is called at load. On a real
                                 page load is long past 500ms after their
@@ -303,8 +311,8 @@ function consentRRCookieScript() {
             }
         } catch(ex) {
         }
-        // Only a refusal already on the record makes the reload pointless.
-        // A visitor who had accepted has a page rendered with its tags let
+        // Only a refusal already on the record makes the reload pointless: a
+        // visitor who had accepted has a page rendered with its tags let
         // through, and their own oe() reloads on that change too.
         decided = previous.action === 'reject';
         previous.action = 'reject';
@@ -398,6 +406,11 @@ function consentRRCookieScript() {
             fresh.setAttribute('src', src);
             fresh.removeAttribute('data-src');
         }
+        // A script node inserted by script runs async by default, which for
+        // two freed scripts that depend on each other is a race. Theirs frees
+        // at load, where the page has already given up on order; these are
+        // freed as they parse, in document order, so the order is kept.
+        fresh.async = false;
         element.parentNode.replaceChild(fresh, element);
         // Their flag for a script whose page needs the ready event again.
         return element.getAttribute('data-reload') === 'true';
@@ -410,17 +423,29 @@ function consentRRCookieScript() {
             if ( element.tagName === 'SCRIPT' ) {
                 return freeScript(element);
             }
-            // Every tag the selector below can return has a handler here,
-            // because that selector is built from these tags - which are the
-            // ones their blocker parks, and the only ones they free.
+            // The six tags they park get the attribute theirs uses for that
+            // tag. Any other tag wearing the marker gets freed by whichever
+            // of the two url attributes it carries, since their blocker is
+            // not the only thing that writes this markup.
             const handler = HANDLERS[element.tagName];
-            const url = element.getAttribute(handler.from);
+            const from = handler !== undefined ? handler.from : 'data-src';
+            const attribute = handler !== undefined ? handler.attribute : 'src';
+            const url = element.getAttribute(from);
             if ( url ) {
-                element.setAttribute(handler.attribute, url);
-                element.removeAttribute(handler.from);
+                element.setAttribute(attribute, url);
+                element.removeAttribute(from);
+            }
+            if ( handler === undefined ) {
+                const href = element.getAttribute('data-href');
+                if ( href ) {
+                    element.setAttribute('href', href);
+                    element.removeAttribute('data-href');
+                }
             }
             element.removeAttribute('data-cookiescript');
-            if ( handler.reinsert === true ) { reinsert(element); }
+            if ( handler !== undefined && handler.reinsert === true ) {
+                reinsert(element);
+            }
             return false;
         } catch(ex) {
         }
@@ -478,19 +503,27 @@ function consentRRCookieScript() {
         return removed;
     };
 
-    // Their own selectors, tag by tag. Two details theirs has that a bare
-    // [data-cookiescript="accepted"] does not: a script has to still be typed
-    // text/plain, and with a non-empty allowed list - strict, here - the
-    // element has to carry data-cookiecategory at all, so something parked
-    // without a category is left parked rather than let through.
-    const PARKED = [
-        'img[data-cookiescript="accepted"][data-cookiecategory]',
-        'script[type="text/plain"][data-cookiescript="accepted"][data-cookiecategory]',
-        'iframe[data-cookiescript="accepted"][data-cookiecategory]',
-        'embed[data-cookiescript="accepted"][data-cookiecategory]',
-        'object[data-cookiescript="accepted"][data-cookiecategory]',
-        'link[data-cookiescript="accepted"][data-cookiecategory]',
-    ].join(',');
+    // Everything wearing their marker, whatever tag it is and whether or not
+    // it declares a category.
+    //
+    // Their refusal path reaches the unblocker as k(['strict']), and with a
+    // non-empty list their selector becomes
+    // [data-cookiescript="accepted"][data-cookiecategory] - the attribute has
+    // to be there - and their script selector also wants type="text/plain".
+    // Matching that exactly is what the previous release did, and the field
+    // answered: a page that worked went back to not scrolling, because the
+    // element it needed carries no category and so stopped being freed.
+    //
+    // So this frees on the category rule alone. Nothing refused gets out that
+    // way: a declared category has to be strict, and unclassified - their own
+    // bucket for a tracker they could not identify - is refused like any
+    // other. An element with no category at all is not in any of their
+    // buckets; it is markup the site wrote itself, and freeing it is what
+    // makes those pages work.
+    const PARKED = '[data-cookiescript="accepted"]';
+
+    // What the watch below frees, which the console line reports.
+    let observed = 0;
 
     const sweep = ( ) => {
         let freed = 0;
@@ -566,6 +599,71 @@ function consentRRCookieScript() {
     const freed = first.freed;
     const removed = first.removed;
     if ( first.reload ) { announceReady(); }
+
+    // Theirs has no observer: it sweeps at load, and a decision made on the
+    // page is followed by oe(), a reload, which is what gets a parked tag
+    // running in the position the page expects. Reloading from here means
+    // reloading before anything has painted, which the field showed for what
+    // it is - the page visibly breaking first.
+    //
+    // Freeing each parked element as it parses gets to the same place without
+    // that: a script freed while the document is still being built has the
+    // best chance of running before the ready event, which is what a page's
+    // own setup waits for, where one freed at load has none.
+    const watch = ( ) => {
+        if ( typeof w.MutationObserver !== 'function' ) { return 'nowatch'; }
+        let observer = null;
+        const take = element => {
+            if ( allowed(element.getAttribute('data-cookiecategory')) === false ) {
+                return;
+            }
+            const asked = free(element);
+            if ( asked === null ) { return; }
+            observed += 1;
+            if ( asked ) { announceReady(); }
+        };
+        const onMutation = records => {
+            for ( const mutation of records ) {
+                for ( const node of Array.from(mutation.addedNodes) ) {
+                    if ( node.nodeType !== 1 ) { continue; }
+                    try {
+                        if ( node.matches(PARKED) ) { take(node); }
+                        for ( const found of Array.from(node.querySelectorAll(PARKED)) ) {
+                            take(found);
+                        }
+                    } catch(ex) {
+                    }
+                }
+            }
+        };
+        try {
+            observer = new w.MutationObserver(onMutation);
+            observer.observe(doc.documentElement || doc, {
+                childList: true,
+                subtree: true,
+            });
+        } catch(ex) {
+            return 'nowatch';
+        }
+        // Their last sweep is 500ms after load, so the watch is no longer
+        // needed once that has been and gone.
+        const stop = ( ) => {
+            try {
+                w.setTimeout(( ) => {
+                    try { observer.disconnect(); } catch(ex) {}
+                }, 600);
+            } catch(ex) {
+            }
+        };
+        try {
+            if ( doc.readyState === 'complete' ) { stop(); }
+            else { w.addEventListener('load', stop, { once: true }); }
+        } catch(ex) {
+        }
+        return 'watching';
+    };
+
+    const observing = watch();
 
     try {
         if ( doc.readyState === 'loading' ) {
@@ -802,6 +900,10 @@ function consentRRCookieScript() {
         announce();
     }
 
+    // The watch above frees a parked tag as it parses, which is the earlier
+    // and quieter of the two ways to get one running in the position the page
+    // expects. This is the other one, and it is theirs.
+    //
     // Their own refusal ends in oe(), which reloads the page - either at once
     // or, where they are waiting on their collector for the consent key, when
     // that comes back. Both of their refusal paths, qt() and yt(), call it.
@@ -820,6 +922,42 @@ function consentRRCookieScript() {
     //   - and a marker in session storage, so even a record that will not
     //     persist costs one reload rather than a loop
     const RELOADED = 'consent-rr-cookiescript';
+    // How long the document stays hidden before it comes back whatever
+    // happened, so a navigation that never commits cannot leave it blank.
+    const BLANK_FOR = 2000;
+
+    // A reload asked for while the document is still parsing cancels the
+    // stylesheet it had not finished fetching, so the first document goes on
+    // parsing and paints without its css until the new one commits - the page
+    // visibly breaking before it refreshes, which is what the field saw.
+    // Theirs never shows that: theirs reloads from a click on a page already
+    // rendered and styled. This runs before anything has painted, so hiding
+    // the document here means none of the first one is ever shown. The timer
+    // is the backstop: if the navigation does not happen, the page comes back
+    // rather than staying blank.
+    const hideUntilItGoes = ( ) => {
+        const root = doc.documentElement;
+        if ( root === null ) { return false; }
+        let was = '';
+        try {
+            was = root.style.visibility;
+            root.style.visibility = 'hidden';
+        } catch(ex) {
+            return false;
+        }
+        try {
+            w.setTimeout(( ) => {
+                try {
+                    if ( root.style.visibility === 'hidden' ) {
+                        root.style.visibility = was;
+                    }
+                } catch(ex) {
+                }
+            }, BLANK_FOR);
+        } catch(ex) {
+        }
+        return true;
+    };
 
     const reload = ( ) => {
         if ( decided ) { return 'had'; }
@@ -834,9 +972,10 @@ function consentRRCookieScript() {
             w.sessionStorage.setItem(RELOADED, '1');
         } catch(ex) {
         }
+        const hidden = hideUntilItGoes();
         try {
             w.location.reload();
-            return 'reloading';
+            return hidden ? 'reloading' : 'reloading/shown';
         } catch(ex) {
         }
         return 'refused';
@@ -853,6 +992,7 @@ function consentRRCookieScript() {
             ' removed=' + removed +
             ' gcm=' + pushed +
             ' api=' + (installed ? 'ready' : 'refused') +
+            ' watch=' + observing +
             ' reload=' + reloading
         );
     } catch(ex) {

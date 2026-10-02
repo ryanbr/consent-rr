@@ -468,7 +468,8 @@ describe('cookiescript-reject', ( ) => {
         assert.equal(node(w, 'late').getAttribute('type'), 'text/javascript');
         // And the refused one is still parked.
         assert.equal(node(w, 'lateframe').hasAttribute('src'), false);
-        assert.ok(out.some(l => l.includes(' freed=+1')), out.join(' | '));
+        // The watch takes it as it arrives rather than at the next sweep.
+        assert.ok(out[0].includes(' watch=watching'), out[0]);
     });
 
     it('dispatches their ready event again for a data-reload script',
@@ -491,9 +492,9 @@ describe('cookiescript-reject', ( ) => {
             ' data-cookiecategory="strict" data-reload="true"' +
             ' data-src="https://n.test/n.js"></scr' + 'ipt>');
         await settle(700);
+        // Freed, and the ready event dispatched again for it.
+        assert.equal(node(w, 'late').getAttribute('type'), 'text/javascript');
         assert.deepEqual(heard, [ true ]);
-        assert.ok(out.some(l => l.includes(' ready=redispatched')),
-            out.join(' | '));
     });
 
     it('leaves the ready event alone without their flag', async ( ) => {
@@ -513,9 +514,9 @@ describe('cookiescript-reject', ( ) => {
             ' data-cookiecategory="strict" data-src="https://n.test/n.js">' +
             '</scr' + 'ipt>');
         await settle(700);
+        // Freed just the same, and the ready event left alone.
+        assert.equal(node(w, 'late').getAttribute('type'), 'text/javascript');
         assert.deepEqual(heard, []);
-        assert.ok(out.some(l => l.includes(' ready=unchanged')),
-            out.join(' | '));
     });
 
     it('frees the tags theirs frees, by the attribute theirs uses', ( ) => {
@@ -685,65 +686,6 @@ describe('cookiescript-reject', ( ) => {
         return { w: dom.window, navigations, out };
     };
 
-    it('reloads the page once, as their own refusal does', ( ) => {
-        // Their qt() and yt() both end in oe(), which reloads: a page is
-        // rendered with tags parked before a decision exists, and only a
-        // fresh render with the record in place comes back unparked.
-        const first = bootWatchingNavigation();
-        assert.deepEqual(first.navigations,
-            [ 'Not implemented: navigation to another Document' ]);
-        assert.ok(first.out[0].includes(' reload=reloading'), first.out[0]);
-    });
-
-    it('does not reload a visitor who had already decided', ( ) => {
-        const again = bootWatchingNavigation(PAGE, w_ => {
-            w_.document.cookie = 'CookieScriptConsent=' +
-                encodeURIComponent(JSON.stringify({
-                    action: 'reject', categories: [], bannershown: 1,
-                }));
-        });
-        assert.deepEqual(again.navigations, []);
-        assert.ok(again.out[0].includes(' reload=had'), again.out[0]);
-    });
-
-    it('does not reload twice in a session on a record that will not stick',
-    ( ) => {
-        const second = bootWatchingNavigation(PAGE, w_ => {
-            w_.sessionStorage.setItem('consent-rr-cookiescript', '1');
-        });
-        assert.deepEqual(second.navigations, []);
-        assert.ok(second.out[0].includes(' reload=done'), second.out[0]);
-    });
-
-    it('does not reload a page from inside one of its frames', ( ) => {
-        const dom = new JSDOM(
-            '<!doctype html><html><body><iframe id="f"></iframe></body></html>',
-            { runScripts: 'outside-only', url: URL }
-        );
-        const frame = dom.window.document.getElementById('f').contentWindow;
-        const out = lines(frame);
-        frame.eval(reject);
-        // The frame reason comes before the record one, so this is the guard
-        // being read and not a side effect of jsdom refusing the write in an
-        // about:blank frame.
-        assert.ok(out[0].includes(' reload=framed'), out[0]);
-    });
-
-    it('does not reload where the record did not land', ( ) => {
-        // A reload with nothing recorded comes back to the same page in the
-        // same state, and asks again.
-        const blocked = bootWatchingNavigation(PAGE, w_ => {
-            Object.defineProperty(w_.document, 'cookie', {
-                get: ( ) => '',
-                set: ( ) => {},
-                configurable: true,
-            });
-        });
-        assert.deepEqual(blocked.navigations, []);
-        assert.ok(blocked.out[0].includes(' cookie=refused'), blocked.out[0]);
-        assert.ok(blocked.out[0].includes(' reload=nocookie'), blocked.out[0]);
-    });
-
     it('writes the record under the cookie name the tenant configured', ( ) => {
         // Their j(): the name comes off a script tag where one is set. The
         // default name on such a tenant is a record nothing reads.
@@ -766,44 +708,97 @@ describe('cookiescript-reject', ( ) => {
             'e879476f7846d0f3101e83b498791e52');
     });
 
-    it('leaves parked things their own selectors do not reach', ( ) => {
+    it('frees what the page parked without a category', ( ) => {
+        // Their refusal reaches the unblocker as k(['strict']), and with a
+        // non-empty list their selector requires data-cookiecategory to be
+        // there at all, their script selector requiring type="text/plain"
+        // besides. Matching that exactly stopped a working page from
+        // scrolling, because the element it needs carries no category. The
+        // category rule alone is what decides here.
         const html = '<!doctype html><html><head></head><body>' +
-            // No category at all: with strict allowed their selector requires
-            // the attribute, so theirs never frees this.
             '<iframe id="nocat" data-cookiescript="accepted"' +
             ' data-src="https://e.test/e"></iframe>' +
-            // A script no longer typed text/plain is outside their selector.
             '<script id="typed" type="text/javascript"' +
             ' data-cookiescript="accepted" data-cookiecategory="strict"' +
             ' data-src="https://n.test/n.js"></scr' + 'ipt>' +
-            // A tag their blocker never parks.
             '<div id="div" data-cookiescript="accepted"' +
             ' data-cookiecategory="strict" data-src="https://d.test/d"></div>' +
+            // Their own bucket for a tracker they could not identify, which
+            // a refusal refuses like any other.
+            '<iframe id="unclassified" data-cookiescript="accepted"' +
+            ' data-cookiecategory="unclassified" data-src="https://u.test/u">' +
+            '</iframe>' +
             '<p id="content">x</p></body></html>';
-        let out;
-        const w = boot({ html, before: w_ => { out = lines(w_); } }).window;
-        assert.equal(node(w, 'nocat').hasAttribute('src'), false);
-        assert.equal(node(w, 'nocat').getAttribute('data-cookiescript'), 'accepted');
-        assert.equal(node(w, 'typed').hasAttribute('src'), false);
-        assert.equal(node(w, 'div').hasAttribute('src'), false);
-        assert.equal(node(w, 'div').getAttribute('data-cookiescript'), 'accepted');
-        assert.ok(out[0].includes(' freed=0'), out[0]);
+        const w = boot({ html }).window;
+        assert.equal(node(w, 'nocat').getAttribute('src'), 'https://e.test/e');
+        assert.equal(node(w, 'typed').getAttribute('src'), 'https://n.test/n.js');
+        assert.equal(node(w, 'div').getAttribute('src'), 'https://d.test/d');
+        // And nothing refused came out with them.
+        assert.equal(node(w, 'unclassified').hasAttribute('src'), false);
+        assert.equal(
+            node(w, 'unclassified').getAttribute('data-cookiescript'),
+            'accepted'
+        );
     });
-
-    it('reloads for a visitor who had accepted', ( ) => {
-        // Their oe() reloads on a decision changing, and this change matters
-        // most: the page was rendered with its tags let through.
-        const accepted = bootWatchingNavigation(PAGE, w_ => {
-            w_.document.cookie = 'CookieScriptConsent=' +
-                encodeURIComponent(JSON.stringify({
-                    action: 'accept',
-                    categories: '["strict","targeting"]',
-                    bannershown: 1,
-                }));
+    it('frees a parked tag the moment it appears', async ( ) => {
+        // The point of watching: a tag freed while the document is still
+        // being built has a chance of running before the ready event, which
+        // is what a page's own setup waits for. One freed at a later sweep
+        // has none.
+        //
+        // Injected into a document that has already loaded, so neither the
+        // ready-event sweep nor the load one is even registered and their
+        // 500ms pass is far away: nothing but the watch can free anything
+        // here. jsdom delivers its ready event in the same turn as an
+        // insertion, so a test that injects while loading passes whether the
+        // watch works or not - this one does not.
+        const dom = new JSDOM(
+            '<!doctype html><html><head></head><body></body></html>',
+            { runScripts: 'outside-only', url: URL }
+        );
+        const w = dom.window;
+        await settle(50);
+        assert.equal(w.document.readyState, 'complete');
+        lines(w);
+        w.eval(reject);
+        w.document.body.insertAdjacentHTML('beforeend',
+            '<script id="a" type="text/plain" data-cookiescript="accepted"' +
+            ' data-cookiecategory="strict" data-src="https://n.test/a.js">' +
+            '</scr' + 'ipt>' +
+            '<div id="wrap"><script id="b" type="text/plain"' +
+            ' data-cookiescript="accepted" data-cookiecategory="strict"' +
+            ' data-src="https://n.test/b.js"></scr' + 'ipt></div>' +
+            '<iframe id="ads" data-cookiescript="accepted"' +
+            ' data-cookiecategory="targeting" data-src="https://t.test/t">' +
+            '</iframe>');
+        // A mutation record is delivered in a microtask, so this is the same
+        // turn the markup appeared in.
+        await Promise.resolve();
+        assert.equal(node(w, 'a').getAttribute('src'), 'https://n.test/a.js');
+        // And one nested inside an element that was added, which arrives as
+        // the subtree of a single record.
+        assert.equal(node(w, 'b').getAttribute('src'), 'https://n.test/b.js');
+        // Refused all the same: the watch applies the same category rule.
+        assert.equal(node(w, 'ads').hasAttribute('src'), false);
+        // Two freed scripts that depend on each other would otherwise race:
+        // a script node inserted by script is async unless told otherwise.
+        assert.equal(node(w, 'a').async, false);
+        assert.equal(node(w, 'b').async, false);
+    });
+    it('stops watching once their last sweep has gone by', async ( ) => {
+        const dom = boot({
+            html: '<!doctype html><html><head></head><body></body></html>',
         });
-        assert.deepEqual(accepted.navigations,
-            [ 'Not implemented: navigation to another Document' ]);
-        assert.ok(accepted.out[0].includes(' reload=reloading'), accepted.out[0]);
+        const w = dom.window;
+        await settle(1400);
+        w.document.body.insertAdjacentHTML('beforeend',
+            '<iframe id="verylate" data-cookiescript="accepted"' +
+            ' data-cookiecategory="strict" data-src="https://e.test/e">' +
+            '</iframe>');
+        await Promise.resolve();
+        // Their own last chance is 500ms after load; nothing of theirs frees
+        // a tag that turns up after that, and neither does this.
+        assert.equal(node(w, 'verylate').hasAttribute('src'), false);
     });
 
     it('schedules their extra pass off load, not just off injection',
@@ -853,6 +848,95 @@ describe('cookiescript-reject', ( ) => {
         assert.equal(node(w, 'afterload').getAttribute('src'), 'https://e.test/e');
     });
 
+    it('reloads the page once, as their own refusal does', ( ) => {
+        // Their qt() and yt() both end in oe(), which reloads. The watch
+        // above is the quieter path to the same place; this is theirs.
+        const first = bootWatchingNavigation();
+        assert.deepEqual(first.navigations,
+            [ 'Not implemented: navigation to another Document' ]);
+        assert.ok(first.out[0].includes(' reload=reloading'), first.out[0]);
+    });
+
+    it('never paints the document it is about to replace', ( ) => {
+        // Asked for while the document is still parsing, the navigation
+        // cancels the stylesheet fetch and the first document paints unstyled
+        // until the new one commits - the page visibly breaking first.
+        const first = bootWatchingNavigation();
+        assert.equal(first.w.document.documentElement.style.visibility,
+            'hidden');
+    });
+
+    it('shows the page again if the reload never happens', async ( ) => {
+        const first = bootWatchingNavigation();
+        assert.equal(first.w.document.documentElement.style.visibility,
+            'hidden');
+        // jsdom reports the navigation rather than performing it, which is
+        // the case the backstop is for: the document is still here.
+        await settle(2200);
+        assert.equal(first.w.document.documentElement.style.visibility, '');
+    });
+
+    it('reloads for a visitor who had accepted', ( ) => {
+        const accepted = bootWatchingNavigation(PAGE, w_ => {
+            w_.document.cookie = 'CookieScriptConsent=' +
+                encodeURIComponent(JSON.stringify({
+                    action: 'accept',
+                    categories: '["strict","targeting"]',
+                    bannershown: 1,
+                }));
+        });
+        assert.deepEqual(accepted.navigations,
+            [ 'Not implemented: navigation to another Document' ]);
+        assert.ok(accepted.out[0].includes(' reload=reloading'), accepted.out[0]);
+    });
+
+    it('does not reload a visitor who had already refused', ( ) => {
+        const again = bootWatchingNavigation(PAGE, w_ => {
+            w_.document.cookie = 'CookieScriptConsent=' +
+                encodeURIComponent(JSON.stringify({
+                    action: 'reject', categories: [], bannershown: 1,
+                }));
+        });
+        assert.deepEqual(again.navigations, []);
+        assert.ok(again.out[0].includes(' reload=had'), again.out[0]);
+        // And the document was never hidden for a reload that is not coming.
+        assert.equal(again.w.document.documentElement.style.visibility, '');
+    });
+
+    it('does not reload twice in a session on a record that will not stick',
+    ( ) => {
+        const second = bootWatchingNavigation(PAGE, w_ => {
+            w_.sessionStorage.setItem('consent-rr-cookiescript', '1');
+        });
+        assert.deepEqual(second.navigations, []);
+        assert.ok(second.out[0].includes(' reload=done'), second.out[0]);
+    });
+
+    it('does not reload where the record did not land', ( ) => {
+        // A reload with nothing recorded comes back to the same page in the
+        // same state, and asks again.
+        const blocked = bootWatchingNavigation(PAGE, w_ => {
+            Object.defineProperty(w_.document, 'cookie', {
+                get: ( ) => '',
+                set: ( ) => {},
+                configurable: true,
+            });
+        });
+        assert.deepEqual(blocked.navigations, []);
+        assert.ok(blocked.out[0].includes(' reload=nocookie'), blocked.out[0]);
+    });
+
+    it('does not reload a page from inside one of its frames', ( ) => {
+        const dom = new JSDOM(
+            '<!doctype html><html><body><iframe id="f"></iframe></body></html>',
+            { runScripts: 'outside-only', url: URL }
+        );
+        const frame = dom.window.document.getElementById('f').contentWindow;
+        const out = lines(frame);
+        frame.eval(reject);
+        assert.ok(out[0].includes(' reload=framed'), out[0]);
+    });
+
     it('does nothing the second time it is injected', ( ) => {
         const w = boot().window;
         const before_ = w.document.cookie;
@@ -870,7 +954,7 @@ describe('cookiescript-reject', ( ) => {
             out[0],
             '[consent-rr] cookiescript-reject ' + versions.cookiescript +
             ' action=reject categories=strict cookie=written freed=2' +
-            ' removed=0 gcm=nogtag api=ready reload=reloading'
+            ' removed=0 gcm=nogtag api=ready watch=watching reload=reloading'
         );
     });
 
