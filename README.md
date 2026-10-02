@@ -58,22 +58,22 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/ketch-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -87,8 +87,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.27.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.27.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.27.1/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.27.1/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -1189,9 +1189,17 @@ is never emitted: that second listener reloads the page when an update says the
 purpose is off, which would be a reload for every page view. A test holds both
 modes to firing `consent` once and that event never.
 
-The names that are not purposes - `then`, `toJSON` and the object's own methods
-- read through to the object underneath rather than answering true, because a
-truthy `then` makes an awaited answer hang.
+A code that is asked for is remembered, so a site that reads one and then
+iterates - or spreads, or stringifies - finds it there rather than an empty
+map. Before anything asks, the enumerable codes are only the ones the visitor's
+own record carried; nothing is invented.
+
+The names that are not purposes read through to the object underneath rather
+than answering true: `then`, because a truthy one makes an awaited answer hang,
+`toJSON`, because it would break stringifying, the object's own methods, and
+`__proto__`, which would otherwise hand back a boolean where a prototype
+belongs. The same test governs `in`, so a caller checking for `Symbol.iterator`
+is told no rather than being sent down an iterate path that throws.
 
 ### Deliberate gaps
 
@@ -1238,7 +1246,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.27.1/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

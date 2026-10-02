@@ -233,7 +233,13 @@ function consentRRKetch(unblockAll) {
         'then', 'catch', 'finally', 'toJSON', 'toString', 'valueOf',
         'constructor', 'hasOwnProperty', 'isPrototypeOf',
         'propertyIsEnumerable', 'toLocaleString', 'length', 'inspect',
+        // Not a purpose either, and answering a consent value to it would
+        // hand back a boolean where a prototype belongs.
+        '__proto__', 'prototype',
     ];
+
+    const isPurposeKey = property => typeof property === 'string' &&
+        NOT_PURPOSES.indexOf(property) === -1;
 
     const permissive = ( ) => {
         const base = {};
@@ -242,15 +248,23 @@ function consentRRKetch(unblockAll) {
         try {
             return new Proxy(base, {
                 get(target, property) {
-                    if ( typeof property !== 'string' ) {
+                    if ( isPurposeKey(property) === false ) {
                         return target[property];
                     }
-                    if ( NOT_PURPOSES.indexOf(property) !== -1 ) {
-                        return target[property];
-                    }
+                    // A code asked for is a code this now knows about, so a
+                    // site that reads one and then iterates - or spreads, or
+                    // stringifies - sees it there rather than an empty map.
+                    target[property] = true;
                     return true;
                 },
-                has( ) {
+                // Mirrors get rather than answering true to everything: a
+                // caller testing for Symbol.iterator and being told yes would
+                // take an iterate path that then throws.
+                has(target, property) {
+                    if ( isPurposeKey(property) === false ) {
+                        return property in target;
+                    }
+                    target[property] = true;
                     return true;
                 },
             });

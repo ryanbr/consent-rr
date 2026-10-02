@@ -403,15 +403,57 @@ describe('ketch-reject-unblock', ( ) => {
     it('answers true for a purpose it has never heard of', async ( ) => {
         const w = onSite(unblock).window;
         const consent = await w.semaphore.ketch.getConsent();
-        assert.equal(consent.purposes.optional, true);
-        assert.equal(consent.purposes.something_else_entirely, true);
-        // Only the codes it actually knows are enumerable, so stringifying
-        // the answer does not invent a list.
+        // Before anything asks, the enumerable codes are the ones the
+        // visitor's own record carried - nothing is invented.
         assert.deepEqual(plain(consent.purposes), {
             analytics: true,
             behavioral_advertising: true,
             essential_services: true,
         });
+        // A code this has never heard of still answers, which is the point:
+        // the names are the property's own and arrive in a config a replaced
+        // loader never fetches.
+        assert.equal(consent.purposes.optional, true);
+        assert.equal(consent.purposes.something_else_entirely, true);
+        // And having been asked, it is there for a site that iterates next.
+        assert.deepEqual(plain(Object.keys(consent.purposes)), [
+            'analytics', 'behavioral_advertising', 'essential_services',
+            'optional', 'something_else_entirely',
+        ]);
+    });
+
+    it('remembers a code it was asked for, so iterating sees it', async ( ) => {
+        // A gate that reads by key works either way, but one that spreads or
+        // stringifies the map would otherwise see nothing consented on a
+        // first visit, when no record has told this any code names.
+        const w = runDom(unblock, 'https://realtruck.com/america-250/', PAGE,
+            w_ => { w_.eval(SITE); }
+        ).window;
+        const purposes = (await w.semaphore.ketch.getConsent()).purposes;
+        assert.deepEqual(plain(Object.keys(purposes)), []);
+        assert.equal(purposes.optional, true);
+        assert.equal(purposes.something_else, true);
+        // Asked for, so now there to be found.
+        assert.deepEqual(plain(Object.keys(purposes)),
+            [ 'optional', 'something_else' ]);
+        assert.deepEqual(plain({ ...purposes }),
+            { optional: true, something_else: true });
+    });
+
+    it('does not claim to have what is not a purpose', async ( ) => {
+        const w = runDom(unblock, 'https://realtruck.com/america-250/', PAGE,
+            w_ => { w_.eval(SITE); }
+        ).window;
+        const purposes = (await w.semaphore.ketch.getConsent()).purposes;
+        // A caller testing for Symbol.iterator and being told yes would take
+        // an iterate path that then throws.
+        assert.equal(
+            w.eval('(function(o) { return Symbol.iterator in o; })')(purposes),
+            false
+        );
+        assert.equal(w.eval('(function(o) { return "optional" in o; })')(purposes), true);
+        // And a prototype read gets a prototype, not a consent value.
+        assert.equal(typeof purposes.__proto__, 'object');
     });
 
     it('leaves the object methods alone, so an await does not hang',
