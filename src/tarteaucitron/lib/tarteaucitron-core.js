@@ -253,7 +253,14 @@ function consentRRTarteaucitron(mode) {
 
     let wrote = 0;
     const writeCookie = (key, status) => {
-        const regex = new RegExp('!' + key + '=(wait|true|false)', 'g');
+        // Escaped, because the key goes into a pattern and a tenant defines
+        // its own service names: an unescaped dot in "ad.player" matches any
+        // character, so rewriting that entry would also wipe "adxplayer".
+        // Theirs builds the same pattern unescaped; this is the one place
+        // where following them would be following a bug.
+        const regex = new RegExp(
+            '!' + key.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&') +
+            '=(wait|true|false)', 'g');
         const kept = readCookie().replace(regex, '');
         const value = cookieName() + '=' + kept + '!' + key + '=' + status;
         const domain = typeof parameters.cookieDomain === 'string' &&

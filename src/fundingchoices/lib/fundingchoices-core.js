@@ -147,6 +147,11 @@ function consentRRFundingChoices(installTcf) {
     let cleared = 0;
     const clearCookie = name => {
         const had = String(doc.cookie || '').indexOf(name + '=') !== -1;
+        // Nothing to clear, and nothing clearable: a cookie this document
+        // cannot read is one set on a path it cannot write either, so the
+        // sweep below would be fourteen assignments for nothing - and no
+        // record is the overwhelmingly common case.
+        if ( had === false ) { return; }
         const gone = '=; expires=Thu, 01 Jan 1970 00:00:01 GMT';
         for ( const path of [ '/', w.location.pathname ] ) {
             try {
@@ -163,7 +168,7 @@ function consentRRFundingChoices(installTcf) {
                 }
             }
         }
-        if ( had ) { cleared += 1; }
+        cleared += 1;
     };
 
     /**************************************************************************/

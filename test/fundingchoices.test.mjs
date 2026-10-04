@@ -242,6 +242,52 @@ describe('fundingchoices-reject', ( ) => {
         assert.equal(String(w.document.cookie), '');
     });
 
+    it('writes nothing at all when there is no record to clear', ( ) => {
+        // Clearing takes a sweep of every plausible path and domain pair,
+        // because neither is readable. A name this document cannot read is
+        // one it cannot clear either, so the sweep is skipped - which is the
+        // common case, on every page.
+        let writes = 0;
+        const w = boot({
+            before: ww => {
+                const own = Object.getOwnPropertyDescriptor(
+                    ww.Document.prototype, 'cookie');
+                Object.defineProperty(ww.document, 'cookie', {
+                    configurable: true,
+                    get: ( ) => own.get.call(ww.document),
+                    set: value => {
+                        writes += 1;
+                        own.set.call(ww.document, value);
+                    },
+                });
+            },
+        });
+        assert.equal(writes, 0);
+        assert.equal(String(w.document.cookie), '');
+    });
+
+    it('sweeps only when there is something there', ( ) => {
+        let writes = 0;
+        const w = boot({
+            before: ww => {
+                const own = Object.getOwnPropertyDescriptor(
+                    ww.Document.prototype, 'cookie');
+                Object.defineProperty(ww.document, 'cookie', {
+                    configurable: true,
+                    get: ( ) => own.get.call(ww.document),
+                    set: value => {
+                        writes += 1;
+                        own.set.call(ww.document, value);
+                    },
+                });
+                ww.document.cookie = 'FCCDCF=yes; path=/';
+            },
+        });
+        // The seed write, then the sweep.
+        assert.ok(writes > 1, String(writes));
+        assert.equal(cookies(w).get('FCCDCF'), undefined);
+    });
+
     it('clears the cookie a visitor consented to earlier', ( ) => {
         // Theirs is set for about thirteen months, so a returning visitor
         // would otherwise keep a record saying yes.

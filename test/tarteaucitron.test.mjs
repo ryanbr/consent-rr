@@ -383,6 +383,19 @@ describe('tarteaucitron-reject', ( ) => {
         assert.equal(w.tarteaucitron.user.gtagUa, 'G-X');
     });
 
+    it('rewrites a dotted key without wiping its neighbour', ( ) => {
+        // A tenant defines its own service names, and the key goes into a
+        // pattern: an unescaped dot matches any character.
+        const w = boot(reject, {
+            before: ww => {
+                ww.document.cookie =
+                    'tarteaucitron=!adxplayer=true!ad.player=true; path=/';
+            },
+        });
+        w.tarteaucitron.job.push('ad.player');
+        assert.equal(record(w), '!adxplayer=true!ad.player=false');
+    });
+
     it('ignores a service name that is not one', ( ) => {
         const w = boot(reject);
         w.tarteaucitron.job.push('<img src=x>');
