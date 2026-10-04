@@ -306,6 +306,24 @@ const FIXTURES = [
             '</head><body><p>x</p></body></html>',
     },
     {
+        resource: 'consentmanager-reject.js',
+        cmp: 'consentmanager.net',
+        page: '<html lang="en"><head>' +
+            '<script src="https://cdn.consentmanager.net/delivery/js/semiautomatic.min.js" data-cmp-cdid="eeb0f89b5264c"></' + 'script>' +
+            '</head><body>' +
+            '<script class="cmplazyload" type="text/plain" data-cmp-src="https://a.example/a.js" data-cmp-vendor="s1"></' + 'script>' +
+            '<p>x</p></body></html>',
+    },
+    {
+        resource: 'consentmanager-reject-unblock.js',
+        cmp: 'consentmanager.net',
+        page: '<html lang="en"><head>' +
+            '<script src="https://cdn.consentmanager.net/delivery/js/semiautomatic.min.js" data-cmp-cdid="eeb0f89b5264c"></' + 'script>' +
+            '</head><body>' +
+            '<script class="cmplazyload" type="text/plain" data-cmp-src="https://a.example/a.js" data-cmp-vendor="s1"></' + 'script>' +
+            '<p>x</p></body></html>',
+    },
+    {
         resource: 'cookieyes-reject.js',
         cmp: 'CookieYes',
         page: '<html lang="en"><head>' +

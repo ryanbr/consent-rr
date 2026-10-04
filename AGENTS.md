@@ -173,6 +173,25 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   never-refused one, and the CMP's own bucket for unidentified trackers
   (`unclassified`) stays refused. **Any finding that makes a resource do less
   needs field evidence, not just a reading of the SDK.**
+- **Assert every string replacement, or a header ends up describing another
+  CMP.** cookieyes-tcf.js was written by adapting the Funding Choices one, and
+  the replacement of its comment block silently did not match - so three
+  releases carried a module whose header said "The IAB layer for Google
+  Funding Choices", cmpId 300, FCCDCF, while the code correctly used 401. The
+  code was covered by tests; the prose was covered by nothing. Every edit that
+  rewrites a block has to assert the old text was there AND assert the new
+  text is, and a module adapted from another family needs its header re-read
+  before it ships. Auditing all twenty families afterwards found no second
+  case - every other cross-family mention was a deliberate comparison - which
+  is worth knowing too.
+- **Find out who reads a record before writing one.** consentmanager's own
+  consent cookie is named from a consentscope and a tenant id that live only
+  in the 493KB bundle being replaced, and grepping their bootstrap, their
+  cmp.php and both tenants' custom data shows nothing else reads it. So it is
+  not written, while euconsent-v2 - which their bundle also writes, and which
+  a third party reads without asking any API - is. The split is the opposite
+  of Funding Choices, where the cookie was everything and there was no API at
+  all. Grep the consumers first; the answer differs per family.
 - **A loader can be domain-locked, and then nothing you boot tells you
   anything.** CookieYes inlines the registered domain in
   client_data/<id>/script.js and compares it to location.hostname by suffix,

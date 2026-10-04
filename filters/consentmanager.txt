@@ -1,0 +1,85 @@
+! Title: consent-rr - consentmanager.net
+! Description: Replaces consentmanager.net's bootstrap and per-tenant delivery
+!              with their own refusal, and answers the four APIs they put up.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! WHAT A PAGE ACTUALLY DOWNLOADS, measured on two tenants - fasthosts.co.uk and
+! dastelefonbuch.de:
+!
+!   delivery/js/semiautomatic.min.js    18KB   the bootstrap: it builds the
+!                                              cmp.php url from window globals
+!                                              and loads the bundle
+!   delivery/cmp.php?cdid=...&h=...      6KB   per tenant: window
+!                                              .cmp_config_data, the loader
+!                                              functions, and the request for
+!                                              the custom data
+!   delivery/js/cmp_final.min.js       493KB   the CMP itself
+!   delivery/customdata/<base64>.js  43-147KB  per tenant vendor and UI data
+!
+! Replacing the bootstrap or cmp.php takes the rest with it - better than half a
+! megabyte a visitor stops fetching. The || rules match every delivery host they
+! use: cdn., b.delivery., and the rest.
+!
+! Swap in consentmanager-reject-unblock.js on a site that withholds something
+! until a purpose is consented to: same refusal, and the tags their blocker
+! parked are let go.
+! -----------------------------------------------------------------------------
+||consentmanager.net/delivery/js/semiautomatic.min.js$script,redirect=consentmanager-reject.js
+||consentmanager.net/delivery/cmp.php$script,redirect=consentmanager-reject.js
+||consentmanager.net/delivery/js/cmp_final.min.js$script,redirect=consentmanager-reject.js
+
+! -----------------------------------------------------------------------------
+! THE RECORD THAT MATTERS IS NOT THEIRS. Their own consent record is
+! __cmpconsent<id>, __cmpconsentx<id> or __cmpconsents<id>, keyed on a
+! consentscope with a per-tenant id - and both live in cmp_config_data inside
+! the file being replaced, so the name cannot be known from outside. Nothing
+! else reads it: grepped across their bootstrap, their cmp.php and both
+! tenants' customdata, the only reader is the 493KB bundle. So it is not
+! written, and an invented name would be a record of this repo's making.
+!
+! What a third party reads is euconsent-v2, which their own bundle writes -
+!
+!   r.alt = o > 0 ? (s ? "euconsent-v2" : "nc_euconsent-v2")
+!                 : (s ? "euconsent" : "nc_euconsent");
+!
+! so that one IS written here, with a string that grants nothing, as cmpId 31.
+! Their own cmp.php says "iabid":31 and the IAB's published list agrees.
+!
+! THEIR EVENTS GO TO TWO DIFFERENT TARGETS, which is the sort of thing that
+! quietly reaches nobody if it is assumed: cmpEvent and cmpEvent_<type> at the
+! WINDOW, and their WordPress Consent API bridge, wp_consent_type_defined, at
+! the DOCUMENT - next to window.wp_consent_type and a wp_set_consent per
+! category.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Deliberately left alone:
+!
+!   delivery/customdata/*    per-tenant vendor and UI data. With cmp.php
+!                            replaced nothing asks for it, and the file NAME is
+!                            itself the configuration: base64 of
+!                            m_1.w_170577.r_GDPR.l_en.d_53863.x_130... so it
+!                            carries the website id, the regime and the
+!                            language.
+!   their blocker            it is in the bundle being replaced. uBlock Origin
+!                            is what blocks once it is gone, and what their
+!                            markup parked stays parked under reject.
+!   their cross-domain frame theirs posts cmpcd:set:<key>=<value> into a
+!                            __cmpcdframe iframe to share a choice between a
+!                            customer's domains. Nothing is shared from here.
+!   their tracking           theirs calls Microsoft Clarity, Microsoft UET and
+!                            Xandr, and pushes a data layer event, on a
+!                            decision. None of it is sent.
+!
+! To see it work:
+!
+!   [consent-rr] consentmanager-reject 1.0.0 purposes=none vendors=none
+!                api=__cmp+__uspapi tcf=refused freed=0 events=5 told=5
+!                banner=none crossdomain=none tracking=none
+! -----------------------------------------------------------------------------

@@ -41,6 +41,8 @@ describe('resources file', ( ) => {
                 'civic-reject.js',
                 'complianz-accept.js',
                 'complianz-reject.js',
+                'consentmanager-reject-unblock.js',
+                'consentmanager-reject.js',
                 'cookiebot-reject.js',
                 'cookieinformation-reject.js',
                 'cookiescript-reject.js',

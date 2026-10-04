@@ -18,46 +18,56 @@
 
     Home: https://github.com/ryanbr/consent-rr
 
-    The IAB layer for CookieYes: a refusal.
+    The IAB layer for consentmanager.net: a refusal, and the one record this
+    family writes rather than only answers.
 
-    Their script.js opens with the IAB stub - the __tcfapiLocator frame
-    discovery and the queue - and their banner.js replaces it with the real
-    thing. Replacing script.js takes both, so a page or a vendor waiting on
-    __tcfapi would wait forever. This answers instead.
-
-      cmpId 401                 CookieYes Limited, from the IAB's own
-                                published list at
-                                cmplist.consensu.org/v2/cmp-list.json, where
-                                it is the only CookieYes entry and carries
-                                environments Web and Native App (Mobile).
+      cmpId 31                  consentmanager.net - and this one needed no
+                                looking up: their own per-tenant cmp.php
+                                carries "iabid":31 inside
+                                window.cmp_config_data, on both tenants
+                                sampled. The IAB's published list at
+                                cmplist.consensu.org/v2/cmp-list.json agrees
+                                that id 31 is consentmanager.net, so their own
+                                data and the registry say the same thing.
       cmpVersion 1              not derivable: theirs comes down with the
-                                per-tenant banner configuration their
-                                replaced file carries. It is informational in
-                                the string, so it says 1 rather than guessing.
-      vendor list 179           and policy version 5, read off the global
-                                vendor list THEY SHIP -
-                                cdn-cookieyes.com/common/iab-gvl-v3.json -
-                                which is 917KB and declares
-                                vendorListVersion 179, tcfPolicyVersion 5 and
-                                1223 vendors. Their own file is the evidence
-                                here, not a third party's copy. Replacing
-                                script.js means nothing asks for it, which is
-                                most of a megabyte a visitor stops fetching.
-      publisher country AA      which is what "not stated" looks like. Theirs
-                                is per tenant and in the replaced file.
+                                per-tenant configuration in the file being
+                                replaced. Informational in the string.
+      vendor list 179           and policy version 5, the current published
+                                list. Unlike CookieYes, who ship their own
+                                copy of the global vendor list and declare a
+                                version in it, nothing in the four files
+                                consentmanager serves states one.
+      publisher country AA      "not stated". Theirs is per tenant, in the
+                                replaced file - which also carries their
+                                server-side geo, "usr_cc":"NZ" on both
+                                samples, from where this was measured.
 
-    NOTHING IS STORED FOR IT. No euconsent-v2 and no IABTCF_ key: theirs keeps
-    the TC string and the Google additional-consent string inside their own
-    cookieyes-consent record, which is the one being refused, so a refusal
-    that wrote a string next to it would be answering twice.
+    THE COOKIE IS WRITTEN HERE, which is the difference from the two families
+    this builder shares its shape with. Their own bundle writes the standard
+    one:
+
+        r.alt = o > 0 ? (s ? "euconsent-v2" : "nc_euconsent-v2")
+                      : (s ? "euconsent" : "nc_euconsent");
+
+    A third party reads euconsent-v2 without asking any API, so leaving it
+    absent would leave an acceptance from before this was installed standing.
+    It is written with a string that grants nothing, in every scope a stored
+    one could be in - their own writeCookie takes its domain from a
+    per-tenant consentscope in the replaced file, and their
+    getDomainForScope carries its own two-level suffix list to build one.
+
+    Their own record - __cmpconsent<id>, __cmpconsentx<id> or
+    __cmpconsents<id>, by consentscope - is NOT written. Nothing outside the
+    493KB bundle reads it, and the name needs two values only that bundle
+    has. See the core.
 
 */
 
-function consentRRCookieYesTcf() {
+function consentRRConsentManagerTcf() {
     const w = window;
     const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
-    const CMP_ID = 401;
+    const CMP_ID = 31;
     const CMP_VERSION = 1;
     const VENDOR_LIST_VERSION = 179;
     const POLICY_VERSION = 5;
@@ -187,8 +197,38 @@ function consentRRCookieYesTcf() {
         },
     });
 
+    // Every scope a stored acceptance could be in, for the same reason the
+    // core writes its own record that way.
+    const scopes = ( ) => {
+        const out = [ '' ];
+        const host = String(w.location.hostname || '');
+        if ( /^[0-9.]+$/.test(host) || host.indexOf('.') === -1 ) { return out; }
+        const labels = host.split('.');
+        for ( let at = 0; at < labels.length - 1; at += 1 ) {
+            out.push(labels.slice(at).join('.'));
+        }
+        return out;
+    };
+
+    let wrote = 0;
+    const store = ( ) => {
+        const https = String(w.location.protocol) === 'https:';
+        const when = new Date(Date.now() + 365 * 86400000).toUTCString();
+        for ( const domain of scopes() ) {
+            try {
+                w.document.cookie = 'euconsent-v2=' + tcString +
+                    '; expires=' + when + '; path=/' +
+                    (domain !== '' ? '; domain=' + domain : '') +
+                    (https ? '; SameSite=None; Secure' : '; SameSite=Lax');
+                wrote += 1;
+            } catch ( ex ) {
+            }
+        }
+    };
+
     const install = ( ) => {
         const doc = w.document;
+        store();
         const listeners = new Map();
         let nextId = 0;
         const api = (command, version, callback, parameter) => {
@@ -303,5 +343,8 @@ function consentRRCookieYesTcf() {
         return true;
     };
 
-    return { tcString, cmpId: CMP_ID, publisherCC: PUBLISHER_CC, install };
+    return {
+        tcString, cmpId: CMP_ID, publisherCC: PUBLISHER_CC, install,
+        written: ( ) => wrote,
+    };
 }
