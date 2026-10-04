@@ -1,0 +1,65 @@
+! Title: consent-rr - Ziff Davis zdconsent
+! Description: Replaces Ziff Davis's own consent layer with a stub that
+!              records their refusal, runs the queues a page waits on, and
+!              never asks for OneTrust.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! TWO FILES, ONE DIFFERENCE. zdconsent_eu.js is byte-identical to zdconsent.js
+! but for two booleans - gdprApplies and optinApplies - baked true, and the
+! site decides which one a visitor is served. One wildcard covers both, and
+! whichever was asked for, the resource reads it back off the script element:
+! uBO redirects the request, so the element keeps its original src.
+!
+! Swap in zdconsent-accept.js on a site that needs consent to be usable - see
+! the README, it is the narrow case.
+! -----------------------------------------------------------------------------
+||cdn.ziffstatic.com/jst/zdconsent*.js$script,redirect=zdconsent-reject.js
+
+! -----------------------------------------------------------------------------
+! IT IS A ONETRUST FRONT END, which is why there is nothing else to add here.
+! Their script's first act is to inject OneTrust's otSDKStub.js from
+! cdn.cookielaw.org, and the function that decides what is consented reads
+! OneTrust's own record - the OptanonConsent cookie's groups, or
+! window.OnetrustActiveGroups - over the top of its own defaults.
+!
+! So the resource is the OneTrust layer plus theirs, and with their script
+! replaced nothing asks cdn.cookielaw.org for anything. A site that also loads
+! OneTrust directly is covered by filters/onetrust.txt; the two stubs see each
+! other and the second one stands down.
+!
+! THE QUEUES ARE THE POINT. A page pushes work into window.zdconsent.run /
+! cmd / analytics / functional / social / useractioncomplete, and their script
+! runs each queue when the matching consent exists. run is ungated - mashable.com
+! queues nine things into it, speedtest.net declares the queues inline above the
+! tag - so blocking the file outright leaves all of it unrun. The stub runs run
+! and useractioncomplete whatever was decided, and leaves the consent-gated
+! ones parked exactly as their own Deny All does.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Deliberately left alone:
+!
+!   cdn.ziffstatic.com/pg/*.js   their ad stack. On speedtest.net the inline
+!                               onload AND onerror both resolve the page's
+!                               __pogoReady promise, so blocking it strands
+!                               nothing.
+!   the adblock report          their script sets window.adblock, calls
+!                               Pogo.setADB(true), writes a _pgabp cookie and
+!                               sends gtag('event', 'adblock'). The stub does
+!                               none of it.
+!   https://zdbb.net/optout     their own refusal calls it server-side. A
+!                               redirected script talks to nobody.
+!
+! To see it work, the two console lines name each layer and what it wrote:
+!
+!   [consent-rr] zdconsent-reject/onetrust 1.0.0 groups=,C0001, tcf=refused
+!                gpp=refused
+!   [consent-rr] zdconsent-reject 1.0.0 variant=default gdpr=false geo=unknown
+!                consent=refused gpc=unset usp=1YYY cookies=4 queues=2 events=3
+! -----------------------------------------------------------------------------

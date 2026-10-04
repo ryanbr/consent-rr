@@ -13,7 +13,7 @@ Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**
 **InMobi Choice** (formerly Quantcast Choice), **Osano**, **Civic Cookie
 Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 **PubTech**, **Termly**, **Ketch**, **AppConsent**, **CookieScript**,
-**Didomi** and **Complianz**.
+**Didomi**, **Complianz** and **Ziff Davis's own zdconsent**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -38,6 +38,8 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `didomi-accept.js` | Didomi, granting: every purpose they define consented, plus any the tenant named in `didomiConfig`. Content a site gates on its own purpose read is shown. Still no TC string, so IAB vendors are not told anything. |
 | `complianz-reject.js` | Complianz (WordPress): their own refusal written per category under the site's own cookie prefix, with their policy id kept so the next page does not wipe it, and the tags their blocker parked left parked. |
 | `complianz-accept.js` | Complianz, granting: every category consented, and the elements their blocker rewrote to `data-src-cmplz` put back - script, iframe, image and stylesheet - with their content notice removed. |
+| `zdconsent-reject.js` | Ziff Davis (mashable.com, speedtest.net, askmen.com): their own Deny All record, the OneTrust record underneath that their script actually reads, and the queued work a page waits on run - which blocking the file outright leaves unrun. |
+| `zdconsent-accept.js` | Ziff Davis, granting - for the EU build, where nothing is consented until a visitor answers, and for an accept-or-pay site where their script rewrites OneTrust's reject button into a subscribe link. It will not overrule a GPC header. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -66,29 +68,31 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/cookiescript-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/didomi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/didomi-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/complianz-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/complianz-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/didomi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/didomi-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/complianz-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/complianz-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/zdconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/zdconsent-accept.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -102,8 +106,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.31.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.31.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.32.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.32.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -128,7 +132,8 @@ files, not described.
    [`filters/appconsent.txt`](filters/appconsent.txt) and
    [`filters/cookiescript.txt`](filters/cookiescript.txt) and
    [`filters/didomi.txt`](filters/didomi.txt) and
-   [`filters/complianz.txt`](filters/complianz.txt) into *My filters*, or
+   [`filters/complianz.txt`](filters/complianz.txt) and
+   [`filters/zdconsent.txt`](filters/zdconsent.txt) into *My filters*, or
    host them and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
@@ -1523,6 +1528,101 @@ Deliberately left alone as well: their `/wp-json/complianz/` REST routes, which
 only the banner script calls, and `complianz-gpc.min.js`, their Global Privacy
 Control helper, which is on the visitor's side.
 
+## Ziff Davis zdconsent
+
+```
+||cdn.ziffstatic.com/jst/zdconsent*.js$script,redirect=zdconsent-reject.js
+```
+
+Ziff Davis's own consent layer - mashable.com, speedtest.net, askmen.com,
+pcmag.com and the rest of the group.
+
+**It is a OneTrust front end**, which is why this is the first resource here
+built out of another one. Their script's first act is to inject OneTrust's
+`otSDKStub.js`, and the function that decides what is consented reads
+OneTrust's own record - the `OptanonConsent` cookie's groups, or
+`window.OnetrustActiveGroups` - over the top of its own defaults. So the
+resource is the OneTrust layer plus theirs, and both records are written: a
+page reading `OptanonActiveGroups` and a page reading `zdconsent.optins` are
+told the same thing. With their script replaced, `cdn.cookielaw.org` is never
+asked for anything. Each layer says its own console line.
+
+**Two files, one difference.** `zdconsent_eu.js` is byte-identical to
+`zdconsent.js` but for two booleans - `gdprApplies` and `optinApplies` - baked
+true, and the site decides which one a visitor is served. One wildcard covers
+both, and the resource reads back which it was: uBO redirects the request, so
+the script element keeps its original `src`. Their own `geoCC`/`geoRC` cookies,
+`window.OOKLA` on speedtest.net, and their `?zdconsent2=EU` override all refine
+it afterwards, exactly as their own geo code does.
+
+**The queues are the point.** A page pushes work into `window.zdconsent.run`,
+`cmd`, `analytics`, `functional`, `social` and `useractioncomplete`, and their
+script runs each queue once the matching consent exists. An entry can be a
+function, a URL, or `{ src, type }` - all three appear on their own sites.
+`run` is ungated: mashable.com queues nine things into it, and speedtest.net
+declares the queues inline above the tag. Blocking the file outright leaves
+every queue unrun, which is the breakage this replaces. The stub runs `run` and
+`useractioncomplete` whatever was decided, and leaves the consent-gated ones
+parked exactly as their own Deny All does.
+
+Their record, from the function their Deny All button ends in:
+
+```
+cookie zdconsent=optout       their own decision, and the one their code reads
+cookie opt_out=1              set alongside it
+cookie zd_core_lialready=true added by their opt-out path
+cookie usprivacy=1YYY         outside GDPR only, where theirs writes it
+```
+
+**GPC is honoured, but only outside GDPR, and their own cookie overrides it:**
+
+```js
+!q && navigator.globalPrivacyControl && (K = false, P = true);
+a && (a === 'optin' ? (K = true, P = false)
+                    : a === 'optout' && (K = false, P = true));
+```
+
+so a stored `optin` silently cancels a visitor's GPC header. `reject` agrees
+with GPC and is written whatever the browser sends. `accept` does not override
+it: outside GDPR, where their own code reads it, a page that asked for accept
+keeps the refusal, both layers stand down together, and the console line says
+`gpc=set skipped=accept want=gpc`. Under GDPR their gate is `!gdprApplies`, so
+the EU build never reads GPC and neither does this.
+
+**Is an accept resource needed at all?** For the sites sampled, no - `reject`
+is the default and leaves them working. The consent-gated queues on
+mashable.com and speedtest.net hold analytics and push-notification code, not
+content, and `run` is ungated. Two cases make `accept` worth having:
+
+- **the EU build**, where nothing is consented until a visitor answers, so a
+  site that queues real functionality behind `functional` or `social` is only
+  usable with consent;
+- **accept-or-pay**, which their script implements by rewriting OneTrust's
+  *Reject All* button into a **Subscribe** link to `/subscribe`, disabling the
+  toggles and adding a login link. There is no refusal on offer there. Note
+  that `reject` already beats that wall rather than losing to it: no banner is
+  ever built, so the dialog never appears and the refusal is recorded anyway.
+
+**Not done here, deliberately:**
+
+- **the adblock report.** Their script sets `window.adblock`, calls
+  `Pogo.setADB(true)`, writes a `_pgabp` cookie and sends
+  `gtag('event', 'adblock', { has_adblock: 1 })`. It is a report about the
+  visitor, and this file only exists because a blocker is installed.
+- **`https://zdbb.net/optout`.** Their own refusal calls it, server-side, along
+  with `zd.core.setLocalOptout`. A redirected script talks to nobody; the
+  cookie record is the part the page reads.
+- **an invented site id.** `siteId`, `bu` and `oneTrustSiteId` come from a
+  hostname table inside their file, so they are empty rather than guessed. The
+  cookie domain is computed with their own function, and `isPremiumSubscriber`
+  is left alone because it is the page's field, not theirs - their script reads
+  it.
+
+One thing worth knowing if you read their markup: a page that gives the tag
+`id="zdconsent"`, as speedtest.net does, makes `window.zdconsent` the *script
+element* until something assigns over it, because a document's ids are named
+properties of the window. The resource will not hang the API on a node.
+
 ## Development
 
 ```sh
@@ -1554,7 +1654,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

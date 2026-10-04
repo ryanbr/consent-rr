@@ -290,6 +290,22 @@ const FIXTURES = [
         },
     },
     {
+        resource: 'zdconsent-reject.js',
+        cmp: 'Ziff Davis zdconsent',
+        page: '<html lang="en"><head>' +
+            '<script>window.zdconsent = window.zdconsent || { run: [], cmd: [], useractioncomplete: [], analytics: [], functional: [], social: [] };</' + 'script>' +
+            '<script id="zdconsent" src="https://cdn.ziffstatic.com/jst/zdconsent.js" async="true"></' + 'script>' +
+            '</head><body><p>x</p></body></html>',
+    },
+    {
+        resource: 'zdconsent-accept.js',
+        cmp: 'Ziff Davis zdconsent',
+        page: '<html lang="en"><head>' +
+            '<script>window.zdconsent = window.zdconsent || { run: [], cmd: [], useractioncomplete: [], analytics: [], functional: [], social: [] };</' + 'script>' +
+            '<script id="zdconsent" src="https://cdn.ziffstatic.com/jst/zdconsent_eu.js" async="true"></' + 'script>' +
+            '</head><body><p>x</p></body></html>',
+    },
+    {
         resource: 'didomi-reject.js',
         cmp: 'Didomi',
         page: '<html lang="es"><head>' +

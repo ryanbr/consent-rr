@@ -20,6 +20,11 @@ The five that break things silently, with no error anywhere:
   an event dispatched at `window` never travels down to `document` - and a test
   that listens on `window` hears both, so it cannot tell.
 
+- **A page's element ids are named properties of the window.** A CMP tag with
+  `id="foo"` makes `window.foo` that script element, so a stub that adopts
+  "the object already there" can hang its API on a DOM node. It throws nothing
+  and the page quietly replaces it.
+
 And the habit that matters most: **mutation-test every test you write.** Tests in
 here have passed against the wrong code path twice, both times because something
 else did the work the test credited to the code under test: a `window` listener

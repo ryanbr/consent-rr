@@ -57,6 +57,8 @@ describe('resources file', ( ) => {
                 'termly-reject.js',
                 'transcend-reject.js',
                 'usercentrics-reject.js',
+                'zdconsent-accept.js',
+                'zdconsent-reject.js',
             ]
         );
     });

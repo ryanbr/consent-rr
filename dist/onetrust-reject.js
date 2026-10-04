@@ -6,13 +6,13 @@
 // comment to JavaScript. uBO drops these "//" lines when it parses.
 (function() {
     'use strict';
-function consentRROneTrust(mode, installTcf, installGpp) {
+function consentRROneTrust(mode, installTcf, installGpp, named) {
     const w = window;
     const doc = w.document;
     const accept = mode === 'accept';
     const reviveAll = accept || mode === 'reject-unblock';
     const VERSION = '1.5.0';
-    const NAME = 'onetrust-' + (accept ? 'accept' : mode);
+    const NAME = named || ('onetrust-' + (accept ? 'accept' : mode));
     const preset = typeof w.OneTrust === 'object' && w.OneTrust !== null
         ? w.OneTrust
         : null;

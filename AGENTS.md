@@ -173,6 +173,28 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   never-refused one, and the CMP's own bucket for unidentified trackers
   (`unclassified`) stays refused. **Any finding that makes a resource do less
   needs field evidence, not just a reading of the SDK.**
+- **A CMP can be a front end for another CMP, and then the record that counts
+  is the inner one's.** Ziff Davis's zdconsent.js injects OneTrust's
+  otSDKStub.js and its own decision function reads OneTrust's groups - the
+  OptanonConsent cookie, or window.OnetrustActiveGroups - over the top of the
+  defaults its own cookie set. So that resource is built out of the OneTrust
+  one (`// @include ../onetrust/lib/...`, with the layer handed in rather than
+  called alongside) instead of reimplementing it. The trap in composing: the
+  outer layer decides, so it has to drive the inner one. An accept that stands
+  down - over a GPC header, there - must stand the layer underneath down with
+  it, or the record the file writes and the record the CMP's own code reads
+  disagree, and the page believes the inner one.
+- **Read the variant off the element uBO redirected.** Two files that differ by
+  two booleans (zdconsent.js and zdconsent_eu.js: gdprApplies and optinApplies)
+  cannot be told apart by a resource that only looks at the page - but the
+  script element keeps its original src through a `redirect=`, so
+  `document.currentScript.src` says which file was asked for. A scriptlet
+  injection has no currentScript, so sweep `script[src*=...]` as well.
+- **A page's element ids are named properties of the window.** speedtest.net
+  gives their tag `id="zdconsent"`, which makes `window.zdconsent` the script
+  ELEMENT until something assigns over it. A stub that adopts "whatever object
+  is already there" will hang its API on a DOM node, silently, and the page
+  then replaces it. Check `nodeType === undefined` before adopting.
 - **Writing nothing is not always a refusal.** Complianz's `cmplz_has_consent`
   returns true for an absent cookie where the tenant's `consenttype` is `optout`
   or `other`, so a refusal has to write `deny` per category explicitly - leaving

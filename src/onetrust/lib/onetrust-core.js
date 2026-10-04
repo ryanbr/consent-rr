@@ -26,7 +26,7 @@
 
 */
 
-function consentRROneTrust(mode, installTcf, installGpp) {
+function consentRROneTrust(mode, installTcf, installGpp, named) {
     const w = window;
     const doc = w.document;
     // What the page is told, and whether parked tags are let go, are two
@@ -37,7 +37,9 @@ function consentRROneTrust(mode, installTcf, installGpp) {
     const reviveAll = accept || mode === 'reject-unblock';
     // Substituted from package.json by tools/build.mjs.
     const VERSION = '@@VERSION@@';
-    const NAME = 'onetrust-' + (accept ? 'accept' : mode);
+    // A resource built on top of this one says its own name, so the console
+    // line names the file the user installed rather than the layer.
+    const NAME = named || ('onetrust-' + (accept ? 'accept' : mode));
 
     // A site can preset window.OneTrust (geolocationResponse, for one) before
     // the SDK loads, and the SDK assigns over whatever is there rather than
