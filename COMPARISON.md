@@ -132,7 +132,7 @@ the same fixture as its sibling.
 | `complianz-accept` | 11.9 KB | `cmplz_get_cookie`, `cmplz_set_cookie`, `cmplz_has_consent`, `cmplz_in_array`, `cmplz_get_banner_status`, `cmplz_set_banner_status` +9 more |
 | `zdconsent-reject` | 48.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
 | `zdconsent-accept` | 48.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
-| `fundingchoices-reject` | 6.2 KB | `googlefc`, `__fcInternalApiManager`, `__fcInternalApiPostMessageReady` |
+| `fundingchoices-reject` | 15.1 KB | `googlefc`, `__fcInternalApiManager`, `__fcInternalApiPostMessageReady`, `__tcfapi` |
 | `didomi-reject` | 13.8 KB | `Didomi`, `didomiState`, `didomiEventListeners`, `didomiOnReady` |
 | `didomi-accept` | 13.8 KB | `Didomi`, `didomiState`, `didomiEventListeners`, `didomiOnReady` |
 | `cookiescript-reject` | 19.1 KB | `CookieScriptData`, `CookieScript` |
@@ -163,7 +163,7 @@ the same fixture as its sibling.
 | `complianz-accept` | `cmplz_functional`, `cmplz_preferences`, `cmplz_statistics`, `cmplz_marketing`, `cmplz_policy_id`, `cmplz_banner-status`, `cmplz_saved_categories`, `cmplz_consented_services`, `cmplz_saved_services` | - | - | - | no |
 | `zdconsent-reject` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2`, `zdconsent`, `opt_out`, `zd_core_lialready`, `usprivacy` | `cookieChoiceMade` | - | `__tcfapi`, `__gpp`, `__uspapi` | yes |
 | `zdconsent-accept` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2`, `zdconsent` | `cookieChoiceMade` | - | `__tcfapi`, `__gpp`, `__uspapi` | yes |
-| `fundingchoices-reject` | - | - | - | - | no |
+| `fundingchoices-reject` | - | - | - | `__tcfapi` | no |
 | `didomi-reject` | `didomi_token` | `didomi_token` | - | - | no |
 | `didomi-accept` | `didomi_token` | `didomi_token` | - | - | no |
 | `cookiescript-reject` | `CookieScriptConsent` | - | update: granted security_storage | - | no |
@@ -229,7 +229,7 @@ uBlock Origin does the blocking.
 [consent-rr] complianz-accept 1.0.0 categories=all cookies=4 services=2 revived=2 told=4 prefix=cmplz_ policy=kept consenttype=optin
 [consent-rr] zdconsent-reject/onetrust 1.0.0 groups=,C0001, tcf=refused gpp=refused
 [consent-rr] zdconsent-accept/onetrust 1.0.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
-[consent-rr] fundingchoices-reject 1.0.0 frames=2 answered=0 replied=0 cleared=0 tcf=absent
+[consent-rr] fundingchoices-reject 1.1.0 frames=2 answered=0 replied=0 cleared=0 tcf=refused
 [consent-rr] didomi-reject 1.0.0 purposes=none token=written ready=0 listeners=0 tcf=absent
 [consent-rr] didomi-accept 1.0.0 purposes=all token=written ready=0 listeners=0 tcf=absent
 [consent-rr] cookiescript-reject 1.0.7 action=reject categories=strict cookie=written freed=1 removed=0 gcm=denied/default api=ready watch=watching reload=reloading

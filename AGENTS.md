@@ -184,6 +184,12 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   domain above it, because the domain a cookie was set with is not readable.
   Before building a record for a new family, grep the consumer - the ad or
   tag script that reads it - and find out whether it reads an API at all.
+  **And expect more than one consumer, wanting different answers.** The same
+  resource answers __tcfapi with a refusal, because a page-side vendor waiting
+  on a CMP waits forever otherwise, while leaving the cookie absent, because
+  that is the stronger statement to the ad scripts that read only the cookie.
+  Nothing is stored for the API at all. That is not an inconsistency: one says
+  no and the other says nothing, and neither says yes.
 - **A vendor's own fallback path is the specification for a stub.** Funding
   Choices serves a different script when it has nothing to show, and booting
   that one answers every question worth asking: which globals, which iframe

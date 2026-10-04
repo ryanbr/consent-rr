@@ -22,6 +22,11 @@
     visitor consented to before installing this is cleared, because theirs
     outlives a page by about thirteen months.
 
+    The IAB layer is a refusal too, and the part their inactive path leaves
+    out: __tcfapi answers, with cmpId 300 and a string that grants nothing,
+    where blocking the request leaves a page waiting on a CMP that is never
+    coming.
+
     No accept resource. There is nothing a page needs consent for here that
     blocking the request would not already have taken away.
 
@@ -30,5 +35,6 @@
 (function() {
     'use strict';
     // @include lib/fundingchoices-core.js
-    consentRRFundingChoices();
+    // @include lib/fundingchoices-tcf.js
+    consentRRFundingChoices(consentRRFundingChoicesTcf);
 })();

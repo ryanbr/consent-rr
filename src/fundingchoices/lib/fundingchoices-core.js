@@ -67,6 +67,12 @@
     the registrable domain, because the one they wrote is not necessarily the
     one this page can see.
 
+    THE IAB LAYER IS IN lib/fundingchoices-tcf.js, and it is a refusal. Their
+    messaging script is the TCF CMP, and it is the one thing this inactive path
+    does not put up, so a page or a vendor waiting on __tcfapi waits forever
+    once the request is blocked. The API answers; nothing is stored, because
+    the only place their own string lives is the cookie being refused.
+
     NOT DONE HERE, deliberately:
 
       callbackQueue       A publisher's googlefc.callbackQueue is left exactly
@@ -80,14 +86,6 @@
                           from a token-bound url that answers 403 to anything
                           but the page it was minted for.
 
-      __tcfapi            Their messaging script is a TCF CMP; this is not.
-                          Nothing provides one while the request is blocked,
-                          which is the state this is replacing, so putting one
-                          up would reach further than blocking does and would
-                          have to invent a TC string to be useful. A site that
-                          waits on __tcfapi rather than on their iframes is
-                          the evidence that would change this.
-
       the loader's markers
                           Their script stamps two window properties named
                           btoa(id + "loader_js") and btoa(id + "cached_js"),
@@ -97,7 +95,7 @@
 
 */
 
-function consentRRFundingChoices() {
+function consentRRFundingChoices(installTcf) {
     const w = window;
     const doc = w.document;
     // Substituted from package.json by tools/build.mjs.
@@ -311,6 +309,19 @@ function consentRRFundingChoices() {
 
     clearCookie(COOKIE);
 
+    // The IAB layer, handed in rather than reached for, so a build without it
+    // is a resource without it. It goes in after the cookie is cleared: a
+    // vendor that answers an addEventListener by reading the record should not
+    // find the one this refusal has just deleted.
+    let tcf = 'absent';
+    if ( typeof installTcf === 'function' ) {
+        try {
+            tcf = installTcf().install() ? 'refused' : 'theirs';
+        } catch ( ex ) {
+            tcf = 'failed';
+        }
+    }
+
     googlefc.consentRR = { name: NAME, version: VERSION };
 
     // Said once, at the end, so it reports what actually went in. cleared=1
@@ -322,7 +333,7 @@ function consentRRFundingChoices() {
             ' answered=' + answered +
             ' replied=' + replied +
             ' cleared=' + cleared +
-            ' tcf=absent'
+            ' tcf=' + tcf
         );
     }
 }

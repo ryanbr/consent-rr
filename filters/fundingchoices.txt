@@ -38,6 +38,17 @@
 !   {__fciReturn: "[<callId>,[4]]"}. A command outside the two, or a call with
 !   no numeric callId, gets silence - which is also theirs.
 !
+! THE IAB LAYER IS ANSWERED, AND REFUSES. Their messaging script is the TCF
+! CMP, and it is the one thing this inactive path does not put up - so a page
+! or a vendor waiting on __tcfapi waits forever once the request is blocked.
+! __tcfapi answers here as cmpId 300, which is Google LLC on the IAB's own
+! published list, with gdprApplies true and a string that grants nothing in
+! any set it carries - purposes, legitimate interests, vendors, special
+! features, publisher. The locator frame and the postMessage relay go up with
+! it, so a vendor in a frame is answered too. Nothing is stored: no
+! euconsent-v2 and no IABTCF_ key, because theirs keeps the string in the
+! cookie below, which is the one being refused.
+!
 ! THE REFUSAL IS THEIR COOKIE'S ABSENCE. gpt.js and adsbygoogle.js each read
 ! exactly one Funding Choices thing, the FCCDCF cookie: URI-decoded if it
 ! starts with %, parsed as JSPB, field 4, whose field 1 is the TC string. No
@@ -58,19 +69,14 @@
 !                            answers 403 to anything but the page it was minted
 !                            for, so its key names cannot be measured either.
 !
-!   __tcfapi                 their messaging script is a TCF CMP; this is not.
-!                            Nothing provides one while the request is blocked,
-!                            which is the state being replaced, and a useful
-!                            one would have to invent a TC string.
-!
 !   anything on the host     that is not a script. The rule is $script, so a
 !                            beacon or a frame stays with whatever blocks it
 !                            today.
 !
 ! To see it work:
 !
-!   [consent-rr] fundingchoices-reject 1.0.0 frames=2 answered=0 replied=0
-!                cleared=1 tcf=absent
+!   [consent-rr] fundingchoices-reject 1.1.0 frames=2 answered=0 replied=0
+!                cleared=1 tcf=refused
 !
 ! cleared=1 is a visitor who had consented before this was installed.
 ! -----------------------------------------------------------------------------

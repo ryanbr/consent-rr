@@ -16,6 +16,7 @@
 */
 
 import { strict as assert } from 'node:assert';
+import { TCString } from '@iabtcf/core';
 import { before, describe, it } from 'node:test';
 import {
     cookies, filtersText, loadResources, runDom, settle, versions,
@@ -280,7 +281,7 @@ describe('fundingchoices-reject', ( ) => {
         assert.ok(had[0].includes(' cleared=1'), had[0]);
         assert.ok(none[0].includes(' cleared=0'), none[0]);
         assert.ok(none[0].includes(' frames=2 '), none[0]);
-        assert.ok(none[0].endsWith(' tcf=absent'));
+        assert.ok(none[0].endsWith(' tcf=refused'));
     });
 
     it('leaves a publisher callbackQueue exactly as theirs leaves it', ( ) => {
@@ -302,9 +303,10 @@ describe('fundingchoices-reject', ( ) => {
         assert.equal(w.googlefc.callbackQueue.length, 2);
     });
 
-    it('puts up no TCF, GPP or US privacy api', ( ) => {
+    it('puts up no GPP or US privacy api', ( ) => {
+        // Their messaging script is a TCF CMP and nothing else, so the IAB
+        // layer is answered and these two are not.
         const w = boot();
-        assert.equal(typeof w.__tcfapi, 'undefined');
         assert.equal(typeof w.__gpp, 'undefined');
         assert.equal(typeof w.__uspapi, 'undefined');
     });
@@ -332,6 +334,206 @@ describe('fundingchoices-reject', ( ) => {
     it('installs anyway on a page that removed the console', ( ) => {
         const w = boot({ before: ww => { ww.console = undefined; } });
         assert.ok(frameNames(w).includes('googlefcLoaded'));
+    });
+});
+
+/******************************************************************************/
+
+describe('fundingchoices-reject, the IAB layer', ( ) => {
+    const ask = (w, command, parameter) => {
+        let answer = [ 'NOT CALLED', 'NOT CALLED' ];
+        w.__tcfapi(command, 2, (value, success) => {
+            answer = [ value, success ];
+        }, parameter);
+        return answer;
+    };
+
+    it('answers at all, which their inactive path does not', ( ) => {
+        assert.equal(typeof boot().__tcfapi, 'function');
+    });
+
+    it('says the regime applies, or a vendor would just proceed', ( ) => {
+        const [ data, ok ] = ask(boot(), 'getTCData');
+        assert.equal(ok, true);
+        assert.equal(data.gdprApplies, true);
+        assert.equal(data.cmpStatus, 'loaded');
+        assert.equal(data.eventStatus, 'tcloaded');
+    });
+
+    it('is Google LLC, cmpId 300, from the IAB s own list', ( ) => {
+        const [ data ] = ask(boot(), 'getTCData');
+        assert.equal(data.cmpId, 300);
+        assert.equal(TCString.decode(data.tcString).cmpId, 300);
+    });
+
+    it('builds a string the IAB s own library reads back', ( ) => {
+        const [ data ] = ask(boot(), 'getTCData');
+        const decoded = TCString.decode(data.tcString);
+        assert.equal(decoded.cmpVersion, 1);
+        assert.equal(decoded.vendorListVersion, 179);
+        assert.equal(decoded.policyVersion, 5);
+        assert.equal(decoded.isServiceSpecific, true);
+        assert.equal(decoded.publisherCountryCode, 'AA');
+    });
+
+    it('grants nothing, in every set a string carries', ( ) => {
+        const [ data ] = ask(boot(), 'getTCData');
+        const decoded = TCString.decode(data.tcString);
+        assert.equal(decoded.purposeConsents.size, 0);
+        assert.equal(decoded.purposeLegitimateInterests.size, 0);
+        assert.equal(decoded.vendorConsents.size, 0);
+        assert.equal(decoded.vendorLegitimateInterests.size, 0);
+        assert.equal(decoded.specialFeatureOptins.size, 0);
+        assert.equal(decoded.publisherConsents.size, 0);
+        assert.equal(decoded.publisherLegitimateInterests.size, 0);
+    });
+
+    it('says no in the object a page reads without decoding', ( ) => {
+        const [ data ] = ask(boot(), 'getTCData');
+        assert.equal(Object.values(data.purpose.consents).includes(true), false);
+        assert.equal(Object.keys(data.purpose.consents).length, 11);
+        assert.equal(
+            Object.values(data.purpose.legitimateInterests).includes(true),
+            false);
+        assert.deepEqual(Object.keys(data.vendor.consents), []);
+        assert.equal(
+            Object.values(data.specialFeatureOptins).includes(true), false);
+        assert.equal(
+            Object.values(data.publisher.consents).includes(true), false);
+    });
+
+    it('takes the consent language off the document', ( ) => {
+        const german = boot({
+            html: PAGE.replace('lang="en"', 'lang="de-AT"'),
+        });
+        assert.equal(
+            TCString.decode(ask(german, 'getTCData')[0].tcString)
+                .consentLanguage, 'DE');
+    });
+
+    it('answers a ping with a loaded cmp', ( ) => {
+        const [ data, ok ] = ask(boot(), 'ping');
+        assert.equal(ok, true);
+        // A vendor that pings and reads this false proceeds without asking,
+        // so the ping has to say it applies as plainly as the data does.
+        assert.equal(data.gdprApplies, true);
+        assert.equal(data.cmpLoaded, true);
+        assert.equal(data.cmpStatus, 'loaded');
+        assert.equal(data.displayStatus, 'hidden');
+        assert.equal(data.apiVersion, '2');
+        assert.equal(data.cmpId, 300);
+        assert.equal(data.gvlVersion, 179);
+        assert.equal(data.tcfPolicyVersion, 5);
+    });
+
+    it('hands back a listener id and takes it off again', ( ) => {
+        const w = boot();
+        const [ data, ok ] = ask(w, 'addEventListener');
+        assert.equal(ok, true);
+        assert.equal(data.listenerId, 1);
+        assert.deepEqual(ask(w, 'removeEventListener', data.listenerId),
+            [ true, true ]);
+        // Gone, so a second removal fails rather than claiming success.
+        assert.deepEqual(ask(w, 'removeEventListener', data.listenerId),
+            [ false, false ]);
+    });
+
+    it('refuses a command it does not implement', ( ) => {
+        assert.deepEqual(ask(boot(), 'nonsense'), [ null, false ]);
+    });
+
+    it('survives a call with no callback', ( ) => {
+        const w = boot();
+        assert.doesNotThrow(( ) => { w.__tcfapi('getTCData', 2); });
+    });
+
+    it('adds the locator frame a cross-frame caller looks for', ( ) => {
+        const w = boot();
+        assert.notEqual(w.frames.__tcfapiLocator, undefined);
+    });
+
+    it('answers over postMessage, as an object and as a string', async ( ) => {
+        const w = boot();
+        const replies = [];
+        const source = { postMessage: message => { replies.push(message); } };
+        const send = payload => {
+            const event = new w.MessageEvent('message', { data: payload });
+            Object.defineProperty(event, 'source', { value: source });
+            Object.defineProperty(event, 'origin', { value: 'https://v.example' });
+            w.dispatchEvent(event);
+        };
+        send({ __tcfapiCall: { command: 'ping', version: 2, callId: 'a' } });
+        send(JSON.stringify(
+            { __tcfapiCall: { command: 'getTCData', version: 2, callId: 9 } }));
+        await settle(20);
+        assert.equal(replies.length, 2);
+        assert.equal(typeof replies[0], 'object');
+        assert.equal(replies[0].__tcfapiReturn.callId, 'a');
+        assert.equal(replies[0].__tcfapiReturn.returnValue.cmpId, 300);
+        // A string in gets a string back, which is what the spec asks for.
+        assert.equal(typeof replies[1], 'string');
+        const parsed = JSON.parse(replies[1]);
+        assert.equal(parsed.__tcfapiReturn.callId, 9);
+        assert.equal(parsed.__tcfapiReturn.returnValue.gdprApplies, true);
+    });
+
+    it('ignores a message that is not a call', async ( ) => {
+        const w = boot();
+        const replies = [];
+        const source = { postMessage: message => { replies.push(message); } };
+        const send = payload => {
+            const event = new w.MessageEvent('message', { data: payload });
+            Object.defineProperty(event, 'source', { value: source });
+            Object.defineProperty(event, 'origin', { value: 'https://v.example' });
+            w.dispatchEvent(event);
+        };
+        send({ __tcfapiCall: { command: 'ping', version: 2 } });   // no callId
+        send({ other: 1 });
+        send('not json');
+        await settle(20);
+        assert.deepEqual(replies, []);
+    });
+
+    it('answers what a page s own IAB stub had parked', ( ) => {
+        const w = boot({
+            before: ww => {
+                // The standard stub: a queue, and a no-argument call hands it
+                // back, which is how a replacement drains it.
+                ww.eval('window.tcfEarly = [];' +
+                    'window.__tcfapi = function() {' +
+                    ' var a = [].slice.call(arguments);' +
+                    ' if (a.length === 0) { return window.__tcfapi.q; }' +
+                    ' window.__tcfapi.q.push(a); };' +
+                    'window.__tcfapi.q = [];' +
+                    'window.__tcfapi("getTCData", 2, function(d, ok) {' +
+                    ' window.tcfEarly.push(ok && d.cmpId); });');
+            },
+        });
+        assert.deepEqual([ ...w.tcfEarly ], [ 300 ]);
+    });
+
+    it('stores nothing: no cookie, no IABTCF key', ( ) => {
+        const w = boot();
+        assert.equal(String(w.document.cookie), '');
+        assert.equal(cookies(w).get('euconsent-v2'), undefined);
+        assert.equal(cookies(w).get('FCCDCF'), undefined);
+        const keys = Object.keys(w.localStorage);
+        assert.deepEqual(keys.filter(key => key.startsWith('IABTCF_')), []);
+    });
+
+    it('says refused in the console line', ( ) => {
+        let out;
+        runDom(reject, URL, PAGE, w => {
+            w.eval(SNIPPET);
+            out = lines(w);
+        });
+        assert.ok(out[0].endsWith(' tcf=refused'), out[0]);
+    });
+
+    it('is the same string across a reload on the same day', ( ) => {
+        const first = ask(boot(), 'getTCData')[0].tcString;
+        const second = ask(boot(), 'getTCData')[0].tcString;
+        assert.equal(first, second);
     });
 });
 
