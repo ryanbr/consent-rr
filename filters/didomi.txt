@@ -1,0 +1,66 @@
+! Title: consent-rr - Didomi
+! Description: Replaces Didomi's per-tenant loader with a stub that records
+!              their own reject-all and leaves their parked tags parked.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! The per-tenant loader is the whole CMP. Its first line sets
+! window.didomiVendorListCore - the IAB vendor list, inlined - and it carries
+! the tenant's configuration and fetches both the SDK and the UI bundle. The
+! path carries the tenant's own id and a target query for the site:
+!
+!   sdk.privacy-center.org/<tenant-uuid>/loader.js?target=www.example.com
+!
+! Replace it and nothing asks for the other two.
+!
+! Swap in didomi-accept.js on a site that breaks under a refusal.
+! -----------------------------------------------------------------------------
+||sdk.privacy-center.org/*/loader.js$script,redirect=didomi-reject.js
+
+! -----------------------------------------------------------------------------
+! The SDK and the UI bundle, which only the loader asks for. Both carry a
+! build hash in the path and the UI one carries the tenant's language:
+!
+!   sdk.privacy-center.org/sdk/<hash>/modern/sdk.<hash>.js
+!   sdk.privacy-center.org/sdk/<hash>/modern/ui-web-es-web.<hash>.js
+!
+! With the loader replaced neither is requested, so these are belt and braces
+! for a tenant that references them directly.
+! -----------------------------------------------------------------------------
+||sdk.privacy-center.org/sdk/*/modern/sdk.*.js$script,redirect=noopjs
+||sdk.privacy-center.org/sdk/*/modern/ui-web-*.js$script,redirect=noopjs
+
+! -----------------------------------------------------------------------------
+! WHAT THIS DOES NOT ANSWER YET: IAB TCF.
+!
+! There is no __tcfapi, no euconsent-v2 cookie and no addtl_consent, and
+! getUserStatus() reports an empty consent_string. A tenant whose tags wait on
+! the TCF API rather than on Didomi's own purpose read will still need an
+! exception until didomi-tcf.js lands.
+!
+! That is deliberate rather than unfinished: a TC string this resource invented
+! would be read by every vendor on the page as consent, which is worse than
+! answering nothing. onetrust, osano, usercentrics and pubtech each grew their
+! TCF module after the core had been in the field.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Deliberately left alone:
+!
+!   api.privacy-center.org/           their consent and events API. With the
+!                                     loader replaced nothing calls it, and a
+!                                     rule here would only hide that.
+!   sdk.privacy-center.org/.../*.json their vendor and translation data, asked
+!                                     for by the SDK this keeps out.
+!
+! To see it work: the console line names the mode, whether their token was
+! written, and how many queued callbacks were drained -
+!
+!   [consent-rr] didomi-reject 1.0.0 purposes=none token=written ready=1
+!                listeners=2 tcf=absent
+! -----------------------------------------------------------------------------

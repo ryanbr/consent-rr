@@ -258,6 +258,20 @@ const FIXTURES = [
         },
     },
     {
+        resource: 'didomi-reject.js',
+        cmp: 'Didomi',
+        page: '<html lang="es"><head>' +
+            '<script src="https://sdk.privacy-center.org/6e7011c3-735d-4a5c-b4d8-c8b97a71fd01/loader.js?target=www.example.com"></' + 'script>' +
+            '</head><body><p>x</p></body></html>',
+    },
+    {
+        resource: 'didomi-accept.js',
+        cmp: 'Didomi',
+        page: '<html lang="es"><head>' +
+            '<script src="https://sdk.privacy-center.org/6e7011c3-735d-4a5c-b4d8-c8b97a71fd01/loader.js?target=www.example.com"></' + 'script>' +
+            '</head><body><p>x</p></body></html>',
+    },
+    {
         resource: 'cookiescript-reject.js',
         cmp: 'CookieScript',
         page: '<html lang="en"><head>' +

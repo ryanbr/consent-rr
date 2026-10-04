@@ -12,7 +12,8 @@ clicked, and the page's consent API answers normally.
 Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**,
 **InMobi Choice** (formerly Quantcast Choice), **Osano**, **Civic Cookie
 Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
-**PubTech**, **Termly**, **Ketch**, **AppConsent** and **CookieScript**.
+**PubTech**, **Termly**, **Ketch**, **AppConsent**, **CookieScript** and
+**Didomi**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -33,6 +34,8 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `termly-reject.js` | Termly: no banner, their own opted-in record - essential alone - with their denied Google consent mode, and the tags their auto-blocker parked left parked. |
 | `pubtech-reject.js` | PubTech CMP: no banner, their publisher-cookie string with every choice off, and `__tcfapi` answering a refusal the IAB's own library agrees is one. |
 | `usercentrics-reject.js` | Usercentrics: no banner, and no service consented in the record their own blocker reads - which leaves that blocker in place, blocking by it. A service a returning visitor had accepted is revoked by name. |
+| `didomi-reject.js` | Didomi: no banner, their own token with nothing consented - in the cookie and in localStorage, as their storage service writes both - and the three events their own refusal emits, in their order. No `__tcfapi` yet. |
+| `didomi-accept.js` | Didomi, granting: every purpose they define consented, plus any the tenant named in `didomiConfig`. Content a site gates on its own purpose read is shown. Still no TC string, so IAB vendors are not told anything. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -61,25 +64,25 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/cookiescript-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -93,8 +96,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.29.7/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.29.7/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.30.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.30.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -776,6 +779,71 @@ definition, so the callback queued there is one it drains.
   never names it. Replacing the engine would drop its blocking and mean
   reimplementing the API it exposes.
 
+## Didomi
+
+```
+||sdk.privacy-center.org/*/loader.js$script,redirect=didomi-reject.js
+||sdk.privacy-center.org/sdk/*/modern/sdk.*.js$script,redirect=noopjs
+||sdk.privacy-center.org/sdk/*/modern/ui-web-*.js$script,redirect=noopjs
+```
+
+**The loader is the whole CMP.** Its first line sets
+`window.didomiVendorListCore` - the IAB vendor list, inlined - and it carries
+the tenant's configuration and fetches both the SDK and the UI bundle. Replace
+it and neither of the others is asked for; the two `noopjs` rules are for a
+tenant that references them directly.
+
+Their record, from the function in their SDK that builds a fresh one:
+
+```js
+{ user_id, created, updated,
+  vendors:     { enabled: [], disabled: [] },
+  purposes:    { enabled: [], disabled: [] },
+  vendors_li:  { enabled: [], disabled: [] },
+  purposes_li: { enabled: [], disabled: [] },
+  version: null }
+```
+
+base64 in a `didomi_token` cookie **and** in localStorage under the same name,
+because their `setTokenToStorages` writes both. An empty `enabled` *is* the
+refusal.
+
+**Writing the record is not the end of their path**, which is the mistake this
+repo has made before. After storing the token their own code emits, in order:
+
+```
+internal.consent.updated
+internal.consent.changed
+consent.changed   { consentToken, fromEUConsent, action }
+```
+
+and both of their queues have to be drained and then kept working -
+`didomiOnReady` (plain functions) and `didomiEventListeners`
+(`{ event, listener }`). A page that pushes to either after the SDK would have
+loaded is a page still waiting, so each is replaced with a pushable that
+answers immediately.
+
+It also publishes `didomiState` and pushes it into the data layer with their
+own twenty field names. `didomiPurposesConsent` is the one sites gate their
+players on - the `OptanonActiveGroups` of this CMP.
+
+**An accept resource is possible here, which is not true of every CMP.**
+Didomi's purpose ids are a fixed vocabulary - `cookies`,
+`create_ads_profile`, `select_personalized_ads`, `measure_ad_performance` and
+the rest - rather than per-tenant strings, so granting them needs no knowledge
+of the tenant. OneTrust's category ids have to be harvested from the page's
+own parked nodes; these do not. A tenant's own additions are read from
+`didomiConfig.app.customPurposes`, the only place they can be known from.
+
+**No IAB TCF yet, and that is deliberate.** There is no `__tcfapi`, no
+`euconsent-v2`, no `addtl_consent`, and `getUserStatus()` reports an empty
+`consent_string`. A tenant whose tags wait on the TCF API rather than on
+Didomi's own purpose read will still need an exception until `didomi-tcf.js`
+lands. A TC string invented here would be read by every vendor on the page as
+consent, which is worse than answering nothing - and onetrust, osano,
+usercentrics and pubtech each grew their TCF module after the core had field
+time.
+
 ## Usercentrics
 
 ```
@@ -1420,7 +1488,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.29.7/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token
