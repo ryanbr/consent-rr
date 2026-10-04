@@ -12,8 +12,8 @@ clicked, and the page's consent API answers normally.
 Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**,
 **InMobi Choice** (formerly Quantcast Choice), **Osano**, **Civic Cookie
 Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
-**PubTech**, **Termly**, **Ketch**, **AppConsent**, **CookieScript** and
-**Didomi**.
+**PubTech**, **Termly**, **Ketch**, **AppConsent**, **CookieScript**,
+**Didomi** and **Complianz**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -36,6 +36,8 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `usercentrics-reject.js` | Usercentrics: no banner, and no service consented in the record their own blocker reads - which leaves that blocker in place, blocking by it. A service a returning visitor had accepted is revoked by name. |
 | `didomi-reject.js` | Didomi: no banner, their own token with nothing consented - in the cookie and in localStorage, as their storage service writes both - and the three events their own refusal emits, in their order. No `__tcfapi` yet. |
 | `didomi-accept.js` | Didomi, granting: every purpose they define consented, plus any the tenant named in `didomiConfig`. Content a site gates on its own purpose read is shown. Still no TC string, so IAB vendors are not told anything. |
+| `complianz-reject.js` | Complianz (WordPress): their own refusal written per category under the site's own cookie prefix, with their policy id kept so the next page does not wipe it, and the tags their blocker parked left parked. |
+| `complianz-accept.js` | Complianz, granting: every category consented, and the elements their blocker rewrote to `data-src-cmplz` put back - script, iframe, image and stylesheet - with their content notice removed. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -64,25 +66,29 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/didomi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/didomi-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/complianz-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/complianz-accept.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -96,8 +102,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.30.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.30.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.31.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.31.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -120,7 +126,9 @@ files, not described.
    [`filters/termly.txt`](filters/termly.txt) and
    [`filters/ketch.txt`](filters/ketch.txt) and
    [`filters/appconsent.txt`](filters/appconsent.txt) and
-   [`filters/cookiescript.txt`](filters/cookiescript.txt) into *My filters*, or
+   [`filters/cookiescript.txt`](filters/cookiescript.txt) and
+   [`filters/didomi.txt`](filters/didomi.txt) and
+   [`filters/complianz.txt`](filters/complianz.txt) into *My filters*, or
    host them and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
@@ -1457,6 +1465,64 @@ it, which is page code being told the opposite of what was recorded.
   request is made here, with or without the signal, and a test pins that the
   refusal is the same either way.
 
+## Complianz
+
+```
+/wp-content/plugins/*/complianz.min.js$script,redirect=complianz-reject.js
+```
+
+**Complianz is a WordPress plugin, so it is served first-party from the site's
+own path.** There is no vendor host to match, and the plugin directory is not
+one name but several - `complianz-gdpr`, `complianz-gdpr-premium`, and themes
+that vendor the banner under their own name. The rule matches the *file* under
+any plugins path, which is what keeps working when the next theme does the same
+thing.
+
+**Nothing in their record can be hardcoded.** Every cookie name is
+`complianz.prefix + name`, and the prefix, the expiry, the policy id, the
+consent type, the region and the cookie domain and path all come from a
+`complianz` object the page declares before their script would have run. The
+resource reads that object and uses their defaults only where it is silent.
+
+Three of their behaviours the resource has to follow rather than approximate:
+
+- **An empty cookie can mean yes.** Their `cmplz_has_consent` treats an absent
+  record as consent where `complianz.consenttype` is `optout` or `other`, so a
+  refusal writes `deny` explicitly. Writing nothing would consent on exactly
+  the sites that assume consent.
+- **The policy id is part of the record.** Their
+  `cmplz_check_cookie_policy_id` compares the stored id against
+  `complianz.current_policy_id` and, on a mismatch, calls `cmplz_deny_all()`,
+  clears every `cmplz` cookie and shows the banner again. A record without the
+  current id is wiped on the next page.
+- **Their decision dispatches per category.** `cmplz_set_consent` ends in a
+  `cmplz_status_change` CustomEvent carrying `{ category, value, region,
+  categories }`, once per category, and both page code and their tag-manager
+  bridge listen for it.
+
+Their four categories are fixed - `functional`, `preferences`, `statistics`,
+`marketing` - and `functional` is always consented, because their own
+`cmplz_has_consent` returns true for it unconditionally.
+
+**The accept resource revives the tags their blocker parked.** Complianz
+rewrites a blocked element's `src` to `data-src-cmplz` and leaves a
+`.cmplz-blocked-content-notice` over it; accept walks those back for LINK, IMG,
+IFRAME and SCRIPT using their own attribute names, marks each `cmplz-activated`
+and removes the notice. A reject leaves all of it exactly as it is, which is
+the blocking the plugin is for.
+
+Also bridged: **the WordPress Consent API**. Where the site has
+`wp_set_consent`, theirs calls it per category, so this does too rather than
+inventing a shape.
+
+Their do-not-track handling is left alone. `cmplz_do_not_track()` reads
+`navigator.globalPrivacyControl` and `navigator.doNotTrack`, and a visitor who
+set either has already said something this should not talk over.
+
+Deliberately left alone as well: their `/wp-json/complianz/` REST routes, which
+only the banner script calls, and `complianz-gpc.min.js`, their Global Privacy
+Control helper, which is on the visitor's side.
+
 ## Development
 
 ```sh
@@ -1488,7 +1554,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.30.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.31.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

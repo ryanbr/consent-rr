@@ -258,6 +258,38 @@ const FIXTURES = [
         },
     },
     {
+        resource: 'complianz-reject.js',
+        cmp: 'Complianz',
+        page: '<html lang="en"><head>' +
+            '<script src="https://example.com/wp-content/plugins/complianz-gdpr/cookiebanner/js/complianz.min.js"></' + 'script>' +
+            '</head><body>' +
+            '<script id="stat" type="text/plain" data-category="statistics" data-service="google-analytics" data-src="https://s.example/s.js"></' + 'script>' +
+            '<iframe id="embed" data-category="marketing" data-service="youtube" data-src-cmplz="https://y.example/e"></iframe>' +
+            '<p>x</p></body></html>',
+        drive: w => {
+            w.eval('window.complianz = { prefix: "cmplz_",' +
+                ' cookie_expiry: 365, current_policy_id: 17,' +
+                ' consenttype: "optin", region: "eu", cookie_domain: "",' +
+                ' cookie_path: "/", clean_cookies: 0, tm_categories: 0 };');
+        },
+    },
+    {
+        resource: 'complianz-accept.js',
+        cmp: 'Complianz',
+        page: '<html lang="en"><head>' +
+            '<script src="https://example.com/wp-content/plugins/complianz-gdpr/cookiebanner/js/complianz.min.js"></' + 'script>' +
+            '</head><body>' +
+            '<script id="stat" type="text/plain" data-category="statistics" data-service="google-analytics" data-src="https://s.example/s.js"></' + 'script>' +
+            '<iframe id="embed" data-category="marketing" data-service="youtube" data-src-cmplz="https://y.example/e"></iframe>' +
+            '<p>x</p></body></html>',
+        drive: w => {
+            w.eval('window.complianz = { prefix: "cmplz_",' +
+                ' cookie_expiry: 365, current_policy_id: 17,' +
+                ' consenttype: "optin", region: "eu", cookie_domain: "",' +
+                ' cookie_path: "/", clean_cookies: 0, tm_categories: 0 };');
+        },
+    },
+    {
         resource: 'didomi-reject.js',
         cmp: 'Didomi',
         page: '<html lang="es"><head>' +

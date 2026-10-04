@@ -173,6 +173,14 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   never-refused one, and the CMP's own bucket for unidentified trackers
   (`unclassified`) stays refused. **Any finding that makes a resource do less
   needs field evidence, not just a reading of the SDK.**
+- **Writing nothing is not always a refusal.** Complianz's `cmplz_has_consent`
+  returns true for an absent cookie where the tenant's `consenttype` is `optout`
+  or `other`, so a refusal has to write `deny` per category explicitly - leaving
+  the record empty consents on exactly the sites that assume consent. Check what
+  the CMP's own reader does with a missing value before deciding a stub can stay
+  quiet. Their record also carries the current policy id, and
+  `cmplz_check_cookie_policy_id` denies everything and re-shows the banner when
+  it does not match, so a record written without it is wiped on the next page.
 - What varies per tenant is left alone deliberately: `publisherCC`, publisher
   restrictions, how many vendors keep legitimate interest, the tenant's consent
   language, whether Google vendors are enabled. None is derivable from a page.

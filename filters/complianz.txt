@@ -1,0 +1,70 @@
+! Title: consent-rr - Complianz
+! Description: Replaces Complianz's cookiebanner script with a stub that
+!              records their own refusal and leaves their parked tags parked.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! Complianz is a WordPress plugin, so unlike every other CMP here it is served
+! FIRST-PARTY from the site's own wp-content path. There is no vendor host to
+! match, and the plugin directory is not one name but several:
+!
+!   /wp-content/plugins/complianz-gdpr/cookiebanner/js/complianz.min.js
+!   /wp-content/plugins/complianz-gdpr-premium/cookiebanner/js/complianz.min.js
+!   /wp-content/plugins/fhoke-support-1.1.0/dist/js/complianz.min.js
+!
+! the third being a theme that vendors their banner under its own name. So the
+! rule matches the FILE under any plugins path, which is what keeps working
+! when the next theme does the same thing.
+!
+! Swap in complianz-accept.js on a site that breaks under a refusal.
+! -----------------------------------------------------------------------------
+/wp-content/plugins/*/complianz.min.js$script,redirect=complianz-reject.js
+
+! -----------------------------------------------------------------------------
+! NOTHING IN THEIR RECORD CAN BE HARDCODED, which is worth knowing before
+! reading the resource. Every cookie name is complianz.prefix + name, and the
+! prefix, the expiry, the policy id, the consent type, the region and the
+! cookie domain and path all come from a `complianz` object the page declares
+! before their script would have run. The resource reads that object.
+!
+! Three of their behaviours the resource has to follow:
+!
+!   AN EMPTY COOKIE CAN MEAN YES. Their cmplz_has_consent treats an absent
+!   record as consent where complianz.consenttype is "optout" or "other", so a
+!   refusal writes "deny" explicitly. Writing nothing would consent on exactly
+!   the sites that assume consent.
+!
+!   THE POLICY ID IS PART OF THE RECORD. Their cmplz_check_cookie_policy_id
+!   compares the stored id against complianz.current_policy_id and, on a
+!   mismatch, denies everything, clears every cmplz cookie and shows the
+!   banner again. A record without the current id is wiped on the next page.
+!
+!   THEY DISPATCH PER CATEGORY. cmplz_set_consent ends in a cmplz_status_change
+!   CustomEvent carrying { category, value, region, categories }, once per
+!   category, and both page code and their tag-manager bridge listen for it.
+!
+! Their do-not-track handling is left alone: cmplz_do_not_track() reads
+! navigator.globalPrivacyControl and navigator.doNotTrack, and a visitor who
+! set either has already said something this should not talk over.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Deliberately left alone:
+!
+!   /wp-json/complianz/      their REST routes, which the banner script calls.
+!                            With it replaced nothing calls them.
+!   complianz-gpc.min.js     their Global Privacy Control helper, which is on
+!                            the visitor's side.
+!
+! To see it work, the console line names what it wrote and what it read from
+! the page's own configuration:
+!
+!   [consent-rr] complianz-reject 1.0.0 categories=functional cookies=4
+!                services=2 revived=0 told=4 prefix=cmplz_ policy=kept
+!                consenttype=optin
+! -----------------------------------------------------------------------------
