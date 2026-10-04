@@ -306,6 +306,20 @@ const FIXTURES = [
             '</head><body><p>x</p></body></html>',
     },
     {
+        resource: 'fundingchoices-reject.js',
+        cmp: 'Google Funding Choices',
+        page: '<html lang="en"><head>' +
+            '<script async src="https://fundingchoicesmessages.google.com/i/pub-1234567890123456?ers=1"></' + 'script>' +
+            '</head><body><p>x</p></body></html>',
+        drive: w => {
+            w.eval('(function(){function s(){' +
+                'if(!window.frames["googlefcPresent"]){' +
+                'if(document.body){var i=document.createElement("iframe");' +
+                'i.name="googlefcPresent";i.style.display="none";' +
+                'document.body.appendChild(i);}else{setTimeout(s,0);}}}s();})();');
+        },
+    },
+    {
         resource: 'didomi-reject.js',
         cmp: 'Didomi',
         page: '<html lang="es"><head>' +

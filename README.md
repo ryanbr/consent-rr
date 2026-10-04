@@ -13,7 +13,8 @@ Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**
 **InMobi Choice** (formerly Quantcast Choice), **Osano**, **Civic Cookie
 Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 **PubTech**, **Termly**, **Ketch**, **AppConsent**, **CookieScript**,
-**Didomi**, **Complianz** and **Ziff Davis's own zdconsent**.
+**Didomi**, **Complianz**, **Ziff Davis's own zdconsent** and
+**Google Funding Choices**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -40,6 +41,7 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `complianz-accept.js` | Complianz, granting: every category consented, and the elements their blocker rewrote to `data-src-cmplz` put back - script, iframe, image and stylesheet - with their content notice removed. |
 | `zdconsent-reject.js` | Ziff Davis (mashable.com, speedtest.net, askmen.com): their own Deny All record, the OneTrust record underneath that their script actually reads, and the queued work a page waits on run - which blocking the file outright leaves unrun. |
 | `zdconsent-accept.js` | Ziff Davis, granting - for the EU build, where nothing is consented until a visitor answers, and for an accept-or-pay site where their script rewrites OneTrust's reject button into a subscribe link. It will not overrule a GPC header. |
+| `fundingchoices-reject.js` | Google Funding Choices: the inactive path their own script takes - the two iframes consumers wait on, their internal queue answering instead of collecting - and their `FCCDCF` consent cookie cleared rather than replaced, because absent is how Google's own readers read a refusal. No accept resource. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -68,31 +70,32 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/cookiescript-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/didomi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/didomi-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/complianz-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/complianz-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/zdconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/zdconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/didomi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/didomi-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/complianz-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/complianz-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/zdconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/zdconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/fundingchoices-reject.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -106,8 +109,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.32.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.32.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.33.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.33.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -133,7 +136,8 @@ files, not described.
    [`filters/cookiescript.txt`](filters/cookiescript.txt) and
    [`filters/didomi.txt`](filters/didomi.txt) and
    [`filters/complianz.txt`](filters/complianz.txt) and
-   [`filters/zdconsent.txt`](filters/zdconsent.txt) into *My filters*, or
+   [`filters/zdconsent.txt`](filters/zdconsent.txt) and
+   [`filters/fundingchoices.txt`](filters/fundingchoices.txt) into *My filters*, or
    host them and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
@@ -1623,6 +1627,84 @@ One thing worth knowing if you read their markup: a page that gives the tag
 element* until something assigns over it, because a document's ids are named
 properties of the window. The resource will not hang the API on a node.
 
+## Google Funding Choices
+
+```
+||fundingchoicesmessages.google.com^$script,redirect=fundingchoices-reject.js
+```
+
+The CMP and ad-block messaging AdSense and Ad Manager publishers get from
+inside the Google console, rather than as a tag of their own.
+
+**Blocking the request is already safe, and this does not change that.** It is
+here for what blocking leaves behind: a page watching for the iframes their
+script appends waits for something that is never coming, and a visitor who
+consented before installing a blocker keeps the cookie that says so. One host
+rule covers every shape they serve a script from - `/i/pub-<id>`, `/f/<token>`,
+`/l/<token>` - because the token is minted per page and there is nothing stable
+in the path to match.
+
+**What it reproduces is their own inactive path.** Their `/f/<token>` script is
+what the loader serves when Funding Choices has decided it has nothing to show,
+and all of this was measured by booting it rather than read from a doc:
+
+- **two hidden iframes in the top document**, named `googlefcInactive` and
+  `googlefcLoaded`. They are the signal consumers wait on, and the counterpart
+  of the `googlefcPresent` iframe the publisher's own inline snippet makes -
+  which is the page's and is left alone.
+- **`window.googlefc.__fci` as a queue that answers rather than collects**,
+  over exactly two command names, `loaded` and `prov`, each answered with the
+  string `[null,[4]]` and anything else with `[null,[2]]` - a JSPB array with
+  their status enum in field 2. Whatever a page queued in their pairs-of-two
+  layout before this arrived is answered too, and an odd-length queue is left
+  alone, as theirs is.
+- **`window.__fcInternalApiManager`**, by their own method names, whose
+  `setError()` is the call their inactive path makes and is what makes every
+  answer the same one.
+- **`window.__fcInternalApiPostMessageReady`** and a listener that answers
+  `{__fciCall: {command, callId}}` with `{__fciReturn: "[<callId>,[4]]"}` to
+  the sender's origin. A command outside the two, or a call with no numeric
+  `callId`, gets silence - also theirs.
+
+**The refusal is their cookie's absence, plus clearing it.** `gpt.js` and
+`adsbygoogle.js` each read exactly one Funding Choices thing, and it is not an
+API - it is the `FCCDCF` cookie, URI-decoded if it starts with `%`, parsed as
+JSPB, field 4, whose field 1 is the TC string:
+
+```js
+this.tcString = (a = Em(document)) && dc(z(a, 1)) != null ? J(a, 1) : null;
+```
+
+No cookie means no TC string, which is the refusal. Writing one would mint a
+consent string of this repo's own making, so nothing is written - and an
+`FCCDCF` a visitor consented to earlier is cleared, on the host and on the
+registrable domain, because theirs is set for about thirteen months and a
+refusal that let it stand would not be one.
+
+**There is no accept resource.** There is nothing a page needs consent for
+here that blocking the request would not already have taken away.
+
+**Not done, deliberately:**
+
+- **`googlefc.callbackQueue` is left exactly as it is**, because their own
+  inactive path leaves it: two callbacks pushed before booting their script
+  both stayed unrun and the queue stayed two long. Running them would be this
+  resource inventing a behaviour the CMP does not have on this path - and the
+  key names it answers to cannot be measured either, because the script that
+  drains them is the messaging one, served from a token-bound URL that answers
+  403 to anything but the page it was minted for.
+- **no `__tcfapi`.** Their messaging script is a TCF CMP; this is not. Nothing
+  provides one while the request is blocked, which is the state being
+  replaced, so putting one up would reach further than blocking does and would
+  have to invent a TC string to be useful. A site that waits on `__tcfapi`
+  rather than on their iframes is the evidence that would change this.
+- **the loader's markers.** Their script stamps two window properties named
+  `btoa(id + "loader_js")` and `btoa(id + "cached_js")`, where the id is minted
+  inside the script body rather than carried in the URL, so it cannot be known
+  from outside. Only their own loader reads them.
+- **the adblock side.** Nothing here reports a blocker, counts one, or helps
+  anything else do so.
+
 ## Development
 
 ```sh
@@ -1662,7 +1744,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.32.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.33.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

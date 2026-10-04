@@ -1,0 +1,76 @@
+! Title: consent-rr - Google Funding Choices
+! Description: Replaces Funding Choices with the inactive path Google's own
+!              script takes, and clears the consent cookie their readers read.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! BLOCKING THE REQUEST IS ALREADY SAFE, and this does not change that. It is
+! here for what blocking leaves behind: a page watching for the iframes their
+! script appends waits for something that is never coming, and a visitor who
+! consented before installing a blocker keeps the cookie that says so.
+!
+! One host rule covers every shape they serve a script from - /i/pub-<id>,
+! /f/<token>, /l/<token> - because the token is minted per page and there is
+! nothing stable in the path to match.
+! -----------------------------------------------------------------------------
+||fundingchoicesmessages.google.com^$script,redirect=fundingchoices-reject.js
+
+! -----------------------------------------------------------------------------
+! WHAT THE RESOURCE REPRODUCES is their /f/<token> script, which is what their
+! loader serves when Funding Choices has decided it has nothing to show. All of
+! it was measured by booting that script, not read from a doc:
+!
+!   two hidden iframes in the TOP document, named googlefcInactive and
+!   googlefcLoaded. The googlefcPresent one is the publisher's own inline
+!   snippet's and is left alone.
+!
+!   window.googlefc.__fci as a queue that ANSWERS instead of collecting, over
+!   exactly two command names - "loaded" and "prov" - each answered with the
+!   string [null,[4]], and anything else with [null,[2]].
+!
+!   window.__fcInternalApiManager and window.__fcInternalApiPostMessageReady,
+!   with a listener that answers {__fciCall: {command, callId}} with
+!   {__fciReturn: "[<callId>,[4]]"}. A command outside the two, or a call with
+!   no numeric callId, gets silence - which is also theirs.
+!
+! THE REFUSAL IS THEIR COOKIE'S ABSENCE. gpt.js and adsbygoogle.js each read
+! exactly one Funding Choices thing, the FCCDCF cookie: URI-decoded if it
+! starts with %, parsed as JSPB, field 4, whose field 1 is the TC string. No
+! cookie means no TC string. Writing one would mint a consent string, so
+! nothing is written - and an FCCDCF a visitor consented to earlier is cleared,
+! on the host and on the registrable domain, because theirs is set for about
+! thirteen months.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Deliberately left alone:
+!
+!   googlefc.callbackQueue   their own inactive path does not run it - pushing
+!                            two callbacks before booting their script leaves
+!                            both unrun and the queue two long - so neither
+!                            does this. The script that drains them is the
+!                            messaging one, served from a token-bound url that
+!                            answers 403 to anything but the page it was minted
+!                            for, so its key names cannot be measured either.
+!
+!   __tcfapi                 their messaging script is a TCF CMP; this is not.
+!                            Nothing provides one while the request is blocked,
+!                            which is the state being replaced, and a useful
+!                            one would have to invent a TC string.
+!
+!   anything on the host     that is not a script. The rule is $script, so a
+!                            beacon or a frame stays with whatever blocks it
+!                            today.
+!
+! To see it work:
+!
+!   [consent-rr] fundingchoices-reject 1.0.0 frames=2 answered=0 replied=0
+!                cleared=1 tcf=absent
+!
+! cleared=1 is a visitor who had consented before this was installed.
+! -----------------------------------------------------------------------------

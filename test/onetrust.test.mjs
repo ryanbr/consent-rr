@@ -46,6 +46,7 @@ describe('resources file', ( ) => {
                 'cookiescript-reject.js',
                 'didomi-accept.js',
                 'didomi-reject.js',
+                'fundingchoices-reject.js',
                 'inmobi-reject.js',
                 'ketch-reject-unblock.js',
                 'ketch-reject.js',

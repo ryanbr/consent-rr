@@ -109,7 +109,7 @@ Sizes: `reject` 36.1 KB, `reject-unblock` 36.1 KB, `accept` 36.1 KB.
 
 # Every resource, side by side
 
-17 consent managers, 25 resources. Each one was booted on a page its own
+18 consent managers, 26 resources. Each one was booted on a page its own
 consent manager would recognise, and the rows below are what it did there - the
 globals it defined, the cookies it wrote, the signals it sent. A resource that
 shares a page with another (the OneTrust three, the Civic two) was measured on
@@ -132,6 +132,7 @@ the same fixture as its sibling.
 | `complianz-accept` | 11.9 KB | `cmplz_get_cookie`, `cmplz_set_cookie`, `cmplz_has_consent`, `cmplz_in_array`, `cmplz_get_banner_status`, `cmplz_set_banner_status` +9 more |
 | `zdconsent-reject` | 48.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
 | `zdconsent-accept` | 48.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
+| `fundingchoices-reject` | 6.2 KB | `googlefc`, `__fcInternalApiManager`, `__fcInternalApiPostMessageReady` |
 | `didomi-reject` | 13.8 KB | `Didomi`, `didomiState`, `didomiEventListeners`, `didomiOnReady` |
 | `didomi-accept` | 13.8 KB | `Didomi`, `didomiState`, `didomiEventListeners`, `didomiOnReady` |
 | `cookiescript-reject` | 19.1 KB | `CookieScriptData`, `CookieScript` |
@@ -162,6 +163,7 @@ the same fixture as its sibling.
 | `complianz-accept` | `cmplz_functional`, `cmplz_preferences`, `cmplz_statistics`, `cmplz_marketing`, `cmplz_policy_id`, `cmplz_banner-status`, `cmplz_saved_categories`, `cmplz_consented_services`, `cmplz_saved_services` | - | - | - | no |
 | `zdconsent-reject` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2`, `zdconsent`, `opt_out`, `zd_core_lialready`, `usprivacy` | `cookieChoiceMade` | - | `__tcfapi`, `__gpp`, `__uspapi` | yes |
 | `zdconsent-accept` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2`, `zdconsent` | `cookieChoiceMade` | - | `__tcfapi`, `__gpp`, `__uspapi` | yes |
+| `fundingchoices-reject` | - | - | - | - | no |
 | `didomi-reject` | `didomi_token` | `didomi_token` | - | - | no |
 | `didomi-accept` | `didomi_token` | `didomi_token` | - | - | no |
 | `cookiescript-reject` | `CookieScriptConsent` | - | update: granted security_storage | - | no |
@@ -180,7 +182,7 @@ The last column is measured by booting each one twice, with the clock and the
 randomness pinned so the two runs differ in nothing but the signal, and then
 comparing what the visitor is left carrying. The 7 it changes carry a
 field for it to change - OneTrust's own `browserGpcFlag`, InMobi's
-legitimate interest, Osano's opt-out. The 18 it does not have nowhere to
+legitimate interest, Osano's opt-out. The 19 it does not have nowhere to
 put it: every category is refused with or without the signal either way.
 
 ## What each one does to a parked tag
@@ -227,6 +229,7 @@ uBlock Origin does the blocking.
 [consent-rr] complianz-accept 1.0.0 categories=all cookies=4 services=2 revived=2 told=4 prefix=cmplz_ policy=kept consenttype=optin
 [consent-rr] zdconsent-reject/onetrust 1.0.0 groups=,C0001, tcf=refused gpp=refused
 [consent-rr] zdconsent-accept/onetrust 1.0.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
+[consent-rr] fundingchoices-reject 1.0.0 frames=2 answered=0 replied=0 cleared=0 tcf=absent
 [consent-rr] didomi-reject 1.0.0 purposes=none token=written ready=0 listeners=0 tcf=absent
 [consent-rr] didomi-accept 1.0.0 purposes=all token=written ready=0 listeners=0 tcf=absent
 [consent-rr] cookiescript-reject 1.0.7 action=reject categories=strict cookie=written freed=1 removed=0 gcm=denied/default api=ready watch=watching reload=reloading

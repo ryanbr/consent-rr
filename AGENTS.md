@@ -173,6 +173,25 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   never-refused one, and the CMP's own bucket for unidentified trackers
   (`unclassified`) stays refused. **Any finding that makes a resource do less
   needs field evidence, not just a reading of the SDK.**
+- **A refusal can be the absence of a record, and then clearing it is the
+  whole job.** Google Funding Choices has no API the ad stack reads: gpt.js and
+  adsbygoogle.js each read exactly one thing, the FCCDCF cookie, and take the
+  TC string out of its field 4. No cookie means no TC string, so writing a
+  refusal there would mean minting a consent string - while writing nothing at
+  all leaves a visitor who consented before installing the resource with a
+  record that still says yes, for about thirteen months. So that resource
+  writes nothing and clears theirs, on the host and on every registrable
+  domain above it, because the domain a cookie was set with is not readable.
+  Before building a record for a new family, grep the consumer - the ad or
+  tag script that reads it - and find out whether it reads an API at all.
+- **A vendor's own fallback path is the specification for a stub.** Funding
+  Choices serves a different script when it has nothing to show, and booting
+  that one answers every question worth asking: which globals, which iframe
+  names, which command names, and the exact strings its internal queue
+  answers with. It also answers the ones that look like bugs: it does NOT run
+  a publisher's callbackQueue, so neither does the resource. Running it would
+  be inventing a behaviour the CMP does not have on that path, which is the
+  same mistake as making one do less than it does.
 - **A CMP can be a front end for another CMP, and then the record that counts
   is the inner one's.** Ziff Davis's zdconsent.js injects OneTrust's
   otSDKStub.js and its own decision function reads OneTrust's groups - the
