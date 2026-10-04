@@ -22,7 +22,39 @@
     cookieyes-reject-unblock.js.
 
     CookieYes, from cdn-cookieyes.com/client_data/<id>/script.js. Measured by
-    booting that file and their banner.js.
+    booting that file and their banner.js on TWO tenants - fontsquirrel.com
+    and domaintools.com - which agree on everything below and differ in two
+    ways worth writing down.
+
+    WHAT THE TWO TENANTS AGREE ON: the same six categories with the same
+    isNecessary flags, the same cookie name and pair order, a consentid minted
+    on the first visit either way, the same sendBeacon to log.cookieyes.com on
+    load, and script.js requesting nothing but banner.js.
+
+    WHERE THEY DIFFER:
+
+      _rootDomain   "www.fontsquirrel.com" on one and "" on the other, which
+                    is why the record here is written host-only AS WELL as on
+                    each domain above: an empty one makes their own cookie
+                    host-only, since the browser drops a domain attribute it
+                    cannot use.
+
+      the IAB layer  one carries the TCF stub and the __tcfapiLocator frame,
+                    the other carries neither - so whether a tenant is
+                    IAB-enabled is configuration, and it is in the file being
+                    replaced. The refusal is installed either way. On a tenant
+                    that had no CMP that is more than the file did, and it is
+                    deliberate: a vendor that asks is told no, which is never
+                    weaker than no answer at all, and a page that waits on
+                    __tcfapi gets an answer rather than stalling. The console
+                    line says tcf=refused so it is visible.
+
+    THE NEWER DEPLOYMENT SPLITS THE CONFIGURATION OUT into two more files -
+    client_data/<id>/<random>.json, the banner targeting rules, and
+    client_data/<id>/audit-table/<random>.json, the cookie descriptions - and
+    both are fetched by banner.js, not by script.js. So replacing script.js
+    still takes all four: 26KB and 169KB of script, and the two JSON files
+    nobody asks for.
 
     ONE FILE IS THE WHOLE INSTALL. script.js carries the IAB TCF stub, their
     auto-blocker, their per-tenant configuration AND the request for
@@ -174,6 +206,36 @@ function consentRRCookieYes(mode, installTcf) {
         return parts.join(',');
     };
 
+    // Every scope a stored yes could be sitting in. Theirs is written with
+    // domain=_ckyStore._rootDomain, which is per-tenant configuration INSIDE
+    // the file being replaced - "www.fontsquirrel.com" on the one sampled, a
+    // registrable domain on another - so it cannot be known from outside. And
+    // the two readers disagree on which duplicate wins: their own
+    // _ckyGetCookieMap assigns over the map as it goes, so the LAST wins,
+    // while a first-match read takes the first. A refusal written to only one
+    // scope could therefore be shadowed by an acceptance in another. Writing
+    // it to all of them leaves every reader, either way round, with a no.
+    // The empty scope is the host-only write, and it is not redundant: a
+    // browser keys a cookie on its host-only flag as well as its name and
+    // domain, so a host-only yes and a domain refusal can sit side by side.
+    // jsdom's jar collapses the two, which is why the test for this watches
+    // the write rather than the jar.
+    const scopes = ( ) => {
+        const out = [ '' ];
+        const host = String(w.location.hostname || '');
+        if ( /^[0-9.]+$/.test(host) || host.indexOf('.') === -1 ) { return out; }
+        const labels = host.split('.');
+        for ( let at = 0; at < labels.length - 1; at += 1 ) {
+            out.push(labels.slice(at).join('.'));
+        }
+        return out;
+    };
+
+    // Their own attributes, from their _ckySetCookie: path, their expiry in
+    // days, SameSite Strict unless a tenant turned iframe support on, and
+    // secure. Theirs adds secure unconditionally, which on an http page means
+    // the browser drops the cookie and no decision is recorded at all - so it
+    // is added where it can hold.
     let wrote = 0;
     const write = ( ) => {
         const value = compose();
@@ -183,11 +245,34 @@ function consentRRCookieYes(mode, installTcf) {
         store.consent = 'no';
         store.action = 'yes';
         store.consentid = consentId;
+        // Their own default, and the only value available: a tenant's
+        // scriptExpiry comes down with the banner configuration inside the
+        // file being replaced, and there is no page-side way to set it - so
+        // reading it back off the store this file put up would be reading
+        // this file's own constant through two more lines.
+        const days = 365;
+        let sameSite = 'Strict';
         try {
-            doc.cookie = COOKIE + '=' + value + '; path=/; max-age=' +
-                31536000;
-            wrote += 1;
+            if ( w.ckySettings && w.ckySettings.iframeSupport ) {
+                sameSite = 'None';
+            }
         } catch ( ex ) {
+        }
+        const https = String(w.location.protocol) === 'https:';
+        if ( sameSite === 'None' && https === false ) { sameSite = 'Strict'; }
+        for ( const domain of scopes() ) {
+            try {
+                doc.cookie = COOKIE + '=' + value +
+                    // expires, as theirs writes it, not max-age.
+                    '; expires=' +
+                    new Date(Date.now() + days * 86400000).toUTCString() +
+                    '; path=/' +
+                    (domain !== '' ? '; domain=' + domain : '') +
+                    '; SameSite=' + sameSite +
+                    (https ? '; secure' : '');
+                wrote += 1;
+            } catch ( ex ) {
+            }
         }
     };
 
@@ -228,11 +313,20 @@ function consentRRCookieYes(mode, installTcf) {
     // javascript/blocked at runtime. A type alone does not run a script that
     // is already in the document, so it is replaced by a copy, which is what
     // their own un-parking does.
+    //
+    // SCRIPTS ONLY, and that is not an omission. An iframe is never parked in
+    // the markup: their blocker handles one at runtime by inserting a sized
+    // video-placeholder div after it - with the YouTube thumbnail where the
+    // src is a YouTube url - and it leaves the iframe's own src in place.
+    // Neither data-src nor any data-cky-src appears anywhere in their files.
+    // With their script replaced that blocker never runs, so an iframe is
+    // simply an iframe and uBlock Origin decides what it may fetch; there is
+    // nothing moved aside for this to put back.
     // Only what THEY parked: their attribute, or the type their own blocker
     // writes at runtime. A bare type="text/plain" script is not necessarily
     // theirs - a template or another CMP parks the same way - and freeing one
     // on a guess would be this resource running code nobody asked it to.
-    const PARKED = 'script[data-cookieyes],iframe[data-cookieyes],' +
+    const PARKED = 'script[data-cookieyes],' +
         'script[type="javascript/blocked"]';
     const DEAD = [ 'text/plain', 'javascript/blocked' ];
 
@@ -247,15 +341,6 @@ function consentRRCookieYes(mode, installTcf) {
         }
         for ( const node of nodes ) {
             try {
-                const tag = node.nodeName.toLowerCase();
-                if ( tag === 'iframe' ) {
-                    const src = node.getAttribute('data-cky-src') ||
-                        node.getAttribute('data-src') || '';
-                    if ( src === '' ) { continue; }
-                    node.setAttribute('src', src);
-                    revived += 1;
-                    continue;
-                }
                 const type = String(node.getAttribute('type') || '')
                     .toLowerCase();
                 if ( DEAD.includes(type) === false && type !== '' ) { continue; }

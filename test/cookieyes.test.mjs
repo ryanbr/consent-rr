@@ -18,7 +18,8 @@ import { strict as assert } from 'node:assert';
 import { TCString } from '@iabtcf/core';
 import { before, describe, it } from 'node:test';
 import {
-    cookies, filtersText, loadResources, runDom, settle, versions,
+    cookies, cookiesInJar, filtersText, loadResources, runDom, settle,
+    versions,
 } from './helpers.mjs';
 
 const URL = 'https://www.fontsquirrel.com/article';
@@ -139,15 +140,27 @@ describe('cookieyes-reject', ( ) => {
     it('overwrites a stored yes, which is what a refusal is for', ( ) => {
         const w = boot(reject, {
             before: ww => {
+                // Host-only, which is what a tenant whose configured domain
+                // did not take would have.
                 ww.document.cookie = 'cookieyes-consent=consentid:abc,' +
                     'consent:yes,action:yes,necessary:yes,functional:yes,' +
                     'analytics:yes,performance:yes,advertisement:yes,' +
                     'other:yes; path=/';
             },
         });
-        assert.equal(pairs(w).analytics, 'no');
-        assert.equal(pairs(w).consent, 'no');
         assert.equal(pairs(w).consentid, 'abc');
+        // EVERY occurrence, not the first: reading one of several duplicates
+        // is how this test used to pass while a stale yes sat behind it, and
+        // their own reader takes the last where this one takes the first.
+        const all = String(w.document.cookie).split(';')
+            .map(pair => pair.trim())
+            .filter(pair => pair.startsWith('cookieyes-consent='));
+        assert.ok(all.length >= 1);
+        for ( const pair of all ) {
+            assert.ok(pair.includes('consent:no'), pair);
+            assert.ok(pair.includes('analytics:no'), pair);
+            assert.equal(pair.includes('analytics:yes'), false, pair);
+        }
     });
 
     it('answers getCkyConsent in their own shape', ( ) => {
@@ -205,8 +218,95 @@ describe('cookieyes-reject', ( ) => {
             'text/plain');
         assert.equal(w.document.getElementById('runtime').getAttribute('type'),
             'javascript/blocked');
-        assert.equal(w.document.getElementById('embed').getAttribute('src'),
-            null);
+    });
+
+    it('writes the record in every scope a stored yes could be in', ( ) => {
+        // Theirs is written with domain=_ckyStore._rootDomain, which is
+        // per-tenant configuration inside the replaced file, and their own
+        // reader takes the LAST duplicate where a first-match read takes the
+        // first. A refusal in one scope only could be shadowed by an
+        // acceptance in another.
+        const w = boot(reject);
+        const all = String(w.document.cookie).split(';')
+            .map(pair => pair.trim())
+            .filter(pair => pair.startsWith('cookieyes-consent='));
+        assert.ok(all.length > 1, String(all.length));
+        for ( const pair of all ) {
+            assert.ok(pair.includes('consent:no'), pair);
+            assert.ok(pair.includes('analytics:no'), pair);
+        }
+    });
+
+    it('writes one with no domain at all, for a host-only yes', ( ) => {
+        // A browser keys a cookie on its host-only flag too, so a host-only
+        // yes and a domain refusal can sit side by side - and jsdom's jar
+        // collapses the two, so this watches the write instead of the jar.
+        const writes = [];
+        boot(reject, {
+            before: ww => {
+                const own = Object.getOwnPropertyDescriptor(
+                    ww.Document.prototype, 'cookie');
+                Object.defineProperty(ww.document, 'cookie', {
+                    configurable: true,
+                    get: ( ) => own.get.call(ww.document),
+                    set: value => {
+                        writes.push(String(value));
+                        own.set.call(ww.document, value);
+                    },
+                });
+            },
+        });
+        const ours = writes.filter(
+            value => value.startsWith('cookieyes-consent='));
+        assert.ok(ours.length > 1, String(ours.length));
+        assert.equal(ours.filter(
+            value => value.includes('; domain=') === false).length, 1);
+        assert.ok(ours.some(value => value.includes('; domain=')));
+    });
+
+    it('overwrites one stored on the registrable domain', ( ) => {
+        const w = boot(reject, {
+            url: 'https://www.fontsquirrel.com/a',
+            before: ww => {
+                ww.document.cookie = 'cookieyes-consent=consentid:abc,' +
+                    'consent:yes,action:yes,necessary:yes,functional:yes,' +
+                    'analytics:yes,performance:yes,advertisement:yes,' +
+                    'other:yes; path=/; domain=fontsquirrel.com';
+            },
+        });
+        // Whichever duplicate a reader picks, first or last, it says no.
+        for ( const pair of String(w.document.cookie).split(';') ) {
+            if ( pair.includes('cookieyes-consent=') === false ) { continue; }
+            assert.ok(pair.includes('analytics:no'), pair);
+        }
+    });
+
+    it('carries their own cookie attributes', ( ) => {
+        // From their _ckySetCookie: their expiry in days, SameSite Strict
+        // unless a tenant turned iframe support on, and secure - which
+        // theirs adds even on http, where the browser then drops the cookie
+        // and no decision is recorded at all.
+        const dom = runDom(reject, 'https://www.fontsquirrel.com/a', PAGE);
+        const [ cookie ] = cookiesInJar(
+            dom, 'https://www.fontsquirrel.com/a', 'cookieyes-consent');
+        assert.notEqual(cookie, undefined);
+        assert.equal(cookie.secure, true);
+        assert.equal(String(cookie.sameSite).toLowerCase(), 'strict');
+        const days = (cookie.expires.getTime() - Date.now()) / 86400000;
+        assert.ok(Math.abs(days - 365) < 2, String(days));
+    });
+
+    it('takes SameSite None where a tenant turned iframe support on', ( ) => {
+        const dom = runDom(reject, 'https://www.fontsquirrel.com/a', PAGE,
+            w => { w.ckySettings = { iframeSupport: true }; });
+        const [ cookie ] = cookiesInJar(
+            dom, 'https://www.fontsquirrel.com/a', 'cookieyes-consent');
+        assert.equal(String(cookie.sameSite).toLowerCase(), 'none');
+    });
+
+    it('records a decision on http too, where secure would lose it', ( ) => {
+        const w = boot(reject, { url: 'http://www.fontsquirrel.com/a' });
+        assert.equal(pairs(w).consent, 'no');
     });
 
     it('answers the helpers their own markup reaches for', ( ) => {
@@ -225,7 +325,7 @@ describe('cookieyes-reject', ( ) => {
         assert.equal(w._ckyIsCategoryToBeBlocked('necessary'), false);
     });
 
-    it('carries their category vocabulary in the store', ( ) => {
+    it('carries the vocabulary both tenants sampled agree on', ( ) => {
         const categories = boot(reject)._ckyStore._categories;
         assert.deepEqual([ ...categories.map(entry => entry.slug) ], [
             'necessary', 'functional', 'analytics', 'performance',
@@ -249,6 +349,41 @@ describe('cookieyes-reject', ( ) => {
         w.performBannerAction('accept_all');
         assert.equal(pairs(w).analytics, 'no');
         assert.equal(w.getCkyConsent().categories.analytics, false);
+    });
+
+    it('asks their CDN for nothing at all', async ( ) => {
+        // script.js requests banner.js, and banner.js is what fetches the
+        // banner targeting json and the audit-table json on a newer
+        // deployment. Replacing the loader takes all four.
+        const net = [];
+        const w = boot(reject, {
+            before: ww => {
+                ww.fetch = url => {
+                    net.push(String(url));
+                    return Promise.resolve({ ok: true });
+                };
+                const XHR = ww.XMLHttpRequest;
+                ww.XMLHttpRequest = function() {
+                    const request = new XHR();
+                    const open = request.open.bind(request);
+                    request.open = (method, url, ...rest) => {
+                        net.push(String(url));
+                        return open(method, url, ...rest);
+                    };
+                    return request;
+                };
+            },
+        });
+        await settle(40);
+        for ( const node of w.document.querySelectorAll('script[src]') ) {
+            net.push(node.src);
+        }
+        for ( const url of net ) {
+            // The page's own tag is the one in the fixture; nothing else.
+            if ( url.includes('client_data/' + ID + '/script.js') ) { continue; }
+            assert.equal(url.includes('cookieyes.com'), false, url);
+        }
+        assert.deepEqual([ ...w.__beacons ], []);
     });
 
     it('checks no domain, unlike the file it replaces', ( ) => {
@@ -321,10 +456,20 @@ describe('cookieyes-reject-unblock', ( ) => {
         assert.equal(freed[0].type, 'text/javascript');
     });
 
-    it('puts a parked iframe back from their own attribute', ( ) => {
-        const w = boot(unblock);
-        assert.equal(w.document.getElementById('embed').getAttribute('src'),
-            'https://www.youtube.com/embed/x');
+    it('leaves an iframe alone, because none was ever parked', ( ) => {
+        // Their blocker handles an iframe at runtime, by inserting a sized
+        // video-placeholder after it, and leaves its own src in place -
+        // neither data-src nor data-cky-src appears anywhere in their files.
+        // With their script replaced there is nothing moved aside to put
+        // back, and inventing an attribute to read would be inventing the
+        // behaviour too.
+        for ( const which of [ reject, unblock ] ) {
+            const w = boot(which);
+            const embed = w.document.getElementById('embed');
+            assert.equal(embed.getAttribute('src'), null);
+            assert.equal(embed.getAttribute('data-cookieyes'),
+                'cookieyes-functional');
+        }
     });
 
     it('replaces the node rather than retyping it', async ( ) => {
@@ -386,7 +531,7 @@ describe('cookieyes-reject-unblock', ( ) => {
     it('counts what it freed, and says so', ( ) => {
         let out;
         runDom(unblock, URL, PAGE, w => { out = lines(w); });
-        assert.ok(out[0].includes(' freed=3 '), out[0]);
+        assert.ok(out[0].includes(' freed=2 '), out[0]);
         assert.ok(out[0].includes(
             ' categories=necessary+functional+analytics+performance' +
             '+advertisement+other '), out[0]);

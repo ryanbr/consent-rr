@@ -74,36 +74,36 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/cookiescript-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/didomi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/didomi-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/complianz-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/complianz-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/zdconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/zdconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/fundingchoices-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/tarteaucitron-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/tarteaucitron-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/cookieyes-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/cookieyes-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/didomi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/didomi-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/complianz-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/complianz-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/zdconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/zdconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/fundingchoices-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/tarteaucitron-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/tarteaucitron-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/cookieyes-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/cookieyes-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -117,8 +117,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.36.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.36.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.36.1/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.36.1/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -1901,6 +1901,23 @@ throw new Error("Looks like your website URL has changed...")
 So a tenant's loader booted anywhere else does nothing at all. Nothing in the
 resource checks a domain.
 
+**Measured on two tenants** - fontsquirrel.com and domaintools.com - which
+agree on the six categories and their `isNecessary` flags, the cookie shape and
+pair order, the minted `consentid`, the log beacon, and `script.js` requesting
+nothing but `banner.js`. They differ in two ways worth knowing: `_rootDomain` is
+a full host on one and **empty** on the other, so their own cookie is host-only
+there; and one carries the IAB TCF stub while the other carries neither, so
+whether a tenant is IAB-enabled is configuration inside the replaced file. The
+refusal installs the IAB layer either way - a vendor that asks is told no, which
+is never weaker than no answer, and a page that waits gets an answer rather than
+stalling. The console line reports it as `tcf=refused`.
+
+A newer deployment **splits the configuration out** into
+`client_data/<id>/<random>.json`, the banner targeting rules, and
+`client_data/<id>/audit-table/<random>.json`, the cookie descriptions. Both are
+fetched by `banner.js`, not by `script.js`, so replacing the loader still takes
+all four and there is nothing extra to match.
+
 **Their record** is one cookie of comma-separated pairs, measured on a first
 visit:
 
@@ -1962,6 +1979,25 @@ running code nobody asked it to. A parked node is replaced by a copy rather
 than retyped, because a type alone does not run a script already in the
 document, which is why their own un-parking inserts one too.
 
+**Scripts only, and that is not an omission.** An iframe is never parked in the
+markup: their blocker handles one at runtime by inserting a sized
+`video-placeholder` div after it - with the YouTube thumbnail where the `src` is
+a YouTube URL - and leaves the iframe's own `src` in place. Neither `data-src`
+nor any `data-cky-src` appears anywhere in their files. With their script
+replaced that blocker never runs, so an iframe is simply an iframe and uBlock
+Origin decides what it may fetch; there is nothing moved aside to put back.
+
+**The record is written in every scope a stored yes could be in.** Theirs goes
+out with `domain=_ckyStore._rootDomain`, which is per-tenant configuration
+*inside* the file being replaced, and the two readers disagree on which
+duplicate wins - their own `_ckyGetCookieMap` assigns over its map as it goes,
+so the last wins, where a first-match read takes the first. A refusal written
+to one scope only could therefore be shadowed by an acceptance in another, so
+it is written host-only and on each domain above, with their own attributes:
+their expiry, `SameSite=Strict` unless a tenant turned iframe support on, and
+`secure` - which theirs adds even on `http`, where the browser then drops the
+cookie and no decision is recorded at all.
+
 **Not done, deliberately:**
 
 - **no banner**, and their placeholder markup is left as the page wrote it.
@@ -2013,7 +2049,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

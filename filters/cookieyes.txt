@@ -9,6 +9,14 @@
 ! README.
 
 ! -----------------------------------------------------------------------------
+! MEASURED ON TWO TENANTS, fontsquirrel.com and domaintools.com, which agree on
+! the six categories, the cookie shape and pair order, the minted consentid and
+! the log beacon - and differ in two ways: _rootDomain is a full host on one and
+! EMPTY on the other (so their own cookie is host-only there, which is why the
+! record is written host-only as well as on each domain above), and one carries
+! the IAB TCF stub while the other carries neither. The refusal installs the IAB
+! layer either way, which the console line reports as tcf=refused.
+!
 ! ONE FILE IS THE WHOLE INSTALL. client_data/<id>/script.js carries the IAB TCF
 ! stub, their auto-blocker, the tenant's configuration AND the request for
 ! banner.js - so replacing it means banner.js is never asked for either, and
@@ -38,6 +46,20 @@
 ! the cookie is kept and otherwise it stays empty, because an id invented by a
 ! resource is an id the resource created and then handed to a page's analytics.
 !
+! THE RECORD GOES INTO EVERY SCOPE A STORED YES COULD BE IN. Theirs is written
+! with domain=_ckyStore._rootDomain, which is per-tenant configuration inside
+! the replaced file, and their own reader takes the LAST duplicate where a
+! first-match read takes the first - so one scope alone could leave an
+! acceptance shadowing the refusal. Their own attributes go with it: their
+! expiry, SameSite Strict unless a tenant turned iframe support on, and secure
+! where it can hold.
+!
+! SCRIPTS ONLY in the unblock variant. An iframe is never parked in the markup:
+! their blocker handles one at runtime with a video-placeholder div and leaves
+! the iframe's src in place, and neither data-src nor data-cky-src appears
+! anywhere in their files. With their script replaced there is nothing moved
+! aside to put back.
+!
 ! THEIR EVENTS GO TO THE DOCUMENT, through one dispatcher that builds a
 ! CustomEvent: cookieyes_banner_load carries getCkyConsent(), and
 ! cookieyes_consent_update carries { accepted: [], rejected: [] }.
@@ -51,6 +73,13 @@
 ! -----------------------------------------------------------------------------
 ! Deliberately left alone:
 !
+!   client_data/<id>/<random>.json
+!                            the banner targeting rules on a newer deployment -
+!                            geo conditions choosing which banner to show - and
+!                            client_data/<id>/audit-table/<random>.json, the
+!                            cookie descriptions. BOTH are fetched by banner.js,
+!                            not by script.js, so replacing the loader takes
+!                            them too and there is nothing to match.
 !   common/iab-gvl-v3.json   the global vendor list they ship, 917KB. With the
 !                            loader replaced nothing asks for it, so there is
 !                            nothing to match - and the version it declares,
