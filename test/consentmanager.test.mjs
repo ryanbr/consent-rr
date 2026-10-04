@@ -111,37 +111,94 @@ describe('consentmanager-reject', ( ) => {
         assert.equal(typeof w.cmpmngr, 'object');
     });
 
-    it('answers their own getCMPData with nothing consented', ( ) => {
+    it('answers their own getCMPData, key for key', ( ) => {
+        // Their payload, taken out of their bundle: thirty-four keys, with
+        // purposeLI rather than purposeLIs, hasGlobalScope rather than
+        // hasGlobalConsent, and no cmpId at all - that one is on their ping.
         const [ data, ok ] = ask(boot(reject), 'getCMPData');
         assert.equal(ok, true);
-        assert.equal(data.cmpId, 31);
+        assert.equal(data.cmpDataObject, true);
         assert.equal(data.gdprApplies, true);
-        // The visitor has answered, so nothing re-prompts.
-        assert.equal(data.userChoiceExists, true);
-        assert.equal(data.hasConsent, false);
-        assert.equal(data.hasNoConsent, true);
-        assert.equal(Object.values(data.purposeConsents).includes(true), false);
-        assert.equal(Object.keys(data.purposeConsents).length, 11);
-        assert.equal(Object.values(data.specialFeatures).includes(true), false);
-        assert.deepEqual(Object.keys(data.vendorConsents), []);
+        assert.equal(data.hasGlobalScope, false);
         assert.equal(data.consentstring, '');
+        assert.equal(data.uspstring, '');
+        assert.equal(data.regulation, 1);
+        assert.equal(data.regulationKey, 'GDPR');
+        assert.equal(data.publisherCC, 'eu');
+        assert.equal(data.addtlConsent, '');
+        // A choice exists and the visitor made it, so nothing re-prompts.
+        assert.equal(data.consentExists, true);
+        assert.equal(data.userChoiceExists, true);
+        assert.equal(Object.values(data.purposeConsents).includes(true), false);
+        assert.equal(Object.values(data.purposeLI).includes(true), false);
+        assert.deepEqual(Object.keys(data.vendorConsents), []);
+        assert.deepEqual(Object.keys(data.vendorLI), []);
+        assert.deepEqual(Object.keys(data.googleVendorConsents), []);
+        // Not theirs, so not here either.
+        assert.equal(data.cmpId, undefined);
+        assert.equal(data.hasConsent, undefined);
+        assert.equal(data.purposeLIs, undefined);
+        assert.equal(data.hasGlobalConsent, undefined);
     });
 
-    it('answers a ping with a loaded cmp', ( ) => {
+    it('answers their ping, which carries the cmp identity', ( ) => {
         const [ data ] = ask(boot(reject), 'ping');
         assert.equal(data.cmpLoaded, true);
         assert.equal(data.cmpStatus, 'loaded');
         assert.equal(data.displayStatus, 'hidden');
+        // Theirs says 2.3, and carries the list and policy versions.
+        assert.equal(data.apiVersion, '2.3');
         assert.equal(data.cmpId, 31);
-        assert.equal(data.gdprAppliesGlobally, true);
+        assert.equal(data.tcfPolicyVersion, 5);
+        assert.equal(data.gdprApplies, true);
+        // gdprAppliesGlobally was invented; theirs has no such field.
+        assert.equal(data.gdprAppliesGlobally, undefined);
     });
 
-    it('answers every command their bundle answers', ( ) => {
+    it('answers a ping of the wrong version with false, as theirs does', ( ) => {
+        const w = boot(reject);
+        let answer = [ 'NOT CALLED', 'NOT CALLED' ];
+        w.__cmp('ping', null, (value, ok) => { answer = [ value, ok ]; }, 1);
+        assert.deepEqual(answer, [ false, false ]);
+    });
+
+    it('answers each command with its own payload, not one for all', ( ) => {
+        const w = boot(reject);
+        // Their v1-style payload is three fields, not the thirty-four.
+        const [ consent ] = ask(w, 'getConsentData');
+        assert.deepEqual(Object.keys(consent).sort(),
+            [ 'consentData', 'gdprApplies', 'hasGlobalScope' ]);
+        assert.equal(consent.consentData, '');
+        // And their vendor payload carries the custom pair getCMPData has not.
+        const [ vendors ] = ask(w, 'getVendorConsents');
+        assert.equal(
+            Object.values(vendors.customPurposeConsents).includes(true), false);
+        assert.deepEqual(Object.keys(vendors.customVendorConsents), []);
+        assert.equal(vendors.hasGlobalScope, false);
+        // Theirs answers an empty object for the vendor list.
+        assert.deepEqual(Object.keys(ask(w, 'getVendorList')[0]), []);
+        // Their geo comes from the replaced file, so it is empty not invented.
+        assert.deepEqual(Object.keys(ask(w, 'getUserLocation')[0]).sort(),
+            [ 'cmpUserCountry', 'cmpUserRegion' ]);
+        assert.equal(ask(w, 'getUserGeo')[0].cmpUserCountry, '');
+        // And their check answers a refusal with no vendors.
+        const [ checked ] = ask(w, 'checkConsent');
+        assert.equal(checked.consent, false);
+        assert.deepEqual(Object.keys(checked.vendors), []);
+        // Their status says a choice exists and the visitor made it - a no
+        // there is a page concluding nobody has answered yet.
+        const [ status ] = ask(w, 'consentStatus');
+        assert.equal(status.consentExists, true);
+        assert.equal(status.userChoiceExists, true);
+        assert.equal(status.regulationKey, 'GDPR');
+    });
+
+    it('answers every command their dispatcher lists', ( ) => {
         const w = boot(reject);
         for ( const command of [
-            'getConsentData', 'getVendorConsents', 'getPublisherConsents',
-            'consentStatus', 'getTCData', 'getUSPData', 'exportData',
-            'displayConsentUi',
+            'consentStatus', 'getTCData', 'getFullTCData', 'setUserID',
+            'getUserID', 'setAgeCallback', 'showScreen', 'showScreenAdvanced',
+            'showCCPAScreen', 'hide', 'close', 'gpp.ping', 'dsa.collect',
         ] ) {
             const [ , ok ] = ask(w, command);
             assert.equal(ok, true, command);
@@ -150,6 +207,14 @@ describe('consentmanager-reject', ( ) => {
 
     it('refuses a command it does not implement', ( ) => {
         assert.deepEqual(ask(boot(reject), 'nonsense'), [ null, false ]);
+        // And the ones a first pass here invented are not commands either.
+        for ( const invented of [
+            'getPublisherConsents', 'exportData', 'importData',
+            'displayConsentUi', 'setVendorConsent', 'setPurposeConsent',
+        ] ) {
+            assert.deepEqual(ask(boot(reject), invented), [ null, false ],
+                invented);
+        }
     });
 
     it('hands back a listener id and takes it off again', ( ) => {
@@ -162,31 +227,68 @@ describe('consentmanager-reject', ( ) => {
             [ false, false ]);
     });
 
-    it('will not let a page set a consent through their own setters', ( ) => {
+    it('will not let a page set a consent or open a screen', ( ) => {
         const w = boot(reject);
         for ( const command of [
-            'setConsent', 'setVendorConsent', 'setPurposeConsent', 'acceptAll',
+            'setConsent', 'showScreen', 'showCCPAScreenAdvanced',
         ] ) {
-            // What the SETTER's own callback is handed matters as much as the
-            // state after it: a page that reads a yes there believes consent
-            // was granted and loads on it, whatever a later read says.
+            // What the command's own callback is handed matters as much as
+            // the state after it.
             const [ data, ok ] = ask(w, command, { purposes: [ 1, 2, 3 ] });
             assert.equal(ok, true, command);
-            assert.equal(data.hasConsent, false, command);
-            assert.equal(data.hasNoConsent, true, command);
             assert.equal(
                 Object.values(data.purposeConsents).includes(true), false,
                 command);
-            assert.equal(
-                Object.values(data.vendorConsents).includes(true), false,
-                command);
+            assert.equal(data.consentstring, '', command);
         }
         const [ after ] = ask(w, 'getCMPData');
-        assert.equal(after.hasConsent, false);
         assert.equal(Object.values(after.purposeConsents).includes(true),
             false);
         assert.equal(w.cmpmngr.getPurposeConsent(1), false);
         assert.equal(w.cmpmngr.getVendorConsent(755), false);
+        assert.equal(w.cmpmngr.hasConsent(), false);
+    });
+
+    it('hangs the api off cmpmngr.api, as their wiring does', ( ) => {
+        // Theirs is window.__cmp = function(...) { return
+        // window.cmpmngr.api.__cmp(...) }, so a page reaching through either
+        // one has to arrive at the same answer.
+        const w = boot(reject);
+        assert.equal(typeof w.cmpmngr.api, 'object');
+        assert.equal(typeof w.cmpmngr.api.__cmp, 'function');
+        assert.equal(typeof w.cmpmngr.api.__tcfapi, 'function');
+        assert.equal(typeof w.cmpmngr.api.__gpp, 'function');
+        assert.equal(typeof w.cmpmngr.api.__dsa, 'function');
+        assert.equal(w.cmpmngr.api.getCMPData().cmpDataObject, true);
+        // The delegate goes through whatever cmpmngr.api holds.
+        let reached = false;
+        w.cmpmngr.api.__cmp = ( ) => { reached = true; };
+        w.__cmp('getCMPData', null, ( ) => {});
+        assert.equal(reached, true);
+    });
+
+    it('carries only the methods their own manager carries', ( ) => {
+        const w = boot(reject);
+        for ( const real of [
+            'getRegulation', 'getRegulationKey', 'getConsentStatus',
+            'getPurposeConsent', 'getVendorConsent', 'getPurposes',
+            'hasConsent', 'setConsent', 'log',
+        ] ) {
+            assert.equal(typeof w.cmpmngr[real], 'function', real);
+        }
+        // Seventeen of these were invented by a first pass here, and a page
+        // feature-detecting one would take a path their CMP never offered.
+        for ( const invented of [
+            'showUI', 'hideUI', 'openScreen', 'closeScreen', 'acceptAll',
+            'rejectAll', 'saveConsent', 'reloadConsent', 'writeStore',
+            'readStore', 'getUSPrivacyString', 'getConsentString',
+            'hasPurposeConsent', 'hasVendorConsent', 'getVendors',
+        ] ) {
+            assert.equal(w.cmpmngr[invented], undefined, invented);
+        }
+        assert.equal(w.cmpmngr.iabid, 31);
+        assert.equal(w.cmpmngr.getRegulationKey(), 'GDPR');
+        assert.equal(w.cmpmngr.getRegulation(), 1);
     });
 
     it('fires their events at the window, not the document', ( ) => {
@@ -206,8 +308,12 @@ describe('consentmanager-reject', ( ) => {
         const entry = w.__win.find(item => item.name === 'cmpEvent');
         assert.equal(typeof entry.detail, 'object');
         assert.equal(entry.detail.type, 'cmpready');
-        assert.equal(entry.detail.data.cmpId, 31);
-        assert.equal(entry.detail.data.hasConsent, false);
+        // Their own getCMPData payload rides along, so it is checked by the
+        // fields theirs has.
+        assert.equal(entry.detail.data.cmpDataObject, true);
+        assert.equal(
+            Object.values(entry.detail.data.purposeConsents).includes(true),
+            false);
     });
 
     it('bridges the WordPress consent api at the document', ( ) => {
@@ -232,7 +338,8 @@ describe('consentmanager-reject', ( ) => {
             answer = [ data.uspString, ok ];
         });
         assert.deepEqual(answer, [ '1YYN', true ]);
-        assert.equal(w.cmpmngr.getUSPrivacyString(), '1YYN');
+        // And their own payload reports no string of its own, as theirs does.
+        assert.equal(ask(w, 'getCMPData')[0].uspstring, '');
     });
 
     it('leaves their parked tags parked', ( ) => {
@@ -264,11 +371,12 @@ describe('consentmanager-reject', ( ) => {
         });
         // Their cross-domain frame and their tracking calls keep their shape
         // and do nothing.
-        w.cmpmngr.writeStore('x', 'y');
-        w.cmpmngr.sendMicrosoftClarityTracking();
-        w.cmpmngr.sendMicrosoftUETTracking();
-        w.cmpmngr.sendXandrTracking();
-        w.cmpmngr.sendDataLayerEvent('consent');
+        // Their senders live on cmpmngr.api, which is where theirs are.
+        w.cmpmngr.api.sendMicrosoftClarityTracking();
+        w.cmpmngr.api.sendMicrosoftUETTracking();
+        w.cmpmngr.api.sendXandrTracking();
+        w.cmpmngr.api.sendWordpressTracking();
+        w.cmpmngr.api.sendDataLayerEvent('consent');
         assert.deepEqual(sent, []);
         assert.equal(w.document.querySelector('iframe[name="__cmpcdframe"]'),
             null);
@@ -292,7 +400,7 @@ describe('consentmanager-reject', ( ) => {
 
     it('installs anyway on a page that removed the console', ( ) => {
         const w = boot(reject, { before: ww => { ww.console = undefined; } });
-        assert.equal(ask(w, 'getCMPData')[0].cmpId, 31);
+        assert.equal(ask(w, 'getCMPData')[0].cmpDataObject, true);
     });
 
     it('announces what went in', ( ) => {
@@ -380,7 +488,9 @@ describe('consentmanager, the IAB layer', ( ) => {
 describe('consentmanager-reject-unblock', ( ) => {
     it('stores and sends the same refusal', ( ) => {
         const w = boot(unblock);
-        assert.equal(ask(w, 'getCMPData')[0].hasConsent, false);
+        const [ data ] = ask(w, 'getCMPData');
+        assert.equal(Object.values(data.purposeConsents).includes(true), false);
+        assert.deepEqual(Object.keys(data.vendorConsents), []);
         assert.equal(TCString.decode(tcData(w).tcString).purposeConsents.size,
             0);
         assert.notEqual(cookies(w).get('euconsent-v2'), undefined);

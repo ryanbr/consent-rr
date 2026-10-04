@@ -184,6 +184,20 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   before it ships. Auditing all twenty families afterwards found no second
   case - every other cross-family mention was a deliberate comparison - which
   is worth knowing too.
+- **Measure the payload, not just the command names.** The consentmanager
+  resource shipped with a getCMPData of twenty invented field names: purposeLIs
+  for their purposeLI, hasGlobalConsent for their hasGlobalScope, a cmpId their
+  payload does not carry at all, and a dozen more. It also answered ONE payload
+  for every command, where theirs answers a different object per command -
+  getConsentData is three fields, getVendorConsents carries a custom pair,
+  getVendorList answers {}, and a ping of any version but 2 answers false. And
+  seventeen of the twenty-six methods it put on their manager object do not
+  exist in their bundle, which is a page feature-detecting its way down a path
+  the CMP never offered. Reading a command LIST out of a minified file is easy
+  and proves nothing about the shapes; pull the object literal each one
+  returns, and check where the methods actually hang - theirs are on
+  cmpmngr.api, not cmpmngr. Nine tests failed when this was corrected, because
+  they were pinning the invention.
 - **Find out who reads a record before writing one.** consentmanager's own
   consent cookie is named from a consentscope and a tenant id that live only
   in the 493KB bundle being replaced, and grepping their bootstrap, their

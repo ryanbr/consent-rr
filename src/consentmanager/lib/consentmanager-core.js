@@ -118,10 +118,9 @@ function consentRRConsentManager(mode, installTcf) {
         return [];
     }.bind();
 
-    // Their own purpose vocabulary, from the TCF purposes their config
-    // enables plus the custom slots a tenant can add. Nothing is consented.
+    // Their IAB identity, which their own cmp.php states as "iabid":31.
+    const CMP_ID = 31;
     const PURPOSES = 11;
-    const SPECIAL_FEATURES = 12;
 
     /**************************************************************************/
 
@@ -144,9 +143,19 @@ function consentRRConsentManager(mode, installTcf) {
 
     /**************************************************************************/
 
-    // What their getCMPData answers, which is what their own cmpEvent carries
-    // and what page code reads. Everything off, nothing pending, and the
-    // visitor has answered so nothing re-prompts.
+    // THEIR PAYLOADS, KEY FOR KEY. Each command answers a different object,
+    // and these were taken out of their own bundle rather than guessed - a
+    // first pass here invented a dozen field names and missed as many real
+    // ones. getCMPData carries thirty-four:
+    //
+    //   {cmpDataObject:!0, consentstring:..., uspstring:"",
+    //    gdprApplies:..., hasGlobalScope:!1, tcfversion:...,
+    //    tcfcaversion:..., gppversions:..., gppdata:this.gpp_ping(),
+    //    gppmanifests:..., tcfcompliant:..., regulation:getRegulation(),
+    //    regulationKey:getRegulationKey(), purposeConsents:..., ...}
+    //
+    // Note purposeLI and vendorLI, not purposeLIs; hasGlobalScope, not
+    // hasGlobalConsent; and no cmpId at all - that one lives on their ping.
     const flags = count => {
         const out = {};
         for ( let id = 1; id <= count; id += 1 ) { out[id] = false; }
@@ -154,28 +163,96 @@ function consentRRConsentManager(mode, installTcf) {
     };
 
     const cmpData = ( ) => ({
-        cmpId: 31,
-        cmpVersion: 1,
+        cmpDataObject: true,
+        consentstring: '',
+        uspstring: '',
+        gdprApplies: true,
+        hasGlobalScope: false,
+        tcfversion: 2,
+        tcfcaversion: 0,
+        gppversions: [],
+        gppdata: {},
+        gppmanifests: {},
+        tcfcompliant: true,
         regulation: 1,
         regulationKey: 'GDPR',
-        gdprApplies: true,
-        userChoiceExists: true,
-        consentExists: true,
-        consentstring: '',
-        vendorsList: [],
-        purposesList: [],
         purposeConsents: flags(PURPOSES),
-        purposeLIs: flags(PURPOSES),
         vendorConsents: {},
-        vendorLIs: {},
-        specialFeatures: flags(SPECIAL_FEATURES),
-        customPurposeConsents: {},
-        customVendorConsents: {},
-        hasGlobalConsent: false,
-        hasConsent: false,
-        hasNoConsent: true,
-        settings: {},
+        purposeLI: flags(PURPOSES),
+        vendorLI: {},
+        googleVendorConsents: {},
+        vendorsList: [],
+        // Theirs is cmp_gc("pubcc","EU").substr(0,2).toLowerCase().
+        publisherCC: 'eu',
+        addtlConsent: '',
+        purposesList: [],
+        purModeActive: false,
+        purModeLoggedIn: false,
+        purModeLogic: 0,
+        // A choice exists and the visitor made it, so nothing re-prompts.
+        consentExists: true,
+        userChoiceExists: true,
+        pauseChoice: false,
+        pauseChoiceUntil: 0,
+        lastButtonEvent: '',
+        dataLayerCounter: 0,
+        choiceType: -1,
+        consentCreated: 0,
+        consentUpdated: 0,
     });
+
+    // Their v1-style payload, which is three fields and not the one above.
+    const consentData = ( ) => ({
+        consentData: '',
+        gdprApplies: true,
+        hasGlobalScope: false,
+    });
+
+    // Their vendor-consents payload, which carries the custom pair that
+    // getCMPData does not.
+    const vendorConsents = ( ) => ({
+        consentstring: '',
+        gdprApplies: true,
+        hasGlobalScope: false,
+        purposeConsents: flags(PURPOSES),
+        customPurposeConsents: {},
+        vendorConsents: {},
+        customVendorConsents: {},
+        googleVendorConsents: {},
+        addtlConsent: '',
+    });
+
+    // Their geo, from the configuration in the file being replaced - so
+    // empty here rather than invented. Theirs reads cmp_gc("usr_cc") and
+    // cmp_gc("usr_regio"), which their server fills in.
+    const userGeo = ( ) => ({ cmpUserCountry: '', cmpUserRegion: '' });
+
+    // Their ping, which is version-gated: anything but 2 answers FALSE.
+    const ping = version => {
+        if (Number(version) !== 2) { return false; }
+        return {
+            gdprApplies: true,
+            cmpLoaded: true,
+            cmpStatus: 'loaded',
+            displayStatus: 'hidden',
+            apiVersion: '2.3',
+            // Theirs is wsid % 2000, from the website id in the replaced
+            // file. Informational.
+            cmpVersion: 1,
+            cmpId: CMP_ID,
+            gvlVersion: 1,
+            tcfPolicyVersion: 5,
+        };
+    };
+
+    // Their consentStatus and checkConsent, each its own shape.
+    const consentStatus = ( ) => ({
+        consentExists: true,
+        userChoiceExists: true,
+        regulation: 1,
+        regulationKey: 'GDPR',
+    });
+    const checkConsent = ( ) => ({ consent: false, vendors: {} });
 
     /**************************************************************************/
 
@@ -251,106 +328,118 @@ function consentRRConsentManager(mode, installTcf) {
 
     /**************************************************************************/
 
-    // Their own API, by the command names their bundle answers. A page's
-    // callback is handed the same refusal whichever one it asks through.
+    // THEIR COMMAND TABLE, measured out of their own dispatcher rather than
+    // guessed. A first pass here invented nine command names and missed most
+    // of these:
     const COMMANDS = [
-        'ping', 'getCMPData', 'getConsentData', 'getVendorConsents',
-        'getPublisherConsents', 'consentStatus', 'getTCData', 'getUSPData',
-        'addEventListener', 'removeEventListener', 'setConsent',
-        'setVendorConsent', 'setPurposeConsent', 'displayConsentUi',
-        'exportData', 'importData', 'rejectAll', 'acceptAll',
+        'ping', 'addEventListener', 'removeEventListener', 'getVendorList',
+        'consentStatus', 'setUserID', 'setUserID2', 'setUserID3', 'getUserID',
+        'setAgeCallback', 'setConsent', 'showScreen', 'showScreenAdvanced',
+        'showCCPAScreen', 'showCCPAScreenAdvanced', 'hide', 'close',
+        'getTCData', 'getCMPData', 'getUserLocation', 'getUserGeo',
+        'getConsentData', 'getVendorConsents', 'checkConsent',
+        'getFullTCData', 'gpp.ping', 'gpp.addEventListener',
+        'gpp.removeEventListener', 'gpp.hasSection', 'gpp.getSection',
+        'gpp.getField', 'gpp.getGPPData', 'dsa.collect',
     ];
 
     const listeners = new Map();
     let nextId = 0;
     let answered = 0;
 
-    const cmp = (command, parameter, callback) => {
-        const done = (value, success) => {
-            answered += 1;
-            if ( typeof callback !== 'function' ) { return; }
-            try {
-                callback(value, success !== false);
-            } catch ( ex ) {
-            }
-        };
+    // Their own callback shape: cb(callback, data, success).
+    const cb = (callback, value, success) => {
+        answered += 1;
+        if ( typeof callback !== 'function' ) { return value; }
+        try {
+            callback(value, success !== false);
+        } catch ( ex ) {
+        }
+        return value;
+    };
+
+    // Their __cmp takes (command, parameter, callback, version), and every
+    // command answers its own payload. A page asking for a decision does not
+    // get to make one: their setters and screen openers are answered rather
+    // than obeyed, because the answer is already no.
+    const cmp = (command, parameter, callback, version) => {
         const name = String(command);
         if ( name === 'ping' ) {
-            return done({
-                gdprAppliesGlobally: true,
-                cmpLoaded: true,
-                cmpStatus: 'loaded',
-                displayStatus: 'hidden',
-                apiVersion: '2',
-                cmpId: 31,
-                cmpVersion: 1,
-            });
+            const answer = ping(version === undefined ? 2 : version);
+            return cb(callback, answer, answer !== false);
         }
         if ( name === 'addEventListener' ) {
             nextId += 1;
             listeners.set(nextId, callback);
             const data = cmpData();
             data.listenerId = nextId;
-            return done(data);
+            return cb(callback, data, true);
         }
         if ( name === 'removeEventListener' ) {
             const existed = listeners.delete(parameter);
-            answered += 1;
-            if ( typeof callback === 'function' ) {
-                try {
-                    callback(existed, existed);
-                } catch ( ex ) {
-                }
-            }
-            return undefined;
+            return cb(callback, existed, existed);
         }
-        // A page asking for a decision does not get to make one: the answer
-        // is already no, and their own setters are answered rather than
-        // obeyed.
-        if ( COMMANDS.includes(name) ) { return done(cmpData()); }
-        return done(null, false);
+        if ( name === 'getCMPData' || name === 'getFullTCData' ) {
+            return cb(callback, cmpData(), true);
+        }
+        if ( name === 'getConsentData' ) {
+            return cb(callback, consentData(), true);
+        }
+        if ( name === 'getVendorConsents' ) {
+            return cb(callback, vendorConsents(), true);
+        }
+        if ( name === 'getUserLocation' || name === 'getUserGeo' ) {
+            return cb(callback, userGeo(), true);
+        }
+        if ( name === 'consentStatus' ) {
+            return cb(callback, consentStatus(), true);
+        }
+        if ( name === 'checkConsent' ) {
+            return cb(callback, checkConsent(), true);
+        }
+        // Theirs answers an empty object here.
+        if ( name === 'getVendorList' ) { return cb(callback, {}, true); }
+        if ( COMMANDS.includes(name) ) {
+            return cb(callback, cmpData(), true);
+        }
+        return cb(callback, null, false);
     };
 
     /**************************************************************************/
 
-    // Their manager object. The page-facing half of it answers; the rest is
-    // inert rather than absent, because an absent method throws at the
-    // caller's own call site.
-    const api = {
-        consentstring: '',
-        gdprApplies: true,
-        regulation: 1,
-        regulationKey: 'GDPR',
-        cmpId: 31,
-        purposes: [],
-        vendors: [],
-        customPurposes: [],
-        customVendors: [],
+    // THEIR OBJECT LAYOUT, which is the part a first pass here got wrong
+    // outright. Everything page-facing hangs off cmpmngr.api, and the window
+    // functions are thin delegates:
+    //
+    //   window.__cmp = function(e,t,i,n) {
+    //       return window.cmpmngr.api.__cmp(e,t,i,n); };
+    //   "__tcfapi" in window && (window.__tcfapi = ...api.__tcfapi...);
+    //   "__gpp" in window && (window.__gpp = ...api.__gpp...);
+    //   "__dsa" in window && (window.__dsa = ...api.__dsa...);
+    //
+    // Note the "in window" guards: theirs only replaces a stub a page already
+    // installed. The IAB layer here installs __tcfapi regardless, because a
+    // page that waits on it would otherwise wait forever once the request is
+    // blocked - the same call made for CookieYes, and the console line
+    // reports it either way.
+    const apiObject = {
+        __cmp: cmp,
+        __tcfapi: (command, version, callback, parameter) =>
+            cmp(command, parameter, callback, version),
+        __gpp: (command, callback, parameter, version) =>
+            cmp('gpp.' + command, parameter, callback, version),
+        __dsa: (command, callback, parameter, version) =>
+            cmp('dsa.' + command, parameter, callback, version),
         getCMPData: cmpData,
-        getConsentData: cmpData,
-        getPurposeConsent: noopfalsefn,
-        getVendorConsent: noopfalsefn,
-        getCustomPurposeConsent: noopfalsefn,
-        getCustomVendorConsent: noopfalsefn,
-        getUSPrivacyString: ( ) => '1YYN',
-        getConsentString: noopstrfn,
-        hasConsent: noopfalsefn,
-        hasPurposeConsent: noopfalsefn,
-        hasVendorConsent: noopfalsefn,
-        getPurposes: nooparrayfn,
-        getVendors: nooparrayfn,
-        // Their own display and decision entry points. There is no banner,
-        // and the answer is already no.
-        showUI: noopfn,
-        hideUI: noopfn,
-        openScreen: noopfn,
-        closeScreen: noopfn,
-        setConsent: noopfn,
-        acceptAll: noopfn,
-        rejectAll: noopfn,
-        saveConsent: noopfn,
-        reloadConsent: noopfn,
-        log: noopfn,
+        getConsentData: consentData,
+        getVendorConsents: vendorConsents,
+        getUserGeo: userGeo,
+        ping: ping,
+        consentStatus: consentStatus,
+        checkConsent: checkConsent,
+        getVendorList: ( ) => ({}),
+        fireEvent: noopfn,
+        cb: cb,
         // Their reporting, kept inert: theirs posts to Microsoft Clarity,
         // Microsoft UET and Xandr, and pushes a data layer event.
         sendMicrosoftClarityTracking: noopfn,
@@ -358,9 +447,34 @@ function consentRRConsentManager(mode, installTcf) {
         sendXandrTracking: noopfn,
         sendWordpressTracking: noopfn,
         sendDataLayerEvent: noopfn,
-        // Their cross-domain sharing, which posts into a __cmpcdframe.
-        writeStore: noopfn,
-        readStore: noopstrfn,
+        lastButtonEvent: '',
+        dataLayerCounter: 0,
+    };
+
+    // And cmpmngr itself, with the methods theirs actually carries. A first
+    // pass put seventeen here that their bundle has no trace of, which is a
+    // page feature-detecting its way down a path their CMP never offered.
+    const api = {
+        api: apiObject,
+        consentstring: '',
+        gdprApplies: true,
+        tcfversion: 2,
+        tcfcaversion: 0,
+        tcfcompliant: true,
+        iabid: CMP_ID,
+        purposes: [],
+        vendors: [],
+        hasExistingChoice: true,
+        hasExistingUserChoice: true,
+        getRegulation: ( ) => 1,
+        getRegulationKey: ( ) => 'GDPR',
+        getConsentStatus: ( ) => -1,
+        getPurposeConsent: noopfalsefn,
+        getVendorConsent: noopfalsefn,
+        getPurposes: nooparrayfn,
+        hasConsent: noopfalsefn,
+        setConsent: noopfn,
+        log: noopfn,
         consentRR: { name: NAME, version: VERSION, mode: mode },
     };
 
@@ -368,8 +482,11 @@ function consentRRConsentManager(mode, installTcf) {
     for ( const key of Object.keys(api) ) { out[key] = api[key]; }
     w.cmpmngr = out;
 
+    // Their own wiring: a thin delegate, so a page that reassigns
+    // cmpmngr.api still reaches what it put there.
     try {
-        w.__cmp = cmp;
+        w.__cmp = (command, parameter, callback, version) =>
+            w.cmpmngr.api.__cmp(command, parameter, callback, version);
         w.__cmp.consentRR = VERSION;
     } catch ( ex ) {
     }

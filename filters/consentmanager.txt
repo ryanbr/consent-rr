@@ -51,6 +51,13 @@
 ! so that one IS written here, with a string that grants nothing, as cmpId 31.
 ! Their own cmp.php says "iabid":31 and the IAB's published list agrees.
 !
+! EVERYTHING PAGE-FACING HANGS OFF cmpmngr.api, which is their own layout:
+! window.__cmp is a thin delegate to window.cmpmngr.api.__cmp, and __tcfapi,
+! __gpp and __dsa are the same. Their thirty-command table is answered, and
+! each command answers ITS OWN payload - getCMPData has 34 keys, getConsentData
+! has three, getVendorConsents carries a custom pair getCMPData does not,
+! getVendorList answers {}, and a ping of any version but 2 answers false.
+!
 ! THEIR EVENTS GO TO TWO DIFFERENT TARGETS, which is the sort of thing that
 ! quietly reaches nobody if it is assumed: cmpEvent and cmpEvent_<type> at the
 ! WINDOW, and their WordPress Consent API bridge, wp_consent_type_defined, at

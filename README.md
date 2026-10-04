@@ -77,38 +77,38 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/cookiescript-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/didomi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/didomi-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/complianz-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/complianz-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/zdconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/zdconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/fundingchoices-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/tarteaucitron-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/tarteaucitron-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/cookieyes-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/cookieyes-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/consentmanager-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/consentmanager-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/didomi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/didomi-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/complianz-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/complianz-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/zdconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/zdconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/fundingchoices-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/tarteaucitron-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/tarteaucitron-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/cookieyes-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/cookieyes-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/consentmanager-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/consentmanager-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -122,8 +122,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.37.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.37.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.37.1/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.37.1/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -2133,11 +2133,26 @@ API bridge at the **document** - next to `window.wp_consent_type` and a
 `wp_set_consent` call per category. All of it is reproduced, and the tests
 listen on both targets so a dispatch at the wrong one cannot pass unnoticed.
 
-Their own `__cmp` answers all eighteen commands its bundle answers, with
-nothing consented and `userChoiceExists` true so nothing re-prompts - and a
-page cannot set a consent through `setConsent`, `setVendorConsent`,
-`setPurposeConsent` or `acceptAll`: those are answered rather than obeyed.
-`__uspapi` answers `1YYN`.
+**Everything page-facing hangs off `cmpmngr.api`**, which is their layout -
+`window.__cmp` is a thin delegate to it, and `__tcfapi`, `__gpp` and `__dsa`
+are the same (theirs only replaces a stub a page already installed; this one
+puts `__tcfapi` up regardless, because a page waiting on it would otherwise
+wait forever). Their **30-command table** is answered, and **each command gets
+its own payload**, not one for all:
+
+| command | answers |
+| --- | --- |
+| `getCMPData` | their 34 keys - `cmpDataObject`, `purposeLI`, `hasGlobalScope`, `publisherCC`, `choiceType` … and no `cmpId`, which lives on the ping |
+| `getConsentData` | three fields: `consentData`, `gdprApplies`, `hasGlobalScope` |
+| `getVendorConsents` | the custom pair `getCMPData` has not - `customPurposeConsents`, `customVendorConsents` |
+| `getVendorList` | `{}`, as theirs does |
+| `checkConsent` | `{consent: false, vendors: {}}` |
+| `getUserLocation` / `getUserGeo` | `{cmpUserCountry, cmpUserRegion}`, empty rather than invented - theirs comes from the replaced file |
+| `ping` | `apiVersion: "2.3"`, `cmpId: 31`, `tcfPolicyVersion: 5` - and **false for any version but 2**, which is theirs |
+
+`consentExists` and `userChoiceExists` are both true, so nothing re-prompts, and
+a page cannot set a consent or open a screen: `setConsent`, `showScreen` and the
+rest are answered rather than obeyed. `__uspapi` answers `1YYN`.
 
 `consentmanager-reject-unblock.js` is for a site that withholds something until
 a purpose is consented to: the same stored and sent refusal, while the tags
@@ -2199,7 +2214,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token
