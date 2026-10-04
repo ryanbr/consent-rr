@@ -31,6 +31,11 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # Every source file on its own: a syntax error named for the file it is
+      # in rather than the resource it was concatenated into, a template
+      # literal before the bundler silently strips the line it is on, and a
+      # lib no entry includes. It ran nowhere for a long time, and rotted.
+      - run: npm run lint
       # Builds, then runs the suite against the built files.
       - run: npm test
       - name: dist and COMPARISON.md match src

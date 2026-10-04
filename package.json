@@ -29,7 +29,7 @@
   "scripts": {
     "test": "node tools/build.mjs && node tools/comparison.mjs && node --test --test-timeout=15000 test/*.test.mjs",
     "build": "node tools/build.mjs",
-    "lint": "node --check src/lib/onetrust-core.js && node --check src/onetrust-accept.js && node --check src/onetrust-reject.js",
+    "lint": "node tools/lint.mjs",
     "comparison": "node tools/comparison.mjs",
     "prepublishOnly": "npm run build && npm test"
   },

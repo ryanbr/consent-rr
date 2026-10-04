@@ -10,6 +10,7 @@ import { strict as assert } from 'node:assert';
 import { TCString } from '@iabtcf/core';
 import { GppModel } from '@iabgpp/cmpapi';
 import { before, describe, it } from 'node:test';
+import { readFile } from 'node:fs/promises';
 import {
     consentParams, cookies, cookiesInJar, filtersText, fixture, loadResources,
     run, runDom, settle, versions,
@@ -61,6 +62,19 @@ describe('resources file', ( ) => {
                 'zdconsent-reject.js',
             ]
         );
+    });
+
+    it('lints by walking the tree, not by naming files', async ( ) => {
+        // The script this pins replaced one that named three files by hand,
+        // two of which had moved, so it had been failing unnoticed. A path
+        // under src/ in here is the same mistake starting again.
+        const manifest = JSON.parse(
+            await readFile(new URL('../package.json', import.meta.url), 'utf8')
+        );
+        assert.equal(manifest.scripts.lint, 'node tools/lint.mjs');
+        const workflow = await readFile(
+            new URL('../.github/workflows/build.yml', import.meta.url), 'utf8');
+        assert.match(workflow, /run: npm run lint/);
     });
 
     it('carries no blank line inside a resource, which would truncate it', ( ) => {

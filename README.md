@@ -1626,9 +1626,17 @@ properties of the window. The resource will not hang the API on a node.
 ## Development
 
 ```sh
-npm run build   # src/ -> dist/onetrust-accept.js, dist/onetrust-reject.js
+npm run build   # src/ -> dist/, one flat file per resource
+npm run lint    # every source file on its own, before it is concatenated
 npm test        # builds, then runs the suite against the built files
 ```
+
+`lint` walks `src/` rather than naming files, because the script it replaced
+named three by hand and two of them had moved. It reports a syntax error
+against the file it is in rather than the resource that file was concatenated
+into, flags a template literal before the bundler silently strips the line it
+is on, and finds a lib under a family's `lib/` that no entry includes. CI runs
+it ahead of the suite.
 
 Each consent manager carries its own version, from `resourceVersions` in
 `package.json`, so adding or fixing one never restamps another's resources. The
