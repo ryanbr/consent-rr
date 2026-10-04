@@ -173,6 +173,21 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   never-refused one, and the CMP's own bucket for unidentified trackers
   (`unclassified`) stays refused. **Any finding that makes a resource do less
   needs field evidence, not just a reading of the SDK.**
+- **A loader can be domain-locked, and then nothing you boot tells you
+  anything.** CookieYes inlines the registered domain in
+  client_data/<id>/script.js and compares it to location.hostname by suffix,
+  throwing "Looks like your website URL has changed" on a mismatch - so a
+  tenant's file booted on a test fixture defines a couple of globals and
+  stops. Read the file for the domain it expects (it is in there, in the
+  clear) and boot on that, or every measurement is of the error path. The same
+  trick appears as a per-page token elsewhere: Funding Choices' /l/ url answers
+  403 to anything but the page it was minted for.
+- **Free only what the CMP itself parked.** A script with type="text/plain"
+  might be a template's, another CMP's, or the page's own data; CookieYes
+  parks with its own data-cookieyes attribute and with the
+  javascript/blocked type its blocker writes. Matching the bare type as well
+  would have this repo running code nobody asked it to - the opposite error
+  to the cookiescript one, and just as much a behaviour change.
 - **Where a CMP types its services, the type is the cut.** tarteaucitron
   gives every one of its 247 services a type - analytic, ads, api, video,
   support, other, social, google, comment - and its own respondAll takes a

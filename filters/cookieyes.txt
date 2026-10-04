@@ -1,0 +1,74 @@
+! Title: consent-rr - CookieYes
+! Description: Replaces CookieYes's loader with their own reject-all, and
+!              answers the IAB layer their file only stubs.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! ONE FILE IS THE WHOLE INSTALL. client_data/<id>/script.js carries the IAB TCF
+! stub, their auto-blocker, the tenant's configuration AND the request for
+! banner.js - so replacing it means banner.js is never asked for either, and
+! neither is the 917KB global vendor list they ship. The second rule is for a
+! page that references banner.js directly.
+!
+! Swap in cookieyes-reject-unblock.js on a site that withholds something until
+! a category is on: same stored refusal, and the tags their plugin parked in
+! the markup are let go.
+! -----------------------------------------------------------------------------
+||cdn-cookieyes.com/client_data/*/script.js$script,redirect=cookieyes-reject.js
+||cdn-cookieyes.com/client_data/*/banner.js$script,redirect=cookieyes-reject.js
+
+! -----------------------------------------------------------------------------
+! THEIR RECORD is one cookie of comma-separated pairs, measured on a first
+! visit to a tenant's own page:
+!
+!   cookieyes-consent=consentid:c3pOWHhYcHNXT3Byb2ljcTFtazJSeUFNZlZVcGV3Y2c,
+!                     consent:,action:,necessary:,functional:,analytics:,
+!                     performance:,advertisement:,other:
+!
+! Six categories, each yes or no, with consent the decision and action whether
+! the visitor answered. The refusal written here is necessary yes and the other
+! five no, consent no, action yes.
+!
+! THE consentid IS NOT MINTED. Theirs is 22 random characters; one already in
+! the cookie is kept and otherwise it stays empty, because an id invented by a
+! resource is an id the resource created and then handed to a page's analytics.
+!
+! THEIR EVENTS GO TO THE DOCUMENT, through one dispatcher that builds a
+! CustomEvent: cookieyes_banner_load carries getCkyConsent(), and
+! cookieyes_consent_update carries { accepted: [], rejected: [] }.
+!
+! IT IS DOMAIN-LOCKED, worth knowing before testing one: the registered domain
+! is inlined in the file and compared to location.hostname by suffix, and a
+! mismatch throws "Looks like your website URL has changed". Nothing in the
+! resource checks a domain.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Deliberately left alone:
+!
+!   common/iab-gvl-v3.json   the global vendor list they ship, 917KB. With the
+!                            loader replaced nothing asks for it, so there is
+!                            nothing to match - and the version it declares,
+!                            179 with policy version 5, is what the IAB layer
+!                            here reports.
+!   their blocker            it lives in the file being replaced: script.js
+!                            patches document.createElement so a script whose
+!                            src matches their provider list has its type
+!                            flipped to javascript/blocked. uBlock Origin is
+!                            what blocks once it is gone, and what their plugin
+!                            parked in the markup stays parked.
+!   their cookie purge       theirs deletes the cookies it lists per category,
+!                            but that list is per tenant and inlined in the
+!                            replaced file.
+!
+! To see it work:
+!
+!   [consent-rr] cookieyes-reject 1.0.0 categories=necessary cookie=written
+!                consentid=none freed=0 events=2 tcf=refused banner=none
+!                log=none
+! -----------------------------------------------------------------------------

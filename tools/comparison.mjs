@@ -306,6 +306,24 @@ const FIXTURES = [
             '</head><body><p>x</p></body></html>',
     },
     {
+        resource: 'cookieyes-reject.js',
+        cmp: 'CookieYes',
+        page: '<html lang="en"><head>' +
+            '<script id="cookieyes" src="https://cdn-cookieyes.com/client_data/4719bab573bc9d124efec572/script.js"></' + 'script>' +
+            '</head><body>' +
+            '<script id="theirs" type="text/plain" data-cookieyes="cookieyes-analytics" src="https://a.example/a.js"></' + 'script>' +
+            '<p>x</p></body></html>',
+    },
+    {
+        resource: 'cookieyes-reject-unblock.js',
+        cmp: 'CookieYes',
+        page: '<html lang="en"><head>' +
+            '<script id="cookieyes" src="https://cdn-cookieyes.com/client_data/4719bab573bc9d124efec572/script.js"></' + 'script>' +
+            '</head><body>' +
+            '<script id="theirs" type="text/plain" data-cookieyes="cookieyes-analytics" src="https://a.example/a.js"></' + 'script>' +
+            '<p>x</p></body></html>',
+    },
+    {
         resource: 'tarteaucitron-reject.js',
         cmp: 'tarteaucitron',
         page: '<html lang="fr"><head>' +

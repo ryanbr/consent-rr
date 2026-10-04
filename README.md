@@ -14,7 +14,7 @@ Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**
 Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 **PubTech**, **Termly**, **Ketch**, **AppConsent**, **CookieScript**,
 **Didomi**, **Complianz**, **Ziff Davis's own zdconsent**,
-**Google Funding Choices** and **tarteaucitron**.
+**Google Funding Choices**, **tarteaucitron** and **CookieYes**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -44,6 +44,8 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `fundingchoices-reject.js` | Google Funding Choices: the inactive path their own script takes - the two iframes consumers wait on, their internal queue answering instead of collecting - plus the IAB layer it leaves out, `__tcfapi` refusing as cmpId 300. Their `FCCDCF` consent cookie is cleared rather than replaced, because absent is how Google's own readers read a refusal. No accept resource. |
 | `tarteaucitron-reject.js` | tarteaucitron, hosted or self-hosted: their own refusal in their own cookie, one `!service=false` entry each, and the per-service events their Google, Bing and Clarity glue listens for - so the refusal reaches consent mode and not just the cookie. No banner, no reload, and their `pro()` beacon not sent. |
 | `tarteaucitron-reject-unblock.js` | tarteaucitron, consenting to **video and social** and refusing the rest - their own service types make the cut. A consented embed is started by their own launcher, so the video actually appears; ads, analytics and the rest stay refused. |
+| `cookieyes-reject.js` | CookieYes: their own reject-all in their `cookieyes-consent` record - necessary yes, the other five no - the two events they fire at the document, and the IAB layer their file only stubs answered as a refusal. Their `consentid` is kept, never minted, and their page-view beacon is not sent. |
+| `cookieyes-reject-unblock.js` | CookieYes, for a site that withholds something until a category is on: the same stored refusal, while the page's own scripts are told every category is on and the tags their plugin parked are let go - only the ones they parked. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -72,34 +74,36 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/cookiescript-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/didomi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/didomi-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/complianz-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/complianz-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/zdconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/zdconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/fundingchoices-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/tarteaucitron-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/tarteaucitron-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/didomi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/didomi-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/complianz-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/complianz-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/zdconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/zdconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/fundingchoices-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/tarteaucitron-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/tarteaucitron-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/cookieyes-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/cookieyes-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -113,8 +117,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.35.1/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.35.1/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.36.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.36.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -142,7 +146,8 @@ files, not described.
    [`filters/complianz.txt`](filters/complianz.txt) and
    [`filters/zdconsent.txt`](filters/zdconsent.txt) and
    [`filters/fundingchoices.txt`](filters/fundingchoices.txt) and
-   [`filters/tarteaucitron.txt`](filters/tarteaucitron.txt) into *My filters*, or
+   [`filters/tarteaucitron.txt`](filters/tarteaucitron.txt) and
+   [`filters/cookieyes.txt`](filters/cookieyes.txt) into *My filters*, or
    host them and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
@@ -1869,6 +1874,106 @@ A page cannot argue its way past the cut either: `respondAll(true)` and
   and this repo's accept resources are for walls that withhold content.
   Nothing here withholds anything.
 
+## CookieYes
+
+```
+||cdn-cookieyes.com/client_data/*/script.js$script,redirect=cookieyes-reject.js
+||cdn-cookieyes.com/client_data/*/banner.js$script,redirect=cookieyes-reject.js
+```
+
+**One file is the whole install.** `client_data/<id>/script.js` carries the IAB
+TCF stub, their auto-blocker, the tenant's configuration *and* the request for
+`banner.js` - so replacing it means `banner.js` is never asked for either, and
+neither is `common/iab-gvl-v3.json`, the global vendor list they ship, which is
+**917 KB** a visitor stops fetching.
+
+**It is domain-locked**, which is worth knowing before testing one: the
+registered domain is inlined in the file and compared to `location.hostname` by
+suffix, and a mismatch *throws*:
+
+```js
+const e = { registeredDomain: "www.fontsquirrel.com",
+            currentDomain: window.location.hostname };
+...
+throw new Error("Looks like your website URL has changed...")
+```
+
+So a tenant's loader booted anywhere else does nothing at all. Nothing in the
+resource checks a domain.
+
+**Their record** is one cookie of comma-separated pairs, measured on a first
+visit:
+
+```
+cookieyes-consent=consentid:c3pOWHhYcHNXT3Byb2ljcTFtazJSeUFNZlZVcGV3Y2c,
+                  consent:,action:,necessary:,functional:,analytics:,
+                  performance:,advertisement:,other:
+```
+
+Six categories - `necessary`, `functional`, `analytics`, `performance`,
+`advertisement`, `other` - each `yes` or `no`, with `consent` the decision and
+`action` whether the visitor answered. The refusal written here is `necessary`
+yes and the other five no, `consent:no`, `action:yes`, so nothing re-prompts.
+
+**The `consentid` is not minted.** Theirs is 22 random characters from
+`_ckyRandomString`; an id invented here would be an id this repo created and
+then handed to a page's analytics. One already in the cookie is kept, and
+otherwise it stays empty - which `getCkyConsent()` reports as `""`.
+
+**Their events go to the document**, through a single dispatcher:
+
+```js
+function C(e, t) {
+    const n = new CustomEvent(e, {detail: t});
+    document.dispatchEvent(n);
+}
+```
+
+`cookieyes_banner_load` carries `getCkyConsent()`, and
+`cookieyes_consent_update` carries `{ accepted: [slug], rejected: [slug] }`.
+`getCkyConsent()`, `performBannerAction()` and `revisitCkyConsent()` all answer,
+and a page cannot argue a refused category into a yes through any of them.
+
+**The IAB layer refuses as cmpId 401** - CookieYes Limited, from the IAB's own
+published list - with `gdprApplies: true` and a string that grants nothing in
+any set it carries. The vendor list version it reports, **179** with policy
+version 5, is read off the vendor list *their own file ships*, not a third
+party's copy. Nothing is stored for it: theirs keeps the TC string and the
+Google additional-consent string inside the `cookieyes-consent` record, which
+is the one being refused.
+
+**Their blocker is in the file being replaced**, and that is a trade worth
+stating plainly. `script.js` patches `document.createElement` so a script whose
+`src` matches their provider list has its `type` flipped to
+`javascript/blocked`, and `_ckyIsCategoryToBeBlocked` treats an *empty* store as
+blocked for every non-necessary category - their default-deny. With the file
+replaced that machinery is gone and uBlock Origin is what blocks. What their
+WordPress plugin parked in the markup - `type="text/plain"` with
+`data-cookieyes="cookieyes-analytics"` - stays parked under `reject`, because
+nothing turns it back on.
+
+`cookieyes-reject-unblock.js` is for a site that withholds something until a
+category is on: the same stored refusal and the same IAB refusal, while the
+page's own scripts are told every category is on and their parked tags are let
+go. Only what *they* parked - their attribute, or the `javascript/blocked` type
+their own blocker writes - is freed; a bare `type="text/plain"` script might be
+a template's or another CMP's, and freeing one on a guess would be this resource
+running code nobody asked it to. A parked node is replaced by a copy rather
+than retyped, because a type alone does not run a script already in the
+document, which is why their own un-parking inserts one too.
+
+**Not done, deliberately:**
+
+- **no banner**, and their placeholder markup is left as the page wrote it.
+- **no log.** Theirs sends a `sendBeacon` to `log.cookieyes.com/api/v1/log` on
+  load, *before any decision*, carrying a consent session id and the banner id.
+  It is a page view reported to a third party, and it is most of the reason to
+  replace the file.
+- **no cookie purge.** Theirs deletes the cookies it lists per category - `_ga`,
+  `lidc`, `demdex` and the rest - but that list is per tenant and inlined in the
+  replaced file, so it cannot be known from outside. uBlock Origin blocks the
+  requests that would set them in the first place.
+
 ## Development
 
 ```sh
@@ -1908,7 +2013,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.1/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

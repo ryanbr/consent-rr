@@ -44,6 +44,8 @@ describe('resources file', ( ) => {
                 'cookiebot-reject.js',
                 'cookieinformation-reject.js',
                 'cookiescript-reject.js',
+                'cookieyes-reject-unblock.js',
+                'cookieyes-reject.js',
                 'didomi-accept.js',
                 'didomi-reject.js',
                 'fundingchoices-reject.js',
