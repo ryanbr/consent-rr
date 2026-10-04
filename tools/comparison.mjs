@@ -306,6 +306,32 @@ const FIXTURES = [
             '</head><body><p>x</p></body></html>',
     },
     {
+        resource: 'tarteaucitron-reject.js',
+        cmp: 'tarteaucitron',
+        page: '<html lang="fr"><head>' +
+            '<script src="https://cdntag.tarteaucitron.io/load.js?domain=example.fr&uuid=abc"></' + 'script>' +
+            '</head><body><div class="youtube_player" data-videoID="aaaaaaaaaaa"></div><p>x</p></body></html>',
+        drive: w => {
+            // The shape their hosted loader inlines, which is what this
+            // resource replaces: the service list is already there.
+            w.eval('window.tarteaucitron = { job: ["googleads", "xiti"] };');
+        },
+    },
+    {
+        resource: 'tarteaucitron-reject-unblock.js',
+        cmp: 'tarteaucitron',
+        page: '<html lang="fr"><head>' +
+            '<script src="https://cdntag.tarteaucitron.io/load.js?domain=example.fr&uuid=abc"></' + 'script>' +
+            '</head><body><div class="youtube_player" data-videoID="aaaaaaaaaaa"></div><p>x</p></body></html>',
+        drive: w => {
+            w.eval('window.tarteaucitron = { job: ["youtube", "googleads"],' +
+                ' services: { youtube: { key: "youtube", type: "video",' +
+                ' name: "YouTube", js: function() {} },' +
+                ' googleads: { key: "googleads", type: "ads",' +
+                ' name: "Google Ads", js: function() {} } } };');
+        },
+    },
+    {
         resource: 'fundingchoices-reject.js',
         cmp: 'Google Funding Choices',
         page: '<html lang="en"><head>' +

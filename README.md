@@ -13,8 +13,8 @@ Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**
 **InMobi Choice** (formerly Quantcast Choice), **Osano**, **Civic Cookie
 Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 **PubTech**, **Termly**, **Ketch**, **AppConsent**, **CookieScript**,
-**Didomi**, **Complianz**, **Ziff Davis's own zdconsent** and
-**Google Funding Choices**.
+**Didomi**, **Complianz**, **Ziff Davis's own zdconsent**,
+**Google Funding Choices** and **tarteaucitron**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -42,6 +42,8 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `zdconsent-reject.js` | Ziff Davis (mashable.com, speedtest.net, askmen.com): their own Deny All record, the OneTrust record underneath that their script actually reads, and the queued work a page waits on run - which blocking the file outright leaves unrun. |
 | `zdconsent-accept.js` | Ziff Davis, granting - for the EU build, where nothing is consented until a visitor answers, and for an accept-or-pay site where their script rewrites OneTrust's reject button into a subscribe link. It will not overrule a GPC header. |
 | `fundingchoices-reject.js` | Google Funding Choices: the inactive path their own script takes - the two iframes consumers wait on, their internal queue answering instead of collecting - plus the IAB layer it leaves out, `__tcfapi` refusing as cmpId 300. Their `FCCDCF` consent cookie is cleared rather than replaced, because absent is how Google's own readers read a refusal. No accept resource. |
+| `tarteaucitron-reject.js` | tarteaucitron, hosted or self-hosted: their own refusal in their own cookie, one `!service=false` entry each, and the per-service events their Google, Bing and Clarity glue listens for - so the refusal reaches consent mode and not just the cookie. No banner, no reload, and their `pro()` beacon not sent. |
+| `tarteaucitron-reject-unblock.js` | tarteaucitron, consenting to **video and social** and refusing the rest - their own service types make the cut. A consented embed is started by their own launcher, so the video actually appears; ads, analytics and the rest stay refused. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -70,32 +72,34 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/cookiescript-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/didomi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/didomi-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/complianz-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/complianz-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/zdconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/zdconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/fundingchoices-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/didomi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/didomi-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/complianz-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/complianz-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/zdconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/zdconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/fundingchoices-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/tarteaucitron-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/tarteaucitron-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -109,8 +113,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.34.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.34.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.35.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.35.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -137,7 +141,8 @@ files, not described.
    [`filters/didomi.txt`](filters/didomi.txt) and
    [`filters/complianz.txt`](filters/complianz.txt) and
    [`filters/zdconsent.txt`](filters/zdconsent.txt) and
-   [`filters/fundingchoices.txt`](filters/fundingchoices.txt) into *My filters*, or
+   [`filters/fundingchoices.txt`](filters/fundingchoices.txt) and
+   [`filters/tarteaucitron.txt`](filters/tarteaucitron.txt) into *My filters*, or
    host them and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
@@ -1716,6 +1721,154 @@ here that blocking the request would not already have taken away.
 - **the adblock side.** Nothing here reports a blocker, counts one, or helps
   anything else do so.
 
+## tarteaucitron
+
+```
+||cdntag.tarteaucitron.io/load.js$script,redirect=tarteaucitron-reject.js
+/tarteaucitron.js$script,redirect=tarteaucitron-reject.js
+/tarteaucitron.min.js$script,redirect=tarteaucitron-reject.js
+/\/tarteaucitron\.[0-9a-f]{6,}\.(min\.)?js/$script,redirect=tarteaucitron-reject.js
+```
+
+Both an open-source CMP a site hosts itself and a paid service at
+tarteaucitron.io, and close to universal on French public-sector and media
+sites.
+
+**Two deployments, and they hand over different things.** Measured on
+`cdntag.tarteaucitron.io/load.js?domain=...&uuid=...` at 1.35.0 and on a
+self-hosted build, `info.gouv.fr/build/tarteaucitron.<hash>.js`:
+
+- the **hosted loader** is one 95 KB file with the site's configuration *and*
+  its service list inlined - `tarteaucitron.init({36 keys})` and
+  `tarteaucitron.job=["twitterembed"]` are in the file itself. Replacing it
+  takes both with it, so the resource works from their own defaults, which is
+  why the one that matters, `cookieName`, is the same in both.
+- the **self-hosted build** inlines neither: the page calls
+  `tarteaucitron.init({...})` and pushes its services afterwards. Both arrive
+  after the resource, so `init()` merges what it is given the way theirs does -
+  page values win, by `hasOwnProperty` - and `job.push` is live, which is also
+  what theirs is: their own build replaces `job.push` after init.
+
+**Their record is one cookie**, named by `parameters.cookieName` and defaulting
+to `tarteaucitron`, with an entry per service:
+
+```
+tarteaucitron=!youtube=true!googleads=false!xiti=false
+```
+
+each status one of `wait`, `true` or `false` - measured by driving their own
+*Deny All*, which leaves exactly that and `state {twitterembed: false}`. Their
+writer rewrites one entry at a time rather than appending, and this does too.
+
+**Their events go to the document, not the window**, and they are not
+decoration. `sendEvent` builds a plain `Event` and calls
+`document.dispatchEvent`, and their own Google, Bing and Clarity glue listens
+there:
+
+```js
+document.addEventListener("bingads_consentModeKo", function() {
+    window.uetq.push("consent", "update", {ad_storage: "denied"});
+}, {once: true});
+```
+
+so firing `<key>_consentModeKo` is how a refusal reaches the consent-mode
+layer instead of stopping at the cookie. Consent mode is denied for Google and
+Bing either way - and pushed in the shape theirs pushes, which was measured
+rather than assumed: an **arguments object**, `Object.keys` `"0","1","2"`, not
+an array. Tag Manager reads a consent command out of that shape, and an array
+only looks the same under indexing, so a denial pushed as one can be passed
+over. Their own file defines no `window.gtag`, and neither does this.
+
+### Keeping the videos and social embeds
+
+`tarteaucitron-reject-unblock.js` consents to **video and social** and refuses
+everything else. Their own model makes that a clean cut rather than a guess:
+every service carries a type, and their own `respondAll` takes a type to act
+on. Over the 247 services in 1.35.0:
+
+| type | count | |
+| --- | --- | --- |
+| `analytic` | 67 | refused |
+| `ads` | 51 | refused |
+| `api` | 29 | refused - maps and captchas, the next thing worth arguing about |
+| `video` | 26 | **consented, and started** |
+| `support` | 23 | refused |
+| `other` | 22 | refused |
+| `social` | 21 | **consented, and started** |
+| `google` | 6 | refused |
+| `comment` | 2 | refused - disqus and facebookcomment, a tracker wearing a comment box |
+
+One name is refused despite its type, and it is there because **two of their
+own bundles disagree**: `acast` is `type: "other"` in info.gouv.fr's
+self-hosted build and `type: "video"` in their CDN's services bundle at the
+same version. A reader's record from that page refuses it, and replacing a
+site's build takes its typings with it - so the registry this falls back to
+must not end up the more permissive of the two. It is podcast advertising and
+measurement under either typing.
+
+Measured against that reader's own cookie, this resource reproduces it entry
+for entry, including the five services that tenant defines itself and their
+public bundle has never heard of - those are refused because an unknown type
+is refused:
+
+```
+!eulerian=false!locala=false!kword=false!doubleclick=false!criteo=false
+!azerion=false!amazondsp=false!adform=false!brevonotification=false
+!acast=false!youtube=true!vimeo=true!dailymotion=true!facebook=true
+!instagram=true!twitterembed=true
+```
+
+**How it starts one**, which is the part that cannot be faked: a service's
+launcher is `tarteaucitron.services[key].js()`, and it builds its embed through
+this resource's own functions -
+
+```js
+js: function() {
+    tarteaucitron.fallback(["youtube_player"], function(x) {
+        var video_id = tarteaucitron.getElemAttr(x, "videoID"), ...
+    });
+}
+```
+
+- so `fallback`, `getElemAttr`, `getStyleSize` and `addScript` are implemented
+rather than stubbed, and their own launchers run against them. Driven against
+their real 1.35.0 bundle, their YouTube launcher builds
+`<iframe src="//www.youtube-nocookie.com/embed/...">` while `googleads` stays
+`!googleads=false`.
+
+The registry those launchers live in is their services bundle. Where the page
+loaded it itself, it is adopted. Where it did not - the hosted loader fetches
+it with `addInternalScript(pathToServices)` - this fetches that one file and
+nothing else, which is the request the replaced file would have made anyway.
+**A service whose type is not known yet is refused in the meantime**, so a
+bundle that never arrives leaves everything refused rather than everything
+open. The filter patterns above are written so they cannot catch that bundle,
+or this variant would be a no-op.
+
+A page cannot argue its way past the cut either: `respondAll(true)` and
+`setConsent(key, true)` are answered by type, not by the caller.
+
+**Not done, deliberately:**
+
+- **no banner.** Nothing is built, so there is no external CSS to fetch, and a
+  refused embed is left as the page wrote it rather than covered with their
+  "click to allow" box. The one exception is an **empty hidden
+  `#tarteaucitronRoot`**: their `tac.root_available` means the markup is there
+  to reach, and pages hook it to put their own button inside the root, so
+  firing it over a null throws inside the page's own handler. One empty
+  container is not a banner.
+- **no reload.** Their `respondAll` sets `tarteaucitron.reloadThePage` when a
+  refusal revokes a service that had already launched. Nothing launches under
+  a refusal here, so there is nothing to undo.
+- **no beacon.** Their `pro()` accumulates a status string and posts it to
+  `logs.tarteaucitron.io/collect` with the site's uuid and domain through
+  `sendBeacon`. It is a report of the visitor's choice to a third party, and it
+  is most of the reason to replace the file. `pro` and `proPing` keep their
+  shape and send nothing.
+- **no accept-all.** A grant for an ad or analytics service would be a grant,
+  and this repo's accept resources are for walls that withhold content.
+  Nothing here withholds anything.
+
 ## Development
 
 ```sh
@@ -1755,7 +1908,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.34.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.35.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

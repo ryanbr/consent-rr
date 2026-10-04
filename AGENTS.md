@@ -173,6 +173,32 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   never-refused one, and the CMP's own bucket for unidentified trackers
   (`unclassified`) stays refused. **Any finding that makes a resource do less
   needs field evidence, not just a reading of the SDK.**
+- **Where a CMP types its services, the type is the cut.** tarteaucitron
+  gives every one of its 247 services a type - analytic, ads, api, video,
+  support, other, social, google, comment - and its own respondAll takes a
+  type to act on, so "keep the videos, refuse the trackers" is their model
+  rather than a guess of ours. Count them before choosing: 67 analytic and 51
+  ads against 26 video and 21 social is what makes the cut worth having.
+- **Two of a vendor's own bundles can disagree, and replacing a build takes
+  its answers with it.** tarteaucitron types acast "other" in info.gouv.fr's
+  self-hosted build and "video" in their CDN's services bundle at the same
+  version. A reader's real record from that page refuses it; the registry the
+  unblock variant falls back to would have allowed it. So when a resource
+  replaces a site's own file and then fetches the vendor's generic one to
+  replace what it lost, check that the generic one is not the more permissive
+  of the two - and when it is, say which name and why, in the code. Before
+  concluding that a vendor's classification contradicts a field record, line
+  the record up with the deployment it came from: the first reading here had
+  the right answer for the wrong reason.
+- **A consent a resource cannot act on is worse than a refusal.** Consenting
+  to a tarteaucitron video does nothing on its own: the embed is built by that
+  service's own launcher, services[key].js(), and that launcher reaches its
+  elements through the replaced file's OWN helpers - fallback, getElemAttr,
+  getStyleSize, addScript. Stub those and a consented video still never
+  appears. Implement them, and their launchers run unchanged. Where the
+  registry of launchers is not on the page, fetch the one file the replaced
+  script fetches itself - and refuse anything whose type is not known yet, so
+  a registry that never arrives fails closed rather than open.
 - **A refusal can be the absence of a record, and then clearing it is the
   whole job.** Google Funding Choices has no API the ad stack reads: gpt.js and
   adsbygoogle.js each read exactly one thing, the FCCDCF cookie, and take the
@@ -239,6 +265,12 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
 `npm test` builds, then runs the suite **against `dist/`**, parsed with uBO's own
 line rules and joined the way uBO joins several resource URLs.
 
+- **An object the page built is not deep-equal to one built in the test.**
+  `assert.deepEqual` compares constructors too, so an array or object that came
+  out of the jsdom realm fails against a literal here with "same structure but
+  not reference-equal" - which reads like a real difference and is not. Compare
+  a copy made in this realm: spread it, take `Object.keys`, or round-trip it
+  through JSON. It has cost time in four families now.
 - **Mutation-test anything you add.** Break the code the test covers and watch it
   fail. Three tests here passed for weeks against the wrong thing: they were
   satisfied by the document-ready full scan, not by the observer they claimed to

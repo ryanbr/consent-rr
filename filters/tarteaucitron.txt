@@ -1,0 +1,79 @@
+! Title: consent-rr - tarteaucitron
+! Description: Replaces tarteaucitron's core with their own refusal, and
+!              optionally keeps the videos and social embeds working.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! TWO DEPLOYMENTS. tarteaucitron is both an open-source CMP a site hosts itself
+! and a paid service at tarteaucitron.io, so there is a vendor host to match AND
+! a file to match anywhere:
+!
+!   cdntag.tarteaucitron.io/load.js?domain=...&uuid=...   the hosted loader: one
+!       95KB file with the site's configuration and its service list inlined.
+!
+!   www.info.gouv.fr/build/tarteaucitron.<hash>.js        self-hosted, under any
+!       path and usually with a build hash. There the PAGE calls
+!       tarteaucitron.init({...}) and pushes its own services, which arrive
+!       after the resource and are handled as they come.
+!
+! Swap in tarteaucitron-reject-unblock.js to keep the videos and the social
+! embeds working - see the README, it consents to those two types only.
+! -----------------------------------------------------------------------------
+||cdntag.tarteaucitron.io/load.js$script,redirect=tarteaucitron-reject.js
+/tarteaucitron.js$script,redirect=tarteaucitron-reject.js
+/tarteaucitron.min.js$script,redirect=tarteaucitron-reject.js
+/\/tarteaucitron\.[0-9a-f]{6,}\.(min\.)?js/$script,redirect=tarteaucitron-reject.js
+
+! -----------------------------------------------------------------------------
+! THEIR SERVICES BUNDLE AND LANGUAGE FILE ARE NOT MATCHED, on purpose, and the
+! two patterns above are written so they cannot catch them:
+!
+!   cdn.tarteaucitron.io/tarteaucitron.services.min.js?v=1.35.0
+!   cdn.tarteaucitron.io/lang/tarteaucitron.fr.min.js?v=1.35.0
+!
+! Neither runs anything on its own - the first is a registry of 247 service
+! definitions, the second is banner text - and the registry is what the
+! reject-unblock variant needs: a service's launcher is
+! tarteaucitron.services[key].js(), so without it a consented video cannot be
+! built. Redirecting it would make that variant a no-op.
+!
+! THE RECORD IS ONE COOKIE, named by their configuration and defaulting to
+! tarteaucitron, with an entry per service:
+!
+!   tarteaucitron=!youtube=true!googleads=false!xiti=false
+!
+! measured by driving their own Deny All, which leaves exactly that shape.
+! Their per-service events go to the DOCUMENT - youtube_consentModeOk,
+! googleads_consentModeKo - and are not decoration: their own Google, Bing and
+! Clarity glue listens for them, so a refusal that skipped them would stop at
+! the cookie and never reach consent mode. Consent mode itself is pushed in the
+! shape theirs pushes - an arguments object, keys "0","1","2", not an array -
+! because that is what Tag Manager reads a consent command out of.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Deliberately left alone:
+!
+!   no banner      nothing is built, so there is no external CSS to fetch.
+!   no reload      their respondAll sets reloadThePage when a refusal revokes
+!                  something already launched. Nothing launches under reject,
+!                  so there is nothing to undo.
+!   no beacon      their pro() posts the visitor's choice to
+!                  logs.tarteaucitron.io/collect with the site's uuid and
+!                  domain, through sendBeacon. Not sent.
+!
+! To see it work:
+!
+!   [consent-rr] tarteaucitron-reject 1.0.0 refused=2 allowed=0 launched=0
+!                cookie=tarteaucitron entries=2 events=5 banner=none reload=no
+!                beacon=none
+!
+!   [consent-rr] tarteaucitron-reject-unblock 1.0.0 refused=1 allowed=2
+!                launched=2 types=video+social cookie=tarteaucitron entries=3
+!                events=6 banner=none reload=no beacon=none
+! -----------------------------------------------------------------------------
