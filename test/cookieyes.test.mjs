@@ -413,7 +413,107 @@ describe('cookieyes-reject', ( ) => {
             '[consent-rr] cookieyes-reject ' + versions.cookieyes));
         assert.ok(out[0].includes(' categories=necessary '), out[0]);
         assert.ok(out[0].includes(' consentid=none '), out[0]);
-        assert.ok(out[0].endsWith(' tcf=refused banner=none log=none'));
+        assert.ok(out[0].endsWith(' tcf=refused gpc=unset banner=none log=none'));
+    });
+});
+
+/******************************************************************************/
+
+describe('cookieyes, the other laws', ( ) => {
+    const withGpc = which => boot(which, {
+        before: ww => {
+            Object.defineProperty(ww.navigator, 'globalPrivacyControl', {
+                value: true, configurable: true,
+            });
+        },
+    });
+
+    it('reads GPC where their own script reads it', ( ) => {
+        // Theirs seeds _ckyStore._gpcStatus from
+        // !!navigator.globalPrivacyControl.
+        assert.equal(boot(reject)._ckyStore._gpcStatus, false);
+        assert.equal(withGpc(reject)._ckyStore._gpcStatus, true);
+    });
+
+    it('computes shouldFollowGPC the way theirs does', ( ) => {
+        // Theirs is respectGPC && _gpcStatus.
+        const off = boot(reject)._ckyStore._bannerConfig;
+        assert.equal(off.respectGPC, true);
+        assert.equal(off.shouldFollowGPC, false);
+        const on = withGpc(reject)._ckyStore._bannerConfig;
+        assert.equal(on.respectGPC, true);
+        assert.equal(on.shouldFollowGPC, true);
+    });
+
+    it('refuses the same either way, because a refusal already says it', ( ) => {
+        const plain = pairs(boot(reject));
+        const signalled = pairs(withGpc(reject));
+        assert.equal(plain.consent, 'no');
+        assert.equal(signalled.consent, 'no');
+        assert.equal(signalled.analytics, 'no');
+        assert.equal(signalled.necessary, 'yes');
+    });
+
+    it('says whether the browser sent one', ( ) => {
+        let off;
+        let on;
+        runDom(reject, URL, PAGE, w => { off = lines(w); });
+        runDom(reject, URL, PAGE, w => {
+            on = lines(w);
+            Object.defineProperty(w.navigator, 'globalPrivacyControl', {
+                value: true, configurable: true,
+            });
+        });
+        assert.ok(off[0].includes(' gpc=unset '), off[0]);
+        assert.ok(on[0].includes(' gpc=set '), on[0]);
+    });
+
+    it('reports the law its own record is unambiguous under', ( ) => {
+        // Under ccpa their consent token inverts - yes means opted out - and
+        // their categories start as yes. Claiming ccpa would mean writing a
+        // yes that a gdpr reader takes as consent.
+        const w = boot(reject);
+        assert.equal(w._ckyStore._bannerConfig.activeLaw, 'gdpr');
+        assert.equal(w.getCkyConsent().activeLaw, 'gdpr');
+        assert.equal(pairs(w).consent, 'no');
+    });
+
+    it('leaves every category refused, which reads the same under both', ( ) => {
+        // The consent token is the one field whose meaning flips with the
+        // law; a category set to no is refused under either.
+        const got = pairs(withGpc(reject));
+        for ( const slug of [
+            'functional', 'analytics', 'performance', 'advertisement', 'other',
+        ] ) {
+            assert.equal(got[slug], 'no', slug);
+        }
+    });
+
+    it('does not copy their dead DNT check', ( ) => {
+        // Theirs opens its un-parking with 1 === navigator.doNotTrack, a
+        // strict compare against a number where the DOM gives the string
+        // "1", so the guard never holds. reject frees nothing regardless,
+        // which is what the guard was for.
+        const w = boot(reject, {
+            before: ww => {
+                Object.defineProperty(ww.navigator, 'doNotTrack', {
+                    value: '1', configurable: true,
+                });
+            },
+        });
+        assert.equal(w.document.getElementById('theirs').getAttribute('type'),
+            'text/plain');
+        assert.equal(pairs(w).consent, 'no');
+    });
+
+    it('puts up no US privacy or GPP api, because theirs does not', ( ) => {
+        // Neither __uspapi nor __gpp nor a us_privacy string appears
+        // anywhere in either tenant's files: their CCPA support is their own
+        // cookie and their own opt-out UI.
+        const w = boot(reject);
+        assert.equal(typeof w.__uspapi, 'undefined');
+        assert.equal(typeof w.__gpp, 'undefined');
+        assert.equal(cookies(w).get('usprivacy'), undefined);
     });
 });
 

@@ -74,36 +74,36 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/cookiescript-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/didomi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/didomi-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/complianz-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/complianz-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/zdconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/zdconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/fundingchoices-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/tarteaucitron-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/tarteaucitron-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/cookieyes-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/cookieyes-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/didomi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/didomi-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/complianz-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/complianz-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/zdconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/zdconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/fundingchoices-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/tarteaucitron-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/tarteaucitron-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/cookieyes-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/cookieyes-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -117,8 +117,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.36.1/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.36.1/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.36.2/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.36.2/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -1959,6 +1959,58 @@ party's copy. Nothing is stored for it: theirs keeps the TC string and the
 Google additional-consent string inside the `cookieyes-consent` record, which
 is the one being refused.
 
+### CCPA, GPC and DNT
+
+Measured on both tenants' `banner.js`, because the record has to mean the right
+thing under either law. Their default state is:
+
+```js
+_ckySetInStore("consent", activeLaw === "ccpa" && shouldFollowGPC ? "yes" : "no");
+for (const cat of _ckyStore._categories) {
+    let s = "yes";
+    if ( (activeLaw === "gdpr" && !cat.isNecessary && !cat.defaultConsent.gdpr)
+      || (activeLaw === "ccpa" && optedOut && !cat.defaultConsent.ccpa) ) { s = "no"; }
+    _ckySetInStore(cat.slug, s);
+}
+```
+
+Under GDPR a category is `no` unless it is necessary - which is exactly the
+record written here, so their own default confirms it. **Under CCPA the
+categories start as `yes` and the consent token inverts**: `"yes"` there means
+the visitor *opted out*, which is why their opt-out checkbox is pre-checked when
+consent is `yes` or GPC is set.
+
+So the consent token is the one ambiguous field, and **every category being
+`no` is not ambiguous at all** - it reads as refused under either law. The
+resource reports `activeLaw: gdpr`, under which its own token is the protective
+one and the whole record is consistent; the tenant's real law is in the file
+being replaced, and claiming `ccpa` would mean writing a `yes` that a GDPR
+reader takes as consent.
+
+**GPC is read and reported.** Their `script.js` seeds
+`_ckyStore._gpcStatus = !!navigator.globalPrivacyControl` and their `banner.js`
+computes `shouldFollowGPC = respectGPC && _gpcStatus`, where `respectGPC` is a
+tenant's setting. Both fields are kept, with `respectGPC` true - the
+privacy-forward of the two values it can take - and the console line says
+whether the browser sent one. Nothing about the refusal changes with it: a
+refusal already says what GPC asks for.
+
+**Their DNT check cannot fire, and this does not copy it.** Their un-parking
+routine opens with
+
+```js
+if (1 === navigator.doNotTrack) return;
+```
+
+a strict comparison against a *number* where the DOM gives the string `"1"`, so
+the guard never holds and DNT reaches nothing. The intent is plain - do not free
+parked tags for a visitor who asked not to be tracked - and `reject` frees
+nothing anyway, so the intent is met without reproducing dead code.
+
+There is **no `__uspapi`, no `__gpp` and no `us_privacy` string** anywhere in
+either tenant's files: their CCPA support is their own cookie and their own
+opt-out UI, so the resource puts none of those up either.
+
 **Their blocker is in the file being replaced**, and that is a trade worth
 stating plainly. `script.js` patches `document.createElement` so a script whose
 `src` matches their provider list has its `type` flipped to
@@ -2049,7 +2101,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.1/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.36.2/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

@@ -107,6 +107,55 @@
     data-cookieyes="cookieyes-analytics" - stays parked either way, because
     nothing here turns it back on.
 
+    CCPA, GPC AND DNT, measured on both tenants' banner.js, because the record
+    this file writes has to mean the right thing under either law.
+
+    THEIR DEFAULT STATE, which is the function a first visit lands in:
+
+        _ckySetInStore("consent", activeLaw === "ccpa" && shouldFollowGPC
+            ? "yes" : "no");
+        for (const cat of _ckyStore._categories) {
+            let s = "yes";
+            if ( (activeLaw === "gdpr" && !cat.isNecessary
+                      && !cat.defaultConsent.gdpr)
+                || (activeLaw === "ccpa" && optedOut
+                      && !cat.defaultConsent.ccpa) ) { s = "no"; }
+            _ckySetInStore(cat.slug, s);
+        }
+
+    Under GDPR a category is no unless it is necessary, which is exactly the
+    record written here - their own default confirms it. Under CCPA the
+    categories START as yes and the consent token INVERTS: "yes" there means
+    the visitor opted out, which is why their opt-out checkbox is pre-checked
+    when consent is yes or GPC is set.
+
+    So the consent token is the one ambiguous field, and every CATEGORY being
+    no is not ambiguous at all - it reads as refused under either law. This
+    reports activeLaw gdpr, under which its own token is the protective one
+    and the whole record is consistent; the tenant's real law is in the file
+    being replaced, and claiming ccpa would mean writing yes in a field a
+    gdpr reader takes as consent.
+
+    GPC IS READ AND REPORTED. Their script.js seeds
+    _ckyStore._gpcStatus = !!navigator.globalPrivacyControl, and their
+    banner.js re-reads it and computes
+    shouldFollowGPC = respectGPC && _gpcStatus, where respectGPC is a
+    tenant's setting. Both are kept here, with respectGPC true - the
+    privacy-forward default of the two - and the console line says whether
+    the browser sent one. Nothing about the refusal changes with it: a
+    refusal already says what GPC asks for.
+
+    THEIR DNT CHECK CANNOT FIRE, and this does not copy it. Their un-parking
+    routine opens with
+
+        if (1 === navigator.doNotTrack) return;
+
+    which is a strict comparison against a NUMBER where the DOM gives the
+    string "1", so the guard never holds and DNT reaches nothing. The intent
+    is plain - do not free parked tags for a visitor who asked not to be
+    tracked - and reject frees nothing anyway, so the intent is met without
+    reproducing dead code.
+
     NOT DONE HERE, deliberately:
 
       no banner          nothing is built, and their placeholder markup is
@@ -367,6 +416,15 @@ function consentRRCookieYes(mode, installTcf) {
     // markup reach for. _providersToBlock is empty because the list is per
     // tenant and inlined in the file being replaced - and with their blocker
     // gone there is nothing here for it to drive.
+    // What the browser is asking for, read where their own script.js reads
+    // it. A refusal already says what GPC asks for, so nothing here turns on
+    // it - it is reported, and their own field is filled in.
+    let gpc = false;
+    try {
+        gpc = w.navigator.globalPrivacyControl === true;
+    } catch ( ex ) {
+    }
+
     const ckyStore = {
         _backupNodes: [],
         _categories: CATEGORIES.map(slug => ({
@@ -380,14 +438,25 @@ function consentRRCookieYes(mode, installTcf) {
         })),
         _providersToBlock: [],
         _bannerConfig: {
+            // gdpr, because the record written here is unambiguous and
+            // protective under it. See the note above on the consent token
+            // inverting under ccpa.
             activeLaw: 'gdpr',
-            shouldFollowGPC: true,
+            // Theirs is respectGPC && _gpcStatus, where respectGPC is the
+            // tenant's setting - true here, the privacy-forward one of the
+            // two it can be.
+            respectGPC: true,
+            shouldFollowGPC: gpc,
             scriptExpiry: 365,
             placeHolder: { status: false, styles: {} },
         },
         _language: { _active: '', _default: '' },
         _bannerDisplayState: 'hidden',
         _isPreview: false,
+        // Seeded in their script.js, from the same place.
+        _gpcStatus: gpc,
+        _resetConsentID: false,
+        _bannerAttached: false,
         _prevTCString: '',
         _prevGoogleACMString: '',
         _consent: store,
@@ -483,6 +552,7 @@ function consentRRCookieYes(mode, installTcf) {
             ' freed=' + revived +
             ' events=' + events +
             ' tcf=' + tcf +
+            ' gpc=' + (gpc ? 'set' : 'unset') +
             ' banner=none log=none'
         );
     }

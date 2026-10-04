@@ -71,6 +71,22 @@
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
+! CCPA, GPC AND DNT. Their default state sets a category to no under gdpr
+! unless it is necessary - which is the record written here - while under CCPA
+! the categories start as YES and the consent token INVERTS, where "yes" means
+! the visitor opted out. The token is the one ambiguous field; every category
+! being no reads as refused under either law. The resource reports activeLaw
+! gdpr, under which its own token is the protective one.
+!
+! GPC is read where their script.js reads it, kept in their own _gpcStatus and
+! shouldFollowGPC fields, and reported in the console line. The refusal does not
+! change with it: it already says what GPC asks for. Their DNT guard,
+! 1 === navigator.doNotTrack, compares against a number where the DOM gives the
+! string "1", so it never fires - not copied.
+!
+! No __uspapi, no __gpp and no us_privacy: none appears in either tenant's
+! files, so none is put up here.
+!
 ! Deliberately left alone:
 !
 !   client_data/<id>/<random>.json
