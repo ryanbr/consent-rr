@@ -14,8 +14,8 @@ Currently covered: **OneTrust** (and its CookiePro tier), **Cookie Information**
 Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 **PubTech**, **Termly**, **Ketch**, **AppConsent**, **CookieScript**,
 **Didomi**, **Complianz**, **Ziff Davis's own zdconsent**,
-**Google Funding Choices**, **tarteaucitron**, **CookieYes** and
-**consentmanager.net**.
+**Google Funding Choices**, **tarteaucitron**, **CookieYes**,
+**consentmanager.net** and **Cookiez**.
 
 | Resource | What the page sees |
 | --- | --- |
@@ -49,6 +49,8 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `cookieyes-reject-unblock.js` | CookieYes, for a site that withholds something until a category is on: the same stored refusal, while the page's own scripts are told every category is on and the tags their plugin parked are let go - only the ones they parked. |
 | `consentmanager-reject.js` | consentmanager.net: their `__cmp` answering a refusal across all eighteen commands, the IAB layer refused as cmpId 31 with `euconsent-v2` written, and their events fired where they fire them - `cmpEvent` at the window, their WordPress bridge at the document. One rule drops better than half a megabyte of delivery. |
 | `consentmanager-reject-unblock.js` | consentmanager.net, for a site that withholds something until a purpose is on: the same stored and sent refusal, while the tags their blocker parked are let go by their own `data-cmp-src` contract. |
+| `cookiez-reject.js` | Cookiez (WordPress): their own refusal in their own record - necessary true, the other four false - carrying the `cookiesHash` their gate checks, without which the record is thrown away and the banner returns. Their WordPress Consent API and Google consent mode bridges go with it; nothing is posted to their REST route. |
+| `cookiez-reject-unblock.js` | Cookiez, for a site that withholds something until a category is on: the same stored refusal, and the scripts their blocker parked freed by their own selector - including leaving `data-cc-mode="always"` nodes parked, which is their never-free marker. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -77,38 +79,40 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/cookiescript-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/didomi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/didomi-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/complianz-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/complianz-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/zdconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/zdconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/fundingchoices-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/tarteaucitron-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/tarteaucitron-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/cookieyes-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/cookieyes-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/consentmanager-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/consentmanager-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/didomi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/didomi-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/complianz-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/complianz-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/zdconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/zdconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/fundingchoices-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/tarteaucitron-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/tarteaucitron-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/cookieyes-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/cookieyes-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/consentmanager-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/consentmanager-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/cookiez-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/cookiez-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -122,8 +126,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.37.1/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.37.1/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.38.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.38.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -153,7 +157,8 @@ files, not described.
    [`filters/fundingchoices.txt`](filters/fundingchoices.txt) and
    [`filters/tarteaucitron.txt`](filters/tarteaucitron.txt) and
    [`filters/cookieyes.txt`](filters/cookieyes.txt) and
-   [`filters/consentmanager.txt`](filters/consentmanager.txt) into *My filters*, or
+   [`filters/consentmanager.txt`](filters/consentmanager.txt) and
+   [`filters/cookiez.txt`](filters/cookiez.txt) into *My filters*, or
    host them and subscribe via *Import*.
 
 Redirecting the SDK's own request is the usual way in, but where a tag manager
@@ -2175,6 +2180,98 @@ what theirs does.
   a per-tenant list in the replaced file. uBlock Origin blocks the requests
   that would set them.
 
+## Cookiez
+
+```
+/plugins/cookiez*/assets/build/banner.js$script,redirect=cookiez-reject.js
+/plugins/cookiez*/assets/build/lang-*.js$script,redirect=noopjs
+```
+
+A WordPress plugin, so like Complianz it is served **first-party** from the
+site's own `wp-content` path and there is no vendor host to match. The rule
+matches the file under any `cookiez*` plugin directory, which keeps working
+when a premium or renamed build turns up, and the `?ver=` query does not get in
+the way. Their language file is a webpack chunk of banner text that the
+bundle's own chunk loader fetches, so with `banner.js` replaced nothing asks
+for it - the `noopjs` rule is for a page that hardcodes it anyway.
+
+**Their record**, reproduced field for field from a real refusal on a site
+running it:
+
+```json
+cookiez-user-consent={"data":{"consent":{"necessary":true,"functional":false,
+    "analytics":false,"advertising":false,"unclassified":false}},
+    "meta":{"cookiesHash":"79a37b2f…","timestamp":1791239063}}
+```
+
+URI-encoded, `path=/`, `max-age` of `86400 * consentExpiration` and
+`SameSite=Lax`, all from their own writer. Five categories, and their builder is
+
+```js
+J = e => Object.fromEntries(Object.values(R).map(t => [t, t === Necessary || e]));
+```
+
+so `J(false)` *is* the refusal above - necessary true and the other four false.
+
+**The hash decides whether the record counts at all.** Their gate:
+
+```js
+if (!e?.meta) return false;
+if (Date.now()/1e3 - e.meta.timestamp > 86400 * consentExpiration) return false;
+const n = window.cookiezBannerSettings?.cookiesHash;
+return !n || e.meta.cookiesHash === n;
+```
+
+A record whose `cookiesHash` does not match the current one is thrown away and
+**the banner shows again** - the same shape of trap as Complianz's `policy_id`.
+The hash is a page global, read here exactly where their own writer reads it,
+which is the only reason a record written from outside survives.
+
+**The `consentId` is not minted, and here that is not a judgement call.**
+Theirs comes back from their own server:
+
+```js
+n = (await N.sendConsentLog(e, t, Q()?.data?.consentId)).consentId;
+const o = {data: n ? {consentId: n, consent: e} : {consent: e}, …};
+```
+
+When that call fails, their own record carries **no `consentId` key at all**. So
+one already stored is carried over, and otherwise the key is left out - a shape
+their own code produces.
+
+**Their two bridges** go with the record, gated as theirs are on `supportGcm`
+and the tenant's integrations: the **WordPress Consent API**, whose names are
+not the category names (`analytics` becomes `statistics`, `advertising` becomes
+`marketing`), and **Google consent mode**, which theirs calls through
+`window.gtag` directly rather than pushing to a data layer, and skips where a
+tenant delegates it to Site Kit.
+
+**There is no page-facing API to reproduce**, which is worth saying plainly
+because the temptation is to invent one. Their bundle dispatches no
+`CustomEvent` and no DOM event of any kind, and the one global it sets -
+`window.cookiezBanner` - is banner internals (`screenManager`, `translations`,
+`content`, `apiConfig`) put up only when a banner is actually built. So this
+resource puts nothing of its own up: the record is the interface.
+
+`cookiez-reject-unblock.js` frees the scripts their blocker parked, by **their
+own selector**:
+
+```
+script[type="text/plain"][data-cc-category="<category>"]:not([data-cc-mode="always"])
+```
+
+The copy drops every `data-cc-` attribute and the `type`, takes its `src` from
+`data-cc-src`, keeps inline text, and goes back in at the original position -
+all of which is what theirs does. A node marked `data-cc-mode="always"` stays
+parked even there, because that is their own never-free marker.
+
+**Not done, deliberately:** no banner, nothing posted to their REST route
+(`cookiezBannerSettings.serviceUrl`, with an `X-WP-Nonce` header), and no
+banner internals of this repo's making. Their `gpcDntSupport` path decides
+without a banner where the browser sends a GPC signal - under an opt-in
+template that is a refusal, which is what this writes either way, so it is
+reported in the console line rather than acted on.
+
 ## Development
 
 ```sh
@@ -2214,7 +2311,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.37.1/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.38.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

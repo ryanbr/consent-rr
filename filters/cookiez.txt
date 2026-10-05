@@ -1,0 +1,82 @@
+! Title: consent-rr - Cookiez
+! Description: Replaces the Cookiez WordPress plugin's banner bundle with
+!              their own refusal, carrying the hash their gate checks.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! A WORDPRESS PLUGIN, so like Complianz it is served FIRST-PARTY from the
+! site's own wp-content path and there is no vendor host to match:
+!
+!   /wp-content/plugins/cookiez/assets/build/banner.js?ver=<hash>
+!   /wp-content/plugins/cookiez/assets/build/lang-en.js?ver=<hash>
+!
+! The rule matches the file under any cookiez* plugin directory, which is what
+! keeps working when a premium or renamed build turns up, and the ?ver= query
+! does not get in the way.
+!
+! Swap in cookiez-reject-unblock.js on a site that withholds something until a
+! category is on.
+! -----------------------------------------------------------------------------
+/plugins/cookiez*/assets/build/banner.js$script,redirect=cookiez-reject.js
+
+! -----------------------------------------------------------------------------
+! THEIR LANGUAGE FILE IS A WEBPACK CHUNK of banner text, pushed into
+! globalThis.webpackChunkcookiez by the bundle's own chunk loader - so with
+! banner.js replaced nothing ever asks for it. The rule below is for a page
+! that hardcodes it anyway, and noopjs is enough because no banner is built.
+! -----------------------------------------------------------------------------
+/plugins/cookiez*/assets/build/lang-*.js$script,redirect=noopjs
+
+! -----------------------------------------------------------------------------
+! THEIR RECORD, reproduced field for field from a real refusal on a site
+! running it:
+!
+!   cookiez-user-consent={"data":{"consent":{"necessary":true,
+!       "functional":false,"analytics":false,"advertising":false,
+!       "unclassified":false}},
+!       "meta":{"cookiesHash":"...","timestamp":1791239063}}
+!
+! URI-encoded, path=/, max-age 86400 * consentExpiration and SameSite=Lax, all
+! from their own writer. Five categories, and their builder is
+! J = e => Object.fromEntries(Object.values(R).map(t => [t, t === Necessary || e]))
+! so J(false) is exactly the refusal above.
+!
+! THE HASH DECIDES WHETHER THE RECORD COUNTS. Their gate throws a record away
+! when meta.cookiesHash does not match window.cookiezBannerSettings.cookiesHash,
+! or when it is older than consentExpiration days - and then the banner shows
+! again. The hash is a page global, which is the only reason a record written
+! from outside can survive.
+!
+! THE consentId IS NOT MINTED, and that is not a judgement call here: theirs
+! comes back from their own server, and when that call fails their own record
+! carries no consentId at all. One already stored is kept; otherwise the key is
+! left out, which is a shape their own code produces.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Deliberately left alone:
+!
+!   their REST route     theirs posts the decision to
+!                        cookiezBannerSettings.serviceUrl with an X-WP-Nonce
+!                        header and takes the consentId from the reply.
+!                        Nothing is sent.
+!   window.cookiezBanner banner internals - screenManager, translations,
+!                        content, apiConfig - put up only when a banner is
+!                        built. A screenManager of this repo's making would be
+!                        worse than its absence, and their bundle dispatches no
+!                        events at all, so there are none to reproduce either.
+!   data-cc-mode=always  their own never-free marker. Even the unblock variant
+!                        leaves those parked, because their own un-parking
+!                        excludes them with a :not().
+!
+! To see it work:
+!
+!   [consent-rr] cookiez-reject 1.0.0 categories=necessary cookie=written
+!                hash=theirs consentid=none told=4 freed=0 gpc=unset
+!                banner=none log=none
+! -----------------------------------------------------------------------------

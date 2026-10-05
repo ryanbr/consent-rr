@@ -324,6 +324,34 @@ const FIXTURES = [
             '<p>x</p></body></html>',
     },
     {
+        resource: 'cookiez-reject.js',
+        cmp: 'Cookiez',
+        page: '<html lang="de"><head>' +
+            '<script src="https://example.com/wp-content/plugins/cookiez/assets/build/banner.js?ver=6b562b9aa0a8cbe0378b"></' + 'script>' +
+            '</head><body>' +
+            '<script type="text/plain" data-cc-category="analytics" data-cc-src="https://a.example/ga.js"></' + 'script>' +
+            '<p>x</p></body></html>',
+        drive: w => {
+            w.eval('window.cookiezBannerSettings = { cookiesHash: "79a37b2f51fbb37963e67d8d7061484e",' +
+                ' settings: { consentExpiration: 180, supportGcm: true },' +
+                ' integrations: { wpConsentApiActive: true, delegateGcmToSiteKit: false } };');
+        },
+    },
+    {
+        resource: 'cookiez-reject-unblock.js',
+        cmp: 'Cookiez',
+        page: '<html lang="de"><head>' +
+            '<script src="https://example.com/wp-content/plugins/cookiez/assets/build/banner.js?ver=6b562b9aa0a8cbe0378b"></' + 'script>' +
+            '</head><body>' +
+            '<script type="text/plain" data-cc-category="analytics" data-cc-src="https://a.example/ga.js"></' + 'script>' +
+            '<p>x</p></body></html>',
+        drive: w => {
+            w.eval('window.cookiezBannerSettings = { cookiesHash: "79a37b2f51fbb37963e67d8d7061484e",' +
+                ' settings: { consentExpiration: 180, supportGcm: true },' +
+                ' integrations: { wpConsentApiActive: true, delegateGcmToSiteKit: false } };');
+        },
+    },
+    {
         resource: 'cookieyes-reject.js',
         cmp: 'CookieYes',
         page: '<html lang="en"><head>' +

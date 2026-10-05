@@ -109,7 +109,7 @@ Sizes: `reject` 36.1 KB, `reject-unblock` 36.1 KB, `accept` 36.1 KB.
 
 # Every resource, side by side
 
-21 consent managers, 32 resources. Each one was booted on a page its own
+22 consent managers, 34 resources. Each one was booted on a page its own
 consent manager would recognise, and the rows below are what it did there - the
 globals it defined, the cookies it wrote, the signals it sent. A resource that
 shares a page with another (the OneTrust three, the Civic two) was measured on
@@ -134,6 +134,8 @@ the same fixture as its sibling.
 | `zdconsent-accept` | 48.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
 | `consentmanager-reject` | 21.8 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
 | `consentmanager-reject-unblock` | 21.9 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
+| `cookiez-reject` | 7.1 KB | `cookiezConsentRR` |
+| `cookiez-reject-unblock` | 7.2 KB | `cookiezConsentRR` |
 | `cookieyes-reject` | 18.1 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
 | `cookieyes-reject-unblock` | 18.1 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
 | `tarteaucitron-reject` | 19.7 KB | `uetq` |
@@ -171,6 +173,8 @@ the same fixture as its sibling.
 | `zdconsent-accept` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2`, `zdconsent` | `cookieChoiceMade` | - | `__tcfapi`, `__gpp`, `__uspapi` | yes |
 | `consentmanager-reject` | `euconsent-v2`, `euconsent-v2` | - | - | `__tcfapi`, `__uspapi` | no |
 | `consentmanager-reject-unblock` | `euconsent-v2`, `euconsent-v2` | - | - | `__tcfapi`, `__uspapi` | no |
+| `cookiez-reject` | `cookiez-user-consent` | - | update: granted nothing | - | no |
+| `cookiez-reject-unblock` | `cookiez-user-consent` | - | update: granted nothing | - | no |
 | `cookieyes-reject` | `cookieyes-consent`, `cookieyes-consent` | - | - | `__tcfapi` | no |
 | `cookieyes-reject-unblock` | `cookieyes-consent`, `cookieyes-consent` | - | - | `__tcfapi` | no |
 | `tarteaucitron-reject` | `tarteaucitron` | - | default: granted nothing | - | no |
@@ -194,7 +198,7 @@ The last column is measured by booting each one twice, with the clock and the
 randomness pinned so the two runs differ in nothing but the signal, and then
 comparing what the visitor is left carrying. The 7 it changes carry a
 field for it to change - OneTrust's own `browserGpcFlag`, InMobi's
-legitimate interest, Osano's opt-out. The 25 it does not have nowhere to
+legitimate interest, Osano's opt-out. The 27 it does not have nowhere to
 put it: every category is refused with or without the signal either way.
 
 ## What each one does to a parked tag
@@ -243,6 +247,8 @@ uBlock Origin does the blocking.
 [consent-rr] zdconsent-accept/onetrust 1.0.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
 [consent-rr] consentmanager-reject 1.0.1 purposes=none vendors=none api=__cmp+__uspapi tcf=refused freed=0 events=5 told=0 banner=none crossdomain=none tracking=none
 [consent-rr] consentmanager-reject-unblock 1.0.1 purposes=none vendors=none api=__cmp+__uspapi tcf=refused freed=1 events=5 told=0 banner=none crossdomain=none tracking=none
+[consent-rr] cookiez-reject 1.0.0 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=0 gpc=unset banner=none log=none
+[consent-rr] cookiez-reject-unblock 1.0.0 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=1 gpc=unset banner=none log=none
 [consent-rr] cookieyes-reject 1.0.2 categories=necessary cookie=written consentid=none freed=0 events=2 tcf=refused gpc=unset banner=none log=none
 [consent-rr] cookieyes-reject-unblock 1.0.2 categories=necessary+functional+analytics+performance+advertisement+other cookie=written consentid=none freed=1 events=2 tcf=refused gpc=unset banner=none log=none
 [consent-rr] tarteaucitron-reject 1.0.1 refused=2 allowed=0 launched=0 cookie=tarteaucitron entries=2 events=5 banner=none reload=no beacon=none

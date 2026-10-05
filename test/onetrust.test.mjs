@@ -48,6 +48,8 @@ describe('resources file', ( ) => {
                 'cookiescript-reject.js',
                 'cookieyes-reject-unblock.js',
                 'cookieyes-reject.js',
+                'cookiez-reject-unblock.js',
+                'cookiez-reject.js',
                 'didomi-accept.js',
                 'didomi-reject.js',
                 'fundingchoices-reject.js',

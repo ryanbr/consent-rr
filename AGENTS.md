@@ -184,6 +184,25 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   before it ships. Auditing all twenty families afterwards found no second
   case - every other cross-family mention was a deliberate comparison - which
   is worth knowing too.
+- **A hash in the record is a policy id by another name.** Cookiez stores a
+  cookiesHash in its record's meta and throws the whole record away when it
+  does not match window.cookiezBannerSettings.cookiesHash - or when it is
+  older than consentExpiration days - and then the banner comes back. That is
+  the Complianz policy_id trap in a different shape, and the third family
+  where a record only counts if it carries something the page declares. When a
+  record has a meta block, find what reads it before assuming the consent
+  fields are the whole story.
+- **A CMP may have no API at all, and then the restraint is the work.**
+  Cookiez dispatches no event of any kind and sets one global, which is banner
+  internals that exist only when a banner is built. There was nothing to put
+  up, so nothing was put up. Coming straight off a family where an invented
+  surface shipped, the useful instinct is the opposite one: grep for
+  dispatchEvent and for window.<name> assignments, and if they are not there,
+  write down that they are not.
+- **A second-evaluation test needs something that changes.** The Cookiez guard
+  survived its mutation because the test compared a timestamp the CMP keeps in
+  SECONDS, so two runs in the same second look identical. Count the bridge
+  calls, or the events, or anything that increments.
 - **Measure the payload, not just the command names.** The consentmanager
   resource shipped with a getCMPData of twenty invented field names: purposeLIs
   for their purposeLI, hasGlobalConsent for their hasGlobalScope, a cmpId their
