@@ -134,8 +134,8 @@ the same fixture as its sibling.
 | `zdconsent-accept` | 48.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
 | `consentmanager-reject` | 21.8 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
 | `consentmanager-reject-unblock` | 21.9 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
-| `cookiez-reject` | 7.1 KB | `cookiezConsentRR` |
-| `cookiez-reject-unblock` | 7.2 KB | `cookiezConsentRR` |
+| `cookiez-reject` | 7.4 KB | - |
+| `cookiez-reject-unblock` | 7.4 KB | - |
 | `cookieyes-reject` | 18.1 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
 | `cookieyes-reject-unblock` | 18.1 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
 | `tarteaucitron-reject` | 19.7 KB | `uetq` |
@@ -247,8 +247,8 @@ uBlock Origin does the blocking.
 [consent-rr] zdconsent-accept/onetrust 1.0.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
 [consent-rr] consentmanager-reject 1.0.1 purposes=none vendors=none api=__cmp+__uspapi tcf=refused freed=0 events=5 told=0 banner=none crossdomain=none tracking=none
 [consent-rr] consentmanager-reject-unblock 1.0.1 purposes=none vendors=none api=__cmp+__uspapi tcf=refused freed=1 events=5 told=0 banner=none crossdomain=none tracking=none
-[consent-rr] cookiez-reject 1.0.0 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=0 gpc=unset banner=none log=none
-[consent-rr] cookiez-reject-unblock 1.0.0 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=1 gpc=unset banner=none log=none
+[consent-rr] cookiez-reject 1.0.1 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=0 gpc=unset banner=none log=none
+[consent-rr] cookiez-reject-unblock 1.0.1 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=1 gpc=unset banner=none log=none
 [consent-rr] cookieyes-reject 1.0.2 categories=necessary cookie=written consentid=none freed=0 events=2 tcf=refused gpc=unset banner=none log=none
 [consent-rr] cookieyes-reject-unblock 1.0.2 categories=necessary+functional+analytics+performance+advertisement+other cookie=written consentid=none freed=1 events=2 tcf=refused gpc=unset banner=none log=none
 [consent-rr] tarteaucitron-reject 1.0.1 refused=2 allowed=0 launched=0 cookie=tarteaucitron entries=2 events=5 banner=none reload=no beacon=none

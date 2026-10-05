@@ -1,6 +1,6 @@
 {
   "name": "consent-rr",
-  "version": "1.38.0",
+  "version": "1.38.1",
   "resourceVersions": {
     "onetrust": "1.5.0",
     "cookieinformation": "1.0.2",
@@ -23,7 +23,7 @@
     "tarteaucitron": "1.0.1",
     "cookieyes": "1.0.2",
     "consentmanager": "1.0.1",
-    "cookiez": "1.0.0"
+    "cookiez": "1.0.1"
   },
   "description": "Cookie-consent resource replacements for uBlock Origin",
   "files": [

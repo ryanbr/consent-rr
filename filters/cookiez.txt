@@ -59,6 +59,18 @@
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
+! WHAT THEIR BOOT DOES THAT THE REFUSAL OVERRIDES. On a site configured
+! adaptive and opt-in-out, their own code asks their geo endpoint and then, in
+! a no-banner region, UN-PARKS EVERYTHING and tells both bridges granted - and
+! in an opt-out region tells both bridges granted - with no banner and no user
+! action. A record written here overrides that, and stops the geo call
+! happening at all next page: their gate is short-circuited by "a record
+! exists".
+!
+! THEIR DNT SUPPORT DOES NOT EXIST. The setting is called gpcDntSupport, and
+! doNotTrack appears nowhere in their bundle - only globalPrivacyControl is
+! read. Nothing is claimed on DNT's behalf here either.
+!
 ! Deliberately left alone:
 !
 !   their REST route     theirs posts the decision to

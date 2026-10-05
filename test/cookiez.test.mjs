@@ -269,6 +269,24 @@ describe('cookiez-reject', ( ) => {
         assert.deepEqual([ ...w.__net ], []);
     });
 
+    it('keeps its own marker off a page s walk of window', ( ) => {
+        // This family's whole point is that their bundle puts up nothing a
+        // page calls, so the one property here is not enumerable either.
+        const w = boot(reject);
+        assert.equal(typeof w.cookiezConsentRR, 'object');
+        assert.equal(Object.keys(w).includes('cookiezConsentRR'), false);
+        // The page's own cookiezBannerSettings is of course still there;
+        // what must not be is anything this file added.
+        const named = [];
+        for ( const key in w ) {
+            if ( key.startsWith('cookiez') ) { named.push(key); }
+        }
+        assert.deepEqual(named, [ 'cookiezBannerSettings' ]);
+        assert.equal(
+            Object.getOwnPropertyDescriptor(w, 'cookiezConsentRR').enumerable,
+            false);
+    });
+
     it('builds no banner and puts up no internals of its own', ( ) => {
         // window.cookiezBanner is their screenManager and translations, and
         // exists only when a banner is built.

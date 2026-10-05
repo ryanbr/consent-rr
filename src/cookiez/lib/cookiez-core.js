@@ -75,11 +75,49 @@
     key is absent, not empty. So one already stored is kept, and otherwise
     the key is left out, which is a shape their own code produces.
 
+    WHAT THEIR BOOT DOES THAT THIS DELIBERATELY OVERRIDES. Their settings come
+    from window.cookiezBannerSettings.settings merged over their own defaults
+    - consentExpiration 180, gpcDntSupport false, supportGcm false - with
+    integrations merged in from the TOP level of that global, which is why
+    those two are read from two different places here. Then:
+
+        ln = async e => {
+            if (!(e.geoTargeting === "adaptive"
+                  && e.templateType === OptInOut) || ee()) return e;
+            const n = await Mt(e.regionalRules, {...});
+            if (n === NoBanner) { const t = J(true); q(t); re(t, e);
+                                  return {skipBanner: true}; }
+            const o = n === OptOut ? OptOut : OptIn;
+            if (o === OptOut) { re(J(true), e); }
+            ...
+        };
+
+    so on a site configured adaptive and opt-in-out, their own code asks their
+    geo endpoint and then, in a no-banner region, UN-PARKS EVERYTHING and tells
+    both bridges granted - and in an opt-out region tells both bridges granted
+    - with no banner and no user action. The refusal written here is what
+    overrides that, and it also stops the geo call happening at all on the next
+    page: their own gate is short-circuited by ee(), which is simply "a record
+    exists".
+
+    THEIR DNT SUPPORT DOES NOT EXIST. The setting is called gpcDntSupport and
+    doNotTrack appears nowhere in their bundle - only
+    navigator.globalPrivacyControl is read. Nothing is claimed here on DNT's
+    behalf either; the console line reports whether a GPC signal was sent.
+
+    googleTagsBeforeConsent appears only in their defaults object and is never
+    read by the bundle, so it is a server-side setting their PHP consumes.
+    There is nothing here to reproduce for it.
+
     NOT DONE HERE, deliberately:
 
       no banner          nothing is built, so their lang-<xx>.js is not
                          needed either and the filter list sends it to
                          noopjs.
+      no geo lookup      theirs asks its own geoEndpoint, with the page's
+                         wpRestNonce, to pick a template in adaptive mode.
+                         Nothing is asked from here - and a record written
+                         here stops theirs asking on the next page too.
       no consent log     theirs posts the decision to their own REST route,
                          window.cookiezBannerSettings.serviceUrl with an
                          X-WP-Nonce header, and takes the consentId from the
@@ -321,11 +359,19 @@ function consentRRCookiez(mode) {
     announce(decided);
     revive();
 
-    // A marker rather than an API: their bundle puts up nothing a page calls,
-    // so neither does this, and a second evaluation has something to see.
+    // A marker rather than an API, and NOT enumerable: this family's whole
+    // point is that their bundle puts up nothing a page calls, so the one
+    // property here does not show up in a page's own walk of window either.
+    // A second evaluation still has something to see.
     try {
-        w.cookiezConsentRR = { name: NAME, version: VERSION, mode: mode };
+        Object.defineProperty(w, 'cookiezConsentRR', {
+            value: { name: NAME, version: VERSION, mode: mode },
+            configurable: true,
+            enumerable: false,
+            writable: true,
+        });
     } catch ( ex ) {
+        w.cookiezConsentRR = { name: NAME, version: VERSION, mode: mode };
     }
 
     // Said once, at the end, so it reports what actually went in.
