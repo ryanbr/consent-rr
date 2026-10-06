@@ -492,6 +492,15 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   (`data-cmp-ab`, `cmplz-activated`) and honour it; where there is none, keep a
   `WeakSet` here rather than writing a marker onto their page. Pin it with a
   test that counts after settling twice.
+- **An attribute in a CMP's markup is not its data model.** WebToffee's
+  settings modal disables its necessary checkbox, so reading `disabled` looks
+  like the obvious way to tell which category is theirs to keep - but their own
+  `disableAllCookies` unticks every box whose slug is not in
+  `Cli_Data.strictlyEnabled`, and `disabled` is only how their CSS stops a
+  click. The live payload carries `[ 'necessary', 'obligatoire' ]`: a translated
+  site names the category in its own language, and the attribute reading would
+  have written `yes` for a category their own reject erases. Find the list the
+  CMP's own code reads and read that one.
 
 ## Testing
 

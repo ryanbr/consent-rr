@@ -86,6 +86,18 @@ const CASES = [
         freed: doc => doc.querySelectorAll('script[src="https://a.example/a.js"]').length,
     },
     {
+        name: 'webtoffee-reject-unblock.js',
+        url: 'https://www.cbu.edu/page',
+        settings: 'window.Cli_Data = { nn_cookie_ids:' +
+            ' [ "cookielawinfo-checkbox-analytics" ],' +
+            ' strictlyEnabled: [ "necessary" ], consentVersion: "1",' +
+            ' current_lang: "en" };',
+        parked: '<script id="p" data-cli-class="cli-blocker-script"' +
+            ' type="text/plain" data-cli-script-type="analytics"' +
+            ' data-cli-src="https://a.example/a.js"></script>',
+        freed: doc => doc.querySelectorAll('script[src="https://a.example/a.js"]').length,
+    },
+    {
         name: 'termly-reject.js',
         url: 'https://example.org/page',
         parked: '<script id="p" type="text/plain" data-categories="essential"' +

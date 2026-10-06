@@ -1,0 +1,126 @@
+! Title: consent-rr - WebToffee GDPR Cookie Consent
+! Description: Replaces the WebToffee GDPR Cookie Consent script - the version
+!              that blocks scripts - with a stub that writes their own refusal
+!              and takes their banner out.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! WebToffee's GDPR Cookie Consent for WordPress, the version with categories,
+! an api and real script blocking. The legacy single-file version of the same
+! plugin has its own list here - cookielawinfo.txt - and does none of those
+! things.
+!
+! One rule by path: the file name is the same under both plugin slugs, and a
+! site can serve it from anywhere. All of these are live:
+!
+!   www.cbu.edu/wp-content/plugins/webtoffee-gdpr-cookie-consent/public/js/cookie-law-info-public.js?ver=2.5.3
+!   mahidol.ac.th/lib/webtoffee-gdpr-cookie-consent/public/js/cookie-law-info-public.js
+!   <any site>/wp-content/plugins/cookie-law-info/public/js/cookie-law-info-public.js
+!
+! The second is why the rule does not name wp-content: that site serves the
+! plugin out of /lib/.
+! -----------------------------------------------------------------------------
+/public/js/cookie-law-info-public.js$script,redirect=webtoffee-reject.js
+
+! -----------------------------------------------------------------------------
+! For a site that withholds something until a category is on.
+!
+! example.com##+js(webtoffee-reject-unblock)
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! THEIR STYLESHEETS ARE LEFT ALONE, and this is deliberate rather than an
+! oversight - three of them ship with this plugin:
+!
+!   public/css/cookie-law-info-public.css   the bar, the buttons, the
+!                                           show-again tab
+!   public/css/cookie-law-info-gdpr.css     their settings popup and its
+!                                           accordion
+!   public/css/cookie-law-info-table.css    the cookie-audit TABLE
+!
+! The first two style markup this resource removes, so they style nothing -
+! blocking them would save one cached request and risk a site that reuses their
+! classes elsewhere.
+!
+! The third is not consent UI at all. Their [cookie_audit] shortcode renders a
+! table of cookies into a page - a live privacy page sampled carries seven
+! cookielawinfo-row elements and seventy-six cli-tab classes - and that table is
+! page CONTENT that stays after this resource has run. Blocking its stylesheet
+! would leave a visibly broken table on the privacy page of every site using
+! the shortcode.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! THEIR REFUSAL, which is what this writes, verbatim from their reject button:
+!
+!   reject_close: function() {
+!       this.hidePopupOverlay();
+!       for ( var k in Cli_Data.nn_cookie_ids ) {
+!           CLI_Cookie.erase(Cli_Data.nn_cookie_ids[k]);
+!       }
+!       CLI_Cookie.set(CLI_ACCEPT_COOKIE_NAME,'no',CLI_ACCEPT_COOKIE_EXPIRE);
+!       ...
+!       this.generate_user_preference_cookie();
+!       CLI.generateConsent();
+!   }
+!
+! so a refusal ERASES each non-necessary category cookie rather than setting it
+! to no, and writes three records:
+!
+!   viewed_cookie_policy      no
+!   cli_user_preference       en-cli-no-checkbox-necessary-yes-checkbox-
+!                             analytics-no-...
+!   CookieLawInfoConsent      base64 of
+!                             {"ver":"1","necessary":"true","analytics":"false"}
+!
+! and their own toggleUserPreferenceCheckBox leaves the necessary category's
+! own cookie as yes, which is what their reject ends with. Run beside their own
+! 2.5.3 file on the same page, every one of those matches byte for byte for a
+! fresh visitor.
+!
+! ONE DELIBERATE DIFFERENCE. For a visitor who had already accepted, their own
+! reject button reads the checkbox states to build those two records - and it
+! does not untick the boxes first, so it records analytics as "true" for a
+! category it has just erased the cookie of. This writes the refusal in all
+! three records instead.
+!
+! WHICH CATEGORY IS THEIRS TO KEEP is Cli_Data.strictlyEnabled, not the
+! checkbox's disabled attribute: their own disableAllCookies unticks every box
+! whose slug is not in that list, and the live payload carries
+! [ 'necessary', 'obligatoire' ] - a translated site names it in its own
+! language, and reading the attribute would write yes for a category their own
+! reject erases.
+!
+! To see it work - a fresh visitor, then one who had accepted before:
+!
+!   [consent-rr] webtoffee-reject 1.0.0 cookie=viewed_cookie_policy=no
+!                written=4 erased=0 categories=necessary,analytics,advertisement
+!                surface=necessary removed=4 told=1 banner=none logged=none
+!
+!   [consent-rr] webtoffee-reject 1.0.0 cookie=viewed_cookie_policy=no
+!                written=3 erased=2 categories=necessary,analytics,advertisement
+!                surface=necessary removed=4 told=1 banner=none logged=none
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! THEIR BANNER IS SERVER-RENDERED. There is no cli_show_cookiebar in this file
+! and no prepend anywhere in it: the markup is printed into the page by PHP and
+! their script only wires it. So the bar, the show-again tab, their settings
+! popup and its overlay are taken out - a script that would have hidden them is
+! no longer there.
+!
+! THEIR EVENT GOES TO THE DOCUMENT. Their AfterConsent dispatches
+! cli_consent_update at document, carrying {status, categories:{accepted,
+! rejected}}, and that is the only thing of theirs a page can listen for. It is
+! fired here with the refusal.
+!
+! NOTHING IS LOGGED. Their saveLog posts the whole cookie jar to
+! Cli_Data.ajax_url where their logging is on. Nothing here posts anywhere, and
+! their admin-ajax endpoint is deliberately not blocked - it is WordPress's own
+! and carries everything else on the site.
+! -----------------------------------------------------------------------------

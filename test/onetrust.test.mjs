@@ -76,6 +76,8 @@ describe('resources file', ( ) => {
                 'termly-reject.js',
                 'transcend-reject.js',
                 'usercentrics-reject.js',
+                'webtoffee-reject-unblock.js',
+                'webtoffee-reject.js',
                 'zdconsent-accept.js',
                 'zdconsent-reject.js',
             ]

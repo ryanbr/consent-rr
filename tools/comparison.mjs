@@ -456,6 +456,34 @@ const FIXTURES = [
             '<p>x</p></body></html>',
     },
     {
+        resource: 'webtoffee-reject.js',
+        cmp: 'WebToffee GDPR Cookie Consent',
+        page: '<html lang="en"><head>' +
+            '<script src="https://example.com/wp-content/plugins/webtoffee-gdpr-cookie-consent/public/js/cookie-law-info-public.js?ver=2.5.3"></' + 'script>' +
+            '</head><body>' +
+            '<div id="cookie-law-info-bar"><span>Cookies.</span></div>' +
+            '<div id="cookie-law-info-again">Manage consent</div>' +
+            '<div id="cliSettingsPopup" class="cli-modal">' +
+            '<input type="checkbox" class="cli-user-preference-checkbox" data-id="checkbox-necessary" checked disabled>' +
+            '<input type="checkbox" class="cli-user-preference-checkbox" data-id="checkbox-analytics">' +
+            '</div>' +
+            '<script data-cli-class="cli-blocker-script" type="text/plain" data-cli-script-type="analytics" data-cli-src="https://a.example/ga.js"></' + 'script>' +
+            '<p>x</p></body></html>',
+        drive: w => {
+            w.eval('window.Cli_Data = { nn_cookie_ids: [ "cookielawinfo-checkbox-analytics" ],' +
+                ' strictlyEnabled: [ "necessary" ], consentVersion: "1", current_lang: "en",' +
+                ' cookieDomain: "", secure_cookies: "", cookielist: [], non_necessary_cookies: {},' +
+                ' ccpaEnabled: "", ccpaRegionBased: "", ccpaBarEnabled: "", ccpaType: "gdpr",' +
+                ' ajax_url: "https://example.com/wp-admin/admin-ajax.php", geoIP: "disabled",' +
+                ' eu_countries: [], privacy_length: "250", triggerDomRefresh: "" };');
+        },
+    },
+    {
+        resource: 'webtoffee-reject-unblock.js',
+        cmp: 'WebToffee GDPR Cookie Consent',
+        sameAs: 'webtoffee-reject.js',
+    },
+    {
         resource: 'cookiez-reject.js',
         cmp: 'Cookiez',
         page: '<html lang="de"><head>' +

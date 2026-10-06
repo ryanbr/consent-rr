@@ -60,6 +60,8 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `cookieconsent-reject-unblock.js` | CookieConsent v3, for a site that withholds something: the same stored refusal, while the page is told every category is accepted and the tags their manager parked are freed by their own `data-category` / `data-src` / `data-type` contract. |
 | `cookieconsent-accept.js` | CookieConsent v3, granting - every category their config names, their services with them, and the parked tags freed, which is what their accept-all does. |
 | `cookielawinfo-reject.js` | The legacy Cookie Law Info plugin for WordPress (WebToffee's "GDPR Cookie Consent", not the hosted CookieYes script): their decline in their own `viewed_cookie_policy` cookie, their two globals put back because the page calls one from an inline script, and their server-rendered bar taken out - on 1.x the markup is printed by PHP and their own script is what hides it. The smallest resource here, and one rule by path covers every site that self-hosts it. |
+| `webtoffee-reject.js` | WebToffee's current GDPR Cookie Consent plugin - the one with categories, an API and real script blocking, which the legacy resource above does not cover. Their refusal in all three of their records (`viewed_cookie_policy`, `cli_user_preference` and the base64 `CookieLawInfoConsent`), their non-necessary category cookies erased, their whole banner and settings modal taken out, their parked tags left parked, and their `cli_consent_update` fired at the document where theirs fires it. |
+| `webtoffee-reject-unblock.js` | The same stored refusal, for a site that withholds something: the page is told every category is allowed and the tags their blocker parked are freed by their own `data-cli-src` / `data-cli-script-type` contract. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -102,49 +104,51 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/cookielawinfo-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/iubenda-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/iubenda-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/iubenda-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/cookieconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/cookieconsent-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/cookieconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/cookiescript-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/didomi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/didomi-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/complianz-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/complianz-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/zdconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/zdconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/fundingchoices-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/tarteaucitron-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/tarteaucitron-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/cookieyes-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/cookieyes-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/consentmanager-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/consentmanager-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/cookiez-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/cookiez-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/ampconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/ampconsent-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookielawinfo-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/webtoffee-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/webtoffee-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/iubenda-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/iubenda-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/iubenda-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookieconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookieconsent-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookieconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/didomi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/didomi-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/complianz-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/complianz-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/zdconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/zdconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/fundingchoices-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/tarteaucitron-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/tarteaucitron-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookieyes-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookieyes-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/consentmanager-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/consentmanager-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookiez-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookiez-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/ampconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/ampconsent-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -158,8 +162,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.45.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.45.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.46.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.46.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -2712,14 +2716,117 @@ calls it with `settings.text` and `settings.border`).
 
 ### Deliberate gaps
 
-- **The modern plugin's own script.** `cookie-law-info-public.js` does park
-  scripts (`data-cli-class`, `text/plain`) and writes
-  `cookielawinfo-checkbox-<category>` cookies beside this one. None of the four
-  sites sampled ships it; a site that does needs more than this resource.
+- **The modern plugin's own script** is a different resource.
+  `cookie-law-info-public.js` parks scripts (`data-cli-class`, `text/plain`) and
+  writes `cookielawinfo-checkbox-<category>` cookies beside this one. None of
+  the four sites sampled ships it; a site that does wants
+  `webtoffee-reject.js`, in the next section.
 - **No accept variant.** Nothing is gated behind consent in any version of this
   plugin, so there is nothing an acceptance would release.
 - **Their stylesheet is left alone.** `cli-style.css` styles a bar that is no
   longer there.
+
+## WebToffee GDPR Cookie Consent (the current plugin)
+
+`/public/js/cookie-law-info-public.js` - the same vendor as the legacy section
+above, and a different piece of software: categories, a documented API, a real
+script blocker and three stored records. Slug `webtoffee-gdpr-cookie-consent` or
+`cookie-law-info` depending on the vintage, and one site sampled
+(`mahidol.ac.th`) serves it out of `/lib/` rather than `/wp-content/plugins/`,
+which is why the rule names the path from `public/js/` on.
+
+**Their script ships unminified**, so this family was built the way the
+CookieConsent one was: their own 2.5.3 file loaded into the same page as the
+resource, given the same `Cli_Data` and `cli_cookiebar_settings`, and their
+reject button pressed. For a fresh visitor all three records come out byte for
+byte the same.
+
+**Their three records**, and their own constants - all four of which are the
+page's to set, and are honoured:
+
+```js
+CLI_ACCEPT_COOKIE_NAME   = 'viewed_cookie_policy'     // 'no'
+CLI_PREFERNCE_COOKIE     = 'CookieLawInfoConsent'     // their spelling
+CLI_ACCEPT_COOKIE_EXPIRE = 365
+CLI_COOKIEBAR_AS_POPUP   = false
+```
+
+- `viewed_cookie_policy=no`.
+- `cli_user_preference` = `en-cli-no-checkbox-necessary-yes-checkbox-analytics-no-...`,
+  their language, then the accept cookie's value, then every category.
+- `CookieLawInfoConsent` = `btoa(JSON.stringify({ver, necessary:'true', ...}))`,
+  with the version from their `Cli_Data.consentVersion` because their own gate
+  compares it.
+
+All of them with their attributes: `path=/`, 365 days, `secure` and `domain`
+from `Cli_Data.secure_cookies` and `Cli_Data.cookieDomain`.
+
+Their per-category cookies are handled the way theirs does, which is not
+symmetrical: their reject **erases** every name in `Cli_Data.nn_cookie_ids`,
+while their load-time `toggleUserPreferenceCheckBox` leaves the necessary one
+set to `yes`. That is what a refusal looks like in their own storage, so that is
+what goes in.
+
+### Which category is theirs to keep
+
+`Cli_Data.strictlyEnabled`, not the checkbox's `disabled` attribute. Their own
+`disableAllCookies` unticks every box whose slug is not in that list, and their
+`enableAllCookies` skips `checkbox-necessary` by name; the `disabled` attribute
+is only how their CSS stops a click. The payload measured carries
+`[ 'necessary', 'obligatoire' ]` - a translated site names the category in its
+own language, and a stub that read the attribute instead would write `yes` for a
+category their own reject erases.
+
+The category list itself comes off their `.cli-user-preference-checkbox` boxes
+where the banner is in the page, and off `nn_cookie_ids` where it is not.
+
+### Their banner is server-rendered
+
+Printed by PHP, like the legacy plugin's 1.x markup, so replacing the file
+leaves all of it on screen. Taken out, not hidden: `#cookie-law-info-bar`,
+`#cookie-law-info-again`, `#cliSettingsPopup`, `.cli-modal-backdrop` and
+`.cli-settings-overlay`, plus the `cli-barmodal-open` class their modal puts on
+the body.
+
+### Their event goes to the document
+
+Their own `ConsentAction` fires `cli_consent_update` at `document`, carrying
+`{ status, categories: { accepted, rejected } }`. Fired there, with the split
+the refusal actually produced - and in `reject-unblock`, with nothing rejected,
+because that is what the page is being told.
+
+### Nothing is logged
+
+Their `saveLog` posts the consent to `admin-ajax.php` with
+`action=wt_cli_log_consent`. The stub's `saveLog` is a no-op and the endpoint is
+left alone in the filter list, because it is the site's own WordPress endpoint
+and everything else on the page uses it too.
+
+### Their stylesheets are left alone
+
+Three ship with the plugin, and none needs replacing:
+
+- `public/css/cookie-law-info-public.css` and `cookie-law-info-gdpr.css` style
+  the bar and the settings modal - markup this resource removes, so they style
+  nothing.
+- `public/css/cookie-law-info-table.css` has to stay. It styles their
+  `[cookie_audit]` shortcode, which is the cookie table a privacy page puts in
+  its own content; `cbu.edu`'s privacy page renders seven `cookielawinfo-row`
+  elements with it. Blocking that stylesheet would wreck page content that has
+  nothing to do with the banner.
+
+### Deliberate gaps
+
+- **No accept variant.** Their blocker is the only thing they gate, and
+  `reject-unblock` already frees it while storing a refusal.
+- **One divergence from their own reject, deliberate.** Theirs builds
+  `cli_user_preference` and `CookieLawInfoConsent` by *reading the checkbox
+  states* and does not untick them first, so a visitor who had previously
+  accepted gets `analytics:'true'` recorded by their own decline - beside the
+  cookie it has just erased. The refusal goes in all three records here.
+- **Their geo-IP gate is ignored.** `Cli_Data.geoIP` and `eu_countries` decide
+  whether their banner shows at all; with no banner there is nothing to gate,
+  and the refusal is stored either way.
 
 ## Development
 
@@ -2760,7 +2867,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.45.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token
