@@ -1,0 +1,107 @@
+! Title: consent-rr - CookieConsent (Orest Bida)
+! Description: Replaces CookieConsent v3 with a stub that records their own
+!              refusal, answers their whole api and leaves their parked script
+!              tags parked.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! CookieConsent v3 by Orest Bida - the MIT-licensed one, NOT Osano's old
+! library of the same common name. Osano's current CMP has its own list here.
+!
+! One rule, because the file is named the same wherever it comes from, and
+! every one of these is a real deployment:
+!
+!   cdn.jsdelivr.net/gh/orestbida/cookieconsent@3.1.0/dist/cookieconsent.umd.js
+!   cdn.jsdelivr.net/gh/orestbida/cookieconsent@v3.0.0/dist/...
+!   cdn.jsdelivr.net/gh/orestbida/cookieconsent@v3.0.0-rc.17/dist/...
+!   cdn.jsdelivr.net/npm/vanilla-cookieconsent@3/dist/...     their npm name
+!   unpkg.com/vanilla-cookieconsent@3.1.0/dist/...
+!   www.csc.edu/media/website/site-assets/javascript/cookieconsent.umd.js
+!
+! The last one is self-hosted, and it is byte-identical to the 3.1.0 file on
+! jsDelivr - same sha1 - which is why one resource stands in for all of them.
+!
+! Swap in cookieconsent-accept.js where a refusal is not an option.
+! -----------------------------------------------------------------------------
+/cookieconsent.umd.js$script,redirect=cookieconsent-reject.js
+
+! -----------------------------------------------------------------------------
+! For a site that withholds something until a category is on.
+!
+! Same stored refusal, while the page's own scripts are told every category is
+! accepted and the tags their manager parked are freed by their own contract:
+!
+! example.com##+js(cookieconsent-reject-unblock)
+!
+! Where the site needs the consent itself:
+!
+! example.com##+js(cookieconsent-accept)
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! THEIR MODULE BUILD IS LEFT ALONE.
+!
+!   cookieconsent.esm.js
+!
+! A page that takes that one imports it and calls run() off the import, so a
+! stub that sets window.CookieConsent answers nobody - and a bundler's copy,
+! compiled into a site's own application file, cannot be reached at all. On
+! either of those the banner stays.
+!
+! Their stylesheet is left alone too: with no banner built, cookieconsent.css
+! styles nothing, and blocking it would be one more request for no reason.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! THEIR RECORD, which is what stops the banner coming back. Their own gate:
+!
+!   e.V && _ && d !== t.revision && (e.j = !1)
+!   e.T = !(_ && e.j && e.C && e.S && f)
+!
+! a string consentId, a revision equal to the page's, a consentTimestamp, a
+! lastConsentTimestamp and categories as an array. Miss any one and their
+! banner is back, so all of them are written:
+!
+!   {"categories":["necessary"],"revision":0,"data":null,
+!    "consentTimestamp":"...","consentId":"<uuid>",
+!    "services":{"necessary":[]},"languageCode":"en",
+!    "lastConsentTimestamp":"...","expirationTime":<ms>}
+!
+! THE consentId IS MINTED HERE, which is the opposite of what this repo does
+! for the families whose id comes from a consent-log server. Theirs is made in
+! the browser, with crypto.getRandomValues, so this makes it the same way - and
+! an existing one is carried over rather than replaced, along with their
+! consentTimestamp.
+!
+! It goes where theirs goes: a cookie named by their cookie.name, cc_cookie by
+! default, as URL-encoded JSON with their own attributes - or localStorage
+! where their cookie.useLocalStorage says so.
+!
+! To see it work:
+!
+!   [consent-rr] cookieconsent-reject 1.0.0 store=cookie name=cc_cookie
+!                accepted=necessary type=necessary surface=necessary parked=3
+!                freed=0 cleared=4 told=4 banner=none
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! THEIR AUTO-CLEAR IS DONE, because it is the visible half of a refusal. A
+! category with autoClear.cookies has those cookies deleted their own way -
+! host-only, the configured domain dot-prefixed, and for a www host the bare
+! domain as well - and an entry written as a regexp is matched against the
+! cookies actually there, as theirs is.
+!
+! THEIR reloadPage IS NOT. Theirs reloads the page when a category goes from
+! accepted to refused, and a resource that writes a refusal on every load
+! would reload every load.
+!
+! BOTS ARE LEFT ALONE, because theirs leaves them alone: with their
+! hideFromBots on, which is their default, a user agent matching
+! /bot|crawl|spider|slurp|teoma/i or navigator.webdriver makes their own run()
+! return before doing anything, so this returns too.
+! -----------------------------------------------------------------------------

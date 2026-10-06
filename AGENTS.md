@@ -7,7 +7,7 @@ pointed at it. The notes below are the things that have actually gone wrong.
 ## Layout
 
 - One directory per consent manager under `src/`, shared code in its `lib/`.
-  `dist/` stays flat: uBO addresses a resource by name alone. Twenty-four
+  `dist/` stays flat: uBO addresses a resource by name alone. Twenty-five
   families so far; `ls src/` is the list, and `src/shared/` is the one
   directory there that is not a consent manager.
 - `src/shared/lib/deferred.js` - the only cross-family lib: running a pass
@@ -331,6 +331,23 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   language, whether Google vendors are enabled. None is derivable from a page.
 - Categories and cookie fields are a deliberate superset, so a site asking about
   one its tenant never defined still gets an answer.
+- **When the CMP is open source, run it beside the resource.** CookieConsent
+  v3 is MIT-licensed, so its own `cookieconsent.umd.js` could be loaded into
+  the same jsdom page as the replacement, given the same config, and compared:
+  the record field for field, their `getUserPreferences`, which cookies their
+  auto-clear deleted, which parked tags were freed, which callbacks fired in
+  which order. That oracle found a divergence no amount of reading would have:
+  a visitor who had already answered gets `onChange`, not `onFirstConsent`,
+  carrying `changedCategories` and `changedServices` - and the first draft
+  fired the first-consent pair every time. Do this before writing the tests,
+  and pin what it establishes; do not vendor their bundle into the repo, the
+  way the AMP family does not.
+- **Two of their behaviours look like bugs in a harness and are not.** Their
+  script manager chains on load, so a freed tag with a `src` holds the rest
+  until it fires - in a page with no network nothing after it ever runs, with
+  their own bundle as much as with this one. A test that put an inline parked
+  tag behind a src'd one passed without having looked at it, and a test for
+  their inverted `!category` form did the same. Put the tag under test first.
 - **A browser signal their own code reads is theirs to honour, and the gate is
   their own switch.** A refusal is already as strong as GPC or DNT can make it,
   which is why most families here say "GPC changes their side, not this one".

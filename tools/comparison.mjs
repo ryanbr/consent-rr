@@ -395,6 +395,57 @@ const FIXTURES = [
         },
     },
     {
+        resource: 'cookieconsent-reject.js',
+        cmp: 'CookieConsent (Orest Bida)',
+        page: '<html lang="en"><head>' +
+            '<script src="https://cdn.jsdelivr.net/gh/orestbida/cookieconsent@3.1.0/dist/cookieconsent.umd.js"></' + 'script>' +
+            '</head><body>' +
+            '<script type="text/plain" data-category="analytics" data-src="https://a.example/ga.js"></' + 'script>' +
+            '<p>x</p></body></html>',
+        drive: w => {
+            w.eval('window.__ccRun = config => { window.CookieConsent.run(config); };');
+        },
+        after: w => {
+            w.eval('window.__ccRun({ revision: 0, categories: {' +
+                ' necessary: { readOnly: true }, analytics: {} },' +
+                ' language: { default: "en" } });');
+        },
+    },
+    {
+        resource: 'cookieconsent-reject-unblock.js',
+        cmp: 'CookieConsent (Orest Bida)',
+        page: '<html lang="en"><head>' +
+            '<script src="https://cdn.jsdelivr.net/gh/orestbida/cookieconsent@3.1.0/dist/cookieconsent.umd.js"></' + 'script>' +
+            '</head><body>' +
+            '<script type="text/plain" data-category="analytics" data-src="https://a.example/ga.js"></' + 'script>' +
+            '<p>x</p></body></html>',
+        drive: w => {
+            w.eval('window.__ccRun = config => { window.CookieConsent.run(config); };');
+        },
+        after: w => {
+            w.eval('window.__ccRun({ revision: 0, categories: {' +
+                ' necessary: { readOnly: true }, analytics: {} },' +
+                ' language: { default: "en" } });');
+        },
+    },
+    {
+        resource: 'cookieconsent-accept.js',
+        cmp: 'CookieConsent (Orest Bida)',
+        page: '<html lang="en"><head>' +
+            '<script src="https://cdn.jsdelivr.net/gh/orestbida/cookieconsent@3.1.0/dist/cookieconsent.umd.js"></' + 'script>' +
+            '</head><body>' +
+            '<script type="text/plain" data-category="analytics" data-src="https://a.example/ga.js"></' + 'script>' +
+            '<p>x</p></body></html>',
+        drive: w => {
+            w.eval('window.__ccRun = config => { window.CookieConsent.run(config); };');
+        },
+        after: w => {
+            w.eval('window.__ccRun({ revision: 0, categories: {' +
+                ' necessary: { readOnly: true }, analytics: {} },' +
+                ' language: { default: "en" } });');
+        },
+    },
+    {
         resource: 'cookiez-reject.js',
         cmp: 'Cookiez',
         page: '<html lang="de"><head>' +
