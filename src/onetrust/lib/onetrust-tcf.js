@@ -235,7 +235,12 @@ function consentRRTcf(grant) {
         cmpLoaded: true,
         cmpStatus: 'loaded',
         displayStatus: 'hidden',
-        apiVersion: '2.2',
+        // Their own otSDKStub.js, which is the file that installs the early
+        // __tcfapi on a OneTrust page, answers apiVersion:"2.0". Measured
+        // rather than assumed: "2.2" was this repo's own guess at the spec
+        // version, and three CMPs answer three different strings - Civic
+        // "2.2", the @iabtcf-based ones "2", OneTrust "2.0".
+        apiVersion: '2.0',
         cmpVersion: CMP_VERSION,
         cmpId: CMP_ID,
         gvlVersion: VENDOR_LIST_VERSION,

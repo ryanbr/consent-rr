@@ -732,7 +732,8 @@ describe('tcf', ( ) => {
         assert.equal(ping.cmpLoaded, true);
         assert.equal(ping.cmpStatus, 'loaded');
         assert.equal(ping.displayStatus, 'hidden');
-        assert.equal(ping.apiVersion, '2.2');
+        // Their own otSDKStub.js answers apiVersion:"2.0".
+        assert.equal(ping.apiVersion, '2.0');
         assert.equal(ping.cmpId, 28);
     });
 

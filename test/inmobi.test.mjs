@@ -133,7 +133,37 @@ describe('inmobi-reject', ( ) => {
         assert.equal(data.cmpLoaded, true);
         assert.equal(data.displayStatus, 'hidden');
         assert.equal(data.cmpId, 10);
-        assert.equal(data.apiVersion, '2.2');
+        // Their own bundle: r(P, "apiVersion", "2").
+        assert.equal(data.apiVersion, '2');
+    });
+
+    // Their own bundle drains the stub's queue before installing itself:
+    //
+    //   try { this.callQueue = window.__tcfapi() || []; } catch (o) { ... }
+    //   finally { window.__tcfapi = this.apiCall.bind(this);
+    //             this.purgeQueuedCalls(); }
+    //
+    // so a vendor that asked while their bundle was still loading is answered
+    // rather than left waiting.
+    it('answers what the stub parked before it landed', ( ) => {
+        const answers = [];
+        const w = boot({
+            before: ww => {
+                // The helper has already put their stub in.
+                ww.__tcfapi('getTCData', 2, (data, ok) => {
+                    answers.push([ 'getTCData', ok, data && data.cmpId ]);
+                });
+                ww.__tcfapi('addEventListener', 2, (data, ok) => {
+                    answers.push([ 'addEventListener', ok, data && data.eventStatus ]);
+                });
+                assert.deepEqual(answers, [], 'the stub parks them');
+            },
+        }).window;
+        assert.deepEqual(answers, [
+            [ 'getTCData', true, 10 ],
+            [ 'addEventListener', true, 'tcloaded' ],
+        ], JSON.stringify(answers));
+        assert.equal(typeof w.__tcfapi, 'function');
     });
 
     it('takes the tenant fields out of the init call choice.js parked', ( ) => {

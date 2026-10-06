@@ -331,6 +331,37 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   language, whether Google vendors are enabled. None is derivable from a page.
 - Categories and cookie fields are a deliberate superset, so a site asking about
   one its tenant never defined still gets an answer.
+- **A constant copied from another family is a constant nobody measured.**
+  Adapting an IAB layer from `onetrust/lib/onetrust-tcf.js` carries its
+  answers with it, and two of them were wrong for iubenda: the ping's
+  `apiVersion`, and whether a refusal keeps vendor legitimate interests. An
+  audit of all eleven layers found the same thing in inmobi. Three CMPs answer
+  three different strings, each measured in their own bundle:
+
+      OneTrust   "2.0"   their otSDKStub.js, the file that installs the
+                         early __tcfapi on their pages
+      Civic      "2.2"   their cookieControl-9.x.min.js, which also answers
+                         tcfPolicyVersion 4 while its string says 5
+      @iabtcf    "2"     iubenda and inmobi both build on @iabtcf/cmpapi,
+                         whose CmpApiModel sets apiVersion to "2"
+
+  Everything else in that audit held up, because it had been measured: the
+  ten cmp ids all match the IAB's published list, appconsent's 4000 vendor
+  ceiling is "their own vendor cap", pubtech's vendor list 178 is "pinned in
+  the bundle as the list they fetch", osano's 187 is "their
+  fallbackGvlVersion", and the 178/179 split across families is per-CMP rather
+  than staleness. The lesson is not "re-measure everything" - it is that an
+  adapted file needs its constants walked one by one against the CMP it now
+  stands in for.
+- **Grep the family, not the file.** That audit first reported four families
+  missing the stub drain. Three of them do it in the core
+  (`appconsent`, `inmobi`) or through a local alias the pattern missed
+  (`consentmanager`, `cookieyes`, `fundingchoices`, `pubtech`), and the
+  mutation that was supposed to prove inmobi's new drain survived - because
+  the core had drained already, measured, with the same zero-argument call
+  their own bundle uses. The addition was reverted. Two families really do
+  not drain: `civic`, where theirs does not either, and `osano` and
+  `usercentrics`, whose bundles are per-tenant and were not available to say.
 - **A configuration the page sets is not there at document_start.** Several of
   these read a global the page prints above the CMP's script tag -
   `_iub.csConfiguration`, `window.cookiezBannerSettings`, `window.complianz`.

@@ -283,7 +283,10 @@ function consentRRInMobiTcf(coreConfig) {
         cmpLoaded: true,
         cmpStatus: 'loaded',
         displayStatus: 'hidden',
-        apiVersion: '2.2',
+        // Their own bundle: r(P, "apiVersion", "2"), handed back as
+        // String(P.apiVersion). Not "2.2", which is what the OneTrust layer
+        // in this repo answers and what this inherited from it.
+        apiVersion: '2',
         cmpVersion: CMP_VERSION,
         cmpId: CMP_ID,
         gvlVersion: VENDOR_LIST_VERSION,
@@ -393,6 +396,8 @@ function consentRRInMobiTcf(coreConfig) {
         }
     };
 
+    // The stub's queue is drained by the core before this is installed, with
+    // the same zero-argument call their own bundle uses - see inmobi-core.js.
     w.__tcfapi = tcfApi;
 
     // Vendors inside child frames locate the CMP by this frame's name and then

@@ -11,7 +11,7 @@ repo side by side.
 
 # The three OneTrust modes
 
-From the OneTrust resources at **1.5.0**.
+From the OneTrust resources at **1.5.1**.
 A row in bold is one where the three differ.
 
 ## What is stored
@@ -100,9 +100,9 @@ and a vendor receiving that string is entitled to act on it.
 Keep `reject` global and escalate per site. The console line names which one ran:
 
 ```
-[consent-rr] onetrust-reject 1.5.0 groups=,C0001, tcf=refused gpp=refused
-[consent-rr] onetrust-reject-unblock 1.5.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
-[consent-rr] onetrust-accept 1.5.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
+[consent-rr] onetrust-reject 1.5.1 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-reject-unblock 1.5.1 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-accept 1.5.1 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
 ```
 
 Sizes: `reject` 36.1 KB, `reject-unblock` 36.1 KB, `accept` 36.1 KB.
@@ -240,11 +240,11 @@ uBlock Origin does the blocking.
 ## What each one says
 
 ```
-[consent-rr] onetrust-reject 1.5.0 groups=,C0001, tcf=refused gpp=refused
-[consent-rr] onetrust-accept 1.5.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
-[consent-rr] onetrust-reject-unblock 1.5.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-reject 1.5.1 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-accept 1.5.1 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
+[consent-rr] onetrust-reject-unblock 1.5.1 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
 [consent-rr] cookieinformation-reject 1.0.2 approved=cookie_cat_necessary denied=cookie_cat_functional,cookie_cat_statistic,cookie_cat_marketing,cookie_cat_unclassified cookie=written
-[consent-rr] inmobi-reject 1.0.0 config=read cc=IT lang=IT tcf=refused li=kept gpp=refused usp=1--- cookie=written gppcookie=written
+[consent-rr] inmobi-reject 1.0.1 config=read cc=IT lang=IT tcf=refused li=kept gpp=refused usp=1--- cookie=written gppcookie=written
 [consent-rr] osano-reject 1.1.0 consent=ESSENTIAL denied=STORAGE,MARKETING,PERSONALIZATION,ANALYTICS,OPT_OUT tcf=refused li=kept gpp=refused usp=1--- cookie=written
 [consent-rr] civic-reject 1.4.0 mode=gdpr revoked=analytics,embedded iab=off cookie=written
 [consent-rr] civic-reject-unblock 1.4.0 mode=gdpr revoked=analytics accepted=embedded iab=off cookie=written
@@ -253,8 +253,8 @@ uBlock Origin does the blocking.
 [consent-rr] transcend-reject 1.1.0 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
 [consent-rr] complianz-reject 1.1.0 categories=functional cookies=4 services=2 revived=0 told=4 prefix=cmplz_ policy=kept consenttype=optin
 [consent-rr] complianz-accept 1.1.0 categories=all cookies=4 services=2 revived=2 told=4 prefix=cmplz_ policy=kept consenttype=optin
-[consent-rr] zdconsent-reject/onetrust 1.0.0 groups=,C0001, tcf=refused gpp=refused
-[consent-rr] zdconsent-accept/onetrust 1.0.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
+[consent-rr] zdconsent-reject/onetrust 1.0.1 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] zdconsent-accept/onetrust 1.0.1 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
 [consent-rr] consentmanager-reject 1.1.0 purposes=none vendors=none api=__cmp+__uspapi tcf=refused freed=0 events=5 told=0 banner=none crossdomain=none tracking=none
 [consent-rr] consentmanager-reject-unblock 1.1.0 purposes=none vendors=none api=__cmp+__uspapi tcf=refused freed=1 events=5 told=0 banner=none crossdomain=none tracking=none
 [consent-rr] iubenda-reject 1.0.2 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary surface=denied tcf=refused told=2 banner=none sent=none
