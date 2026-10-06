@@ -453,16 +453,23 @@ describe('chcookieconsent-reject', ( ) => {
 // installed cannot be walked back from here - and the resource says so
 // rather than reporting a refusal it did not manage to store.
 describe('chcookieconsent-reject, against their HttpOnly default', ( ) => {
-    const withJar = async given => {
+    const withJar = async (given, options = {}) => {
         const jar = new CookieJar();
         const url = 'https://www.trapicheos.net/';
         for ( const line of given ) { jar.setCookieSync(line, url); }
         const virtualConsole = new VirtualConsole();
         const lines = [];
         virtualConsole.on('info', message => { lines.push(String(message)); });
+        const markup = options.wrapper !== undefined
+            ? '<div class="cookie-consent-div" style="' + options.wrapper +
+                '">' + banner() + '</div>'
+            : banner();
         const dom = new JSDOM(
-            '<!doctype html><html lang="es"><head></head><body>' +
-            '<script>' + reject + '</script>' + banner() + '</body></html>',
+            '<!doctype html><html lang="es"><head></head><body' +
+            (options.margin !== undefined
+                ? ' style="margin-bottom: ' + options.margin + '"'
+                : '') +
+            '><script>' + reject + '</script>' + markup + '</body></html>',
             { url, runScripts: 'dangerously', virtualConsole, cookieJar: jar }
         );
         await settle(60);
@@ -486,8 +493,51 @@ describe('chcookieconsent-reject, against their HttpOnly default', ( ) => {
             'true',
             'theirs stands, and nothing in a page can change that'
         );
-        assert.equal(w.document.querySelector('.ch-cookie-consent'), null,
-            'the banner still goes');
+        // And their form stays. With the record unreplaceable, their own
+        // banner is the only place the visitor can change the answer, so
+        // taking it out would stand them with the answer they have.
+        assert.ok(
+            w.document.querySelector('.ch-cookie-consent'),
+            'their form is the only route left, so it stays'
+        );
+        assert.equal(state.removed, 0);
+        assert.equal(state.left, 1);
+        assert.equal(state.told, 0, 'and no event, because nothing was stored');
+    });
+
+    // The other half of leaving their banner: the space the page has
+    // reserved for it stays reserved. Their own submit clears those margins
+    // because their own banner has gone with it.
+    it('keeps the space the page reserved for a banner it leaves', async ( ) => {
+        const { w } = await withJar([
+            'Cookie_Consent=old; Path=/; HttpOnly',
+            'Cookie_Consent_Key=68e1f0a1b2c3d; Path=/; HttpOnly',
+            'Cookie_Category_analytics=true; Path=/; HttpOnly',
+            'Cookie_Category_tracking=true; Path=/; HttpOnly',
+            'Cookie_Category_marketing=true; Path=/; HttpOnly',
+        ], { margin: '180px' });
+        assert.ok(w.document.querySelector('.ch-cookie-consent'));
+        assert.equal(w.document.body.style.marginBottom, '180px');
+    });
+
+    // Measured on zoo-frankfurt.de: once a record exists they serve the
+    // banner again inside the site's own hidden wrapper, as a settings panel
+    // to re-open. Nobody can see it, and it is the only way to change an
+    // answer.
+    it('leaves a banner the page is keeping out of sight', async ( ) => {
+        const { w } = await withJar([ 'Cookie_Category_matomo=true; Path=/' ], {
+            wrapper: 'position: fixed; display: none;',
+        });
+        assert.ok(w.document.querySelector('.ch-cookie-consent'));
+        assert.equal(w.chCookieConsentRR.state().left, 1);
+        assert.equal(w.chCookieConsentRR.state().removed, 0);
+        // The refusal is still stored - this flag is theirs to set and that
+        // site does not set it.
+        assert.equal(
+            w.chCookieConsentRR.state().written, 5,
+            'their consent, their key and the form\u0027s three categories'
+        );
+        assert.equal(w.chCookieConsentRR.state().told, 1, 'and it is announced');
     });
 
     it('stores the refusal where they turned their flag off', async ( ) => {
@@ -572,13 +622,41 @@ describe('chcookieconsent, at document_start', ( ) => {
         assert.match(said[0], /removed=1 told=1/);
         assert.match(said[0], /banner=none parked=none posted=none logged=none/);
     });
+
+    it('says so on the line where it left their banner alone', async ( ) => {
+        const jar = new CookieJar();
+        const url = URL_PAGE;
+        // All of them, as their own server sets them: a run where only the
+        // consent cookie is theirs still stores the categories, and those
+        // are a working refusal, so the banner goes in that case.
+        for ( const line of [
+            'Cookie_Consent=old; Path=/; HttpOnly',
+            'Cookie_Consent_Key=68e1f0a1b2c3d; Path=/; HttpOnly',
+            'Cookie_Category_analytics=true; Path=/; HttpOnly',
+            'Cookie_Category_tracking=true; Path=/; HttpOnly',
+            'Cookie_Category_marketing=true; Path=/; HttpOnly',
+        ] ) { jar.setCookieSync(line, url); }
+        const virtualConsole = new VirtualConsole();
+        const lines = [];
+        virtualConsole.on('info', message => { lines.push(String(message)); });
+        new JSDOM(
+            '<!doctype html><html lang="es"><head></head><body>' +
+            '<script>' + reject + '</script>' + banner() + '</body></html>',
+            { url, runScripts: 'dangerously', virtualConsole, cookieJar: jar }
+        );
+        await settle(80);
+        const said = lines.filter(line => line.includes('chcookieconsent'));
+        assert.equal(said.length, 1);
+        assert.match(said[0], /written=0 blocked=5/);
+        assert.match(said[0], /removed=0 told=0 banner=left/);
+    });
 });
 
 /******************************************************************************/
 
 describe('chcookieconsent, the list', ( ) => {
     it('is pinned at the version the package names', ( ) => {
-        assert.equal(versions.chcookieconsent, '1.0.0');
+        assert.equal(versions.chcookieconsent, '1.0.1');
     });
 
     // Every Symfony app serves the bundle's assets from the same path.

@@ -45,9 +45,13 @@
 !   Cookie_Consent_Key         6ac4aa94b9c7f                    HttpOnly  Lax
 !
 ! so no Secure here either - a cookie without it is sent on both schemes, so
-! their server reads the refusal either way - and the date goes in in UTC like
-! theirs rather than in the visitor's zone. Their gate is an exact compare with
-! the string true.
+! their server reads the refusal either way. Their gate is an exact compare
+! with the string true.
+!
+! Their stamp is their SERVER's clock, so the offset is per deployment and not
+! knowable from a page - +0000 on trapicheos.net, +0200 on zoo-frankfurt.de.
+! This writes UTC: the visitor's own zone is the one offset worth not writing,
+! because it would hand their server a timezone it is not otherwise given.
 !
 ! THEIR YEAR IS NOT ALWAYS A YEAR. Their CookieHandler asks for P1Y in every
 ! released version and so does this, but a browser may cap what a page writes
@@ -98,9 +102,21 @@
 ! http_only option defaults to true, and no page is allowed to replace an
 ! HttpOnly cookie, so a visitor who accepted before installing this cannot be
 ! walked back from here - clearing the site's cookies is the only way. The
-! console line says so rather than reporting a refusal it did not store:
+! console line says so rather than reporting a refusal it did not store, and
+! in that state their banner is LEFT ALONE: their own form is then the only
+! place the visitor can change the answer, and their event is not fired
+! either, because there is no stored answer to announce.
 !
-!   written=0 blocked=5
+!   written=0 blocked=5 ... removed=0 told=0 banner=left
+!
+! A BANNER NOBODY CAN SEE is left alone too. Measured on zoo-frankfurt.de:
+! once a record exists they serve the whole banner again inside the site's own
+!
+!   <div class="cookie-consent-div" style="position: fixed; display: none;">
+!
+! with the radios pre-set from the stored record. That is their form kept back
+! as a settings panel to re-open, so a banner under an inline display:none
+! stays where it is - the refusal is still written, only the markup is left.
 !
 ! Nothing is posted, so their CookieLogger writes no cookie_consent_log row
 ! and stores no IP. Their stylesheet is left alone - it styles a banner that is

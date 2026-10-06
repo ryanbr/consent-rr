@@ -178,13 +178,16 @@ function consentRRChCookieConsent() {
     /**************************************************************************/
 
     // date('r'), which is what their CookieHandler stores in Cookie_Consent.
-    // Theirs is their server's clock, and the one measured reads
+    // Theirs is their SERVER's clock, so the offset is the server's and
+    // differs from deployment to deployment - measured:
     //
-    //   Tue, 06 Oct 2026 08:00:20 +0000
+    //   Tue, 06 Oct 2026 08:00:20 +0000     trapicheos.net
+    //   Tue, 06 Oct 2026 10:12:38 +0200     zoo-frankfurt.de
     //
-    // so this is in UTC, not in the visitor's zone. Their server only checks
-    // that the cookie is there, and a date in the visitor's zone would hand
-    // it a timezone offset it is not otherwise given.
+    // which is not knowable from a page. So this is UTC: their server only
+    // checks that the cookie is there, and the visitor's own zone is the one
+    // offset worth not writing, because it would hand their server a
+    // timezone it is not otherwise given.
     const DAY_NAMES = [ 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat' ];
     const MONTH_NAMES = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -283,9 +286,41 @@ function consentRRChCookieConsent() {
 
     /**************************************************************************/
 
-    // Their banner, which their own script is what positions - so leaving it
-    // is leaving it in the middle of the page, with buttons that cannot work.
+    // An element nobody can see, because it or something above it is hidden
+    // in the page's own markup. Measured on zoo-frankfurt.de: once a record
+    // exists, their banner is served again inside the site's own
+    //
+    //   <div class="cookie-consent-div" style="position: fixed; display: none;">
+    //
+    // which is their form kept back as a settings panel to re-open, not a
+    // banner in anyone's way. Taking that out would take away the only place
+    // the visitor can change an answer.
+    const outOfSight = node => {
+        let walk = node;
+        for ( let depth = 0; depth < 20 && walk !== null; depth += 1 ) {
+            try {
+                if ( walk.style && walk.style.display === 'none' ) {
+                    return true;
+                }
+            } catch ( ex ) {
+            }
+            walk = walk.parentElement;
+        }
+        return false;
+    };
+
+    // Their banner, which their own script is what positions - so leaving a
+    // visible one is leaving it in the middle of the page, with buttons that
+    // cannot work. Two things are left alone, both measured:
+    //
+    //   - a banner nobody can see, per above.
+    //   - all of it, where not one of their cookies could be written. Their
+    //     http_only default means a stored answer cannot be replaced from a
+    //     page, and in that state their own form is the visitor's only route
+    //     to change it. Removing the form while being unable to change the
+    //     record would strand them with the answer they already have.
     let removed = 0;
+    let left = 0;
     const sweep = ( ) => {
         let nodes = [];
         try {
@@ -293,13 +328,26 @@ function consentRRChCookieConsent() {
         } catch ( ex ) {
             return 0;
         }
+        // Counted fresh each pass rather than added up, because the pass
+        // runs again: left is how many of theirs are standing now, not how
+        // many times one was looked at.
+        let took = 0;
+        let standing = 0;
         for ( const node of nodes ) {
             if ( node.parentNode === null ) { continue; }
+            if ( written === 0 || outOfSight(node) ) {
+                standing += 1;
+                continue;
+            }
             node.parentNode.removeChild(node);
             removed += 1;
+            took += 1;
         }
         // Their own submit clears both of these, because their positioning
-        // sets one of them to the banner's height.
+        // sets one of them to the banner's height - so they are cleared where
+        // their banner has gone, and left where it has not.
+        left = standing;
+        if ( took === 0 ) { return 0; }
         try {
             if ( doc.body !== null ) {
                 doc.body.style.marginTop = null;
@@ -340,13 +388,18 @@ function consentRRChCookieConsent() {
             ' refused=' + (refused.length !== 0 ? refused.join(',') : 'none') +
             ' removed=' + removed +
             ' told=' + told +
-            ' banner=none parked=none posted=none logged=none'
+            ' banner=' + (left !== 0 ? 'left' : 'none') +
+            ' parked=none posted=none logged=none'
         );
     };
 
     let told = 0;
     const tell = ( ) => {
         if ( told !== 0 ) { return; }
+        // Theirs fires on a stored answer. Where not one write took, there
+        // is no answer to announce, and a page that acts on this event would
+        // be acting on a refusal that is not in their cookies.
+        if ( written === 0 ) { return; }
         // By name first, then by the class their own form theme puts on every
         // one of their buttons. The last two overlap on every deployment
         // measured, so a test cannot tell them apart - the name is kept for a
@@ -439,6 +492,7 @@ function consentRRChCookieConsent() {
                         written: written,
                         blocked: blocked,
                         removed: removed,
+                        left: left,
                         told: told,
                     };
                 },

@@ -492,6 +492,17 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   (`data-cmp-ab`, `cmplz-activated`) and honour it; where there is none, keep a
   `WeakSet` here rather than writing a marker onto their page. Pin it with a
   test that counts after settling twice.
+- **A resource that cannot store the refusal must not remove the UI that
+  could.** ConnectHolland's cookies are HttpOnly by default and no page may
+  replace an HttpOnly cookie, so on a visitor who had already accepted, every
+  write is dropped - and the first version of that resource still removed
+  their banner, which left the visitor with the acceptance they had and no
+  form to change it. Removing a CMP's UI is only earned by having answered in
+  its place; where nothing could be stored, leave the UI and say so on the
+  line (`written=0 blocked=5 removed=0 told=0 banner=left`), and do not fire
+  the CMP's own "consent saved" event, which a page may act on. The same test
+  found the sibling case: a CMP's banner served again under the site's own
+  `display:none` is a settings panel to re-open, not a banner in the way.
 - **Where the CMP's server writes the record, the oracle is the request its
   own script would have sent.** ConnectHolland's CookieConsentBundle stores
   nothing from JavaScript: its script POSTs the banner's form and the
