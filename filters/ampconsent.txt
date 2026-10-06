@@ -1,0 +1,161 @@
+! Title: consent-rr - AMP amp-consent
+! Description: Replaces AMP's own consent extension with a stub that records
+!              their refusal and answers the runtime's build gate, so the page
+!              is not left half-built.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! WHY THIS ONE CANNOT SIMPLY BE BLOCKED.
+!
+! amp-consent is not a CMP that owns the page, it is an AMP extension, and the
+! AMP runtime will not build ANY element that waits on consent until the
+! extension has registered a service and that service has answered. From the
+! runtime itself, v0.mjs, in the element build path:
+!
+!   getServiceForDoc(this, 'consentPolicyManager', 'amp-consent')
+!       .then(s => !s || (policy ? s.whenPolicyUnblock(policy)
+!                                : s.whenPurposesUnblock(purposes)))
+!       .then(ok => { if ( !ok ) throw new Error('BLOCK_BY_CONSENT'); })
+!
+! With the file blocked, that promise never resolves: the runtime waits 16
+! seconds, logs, and keeps waiting on the same promise. Every gated element
+! stays unbuilt for the life of the page - the ads, yes, but also any video,
+! iframe or image the publisher gated.
+!
+! The gate catches an element with data-block-on-consent, and any element whose
+! tag is named in a page's
+!
+!   <meta name="amp-consent-blocking" content="AMP-AD,AMP-ANALYTICS">
+!
+! which is why a page can look fine on one site and gutted on the next.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! The extension, in all four shapes AMP serves it as. The module build and the
+! classic build are both on the page - type=module and nomodule - and a browser
+! runs one of them, so both are named here. The -latest alias is the same file.
+! -----------------------------------------------------------------------------
+||cdn.ampproject.org/v0/amp-consent-0.1.mjs$script,redirect=ampconsent-reject.js
+||cdn.ampproject.org/v0/amp-consent-0.1.js$script,redirect=ampconsent-reject.js
+||cdn.ampproject.org/v0/amp-consent-latest.mjs$script,redirect=ampconsent-reject.js
+||cdn.ampproject.org/v0/amp-consent-latest.js$script,redirect=ampconsent-reject.js
+
+! -----------------------------------------------------------------------------
+! The same file at a pinned runtime version. The runtime asks for this shape
+! when the extension it got does not match its own version - it calls
+! reloadExtension and fetches from /rtv/ - so a page that ever takes that path
+! must land here too, or it loads the real CMP.
+!
+!   cdn.ampproject.org/rtv/012608131752000/v0/amp-consent-0.1.mjs
+! -----------------------------------------------------------------------------
+||cdn.ampproject.org/rtv/*/v0/amp-consent-0.1.mjs$script,redirect=ampconsent-reject.js
+||cdn.ampproject.org/rtv/*/v0/amp-consent-0.1.js$script,redirect=ampconsent-reject.js
+||cdn.ampproject.org/rtv/*/v0/amp-consent-latest.mjs$script,redirect=ampconsent-reject.js
+||cdn.ampproject.org/rtv/*/v0/amp-consent-latest.js$script,redirect=ampconsent-reject.js
+
+! -----------------------------------------------------------------------------
+! For a page that withholds content behind the default policy.
+!
+! Same stored and reported refusal, and only the runtime's build gate answered
+! differently, so the gated elements build. Their own policy config can already
+! say that - "unblockOn": [4,1,2,3] on the default policy - and this makes that
+! choice for a page that did not.
+!
+! example.com##+js(ampconsent-reject-unblock)
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! THE SCRIPTLET FORM IS THE SAFER ONE HERE.
+!
+! AMP asks for these files with crossorigin="anonymous", and the module build
+! with type="module". A user resource is handed over as a data: URI, which a
+! site's CSP can refuse, and which is a thornier fetch for a CORS'd module
+! script than for an ordinary one. The scriptlet form is injected into the page
+! instead of fetched, so none of that applies:
+!
+!   example.com##+js(ampconsent-reject)
+!
+! It does not need the file blocked as well. Measured: a scriptlet runs at
+! document_start, so its entry is in the AMP queue first, and the runtime's own
+! registerExtension only takes the first one -
+!
+!   if ( !holder.loaded ) { ...factory...; holder.loaded = true; }
+!
+! - so the real file's registration is dropped when it arrives, its banner
+! never shows and nothing of it runs. The reverse is also true and is the thing
+! to avoid: if the real extension registers FIRST, it wins and this resource
+! does nothing at all.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! THE RUNTIME ITSELF IS LEFT ALONE.
+!
+!   cdn.ampproject.org/v0.mjs
+!   cdn.ampproject.org/v0.js
+!
+! That is the whole page on an AMP document: layout, images, video, everything.
+! Blocking it leaves a blank page, and nothing in here touches it.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! THEIR CMP ENDPOINTS, WHICH ARE NOT REQUESTED ONCE THIS LANDS.
+!
+! A page names a vendor with <amp-consent type="..."> and their extension holds
+! the urls. Nothing here asks for them, because the decision is already made:
+!
+!   appconsent       collector.appconsent.io/amp/check-consent
+!   ConsentManager   delivery.consentmanager.net/delivery/ampcheck.php
+!   didomi           api.privacy-center.org/amp/check-consent
+!   iubenda          amp.iubenda.com/checkConsent
+!   LiveRamp         api.privacymanager.io/amp/check-consent
+!   Marfeel          live.mrf.io/cmp/marfeel/amp/check-consent
+!   Ogury            api.ogury.mgr.consensu.org/v1/check-for-consent
+!   onetrust         cdn.cookielaw.org/amp/consent/check
+!   opencmp          amp.opencmp.net/consent/check
+!   pubtech          amp.pubtech.it/cmp-amp-check-consent
+!   quantcast        apis.quantcast.mgr.consensu.org/amp/check-consent
+!   sirdata          choices.consentframework.com/api/v1/public/amp/check
+!   SourcePoint      sourcepoint.mgr.consensu.org/consent/v2/amp
+!   UniConsent       edge.uniconsent.com/amp/check-consent
+!   Usercentrics     consents.usercentrics.eu/amp/checkConsent
+!   googlefc         fundingchoicesmessages.google.com/amp/consent/check
+!
+! They are left unblocked deliberately. A page whose own markup posts to one of
+! these without the extension is not a case this repo has measured, and a rule
+! per vendor here would be a second thing to keep in step with their table.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! WHAT THIS DOES NOT ANSWER YET: THE TCF POSTMESSAGE API.
+!
+! A tenant with "exposesTcfApi": true in its consent config gets an iframe
+! named __tcfapiLocator from their extension, and vendor iframes send it
+! __tcfapiCall messages. Nothing here answers those, so an iframe that asks
+! gets no reply rather than a refusal. For the vendors that matters to, the
+! iframe is an ad frame that uBlock Origin has already stopped.
+!
+! THE RECORD IS WRITTEN WHERE THEIRS IS, which is not a cookie: AMP keeps it in
+! localStorage under amp-store:<source origin>, base64 of
+!
+!   {"vv":{"amp-consent:<consentInstanceId>":{"v":{"s":0},"t":<ms>}}}
+!
+! and 0 is their own encoding of a refusal - their reader maps false and 0 to
+! REJECTED, true and 1 to ACCEPTED. The instance id is read off the page, from
+! the inline config, their legacy single-entry "consents" map, or the type
+! attribute. Nothing is minted: the anonymous per-page id their check-consent
+! url carries is answered empty, because nothing is sent.
+!
+! To see it work:
+!
+!   [consent-rr] ampconsent-reject 1.0.0 runtime=2608131752000 state=rejected
+!                policy=2 unblock=theirs banner=none sent=none
+!
+! policy=2 is their INSUFFICIENT. unblock=theirs means the gate is answered
+! with their own unblockOn arithmetic: an element on the default policy stays
+! blocked, one on _till_responded builds, because a refusal is a response.
+! -----------------------------------------------------------------------------

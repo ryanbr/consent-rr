@@ -324,6 +324,32 @@ const FIXTURES = [
             '<p>x</p></body></html>',
     },
     {
+        resource: 'ampconsent-reject.js',
+        cmp: 'AMP amp-consent',
+        page: '<html amp lang="en"><head>' +
+            '<script async custom-element="amp-consent"' +
+            ' src="https://cdn.ampproject.org/v0/amp-consent-0.1.mjs"></' + 'script>' +
+            '</head><body>' +
+            '<amp-consent id="consent" layout="nodisplay" type="didomi">' +
+            '<script type="application/json">{"consentInstanceId":"my-consent"}</' + 'script>' +
+            '</amp-consent>' +
+            '<amp-pixel data-block-on-consent></' + 'amp-pixel>' +
+            '<p>x</p></body></html>',
+    },
+    {
+        resource: 'ampconsent-reject-unblock.js',
+        cmp: 'AMP amp-consent',
+        page: '<html amp lang="en"><head>' +
+            '<script async custom-element="amp-consent"' +
+            ' src="https://cdn.ampproject.org/v0/amp-consent-0.1.mjs"></' + 'script>' +
+            '</head><body>' +
+            '<amp-consent id="consent" layout="nodisplay" type="didomi">' +
+            '<script type="application/json">{"consentInstanceId":"my-consent"}</' + 'script>' +
+            '</amp-consent>' +
+            '<amp-pixel data-block-on-consent></' + 'amp-pixel>' +
+            '<p>x</p></body></html>',
+    },
+    {
         resource: 'cookiez-reject.js',
         cmp: 'Cookiez',
         page: '<html lang="de"><head>' +

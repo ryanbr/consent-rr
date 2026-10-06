@@ -7,7 +7,7 @@ pointed at it. The notes below are the things that have actually gone wrong.
 ## Layout
 
 - One directory per consent manager under `src/`, shared code in its `lib/`.
-  `dist/` stays flat: uBO addresses a resource by name alone. Twenty-two
+  `dist/` stays flat: uBO addresses a resource by name alone. Twenty-three
   families so far; `ls src/` is the list, and `src/shared/` is the one
   directory there that is not a consent manager.
 - `src/shared/lib/deferred.js` - the only cross-family lib: running a pass
@@ -331,6 +331,32 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   language, whether Google vendors are enabled. None is derivable from a page.
 - Categories and cookie fields are a deliberate superset, so a site asking about
   one its tenant never defined still gets an answer.
+- **Some of these cannot be blocked at all, and the replacement is the only
+  option.** AMP's `amp-consent` is not a CMP that owns the page, it is an
+  extension of a host runtime, and that runtime refuses to build any element
+  carrying `data-block-on-consent` until the extension registers a service and
+  the service answers. Blocking it is worse than doing nothing: the page keeps
+  the holes for ever. Before writing a rule for something that is loaded *by*
+  another script rather than by the page, read what the loader does when it
+  never arrives.
+- **Registering with a host runtime means meeting its contract exactly, and
+  the contract is in the runtime, not the extension.** For AMP, measured in
+  `v0.mjs` and `v0.js`: an entry pushed onto `self.AMP` is dropped by the
+  module runtime when `m` is falsy and by the classic runtime when it is
+  truthy, so both entries are pushed and each runtime takes its own; and on a
+  version mismatch the runtime calls `reloadExtension`, which fetches the real
+  file from its `/rtv/` url and the replacement never runs at all. A hardcoded
+  version is therefore not a staleness problem, it is a silent bypass - so the
+  version is read through a getter, when the runtime reads the entry, from the
+  `amp-version` attribute the runtime itself set. Both failures were measured
+  by mutating the resource and watching the real runtime re-fetch the real
+  file.
+- **A console line is worth more where the work happened than where the
+  script ran.** The AMP resource says its line from inside the registration
+  callback, so the line names the runtime that accepted it and its absence
+  means no registration - a version mismatch, or the real extension having got
+  there first. Said at the top of the script instead, it reported
+  `runtime=unknown` on every page that loads the way a page actually loads.
 - **A pass over the document at boot matches nothing.** The replacement runs
   where the CMP's script tag is, which is in `<head>`, and uBO runs it at
   document_start: every tag the page parked for the CMP to free is below that

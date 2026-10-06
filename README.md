@@ -51,6 +51,8 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `consentmanager-reject-unblock.js` | consentmanager.net, for a site that withholds something until a purpose is on: the same stored and sent refusal, while the tags their blocker parked are let go by their own `data-cmp-src` contract. |
 | `cookiez-reject.js` | Cookiez (WordPress): their own refusal in their own record - necessary true, the other four false - carrying the `cookiesHash` their gate checks, without which the record is thrown away and the banner returns. Their WordPress Consent API and Google consent mode bridges go with it; nothing is posted to their REST route. |
 | `cookiez-reject-unblock.js` | Cookiez, for a site that withholds something until a category is on: the same stored refusal, and the scripts their blocker parked freed by their own selector - including leaving `data-cc-mode="always"` nodes parked, which is their never-free marker. |
+| `ampconsent-reject.js` | AMP's own `amp-consent` extension: their refusal (`REJECTED`) in their own store, `amp-consent:<instanceId>` as `{"s":0}`, and every consent policy answered with their own `unblockOn` arithmetic - an element on the default policy stays blocked, one on `_till_responded` builds, because a refusal is a response. This one cannot be blocked instead: with no extension registered the AMP runtime never builds anything carrying `data-block-on-consent`. |
+| `ampconsent-reject-unblock.js` | AMP `amp-consent`, for a page that withholds content behind the default policy: the same stored and reported refusal, with only the runtime's build gate answered yes. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -93,40 +95,42 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/cookiescript-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/didomi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/didomi-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/complianz-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/complianz-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/zdconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/zdconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/fundingchoices-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/tarteaucitron-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/tarteaucitron-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/cookieyes-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/cookieyes-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/consentmanager-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/consentmanager-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/cookiez-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/cookiez-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/didomi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/didomi-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/complianz-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/complianz-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/zdconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/zdconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/fundingchoices-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/tarteaucitron-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/tarteaucitron-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/cookieyes-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/cookieyes-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/consentmanager-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/consentmanager-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/cookiez-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/cookiez-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/ampconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/ampconsent-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -140,8 +144,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.39.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.39.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.40.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.40.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -2312,6 +2316,95 @@ and no banner internals of this repo's making. The one property this resource
 does define, its own re-entry marker, is **not enumerable** - a page's walk of
 `window` sees nothing that was not already there.
 
+## AMP amp-consent
+
+`cdn.ampproject.org/v0/amp-consent-0.1.mjs` (and `-0.1.js`, and the `-latest`
+aliases of both).
+
+This one is not a CMP that owns the page. It is an AMP extension, and the AMP
+runtime will not build **any** element that waits on consent until the
+extension has registered a service and that service has answered. From the
+runtime itself:
+
+```js
+getServiceForDoc(this, 'consentPolicyManager', 'amp-consent')
+    .then(s => !s || (policy ? s.whenPolicyUnblock(policy)
+                             : s.whenPurposesUnblock(purposes)))
+    .then(ok => { if ( !ok ) throw new Error('BLOCK_BY_CONSENT'); })
+```
+
+So **blocking the file is the one thing not to do**: with no extension, that
+promise never resolves - the runtime waits 16 seconds, logs, and keeps waiting -
+and every gated element stays unbuilt for the life of the page. The gate catches
+anything with `data-block-on-consent` and anything whose tag is named in
+
+```html
+<meta name="amp-consent-blocking" content="AMP-AD,AMP-ANALYTICS">
+```
+
+which is why a blocked `amp-consent` can look harmless on one site and leave
+holes where the video was on the next.
+
+What goes in instead is their refusal, in their own vocabulary:
+
+- `consentState` `REJECTED`, written where they write it. AMP has no cookie
+  here: the record lives in `localStorage` under `amp-store:<source origin>` as
+  base64 of `{"vv":{"amp-consent:<instanceId>":{"v":{"s":0},"t":<ms>}}}`, and
+  the `0` is their own encoding - their reader maps `false` and `0` to
+  `REJECTED`, `true` and `1` to `ACCEPTED`. The instance id is read off the
+  page: the inline config, their legacy single-entry `consents` map, or the
+  `type` attribute.
+- every policy resolved with their own arithmetic rather than a verdict made up
+  here. Their predefined policies carry `unblockOn` lists -
+
+  | policy | `unblockOn` | under a refusal |
+  | --- | --- | --- |
+  | `default`, `_till_accepted` | `[1,3]` | stays blocked |
+  | `_till_responded`, `_auto_reject` | `[4,1,2,3]` | builds |
+
+  — and a publisher's own `unblockOn` on the default policy is honoured,
+  because it is theirs. A page that already unblocks on anything needs nothing
+  further.
+- nothing requested: no `checkConsentHref` POST, no `promptUISrc` iframe, no
+  `onUpdateHref` ping, and no anonymous page id minted for their check-consent
+  url.
+
+`ampconsent-reject-unblock.js` is for a page that withholds content behind the
+default policy. It stores and reports the same refusal - what an ad request
+carries is still a refusal - and answers only the build gate differently.
+
+### The scriptlet form is the safer one here
+
+AMP asks for these files with `crossorigin="anonymous"`, and the module build
+with `type="module"`. A user resource is handed over as a `data:` URI, which a
+site's CSP can refuse and which is a thornier fetch for a CORS'd module script
+than for an ordinary one. The scriptlet form is injected rather than fetched:
+
+```
+example.com##+js(ampconsent-reject)
+```
+
+It does not need the file blocked as well, and this is measured rather than
+assumed: a scriptlet runs at `document_start`, so its entry is in AMP's queue
+first, and the runtime's own `registerExtension` takes only the first
+registration of a name - the real file's arrival is then a no-op, its banner
+never shows and nothing of it runs. The reverse is the thing to avoid: if the
+real extension registers first, it wins and this resource does nothing.
+
+### Deliberate gaps
+
+- **The TCF postMessage API.** A tenant with `"exposesTcfApi": true` gets an
+  iframe named `__tcfapiLocator` from their extension and `__tcfapiCall`
+  messages answered. Nothing here answers those, so an iframe that asks gets no
+  reply rather than a refusal. For the vendors that matters to, the iframe is an
+  ad frame uBlock Origin already stopped.
+- **Their vendors' check-consent endpoints** are left unblocked. A page names
+  one with `<amp-consent type="...">` and their extension holds the url;
+  nothing here asks for any of them, and a rule per vendor would be a second
+  thing to keep in step with their table.
+- **The runtime is left alone.** `v0.mjs` and `v0.js` are the whole page on an
+  AMP document.
+
 ## Development
 
 ```sh
@@ -2351,7 +2444,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.39.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

@@ -109,7 +109,7 @@ Sizes: `reject` 36.1 KB, `reject-unblock` 36.1 KB, `accept` 36.1 KB.
 
 # Every resource, side by side
 
-22 consent managers, 34 resources. Each one was booted on a page its own
+23 consent managers, 36 resources. Each one was booted on a page its own
 consent manager would recognise, and the rows below are what it did there - the
 globals it defined, the cookies it wrote, the signals it sent. A resource that
 shares a page with another (the OneTrust three, the Civic two) was measured on
@@ -134,6 +134,8 @@ the same fixture as its sibling.
 | `zdconsent-accept` | 48.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
 | `consentmanager-reject` | 23.5 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
 | `consentmanager-reject-unblock` | 23.5 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
+| `ampconsent-reject` | 14.9 KB | `AMP` |
+| `ampconsent-reject-unblock` | 14.9 KB | `AMP` |
 | `cookiez-reject` | 8.8 KB | - |
 | `cookiez-reject-unblock` | 8.9 KB | - |
 | `cookieyes-reject` | 19.6 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
@@ -173,6 +175,8 @@ the same fixture as its sibling.
 | `zdconsent-accept` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2`, `zdconsent` | `cookieChoiceMade` | - | `__tcfapi`, `__gpp`, `__uspapi` | yes |
 | `consentmanager-reject` | `euconsent-v2`, `euconsent-v2` | - | - | `__tcfapi`, `__uspapi` | no |
 | `consentmanager-reject-unblock` | `euconsent-v2`, `euconsent-v2` | - | - | `__tcfapi`, `__uspapi` | no |
+| `ampconsent-reject` | - | - | - | - | no |
+| `ampconsent-reject-unblock` | - | - | - | - | no |
 | `cookiez-reject` | `cookiez-user-consent` | - | update: granted nothing | - | no |
 | `cookiez-reject-unblock` | `cookiez-user-consent` | - | update: granted nothing | - | no |
 | `cookieyes-reject` | `cookieyes-consent`, `cookieyes-consent` | - | - | `__tcfapi` | no |
@@ -198,7 +202,7 @@ The last column is measured by booting each one twice, with the clock and the
 randomness pinned so the two runs differ in nothing but the signal, and then
 comparing what the visitor is left carrying. The 7 it changes carry a
 field for it to change - OneTrust's own `browserGpcFlag`, InMobi's
-legitimate interest, Osano's opt-out. The 27 it does not have nowhere to
+legitimate interest, Osano's opt-out. The 29 it does not have nowhere to
 put it: every category is refused with or without the signal either way.
 
 ## What each one does to a parked tag

@@ -35,6 +35,8 @@ describe('resources file', ( ) => {
         assert.deepEqual(
             Array.from(resources.keys()).sort(),
             [
+                'ampconsent-reject-unblock.js',
+                'ampconsent-reject.js',
                 'appconsent-accept.js',
                 'appconsent-reject.js',
                 'civic-reject-unblock.js',
