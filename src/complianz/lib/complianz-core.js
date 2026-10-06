@@ -75,6 +75,8 @@
 
 */
 
+// @include ../../shared/lib/deferred.js
+
 function consentRRComplianz(mode) {
     const w = window;
     const doc = w.document;
@@ -446,7 +448,16 @@ function consentRRComplianz(mode) {
 
     install();
     const record = writeRecord();
-    const revived = revive();
+    let revived = 0;
+    // Only where there is something to free: a mode that frees nothing by
+    // design does not want an observer watching the page for it.
+    if ( accept ) {
+        consentRRDeferred(w, doc, ( ) => {
+            const freed = revive();
+            revived += freed;
+            return freed;
+        }, NAME + ' ' + VERSION);
+    }
     const told = announce();
 
     // Their load-time events, in the order their own script fires them. A

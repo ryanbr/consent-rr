@@ -111,6 +111,16 @@
 !                            but that list is per tenant and inlined in the
 !                            replaced file.
 !
+!
+! THE PASS THAT FREES PARKED TAGS RUNS AGAIN, because at document_start the
+! tags are not there yet: this resource stands in for a script in <head>, and
+! everything the page parks for them is below it. So the pass runs on boot, on
+! every batch of nodes the parser delivers, at DOMContentLoaded and at load.
+! The boot line below therefore says freed=0 on a real page, and a later pass
+! that frees something says so on its own line:
+!
+!   [consent-rr] cookieyes-reject-unblock 1.1.0 freed=1 deferred
+!
 ! To see it work:
 !
 !   [consent-rr] cookieyes-reject 1.0.0 categories=necessary cookie=written

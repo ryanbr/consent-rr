@@ -7,9 +7,14 @@ pointed at it. The notes below are the things that have actually gone wrong.
 ## Layout
 
 - One directory per consent manager under `src/`, shared code in its `lib/`.
-  `dist/` stays flat: uBO addresses a resource by name alone. Four families so
-  far: `onetrust/`, `cookieinformation/`, `inmobi/`, `osano/`, `civic/` and
-  `cookiebot/`, `securiti/` and `transcend/`.
+  `dist/` stays flat: uBO addresses a resource by name alone. Twenty-two
+  families so far; `ls src/` is the list, and `src/shared/` is the one
+  directory there that is not a consent manager.
+- `src/shared/lib/deferred.js` - the only cross-family lib: running a pass
+  over the document again as the document arrives, for every resource that
+  frees tags a CMP parked. Included by the family core that needs it, with a
+  relative `// @include ../../shared/lib/deferred.js`; nested includes resolve
+  relative to the including file, so a core can pull in a lib of its own.
 - `src/onetrust/lib/onetrust-core.js` - OneTrust's own API, cookies, banner
   removal, tag revival. Shared by its resources.
 - `src/onetrust/lib/onetrust-tcf.js`, `.../onetrust-gpp.js` - the IAB layers.
@@ -326,6 +331,27 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   language, whether Google vendors are enabled. None is derivable from a page.
 - Categories and cookie fields are a deliberate superset, so a site asking about
   one its tenant never defined still gets an answer.
+- **A pass over the document at boot matches nothing.** The replacement runs
+  where the CMP's script tag is, which is in `<head>`, and uBO runs it at
+  document_start: every tag the page parked for the CMP to free is below that
+  point and does not exist yet. A single synchronous `querySelectorAll` is not
+  a small bug, it is the whole feature failing silently, and no test built
+  around a ready fixture can see it - the fixture has the nodes already. Prove
+  it the way a page does, with the resource inline in `<head>` and the parked
+  tag in the body, parsed: five of the six resources that free parked tags
+  freed nothing. `src/shared/lib/deferred.js` is the pass-again mechanism
+  (scan now, on added nodes debounced, at DOMContentLoaded, at load), and only
+  the modes that free something install it.
+- **A pass that runs again has to be idempotent, and freeing is usually not.**
+  Where the resource removes the parked node, a second pass is a no-op. Where
+  it leaves the node and inserts a copy - which is what Complianz,
+  consentmanager and Termly all do, because that is what theirs do - the copy
+  carries the class or the `data-` attribute that the selector matched, so the
+  pass answers its own work, and the insertion is itself a mutation: it never
+  stops. Read what the CMP's own code uses as its done-marker
+  (`data-cmp-ab`, `cmplz-activated`) and honour it; where there is none, keep a
+  `WeakSet` here rather than writing a marker onto their page. Pin it with a
+  test that counts after settling twice.
 
 ## Testing
 

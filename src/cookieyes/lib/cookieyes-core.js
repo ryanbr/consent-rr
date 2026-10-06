@@ -174,6 +174,8 @@
 
 */
 
+// @include ../../shared/lib/deferred.js
+
 function consentRRCookieYes(mode, installTcf) {
     const w = window;
     const doc = w.document;
@@ -381,12 +383,13 @@ function consentRRCookieYes(mode, installTcf) {
 
     let revived = 0;
     const revive = ( ) => {
-        if ( reviveAll === false ) { return; }
+        if ( reviveAll === false ) { return 0; }
+        let freed = 0;
         let nodes = [];
         try {
             nodes = Array.from(doc.querySelectorAll(PARKED));
         } catch ( ex ) {
-            return;
+            return 0;
         }
         for ( const node of nodes ) {
             try {
@@ -405,9 +408,11 @@ function consentRRCookieYes(mode, installTcf) {
                 node.parentNode.insertBefore(copy, node);
                 node.parentNode.removeChild(node);
                 revived += 1;
+                freed += 1;
             } catch ( ex ) {
             }
         }
+        return freed;
     };
 
     /**************************************************************************/
@@ -534,7 +539,11 @@ function consentRRCookieYes(mode, installTcf) {
     out.getCkyConsent = consentState;
     w.cookieyes = out;
 
-    revive();
+    // Only where there is something to free: the plain refusal frees nothing
+    // by design, so it does not want an observer watching the page for it.
+    if ( reviveAll ) {
+        consentRRDeferred(w, doc, revive, NAME + ' ' + VERSION);
+    }
 
     fire('cookieyes_consent_update', {
         accepted: CATEGORIES.filter(slug => reported(slug)),

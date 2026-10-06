@@ -8,7 +8,9 @@
 
 import { strict as assert } from 'node:assert';
 import { before, describe, it } from 'node:test';
-import { filtersText, loadResources, runDom, versions } from './helpers.mjs';
+import {
+    filtersText, loadResources, runDom, settle, versions,
+} from './helpers.mjs';
 
 const URL = 'https://www.jobscan.co/';
 
@@ -338,5 +340,64 @@ describe('filters, termly', ( ) => {
                 matches(rule, 'https://app.termly.io/embed.min.js'), false, rule
             );
         }
+    });
+});
+
+/******************************************************************************/
+
+// A resource replacement runs where their script tag is, in <head>, at
+// document_start - so nothing a page parks for them exists yet. Freeing
+// parked tags therefore has to be a pass that runs again as the document
+// arrives, and these pin both halves of that: the late tag is freed, and the
+// pass does not answer its own work for ever.
+describe('termly, as the document arrives', ( ) => {
+    const late = dom => {
+        const node = dom.window.document.createElement('script');
+        node.id = 'late';
+        node.type = 'text/plain';
+        node.setAttribute('data-categories', 'essential');
+        node.setAttribute('data-src', 'https://l.test/l.js');
+        node.setAttribute('data-autoblocked', '1');
+        dom.window.document.body.append(node);
+    };
+
+    const freed = dom =>
+        dom.window.document
+            .querySelectorAll('script[src="https://l.test/l.js"]').length;
+
+    it('frees a tag added after it ran', async ( ) => {
+        const dom = boot();
+        await settle(40);
+        late(dom);
+        await settle(200);
+        assert.equal(freed(dom), 1);
+    });
+
+    // The clone keeps data-categories, so it matches the selector too, and
+    // only this resource's own memory of what it released stops a second pass.
+    it('does not free its own work over and over', async ( ) => {
+        const dom = boot();
+        late(dom);
+        await settle(200);
+        assert.equal(freed(dom), 1);
+        await settle(250);
+        assert.equal(freed(dom), 1);
+    });
+
+    it('leaves a late tag of another category parked', async ( ) => {
+        const dom = boot();
+        const node = dom.window.document.createElement('script');
+        node.id = 'ads-late';
+        node.type = 'text/plain';
+        node.setAttribute('data-categories', 'advertising');
+        node.setAttribute('data-src', 'https://a.test/late.js');
+        node.setAttribute('data-autoblocked', '1');
+        dom.window.document.body.append(node);
+        await settle(200);
+        assert.equal(
+            dom.window.document.getElementById('ads-late')
+                .getAttribute('type'),
+            'text/plain'
+        );
     });
 });

@@ -90,6 +90,8 @@
 
 */
 
+// @include ../../shared/lib/deferred.js
+
 function consentRRConsentManager(mode, installTcf) {
     const w = window;
     const doc = w.document;
@@ -270,15 +272,29 @@ function consentRRConsentManager(mode, installTcf) {
     // A script gets a COPY inserted before it, which is what theirs does: a
     // type alone does not run a script already in the document.
     let revived = 0;
+    // Theirs marks the copy with data-cmp-ab and leaves the parked node where
+    // it is, so the node keeps its .cmplazyload class and keeps matching. A
+    // pass over the page therefore has to remember what it has already freed,
+    // or a second pass copies the same tag again - and the copy's own
+    // insertion is a mutation, so an observer would do it without end. Held
+    // here rather than written onto the page, because the page is theirs.
+    const seen = new WeakSet();
     const revive = ( ) => {
-        if ( reviveAll === false ) { return; }
+        if ( reviveAll === false ) { return 0; }
+        let freed = 0;
         let nodes = [];
         try {
             nodes = Array.from(doc.querySelectorAll('.cmplazyload'));
         } catch ( ex ) {
-            return;
+            return 0;
         }
         for ( const node of nodes ) {
+            // The copy carries the class over, so it matches the selector
+            // too - which is what their own data-cmp-ab marker is for, and
+            // why it is read here before anything else.
+            if ( node.hasAttribute('data-cmp-ab') ) { continue; }
+            if ( seen.has(node) ) { continue; }
+            seen.add(node);
             try {
                 const src = node.getAttribute('data-cmp-src');
                 const named = node.nodeName.toLowerCase();
@@ -300,6 +316,7 @@ function consentRRConsentManager(mode, installTcf) {
                     node.setAttribute('src', src);
                     node.setAttribute('data-cmp-ab', '1');
                     revived += 1;
+                    freed += 1;
                     continue;
                 }
                 if ( named !== 'script' ) { continue; }
@@ -321,9 +338,11 @@ function consentRRConsentManager(mode, installTcf) {
                 }
                 node.parentElement.insertBefore(copy, node);
                 revived += 1;
+                freed += 1;
             } catch ( ex ) {
             }
         }
+        return freed;
     };
 
     /**************************************************************************/
@@ -512,7 +531,11 @@ function consentRRConsentManager(mode, installTcf) {
         ? (installTcf().install() ? 'refused' : 'theirs')
         : 'absent';
 
-    revive();
+    // Only where there is something to free: the plain refusal frees nothing
+    // by design, so it does not want an observer watching the page for it.
+    if ( reviveAll ) {
+        consentRRDeferred(w, doc, revive, NAME + ' ' + VERSION);
+    }
 
     // Their WordPress Consent API bridge: the type at the document, the
     // global next to it, and a call per category where the site has one.

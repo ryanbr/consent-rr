@@ -450,3 +450,69 @@ describe('filters, cookiez', ( ) => {
         assert.match(filtersText, /THE consentId IS NOT MINTED/);
     });
 });
+
+/******************************************************************************/
+
+// A resource replacement runs where their script tag is, in <head>, at
+// document_start - so nothing a page parks for them exists yet. Freeing
+// parked tags therefore has to be a pass that runs again as the document
+// arrives, and these pin both halves of that: the late tag is freed, and the
+// pass does not answer its own work for ever.
+describe('cookiez, as the document arrives', ( ) => {
+    const late = w => {
+        const node = w.document.createElement('script');
+        node.id = 'late';
+        node.type = 'text/plain';
+        node.setAttribute('data-cc-category', 'analytics');
+        node.setAttribute('data-cc-src', 'https://l.example/l.js');
+        w.document.body.append(node);
+        return node;
+    };
+
+    it('frees a tag added after it ran', async ( ) => {
+        const w = boot(unblock);
+        await settle(40);
+        late(w);
+        await settle(200);
+        const node = w.document.getElementById('late');
+        assert.equal(node.getAttribute('type'), null);
+        assert.equal(node.getAttribute('src'), 'https://l.example/l.js');
+    });
+
+    it('does not free its own work over and over', async ( ) => {
+        const w = boot(unblock);
+        const count = ( ) => w.document.querySelectorAll('script').length;
+        late(w);
+        await settle(200);
+        const settled = count();
+        await settle(250);
+        assert.equal(count(), settled);
+    });
+
+    // The boot line already carries a count, so a pass that frees at boot -
+    // which is what a fixture with the tags already in it is - must not also
+    // report itself as deferred. Only a later pass does.
+    it('does not report the first pass as deferred', async ( ) => {
+        let out;
+        const w = boot(unblock, { before: ww => { out = lines(ww); } });
+        await settle(200);
+        assert.equal(
+            out.filter(line => / deferred$/.test(line)).length, 0,
+            out.join('\n')
+        );
+        assert.equal(
+            out.filter(line => /^\[consent-rr\] cookiez-reject-unblock /.test(line))
+                .length, 1
+        );
+    });
+
+    it('the plain refusal leaves a late tag parked too', async ( ) => {
+        const w = boot(reject);
+        late(w);
+        await settle(200);
+        assert.equal(
+            w.document.getElementById('late').getAttribute('type'),
+            'text/plain'
+        );
+    });
+});

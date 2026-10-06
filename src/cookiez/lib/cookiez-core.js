@@ -128,6 +128,8 @@
 
 */
 
+// @include ../../shared/lib/deferred.js
+
 function consentRRCookiez(mode) {
     const w = window;
     const doc = w.document;
@@ -303,7 +305,8 @@ function consentRRCookiez(mode) {
     // returns early when no category is consented.
     let revived = 0;
     const revive = ( ) => {
-        if ( reviveAll === false ) { return; }
+        if ( reviveAll === false ) { return 0; }
+        let freed = 0;
         const wanted = CATEGORIES.filter(name => name !== 'necessary');
         const selector = wanted.map(name =>
             'script[type="text/plain"][data-cc-category="' + name + '"]' +
@@ -336,9 +339,11 @@ function consentRRCookiez(mode) {
                 parent.removeChild(node);
                 parent.insertBefore(copy, next);
                 revived += 1;
+                freed += 1;
             } catch ( ex ) {
             }
         }
+        return freed;
     };
 
     /**************************************************************************/
@@ -357,7 +362,11 @@ function consentRRCookiez(mode) {
     const decided = consent();
     const kept = write();
     announce(decided);
-    revive();
+    // Only where there is something to free: the plain refusal frees nothing
+    // by design, so it does not want an observer watching the page for it.
+    if ( reviveAll ) {
+        consentRRDeferred(w, doc, revive, NAME + ' ' + VERSION);
+    }
 
     // A marker rather than an API, and NOT enumerable: this family's whole
     // point is that their bundle puts up nothing a page calls, so the one

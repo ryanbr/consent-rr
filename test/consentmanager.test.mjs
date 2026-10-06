@@ -571,3 +571,51 @@ describe('filters, consentmanager', ( ) => {
         assert.match(filtersText, /THEIR EVENTS GO TO TWO DIFFERENT TARGETS/);
     });
 });
+
+/******************************************************************************/
+
+// A resource replacement runs where their script tag is, in <head>, at
+// document_start - so nothing a page parks for them exists yet. Freeing
+// parked tags therefore has to be a pass that runs again as the document
+// arrives, and these pin both halves of that: the late tag is freed, and the
+// pass does not answer its own work for ever.
+describe('consentmanager, as the document arrives', ( ) => {
+    const late = w => {
+        const node = w.document.createElement('script');
+        node.id = 'late';
+        node.className = 'cmplazyload';
+        node.type = 'text/plain';
+        node.setAttribute('data-cmp-src', 'https://l.example/l.js');
+        w.document.body.append(node);
+    };
+
+    const copies = w =>
+        w.document.querySelectorAll('script[data-cmp-ab="1"]').length;
+
+    it('frees a tag added after it ran', async ( ) => {
+        const w = boot(unblock);
+        await settle(40);
+        const before = copies(w);
+        late(w);
+        await settle(200);
+        assert.equal(copies(w), before + 1);
+    });
+
+    // Their copy carries the class over, so it matches .cmplazyload as well,
+    // and their own data-cmp-ab marker is what stops a second pass.
+    it('does not free its own work over and over', async ( ) => {
+        const w = boot(unblock);
+        late(w);
+        await settle(200);
+        const settled = copies(w);
+        await settle(250);
+        assert.equal(copies(w), settled);
+    });
+
+    it('the plain refusal leaves a late tag parked too', async ( ) => {
+        const w = boot(reject);
+        late(w);
+        await settle(200);
+        assert.equal(copies(w), 0);
+    });
+});

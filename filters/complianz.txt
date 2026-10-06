@@ -61,6 +61,18 @@
 !   complianz-gpc.min.js     their Global Privacy Control helper, which is on
 !                            the visitor's side.
 !
+! THE PASS THAT FREES PARKED TAGS RUNS AGAIN, because at document_start the
+! tags are not there yet: this resource stands in for a script in <head>, and
+! everything their auto-blocker parks is below it. So the pass runs on boot, on
+! every batch of nodes the parser delivers, at DOMContentLoaded and at load.
+! revived= below therefore reads 0 on a real page - accept mode is the only one
+! that frees anything at all - and a later pass that frees something says so on
+! its own line:
+!
+!   [consent-rr] complianz-accept 1.1.0 freed=1 deferred
+!
+! Their cmplz-activated class is what stops a pass answering its own work.
+!
 ! To see it work, the console line names what it wrote and what it read from
 ! the page's own configuration:
 !

@@ -20,6 +20,12 @@ The five that break things silently, with no error anywhere:
   an event dispatched at `window` never travels down to `document` - and a test
   that listens on `window` hears both, so it cannot tell.
 
+- **A resource runs at document_start, so the page below it does not exist.**
+  Anything that frees tags a CMP parked has to run its pass again as the
+  document arrives - `src/shared/lib/deferred.js` - and a fixture that already
+  has the nodes cannot tell you it is broken. Prove it with the resource inline
+  in `<head>` and the parked tag in the body.
+
 - **A page's element ids are named properties of the window.** A CMP tag with
   `id="foo"` makes `window.foo` that script element, so a stub that adopts
   "the object already there" can hang its API on a DOM node. It throws nothing

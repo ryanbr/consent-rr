@@ -722,3 +722,52 @@ describe('filters, cookieyes', ( ) => {
         assert.match(filtersText, /IT IS DOMAIN-LOCKED/);
     });
 });
+
+/******************************************************************************/
+
+// A resource replacement runs where their script tag is, in <head>, at
+// document_start - so nothing a page parks for them exists yet. Freeing
+// parked tags therefore has to be a pass that runs again as the document
+// arrives, and these pin both halves of that: the late tag is freed, and the
+// pass does not answer its own work for ever.
+describe('cookieyes, as the document arrives', ( ) => {
+    const late = w => {
+        const node = w.document.createElement('script');
+        node.id = 'late';
+        node.type = 'text/plain';
+        node.setAttribute('data-cookieyes', 'cookieyes-analytics');
+        node.setAttribute('src', 'https://l.example/l.js');
+        w.document.body.append(node);
+    };
+
+    it('frees a tag added after it ran', async ( ) => {
+        const w = boot(unblock);
+        await settle(40);
+        late(w);
+        await settle(200);
+        assert.equal(
+            w.document.getElementById('late').type,
+            'text/javascript'
+        );
+    });
+
+    it('does not free its own work over and over', async ( ) => {
+        const w = boot(unblock);
+        const count = ( ) => w.document.querySelectorAll('script').length;
+        late(w);
+        await settle(200);
+        const settled = count();
+        await settle(250);
+        assert.equal(count(), settled);
+    });
+
+    it('the plain refusal leaves a late tag parked too', async ( ) => {
+        const w = boot(reject);
+        late(w);
+        await settle(200);
+        assert.equal(
+            w.document.getElementById('late').getAttribute('type'),
+            'text/plain'
+        );
+    });
+});

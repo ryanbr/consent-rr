@@ -73,6 +73,8 @@
 
 */
 
+// @include ../../shared/lib/deferred.js
+
 function consentRRTermly() {
     const w = window;
     const doc = w.document;
@@ -181,6 +183,15 @@ function consentRRTermly() {
     // script, drop the markers, replace. Only the elements whose categories
     // include the one they never block, which is their own behaviour where
     // the CMP is off and the visitor sends GPC.
+    // The clone release() puts in keeps data-categories - only data-src and
+    // data-autoblocked come off - so it still matches the selector below, and
+    // so does the clone's own clone. A pass over the page therefore has to
+    // remember both the element it released AND the clone it put in, or the
+    // next pass clones the clone - and each insertion is itself a mutation,
+    // so with an observer watching it never stops. Remembering only the
+    // original is not enough; that was tried, and it clones for ever.
+    const seen = new WeakSet();
+
     const release = element => {
         try {
             const clone = element.cloneNode(true);
@@ -208,6 +219,7 @@ function consentRRTermly() {
             }
             clone.removeAttribute('data-autoblocked');
             element.replaceWith(clone);
+            seen.add(clone);
             return true;
         } catch(ex) {
         }
@@ -219,6 +231,8 @@ function consentRRTermly() {
         try {
             const parked = doc.querySelectorAll('[data-categories]');
             for ( const element of Array.from(parked) ) {
+                if ( seen.has(element) ) { continue; }
+                seen.add(element);
                 const categories = String(element.dataset.categories || '')
                     .split(',')
                     .map(entry => entry.trim());
@@ -232,7 +246,14 @@ function consentRRTermly() {
         return freed;
     };
 
-    const freed = releaseEssentials();
+    let freed = 0;
+    // Their essentials path is the only one here that frees anything, and it
+    // is always on, so this watches the page for as long as the page loads.
+    consentRRDeferred(w, doc, ( ) => {
+        const released = releaseEssentials();
+        freed += released;
+        return released;
+    }, NAME + ' ' + VERSION);
 
     // Their consent event, and the hook a page can define beside it.
     const listeners = new Map();
