@@ -97,8 +97,20 @@ before(async ( ) => {
     reject = (await loadResources()).get('chcookieconsent-reject.js');
 });
 
+// uBlock Origin passes a scriptlet's arguments to a resource like this one by
+// substituting {{1}}, {{2}}... textually - see patchScriptlet in
+// scriptlet-filtering-core.js. This is that substitution, argument for
+// argument, so the tests exercise what uBO would actually inject.
+const withArgs = (...args) => {
+    let out = reject;
+    args.forEach((value, i) => {
+        out = out.replace('{{' + (i + 1) + '}}', value);
+    });
+    return out;
+};
+
 const boot = (options = {}) => runDom(
-    reject, options.url || URL_PAGE,
+    options.code || reject, options.url || URL_PAGE,
     options.html !== undefined ? options.html : PAGE,
     w => {
         w.__events = [];
@@ -448,6 +460,165 @@ describe('chcookieconsent-reject', ( ) => {
 
 /******************************************************************************/
 
+// Their categories are content categories as often as they are tracking
+// ones - a site puts its videos, its maps and its podcast player behind
+// them, and their gating is server-side, so nothing is rendered in their
+// place until the category reads true.
+describe('chcookieconsent-reject, with categories a filter allows', ( ) => {
+    const ZOO = [ 'matomo', 'youtube', 'open_street_map', 'podigee' ];
+    // Their save button beside the other two, which is what that site
+    // renders: its banner is not their simplified one.
+    const zooBanner = banner(ZOO).replace(
+        '<button type="button" id="cookie_consent_use_only_functional_cookies"',
+        '<button type="button" id="cookie_consent_save"' +
+        ' name="cookie_consent[save]" class="btn ch-cookie-consent__btn">' +
+        'Speichern</button>' +
+        '<button type="button" id="cookie_consent_use_only_functional_cookies"'
+    );
+    const zooPage = '<!doctype html><html lang="de"><head>' +
+        '<script src="' + SRC + '"></script></head><body>' +
+        '<p id="content">page</p>' + zooBanner + '</body></html>';
+
+    it('writes true for the ones it names and false for the rest', ( ) => {
+        const w = win({
+            code: withArgs('youtube', 'open_street_map', 'podigee'),
+            html: zooPage,
+        });
+        const held = cookies(w);
+        assert.equal(held.get(CATEGORY + 'youtube'), 'true');
+        assert.equal(held.get(CATEGORY + 'open_street_map'), 'true');
+        assert.equal(held.get(CATEGORY + 'podigee'), 'true');
+        assert.equal(held.get(CATEGORY + 'matomo'), 'false');
+        assert.deepEqual(
+            Array.from(w.chCookieConsentRR.state().allowed).sort(),
+            [ 'open_street_map', 'podigee', 'youtube' ]
+        );
+        assert.deepEqual(
+            Array.from(w.chCookieConsentRR.state().refused), [ 'matomo' ]
+        );
+    });
+
+    // One argument, three arguments, and their own name for all of them.
+    it('takes one name, or three, or a star', ( ) => {
+        const one = cookies(win({ code: withArgs('youtube'), html: zooPage }));
+        assert.equal(one.get(CATEGORY + 'youtube'), 'true');
+        assert.equal(one.get(CATEGORY + 'podigee'), 'false');
+        const all = cookies(win({ code: withArgs('*'), html: zooPage }));
+        for ( const slug of ZOO ) {
+            assert.equal(all.get(CATEGORY + slug), 'true', slug);
+        }
+    });
+
+    it('does not care how the filter cases a name', ( ) => {
+        const held = cookies(win({
+            code: withArgs('YouTube', ' Open_Street_Map '), html: zooPage,
+        }));
+        assert.equal(held.get(CATEGORY + 'youtube'), 'true');
+        assert.equal(held.get(CATEGORY + 'open_street_map'), 'true');
+    });
+
+    // Nor how the site cases its own - their categories are a config list,
+    // and their getCookieCategoryName pastes the name on verbatim, so the
+    // cookie keeps the site's spelling while the filter need not.
+    it('does not care how the site cases its own', ( ) => {
+        const w = win({
+            code: withArgs('openstreetmap'),
+            html: '<!doctype html><html lang="de"><head>' +
+                '<script src="' + SRC + '"></script></head><body>' +
+                banner([ 'Matomo', 'OpenStreetMap' ]) + '</body></html>',
+        });
+        const held = cookies(w);
+        assert.equal(held.get(CATEGORY + 'OpenStreetMap'), 'true');
+        assert.equal(held.get(CATEGORY + 'openstreetmap'), undefined);
+        assert.equal(held.get(CATEGORY + 'Matomo'), 'false');
+        assert.deepEqual(
+            Array.from(w.chCookieConsentRR.state().allowed),
+            [ 'OpenStreetMap' ]
+        );
+    });
+
+    // A name the site does not use writes nothing, and the line's two lists
+    // are the site's own, so a typo shows up as a name in neither.
+    it('ignores a name the site does not have', ( ) => {
+        let out;
+        const w = win({
+            code: withArgs('vimeo'), html: zooPage,
+            before: ww => { out = lines(ww); },
+        });
+        assert.deepEqual(Array.from(w.chCookieConsentRR.state().allowed), []);
+        assert.equal(cookies(w).get(CATEGORY + 'vimeo'), undefined);
+        const line = out.find(text => text.includes('chcookieconsent'));
+        assert.match(line, /allowed=none/);
+        assert.match(line, /refused=matomo,youtube,open_street_map,podigee/);
+    });
+
+    // Their save button posts a mixed answer; their functional-only button
+    // posts a flat refusal. The event carries the one that fits.
+    it('carries their save button for a mixed answer', ( ) => {
+        const w = win({ code: withArgs('youtube'), html: zooPage });
+        assert.equal(
+            w.__events[0].detail.getAttribute('name'),
+            'cookie_consent[save]'
+        );
+    });
+
+    it('carries their functional-only button for a flat refusal', ( ) => {
+        const w = win({ html: zooPage });
+        assert.equal(
+            w.__events[0].detail.getAttribute('name'),
+            'cookie_consent[use_only_functional_cookies]'
+        );
+    });
+
+    it('says both lists on its line', ( ) => {
+        let out;
+        win({
+            code: withArgs('youtube', 'podigee'), html: zooPage,
+            before: ww => { out = lines(ww); },
+        });
+        const line = out.find(text => text.includes('chcookieconsent'));
+        assert.match(line, /refused=matomo,open_street_map/);
+        assert.match(line, /allowed=youtube,podigee/);
+    });
+
+    // uBO calls a resource that opens with "function name(" by name and
+    // substitutes {{1}} into anything else. This one has to stay the second
+    // kind: were it the first, the placeholders would ship as written and a
+    // filter naming a category would do nothing at all, silently, because
+    // uBO wraps a scriptlet in an empty catch.
+    it('takes its arguments the way uBO hands them to a resource', ( ) => {
+        assert.equal(/^function\s+([^(\s]+)\s*\(/.test(reject), false);
+        assert.ok(reject.includes("'{{1}}', '{{2}}', '{{3}}'"));
+        // And as a redirect, which carries no arguments, the placeholders
+        // stay as they are and match no category.
+        const w = win({ html: zooPage });
+        assert.deepEqual(Array.from(w.chCookieConsentRR.state().allowed), []);
+        assert.equal(cookies(w).get(CATEGORY + 'youtube'), 'false');
+    });
+
+    // A site that needs the names needs two lines, and both of them are this
+    // resource: the scriptlet carries the names, the redirect keeps their
+    // real file from loading. Whichever runs first has to win.
+    it('leaves the first copy of itself alone', ( ) => {
+        const dom = boot({
+            code: withArgs('youtube', 'podigee'), html: zooPage,
+        });
+        const w = dom.window;
+        const first = cookies(w).get(CATEGORY + 'youtube');
+        const before = w.chCookieConsentRR.state();
+        // The redirect's copy, arriving where their script tag is.
+        w.eval(reject);
+        assert.equal(cookies(w).get(CATEGORY + 'youtube'), first, 'still true');
+        assert.deepEqual(
+            Array.from(w.chCookieConsentRR.state().allowed),
+            Array.from(before.allowed)
+        );
+        assert.equal(w.chCookieConsentRR.state().written, before.written);
+    });
+});
+
+/******************************************************************************/
+
 // Their http_only option defaults to true, and a page is not allowed to
 // replace an HttpOnly cookie. So a visitor who accepted before this was
 // installed cannot be walked back from here - and the resource says so
@@ -656,7 +827,7 @@ describe('chcookieconsent, at document_start', ( ) => {
 
 describe('chcookieconsent, the list', ( ) => {
     it('is pinned at the version the package names', ( ) => {
-        assert.equal(versions.chcookieconsent, '1.0.1');
+        assert.equal(versions.chcookieconsent, '1.1.0');
     });
 
     // Every Symfony app serves the bundle's assets from the same path.

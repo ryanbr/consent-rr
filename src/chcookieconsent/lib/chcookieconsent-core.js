@@ -99,6 +99,40 @@ function consentRRChCookieConsent() {
     const NAME = 'chcookieconsent-reject';
     const VERSION = '@@VERSION@@';
 
+    // Once only. A site that names categories to allow needs two lines - the
+    // scriptlet carries the names, the redirect keeps their real file from
+    // loading - and both of them are this resource. The scriptlet runs at
+    // document_start, the redirect's copy runs where their script tag is, so
+    // the first one through wins and the second leaves its work alone.
+    try {
+        if ( w.chCookieConsentRR !== undefined ) { return; }
+    } catch ( ex ) {
+    }
+
+    // Categories to allow anyway, named by the filter that injected this.
+    // uBlock Origin substitutes a scriptlet's arguments for these textually;
+    // served as a redirect, which takes no arguments at all, they stay as
+    // they are and match no category name, so everything is refused.
+    //
+    // Their categories are the site's own naming - measured: youtube,
+    // open_street_map, podigee, matomo, kulturkurier on one site - and their
+    // gating is server-side, so a site that puts its videos or its maps
+    // behind one of them renders nothing in their place until that category
+    // is true. There is no guessing from the names here: matomo is an
+    // analytics tool and reads like none of the words that would give it
+    // away, so a list of tracking-sounding words would have allowed it.
+    const named = [ '{{1}}', '{{2}}', '{{3}}' ];
+
+    const allows = slug => {
+        const plain = String(slug).toLowerCase();
+        for ( const entry of named ) {
+            const wanted = entry.trim().toLowerCase();
+            if ( wanted === '*' ) { return true; }
+            if ( wanted === plain ) { return true; }
+        }
+        return false;
+    };
+
     // Their own names.
     const CONSENT_COOKIE = 'Cookie_Consent';
     const KEY_COOKIE = 'Cookie_Consent_Key';
@@ -106,8 +140,9 @@ function consentRRChCookieConsent() {
     // Enum/CategoryEnum.php, all four. Used where their form is not in the
     // page to be read.
     const KNOWN = [ 'analytics', 'tracking', 'marketing', 'social_media' ];
-    // Their own value for a refused category.
+    // Their own values for a category, which their gate compares exactly.
     const REFUSED = 'false';
+    const ALLOWED = 'true';
     // Their own names for the buttons, which are not categories.
     const BUTTONS = [ 'save', 'use_all_cookies', 'use_only_functional_cookies' ];
 
@@ -257,6 +292,7 @@ function consentRRChCookieConsent() {
     // line further down the page and has not been parsed yet: falling back
     // there would write a refusal for a category the site does not have.
     const refused = [];
+    const allowed = [];
     let sawForm = false;
     const recordCategories = ( ) => {
         const found = fromForm();
@@ -269,6 +305,12 @@ function consentRRChCookieConsent() {
         }
         for ( const slug of found.length !== 0 ? found : KNOWN ) {
             if ( refused.indexOf(slug) !== -1 ) { continue; }
+            if ( allowed.indexOf(slug) !== -1 ) { continue; }
+            if ( allows(slug) ) {
+                allowed.push(slug);
+                write(CATEGORY_PREFIX + slug, ALLOWED);
+                continue;
+            }
             refused.push(slug);
             write(CATEGORY_PREFIX + slug, REFUSED);
         }
@@ -386,6 +428,7 @@ function consentRRChCookieConsent() {
             ' written=' + written +
             ' blocked=' + blocked +
             ' refused=' + (refused.length !== 0 ? refused.join(',') : 'none') +
+            ' allowed=' + (allowed.length !== 0 ? allowed.join(',') : 'none') +
             ' removed=' + removed +
             ' told=' + told +
             ' banner=' + (left !== 0 ? 'left' : 'none') +
@@ -404,14 +447,25 @@ function consentRRChCookieConsent() {
         // one of their buttons. The last two overlap on every deployment
         // measured, so a test cannot tell them apart - the name is kept for a
         // theme that renders their button without their class.
+        // Their save button is the one that posts a mixed answer, so it is
+        // the one a filter naming categories would have pressed; their
+        // functional-only button is the one that posts a flat refusal. A
+        // simplified banner of theirs has no save at all, and then the
+        // functional one is the closest thing there is.
         let button = null;
         try {
-            button = doc.querySelector(
+            if ( allowed.length !== 0 ) {
+                button = doc.querySelector('[name="cookie_consent[save]"]');
+            }
+        } catch ( ex ) {
+        }
+        try {
+            button = button || doc.querySelector(
                 '[name="cookie_consent[use_only_functional_cookies]"]'
             ) || doc.querySelector('[name="cookie_consent[save]"]') ||
                 doc.querySelector('.ch-cookie-consent__btn');
         } catch ( ex ) {
-            button = null;
+            // Whatever the first query found stands; this one only adds.
         }
         try {
             doc.dispatchEvent(new w.CustomEvent(
@@ -489,6 +543,7 @@ function consentRRChCookieConsent() {
                         stamp: stamp,
                         key: key,
                         refused: refused.slice(),
+                        allowed: allowed.slice(),
                         written: written,
                         blocked: blocked,
                         removed: removed,

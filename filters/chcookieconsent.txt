@@ -77,9 +77,38 @@
 !
 ! To see it work:
 !
-!   [consent-rr] chcookieconsent-reject 1.0.0 cookie=Cookie_Consent written=5
-!                blocked=0 refused=analytics,tracking,marketing removed=1
-!                told=1 banner=none parked=none posted=none logged=none
+!   [consent-rr] chcookieconsent-reject 1.1.0 cookie=Cookie_Consent written=5
+!                blocked=0 refused=analytics,tracking,marketing allowed=none
+!                removed=1 told=1 banner=none parked=none posted=none
+!                logged=none
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! ALLOWING THE CATEGORIES THAT CARRY CONTENT. Their categories are content
+! categories as often as tracking ones - a site puts its videos, its maps and
+! its podcast player behind them - and their gating is server-side, so nothing
+! is rendered in their place until the category reads true. Name those
+! categories and they go in as true, with everything else still refused:
+!
+! zoo-frankfurt.de##+js(chcookieconsent-reject, youtube, open_street_map, podigee)
+!
+! Up to three names, * for all of them, case-insensitive on both sides. The
+! line prints both lists, so a name the site does not use shows up as a name
+! in neither:
+!
+!   [consent-rr] chcookieconsent-reject 1.1.0 cookie=Cookie_Consent written=5
+!                blocked=0 refused=matomo allowed=youtube,open_street_map,
+!                podigee removed=1 told=1 banner=none ...
+!
+! Both lines are this same resource, which is why it runs once: the scriptlet
+! carries the names at document_start, the redirect rule above keeps their real
+! file from loading, and whichever gets there first wins while the second copy
+! leaves its work alone. Arguments only reach the scriptlet form - a redirect
+! takes none, and then the placeholders match no category and everything is
+! refused.
+!
+! There is no guessing from the names: matomo is an analytics tool and reads
+! like none of the words that would give it away.
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
