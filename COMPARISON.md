@@ -136,9 +136,9 @@ the same fixture as its sibling.
 | `consentmanager-reject-unblock` | 23.5 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
 | `ampconsent-reject` | 14.9 KB | `AMP` |
 | `ampconsent-reject-unblock` | 14.9 KB | `AMP` |
-| `iubenda-reject` | 38.5 KB | `__tcfapi`, `_cmp` |
-| `iubenda-reject-unblock` | 38.5 KB | `__tcfapi`, `_cmp` |
-| `iubenda-accept` | 38.5 KB | `__tcfapi`, `_cmp` |
+| `iubenda-reject` | 39.5 KB | `__tcfapi`, `_cmp` |
+| `iubenda-reject-unblock` | 39.5 KB | `__tcfapi`, `_cmp` |
+| `iubenda-accept` | 39.5 KB | `__tcfapi`, `_cmp` |
 | `cookiez-reject` | 9.6 KB | - |
 | `cookiez-reject-unblock` | 9.6 KB | - |
 | `cookieyes-reject` | 19.6 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
@@ -257,9 +257,9 @@ uBlock Origin does the blocking.
 [consent-rr] zdconsent-accept/onetrust 1.0.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
 [consent-rr] consentmanager-reject 1.1.0 purposes=none vendors=none api=__cmp+__uspapi tcf=refused freed=0 events=5 told=0 banner=none crossdomain=none tracking=none
 [consent-rr] consentmanager-reject-unblock 1.1.0 purposes=none vendors=none api=__cmp+__uspapi tcf=refused freed=1 events=5 told=0 banner=none crossdomain=none tracking=none
-[consent-rr] iubenda-reject 1.0.1 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary surface=denied tcf=refused told=2 banner=none sent=none
-[consent-rr] iubenda-reject-unblock 1.0.1 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary surface=granted tcf=refused told=2 banner=none sent=none
-[consent-rr] iubenda-accept 1.0.1 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary,functionality,experience,measurement,marketing surface=granted tcf=granted told=2 banner=none sent=none
+[consent-rr] iubenda-reject 1.0.2 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary surface=denied tcf=refused told=2 banner=none sent=none
+[consent-rr] iubenda-reject-unblock 1.0.2 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary surface=granted tcf=refused told=2 banner=none sent=none
+[consent-rr] iubenda-accept 1.0.2 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary,functionality,experience,measurement,marketing surface=granted tcf=granted told=2 banner=none sent=none
 [consent-rr] cookiez-reject 1.1.1 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=0 gpc=unset banner=none log=none
 [consent-rr] cookiez-reject-unblock 1.1.1 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=1 gpc=unset banner=none log=none
 [consent-rr] cookieyes-reject 1.1.0 categories=necessary cookie=written consentid=none freed=0 events=2 tcf=refused gpc=unset banner=none log=none

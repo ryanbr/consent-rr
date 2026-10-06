@@ -80,6 +80,16 @@
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
+! THEIR SUPPRESSED READER TAKES MORE THAN src. Their blocker parks a tag by
+! class and keeps the real value in a suppressed attribute, read as
+! data-suppressed<attr>, then suppressed<attr>, then <attr> - and their own
+! activators call it with href for a link, poster for a video and data for an
+! object as well as src. Restoring src alone left a parked stylesheet dead
+! with their marker still on it. All four are restored, and every suppressed
+! marker comes off the freed node.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
 ! For a site that withholds content until consent.
 !
 ! Same refusal stored and sent - the record is a refusal, consent mode is told
@@ -117,7 +127,11 @@
 !
 ! Nothing is written until it exists. An empty configuration object is not the
 ! same thing as none: a settings object of theirs that is missing a field is a
-! real deployment and still gets a record.
+! real deployment and still gets a record. It is read off window._iub as it is
+! at that moment, too: their own snippet is "var _iub = _iub || []", which
+! keeps what is already there, but a page that assigns window._iub outright
+! replaces it - and a reference held from before the page ran would never see
+! the configuration at all.
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------

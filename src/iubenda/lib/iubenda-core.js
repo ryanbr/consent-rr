@@ -143,8 +143,15 @@ function consentRRIubenda(mode, installTcf) {
     // So nothing is done until it exists: at once where it already does, and
     // otherwise as the document arrives.
     let installed = false;
+    // Read off window._iub as it is now, not off the object captured above:
+    // their own documented snippet is "var _iub = _iub || []", which keeps
+    // whatever is already there, but a page that assigns window._iub outright
+    // replaces it - and then a captured reference never sees the
+    // configuration at all. Measured, that wrote no record whatsoever.
     const configured = ( ) => {
-        const config = iub.csConfiguration;
+        const held = w._iub;
+        if ( typeof held !== 'object' || held === null ) { return false; }
+        const config = held.csConfiguration;
         if ( typeof config !== 'object' || config === null ) { return false; }
         return Object.keys(config).length !== 0;
     };
@@ -476,7 +483,11 @@ function consentRRIubendaInstall(mode, installTcf) {
     let tcString = '';
     if ( enableTcf && typeof installTcf === 'function' ) {
         try {
-            tcString = String(installTcf(accept) || '');
+            // Their cmpVersion.tcf, where the tenant set one: theirs comes
+            // down with the per-tenant configuration.
+            tcString = String(
+                installTcf(accept, nested('cmpVersion', 'tcf', undefined)) || ''
+            );
         } catch ( ex ) {
         }
         if ( tcString !== '' ) {
@@ -717,20 +728,52 @@ function consentRRIubendaInstall(mode, installTcf) {
         return true;
     };
 
+    // Everything their own activators restore, not only src: their generic
+    // reader is data-suppressed<attr> || suppressed<attr> || <attr>, and they
+    // call it with href for a link, poster for a video and data for an
+    // object. Restoring src alone left a parked stylesheet dead with their
+    // marker still on it.
+    const SUPPRESSED = [ 'src', 'href', 'poster', 'data' ];
+    const IN_PLACE = [ 'IFRAME', 'IMG', 'SOURCE', 'TRACK', 'LINK', 'VIDEO',
+        'AUDIO', 'OBJECT', 'EMBED', 'A' ];
+
+    const restore = node => {
+        let any = false;
+        for ( const name of SUPPRESSED ) {
+            const value = suppressed(node, name);
+            if ( value === '' ) { continue; }
+            node.setAttribute(name, value);
+            any = true;
+        }
+        return any;
+    };
+
+    const stripMarkers = node => {
+        for ( const attribute of Array.from(node.attributes) ) {
+            const name = attribute.name;
+            if ( name.startsWith('suppressed') ||
+                name.startsWith('data-suppressed') ) {
+                node.removeAttribute(name);
+            }
+        }
+    };
+
     const freeNode = node => {
         const tag = String(node.tagName || '').toUpperCase();
         const src = suppressed(node, 'src');
-        if ( tag === 'IFRAME' || tag === 'IMG' || tag === 'SOURCE' ||
-            tag === 'TRACK' ) {
-            if ( src !== '' ) { node.setAttribute('src', src); }
-            node.removeAttribute('data-suppressedsrc');
-            node.removeAttribute('suppressedsrc');
+        if ( IN_PLACE.indexOf(tag) !== -1 ) {
+            restore(node);
+            stripMarkers(node);
             for ( const name of FREEABLE ) { node.classList.remove(name); }
             node.classList.add(ACTIVATED);
-            const parent = node.parentNode;
-            if ( parent !== null && typeof parent.load === 'function' ) {
+            // Their own video and audio activator loads the element again
+            // once its sources are back; a source or track asks its parent.
+            const target = tag === 'VIDEO' || tag === 'AUDIO'
+                ? node
+                : node.parentNode;
+            if ( target !== null && typeof target.load === 'function' ) {
                 try {
-                    parent.load();
+                    target.load();
                 } catch ( ex ) {
                 }
             }
@@ -745,9 +788,8 @@ function consentRRIubendaInstall(mode, installTcf) {
         for ( const attribute of Array.from(node.attributes) ) {
             const name = attribute.name;
             if ( name === 'type' || name === 'src' ) { continue; }
-            if ( name === 'data-suppressedsrc' || name === 'suppressedsrc' ) {
-                continue;
-            }
+            if ( name.startsWith('suppressed') ) { continue; }
+            if ( name.startsWith('data-suppressed') ) { continue; }
             if ( name === 'class' ) { continue; }
             copy.setAttribute(name, attribute.value);
         }

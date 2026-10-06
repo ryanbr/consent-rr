@@ -490,6 +490,29 @@ describe('iubenda, the IAB layer', ( ) => {
         assert.equal(answered, false, 'any version but 2 is refused');
     });
 
+    // Their own cmp library sets apiVersion to the string "2" and their ping
+    // hands back String(B.apiVersion) - not "2.2".
+    it('answers the api version their own library answers', ( ) => {
+        const w = win(reject);
+        let ping;
+        w.__tcfapi('ping', 2, data => { ping = data; });
+        assert.equal(ping.apiVersion, '2');
+    });
+
+    it('carries their tenant cmpVersion where one is set', ( ) => {
+        const w = win(reject, {
+            config: CONFIG.replace(
+                'enableTcf: true', 'enableTcf: true, cmpVersion: { tcf: 7 }'
+            ),
+        });
+        assert.equal(TCString.decode(cookies(w).get('euconsent-v2')).cmpVersion, 7);
+        // And 1 where theirs is undefined, which is their default.
+        const plain = win(reject);
+        assert.equal(
+            TCString.decode(cookies(plain).get('euconsent-v2')).cmpVersion, 1
+        );
+    });
+
     it('puts their locator frame where vendors look for it', ( ) => {
         const w = win(reject);
         assert.equal(
@@ -536,14 +559,46 @@ describe('iubenda-reject-unblock', ( ) => {
         assert.equal(freedGa.getAttribute('type'), null, 'their type goes');
         assert.equal(freedGa.getAttribute('data-suppressedsrc'), null);
         assert.ok(freedGa.classList.contains('_iub_cs_activate-activated'));
-        assert.ok(
-            w.document.querySelector('script[src="https://b.example/ads.js"]'),
-            'their undashed suppressedsrc too'
+        const freedAds = w.document.querySelector(
+            'script[src="https://b.example/ads.js"]'
+        );
+        assert.ok(freedAds, 'their undashed suppressedsrc too');
+        assert.equal(
+            freedAds.getAttribute('suppressedsrc'), null,
+            'and the undashed marker does not ride along on the copy'
         );
         const yt = w.document.getElementById('yt');
         assert.equal(yt.getAttribute('src'), 'https://www.youtube.com/embed/x');
         assert.equal(state(w, 'yt'), 'freed');
         assert.equal(w.document.getElementById('cover'), null, 'their cover goes');
+    });
+
+    // Their own activators restore href for a link, poster for a video and
+    // data for an object, through the same suppressed reader as src.
+    it('frees what their blocker parked beyond src', async ( ) => {
+        const html = '<!doctype html><html lang="it"><head></head><body>' +
+            '<link id="css" class="_iub_cs_activate" rel="stylesheet"' +
+            ' data-iub-purposes="3" suppressedhref="https://a.example/a.css">' +
+            '<video id="vid" class="_iub_cs_activate" data-iub-purposes="3"' +
+            ' suppressedposter="https://a.example/p.jpg"' +
+            ' data-suppressedsrc="https://a.example/v.mp4"></video>' +
+            '<object id="obj" class="_iub_cs_activate" data-iub-purposes="3"' +
+            ' suppresseddata="https://a.example/o.swf"></object>' +
+            '<p id="content">x</p></body></html>';
+        const w = win(unblock, { html });
+        await settle(80);
+        const css = w.document.getElementById('css');
+        assert.equal(css.getAttribute('href'), 'https://a.example/a.css');
+        assert.equal(css.getAttribute('suppressedhref'), null, 'marker gone');
+        assert.ok(css.classList.contains('_iub_cs_activate-activated'));
+        const vid = w.document.getElementById('vid');
+        assert.equal(vid.getAttribute('poster'), 'https://a.example/p.jpg');
+        assert.equal(vid.getAttribute('src'), 'https://a.example/v.mp4');
+        assert.equal(vid.getAttribute('data-suppressedsrc'), null);
+        assert.equal(
+            w.document.getElementById('obj').getAttribute('data'),
+            'https://a.example/o.swf'
+        );
     });
 
     it('leaves alone what their blocker marked as not used', async ( ) => {
@@ -820,6 +875,21 @@ describe('iubenda, before their configuration exists', ( ) => {
         assert.equal(w.__late, 1);
     });
 
+    // Their documented snippet is "var _iub = _iub || []", which keeps what
+    // is already there - but a page that assigns window._iub outright
+    // replaces it, and a reference captured before the page ran never sees
+    // the configuration at all.
+    it('installs when the page replaces their object outright', async ( ) => {
+        const w = runDom(reject, URL_PAGE, PAGE).window;
+        w.eval('window._iub = { csConfiguration: { cookiePolicyId: 7654321,' +
+            ' perPurposeConsent: true, gdprApplies: true } };');
+        await settle(25);
+        assert.ok(
+            cookies(w).get('_iub_cs-7654321'),
+            Array.from(cookies(w).keys()).join(',')
+        );
+    });
+
     it('installs once, not once per pass', async ( ) => {
         const w = runDom(reject, URL_PAGE, PAGE).window;
         w.eval(CONFIG_SCRIPT);
@@ -950,7 +1020,7 @@ describe('iubenda, the console line and the lists', ( ) => {
     });
 
     it('is pinned at the version the package names', ( ) => {
-        assert.equal(versions.iubenda, '1.0.1');
+        assert.equal(versions.iubenda, '1.0.2');
     });
 
     it('names their loader and both of their cores', ( ) => {

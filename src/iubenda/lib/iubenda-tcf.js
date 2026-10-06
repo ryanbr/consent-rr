@@ -28,6 +28,10 @@
                         the grant case does not need a guessed ceiling.
       publisher CC AA   "not stated": theirs is tcfPublisherCC, null by
                         default and per tenant where it is set.
+      apiVersion "2"    what their own cmp library answers - it sets
+                        apiVersion to the string "2" and their ping hands back
+                        String(B.apiVersion). Not "2.2", which is the shape
+                        the OneTrust layer in this repo answers.
 
     The cookie is written by the core, under the name their own configuration
     gives it - preferenceCookie.tcfV2Name, "euconsent-v2" by default - because
@@ -41,14 +45,20 @@
 
 */
 
-function consentRRIubendaTcf(grant) {
+function consentRRIubendaTcf(grant, tenantVersion) {
     const w = window;
     const doc = w.document;
 
     const B64 =
         'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
     const CMP_ID = 123;             // iubenda, from the IAB's published list
-    const CMP_VERSION = 1;
+    // Their cmpVersion.tcf where the tenant set one, and 1 otherwise -
+    // theirs is undefined by default and arrives with the per-tenant
+    // configuration. Informational in the string either way.
+    const CMP_VERSION = typeof tenantVersion === 'number' &&
+        isFinite(tenantVersion) && tenantVersion >= 0
+        ? Math.floor(tenantVersion)
+        : 1;
     const POLICY_VERSION = 5;       // their own TCF module sets this
     const VENDOR_LIST_VERSION = 179; // their loader: _iub.GVL3
     // Vendor ids are granted as one range, and the ceiling is theirs rather
@@ -249,7 +259,9 @@ function consentRRIubendaTcf(grant) {
         cmpLoaded: true,
         cmpStatus: 'loaded',
         displayStatus: 'hidden',
-        apiVersion: '2.2',
+        // Their own cmp library answers "2": o(B, "apiVersion", "2"), and
+        // their ping hands back String(B.apiVersion).
+        apiVersion: '2',
         cmpVersion: CMP_VERSION,
         cmpId: CMP_ID,
         gvlVersion: VENDOR_LIST_VERSION,
