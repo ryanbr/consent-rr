@@ -40,7 +40,45 @@ almbrand.dk##+js(cookieinformation-reject)
 ! They only matter where something unblocks uc.js itself: the per-site dialog
 ! text and configuration, the cross-domain consent-sharing frame, and the cookie
 ! table the banner renders.
+!
+! The /latest/ path is theirs rather than a guess - their own config object
+! inside uc.js builds it:
+!
+!   { cdnUrl: "https://policy.app.cookieinformation.com", version: "latest",
+!     libraryVersion: "1.1.2",
+!     mainEndpoint: "https://consent.app.cookieinformation.com",
+!     apiPrefix: "/api", consentAcceptanceEndpoint: "/consent",
+!     IABendpoint: "https://vendorlist.consensu.org",
+!     IABLibraryFileName: "cmp.js" }
 ! -----------------------------------------------------------------------------
 ||policy.app.cookieinformation.com/latest/*$script,redirect=noopjs
 ||policy.app.cookieinformation.com/cookiesharingiframe.html$subdocument,redirect=noopframe
 ||policy.app.cookieinformation.com/cookie-data/*$xhr,redirect=noopjson
+
+! -----------------------------------------------------------------------------
+! TWO HOSTS OF THEIRS ARE LEFT ALONE, both named by that same config object and
+! both reached only where something unblocks uc.js:
+!
+!   consent.app.cookieinformation.com   their mainEndpoint, which is where
+!                                       their own submitConsent posts a
+!                                       visitor's answer - /api and /consent.
+!                                       Nothing is posted with uc.js replaced,
+!                                       and blocking it would also stop a
+!                                       visitor who turned this off from
+!                                       recording a real choice.
+!   vendorlist.consensu.org             their IABendpoint, from which a TCF
+!                                       tenant loads IABLibraryFileName,
+!                                       cmp.js. That is the whole of their IAB
+!                                       layer, and nothing here stands in for
+!                                       it - see the gap below.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! WHAT THIS DOES NOT ANSWER: IAB TCF.
+!
+! Their TCF support is a separate file - cmp.js from their IABendpoint - rather
+! than anything inside uc.js, so a tenant with it on gets no __tcfapi once uc.js
+! is replaced. A TC string invented here would be read by every vendor on the
+! page as consent, which is worse than answering nothing; see the didomi list
+! for the same decision.
+! -----------------------------------------------------------------------------

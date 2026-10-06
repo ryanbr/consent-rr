@@ -8,7 +8,9 @@
 
 import { strict as assert } from 'node:assert';
 import { before, describe, it } from 'node:test';
-import { cookies, cookiesInJar, loadResources, runDom, settle } from './helpers.mjs';
+import {
+    cookies, cookiesInJar, filtersText, loadResources, runDom, settle,
+} from './helpers.mjs';
 
 const URL = 'https://www.almbrand.dk/';
 
@@ -216,5 +218,40 @@ describe('cookieinformation-reject', ( ) => {
         await settle(80);
         // One push, not two: the second injection returned at the guard.
         assert.equal(dom.window.dataLayer.length, 1);
+    });
+});
+
+/******************************************************************************/
+
+describe('cookieinformation, the hosts their own config names', ( ) => {
+    // Their config object inside uc.js, verbatim:
+    //   { cdnUrl: "https://policy.app.cookieinformation.com", version: "latest",
+    //     mainEndpoint: "https://consent.app.cookieinformation.com",
+    //     apiPrefix: "/api", consentAcceptanceEndpoint: "/consent",
+    //     IABendpoint: "https://vendorlist.consensu.org",
+    //     IABLibraryFileName: "cmp.js" }
+    it('replaces the loader and noops what only it asks for', ( ) => {
+        for ( const rule of [
+            '||policy.app.cookieinformation.com/uc.js$script,redirect=cookieinformation-reject.js',
+            '||policy.app.cookieinformation.com/latest/*$script,redirect=noopjs',
+            '||policy.app.cookieinformation.com/cookiesharingiframe.html$subdocument,redirect=noopframe',
+            '||policy.app.cookieinformation.com/cookie-data/*$xhr,redirect=noopjson',
+        ] ) {
+            assert.ok(filtersText.includes(rule), rule);
+        }
+    });
+
+    // Their mainEndpoint is where their own submitConsent posts, and their
+    // IABendpoint is the whole of their IAB layer. Neither is blocked.
+    it('leaves their consent endpoint and their IAB host alone', ( ) => {
+        for ( const line of filtersText.split('\n') ) {
+            if ( line.startsWith('!') ) { continue; }
+            assert.equal(
+                /consent\.app\.cookieinformation\.com/.test(line), false, line
+            );
+            assert.equal(/vendorlist\.consensu\.org/.test(line), false, line);
+        }
+        assert.match(filtersText, /TWO HOSTS OF THEIRS ARE LEFT ALONE/);
+        assert.match(filtersText, /WHAT THIS DOES NOT ANSWER: IAB TCF/);
     });
 });
