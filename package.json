@@ -1,6 +1,6 @@
 {
   "name": "consent-rr",
-  "version": "1.44.0",
+  "version": "1.44.1",
   "resourceVersions": {
     "ampconsent": "1.0.0",
     "appconsent": "1.0.4",
@@ -8,7 +8,7 @@
     "complianz": "1.1.0",
     "consentmanager": "1.1.0",
     "cookiebot": "1.0.1",
-    "cookieconsent": "1.0.0",
+    "cookieconsent": "1.0.1",
     "cookieinformation": "1.0.2",
     "cookiescript": "1.0.7",
     "cookieyes": "1.1.0",

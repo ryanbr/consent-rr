@@ -219,7 +219,19 @@ function consentRRCookieConsent(mode) {
 
     // Their own writer, attribute for attribute.
     const writeRecord = ( ) => {
-        const days = Number(cookieConfig.expiresAfterDays);
+        // Theirs takes a function here as readily as a number, and calls it
+        // with the acceptType: $ = () => { const e = cookie.expiresAfterDays;
+        // return w(e) ? e(m.o.F) : e }. A tenant using the function form was
+        // getting the 182-day default instead of their own answer.
+        let given = cookieConfig.expiresAfterDays;
+        if ( typeof given === 'function' ) {
+            try {
+                given = given(acceptType(acceptedCategories));
+            } catch ( ex ) {
+                given = undefined;
+            }
+        }
+        const days = Number(given);
         const ms = (isFinite(days) ? days : 182) * 864e5;
         const until = new Date();
         until.setTime(until.getTime() + ms);
@@ -476,6 +488,44 @@ function consentRRCookieConsent(mode) {
 
     /**************************************************************************/
 
+    // Their own per-service callbacks, from the same pass that runs their
+    // script tags:
+    //
+    //   const {onAccept: a, onReject: c} = n;
+    //   !n.Se && v(t[e], o) ? (n.Se = !0, w(a) && a())
+    //       : n.Se && !v(t[e], o) && (n.Se = !1, w(c) && c())
+    //
+    // their Se starts false, so a service that is accepted gets onAccept and
+    // one that was never accepted gets nothing - which is why a refusal calls
+    // neither. What the page is told is what decides it, the same as their
+    // script tags.
+    const tellServices = ( ) => {
+        for ( const id of categoryIds ) {
+            const category = categories[id];
+            if ( category === null || typeof category !== 'object' ) {
+                continue;
+            }
+            const services = category.services;
+            if ( services === null || typeof services !== 'object' ) {
+                continue;
+            }
+            const on = reportedServices[id] || [];
+            for ( const key of Object.keys(services) ) {
+                if ( on.indexOf(key) === -1 ) { continue; }
+                const service = services[key];
+                if ( service === null || typeof service !== 'object' ) {
+                    continue;
+                }
+                if ( typeof service.onAccept !== 'function' ) { continue; }
+                try {
+                    service.onAccept();
+                    told += 1;
+                } catch ( ex ) {
+                }
+            }
+        }
+    };
+
     // Their own callback-and-event pair, with their own payloads.
     const fire = (name, detail) => {
         const callbacks = {
@@ -581,6 +631,7 @@ function consentRRCookieConsent(mode) {
         collectParked();
         stored = writeRecord();
         autoClear();
+        tellServices();
 
         // Their own gate on what was already there, which is what decides
         // whether this is a first consent or a change:
@@ -786,8 +837,30 @@ function consentRRCookieConsent(mode) {
             stored = writeRecord();
             return true;
         },
-        setLanguage: async given => {
-            record.languageCode = String(given || record.languageCode);
+        // Theirs validates against their own translations and refuses a
+        // language that is already the current one unless force is passed:
+        //
+        //   if (!Ce(e)) return !1;
+        //   return !(e === we() && !0 !== t || !await xe(e) || (...))
+        //
+        // so setLanguage('en') on an English page answers false, and an
+        // unknown code answers false as well.
+        setLanguage: async (given, force) => {
+            const code = String(given || '');
+            const translations = config.language !== null &&
+                typeof config.language === 'object' &&
+                config.language.translations !== null &&
+                typeof config.language.translations === 'object'
+                ? config.language.translations
+                : {};
+            if ( Object.prototype.hasOwnProperty.call(
+                translations, code) === false ) {
+                return false;
+            }
+            if ( code === record.languageCode && force !== true ) {
+                return false;
+            }
+            record.languageCode = code;
             stored = writeRecord();
             return true;
         },

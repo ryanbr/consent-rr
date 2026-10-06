@@ -139,9 +139,9 @@ the same fixture as its sibling.
 | `iubenda-reject` | 39.5 KB | `__tcfapi`, `_cmp` |
 | `iubenda-reject-unblock` | 39.5 KB | `__tcfapi`, `_cmp` |
 | `iubenda-accept` | 39.5 KB | `__tcfapi`, `_cmp` |
-| `cookieconsent-reject` | 24.9 KB | `CookieConsent`, `_ccRun` |
-| `cookieconsent-reject-unblock` | 25.0 KB | `CookieConsent`, `_ccRun` |
-| `cookieconsent-accept` | 24.9 KB | `CookieConsent`, `_ccRun` |
+| `cookieconsent-reject` | 26.7 KB | `CookieConsent`, `_ccRun` |
+| `cookieconsent-reject-unblock` | 26.7 KB | `CookieConsent`, `_ccRun` |
+| `cookieconsent-accept` | 26.7 KB | `CookieConsent`, `_ccRun` |
 | `cookiez-reject` | 9.6 KB | - |
 | `cookiez-reject-unblock` | 9.6 KB | - |
 | `cookieyes-reject` | 19.6 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
@@ -266,9 +266,9 @@ uBlock Origin does the blocking.
 [consent-rr] iubenda-reject 1.0.2 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary surface=denied tcf=refused told=2 banner=none sent=none
 [consent-rr] iubenda-reject-unblock 1.0.2 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary surface=granted tcf=refused told=2 banner=none sent=none
 [consent-rr] iubenda-accept 1.0.2 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary,functionality,experience,measurement,marketing surface=granted tcf=granted told=2 banner=none sent=none
-[consent-rr] cookieconsent-reject 1.0.0 store=cookie name=cc_cookie accepted=necessary type=necessary surface=necessary parked=1 freed=0 cleared=0 told=2 banner=none
-[consent-rr] cookieconsent-reject-unblock 1.0.0 store=cookie name=cc_cookie accepted=necessary type=necessary surface=all parked=1 freed=1 cleared=0 told=2 banner=none
-[consent-rr] cookieconsent-accept 1.0.0 store=cookie name=cc_cookie accepted=necessary,analytics type=all surface=all parked=1 freed=1 cleared=0 told=2 banner=none
+[consent-rr] cookieconsent-reject 1.0.1 store=cookie name=cc_cookie accepted=necessary type=necessary surface=necessary parked=1 freed=0 cleared=0 told=2 banner=none
+[consent-rr] cookieconsent-reject-unblock 1.0.1 store=cookie name=cc_cookie accepted=necessary type=necessary surface=all parked=1 freed=1 cleared=0 told=2 banner=none
+[consent-rr] cookieconsent-accept 1.0.1 store=cookie name=cc_cookie accepted=necessary,analytics type=all surface=all parked=1 freed=1 cleared=0 told=2 banner=none
 [consent-rr] cookiez-reject 1.1.1 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=0 gpc=unset banner=none log=none
 [consent-rr] cookiez-reject-unblock 1.1.1 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=1 gpc=unset banner=none log=none
 [consent-rr] cookieyes-reject 1.1.0 categories=necessary cookie=written consentid=none freed=0 events=2 tcf=refused gpc=unset banner=none log=none

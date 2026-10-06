@@ -379,6 +379,108 @@ describe('cookieconsent-reject', ( ) => {
 
 /******************************************************************************/
 
+// Three things the open-source oracle caught on a second pass, each measured
+// by running their own 3.1.0 bundle beside this one.
+describe('cookieconsent, what their config can be', ( ) => {
+    // Theirs takes a function here and calls it with the acceptType:
+    //   $ = () => { const e = cookie.expiresAfterDays;
+    //               return w(e) ? e(m.o.F) : e }
+    it('calls their expiresAfterDays where it is a function', ( ) => {
+        const seen = [];
+        const rejecting = boot(reject, {
+            config: {
+                cookie: {
+                    expiresAfterDays: type => {
+                        seen.push(type);
+                        return type === 'all' ? 365 : 30;
+                    },
+                },
+            },
+        });
+        const [ held ] = cookiesInJar(rejecting, URL_PAGE, 'cc_cookie');
+        const days = Math.round((held.expires.getTime() - Date.now()) / 864e5);
+        assert.equal(days, 30, 'their own answer, not the 182 default');
+        assert.deepEqual(seen, [ 'necessary' ], 'called with the acceptType');
+
+        const accepting = boot(accept, {
+            config: {
+                cookie: { expiresAfterDays: type => type === 'all' ? 365 : 30 },
+            },
+        });
+        const [ granted ] = cookiesInJar(accepting, URL_PAGE, 'cc_cookie');
+        assert.equal(
+            Math.round((granted.expires.getTime() - Date.now()) / 864e5), 365
+        );
+    });
+
+    it('keeps their number form working', ( ) => {
+        const dom = boot(reject, {
+            config: { cookie: { expiresAfterDays: 7 } },
+        });
+        const [ held ] = cookiesInJar(dom, URL_PAGE, 'cc_cookie');
+        assert.equal(
+            Math.round((held.expires.getTime() - Date.now()) / 864e5), 7
+        );
+    });
+
+    // Their own per-service callbacks, from the pass that runs their script
+    // tags. Their Se starts false, so an accepted service gets onAccept and
+    // one that was never accepted gets nothing.
+    it('calls their service onAccept where the surface accepts it', ( ) => {
+        const withService = extra => Object.assign({}, CONFIG, {
+            categories: {
+                necessary: { enabled: true, readOnly: true },
+                analytics: {
+                    services: {
+                        ga4: {
+                            label: 'GA4',
+                            onAccept: ( ) => { extra.push('accept'); },
+                            onReject: ( ) => { extra.push('reject'); },
+                        },
+                    },
+                },
+            },
+        });
+        const refused = [];
+        win(reject, { config: withService(refused) });
+        assert.deepEqual(refused, [], 'neither, on a refusal');
+
+        const granted = [];
+        win(accept, { config: withService(granted) });
+        assert.deepEqual(granted, [ 'accept' ]);
+
+        const unblocked = [];
+        win(unblock, { config: withService(unblocked) });
+        assert.deepEqual(
+            unblocked, [ 'accept' ],
+            'the unblock surface accepts it, so theirs would call it'
+        );
+    });
+
+    // Theirs validates against their own translations and refuses a language
+    // that is already current unless force is passed.
+    it('answers their setLanguage the way theirs does', async ( ) => {
+        const w = win(reject, {
+            config: {
+                language: {
+                    default: 'en',
+                    translations: { en: {}, fr: {} },
+                },
+            },
+        });
+        const api = w.CookieConsent;
+        assert.equal(await api.setLanguage('xx'), false, 'not in translations');
+        assert.equal(await api.setLanguage('en'), false, 'already current');
+        assert.equal(record(w).languageCode, 'en');
+        assert.equal(await api.setLanguage('fr'), true);
+        assert.equal(record(w).languageCode, 'fr', 'and the record follows');
+        assert.equal(await api.setLanguage('fr'), false, 'current again');
+        assert.equal(await api.setLanguage('fr', true), true, 'unless forced');
+    });
+});
+
+/******************************************************************************/
+
 describe('cookieconsent, their callbacks and events', ( ) => {
     it('fires their first-consent pair, to both places', ( ) => {
         const w = win(reject);
@@ -644,7 +746,7 @@ describe('cookieconsent, the console line and the lists', ( ) => {
     });
 
     it('is pinned at the version the package names', ( ) => {
-        assert.equal(versions.cookieconsent, '1.0.0');
+        assert.equal(versions.cookieconsent, '1.0.1');
     });
 
     // One rule, because the filename is the same wherever it is served from -

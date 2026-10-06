@@ -90,6 +90,25 @@
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
+! THREE THINGS THEIR CONFIG CAN DO THAT ARE EASY TO MISS, each found by running
+! their own bundle beside this one and comparing:
+!
+!   expiresAfterDays   can be a function, and theirs calls it with the
+!                      acceptType - $ = () => w(e) ? e(m.o.F) : e - so a
+!                      tenant writing type => type === 'all' ? 365 : 30 gets
+!                      30 on a refusal rather than their 182-day default.
+!   service onAccept   a service in their config carries its own onAccept and
+!                      onReject, called from the same pass that runs their
+!                      script tags. A refusal calls neither, because their own
+!                      flag starts false; the unblock and accept resources
+!                      call onAccept, which is what theirs does.
+!   setLanguage        answers false for a code that is not in their
+!                      translations AND for one that is already current,
+!                      unless force is passed. It used to answer true to
+!                      both.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
 ! THEIR AUTO-CLEAR IS DONE, because it is the visible half of a refusal. A
 ! category with autoClear.cookies has those cookies deleted their own way -
 ! host-only, the configured domain dot-prefixed, and for a www host the bare
