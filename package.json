@@ -1,6 +1,6 @@
 {
   "name": "consent-rr",
-  "version": "1.41.0",
+  "version": "1.41.1",
   "resourceVersions": {
     "ampconsent": "1.0.0",
     "appconsent": "1.0.4",
