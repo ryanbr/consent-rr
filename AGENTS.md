@@ -7,7 +7,7 @@ pointed at it. The notes below are the things that have actually gone wrong.
 ## Layout
 
 - One directory per consent manager under `src/`, shared code in its `lib/`.
-  `dist/` stays flat: uBO addresses a resource by name alone. Twenty-three
+  `dist/` stays flat: uBO addresses a resource by name alone. Twenty-four
   families so far; `ls src/` is the list, and `src/shared/` is the one
   directory there that is not a consent manager.
 - `src/shared/lib/deferred.js` - the only cross-family lib: running a pass
@@ -331,6 +331,25 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   language, whether Google vendors are enabled. None is derivable from a page.
 - Categories and cookie fields are a deliberate superset, so a site asking about
   one its tenant never defined still gets an answer.
+- **A loader is a better thing to replace than a bundle.** iubenda ships a
+  4KB loader that reads the page's configuration and fetches 450KB of core;
+  Ziff Davis and consentmanager are the same shape. Replacing the loader means
+  the core is never requested, so the rule is one line and the stub does not
+  have to live alongside a running CMP. Check what the loader fetches before
+  writing a rule for the big file.
+- **A CMP's own stub can overwrite the replacement.** iubenda's page loads
+  `cs/tcf/stub-v2.js` and `cs/gpp/stub.js` itself, ahead of the loader, and
+  each installs a window-level API that queues every call until their core
+  arrives. One that loads *after* the replacement overwrites a working
+  `__tcfapi` with one that answers nothing, so the list drops them. Their stub
+  also hands its queue back differently from OneTrust's - calling `__tcfapi()`
+  with no arguments returns the array, rather than parking it on
+  `__tcfapi.a` - so a drain copied from one family answers nothing in another.
+- **Do not block the auto-blocker.** iubenda's
+  `cs.iubenda.com/autoblocking/<siteId>.js` is the file parking the trackers:
+  it rewrites a tag's `src` into `data-suppressedsrc` before anything runs.
+  Blocking it lets every tracker load unparked, which is the opposite of the
+  point. The same reasoning applies to any CMP's blocker.
 - **Some of these cannot be blocked at all, and the replacement is the only
   option.** AMP's `amp-consent` is not a CMP that owns the page, it is an
   extension of a host runtime, and that runtime refuses to build any element

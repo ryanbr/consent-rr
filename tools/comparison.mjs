@@ -350,6 +350,51 @@ const FIXTURES = [
             '<p>x</p></body></html>',
     },
     {
+        resource: 'iubenda-reject.js',
+        cmp: 'iubenda',
+        page: '<html lang="it"><head>' +
+            '<script src="https://cdn.iubenda.com/cs/iubenda_cs.js" charset="UTF-8" async></' + 'script>' +
+            '</head><body>' +
+            '<script class="_iub_cs_activate" type="text/plain" data-iub-purposes="4"' +
+            ' data-suppressedsrc="https://a.example/ga.js"></' + 'script>' +
+            '<p>x</p></body></html>',
+        drive: w => {
+            w.eval('window._iub = { csConfiguration: { siteId: 1234567,' +
+                ' cookiePolicyId: 7654321, lang: "it", perPurposeConsent: true,' +
+                ' enableTcf: true, gdprApplies: true, purposes: "1,2,3,4,5" } };');
+        },
+    },
+    {
+        resource: 'iubenda-reject-unblock.js',
+        cmp: 'iubenda',
+        page: '<html lang="it"><head>' +
+            '<script src="https://cdn.iubenda.com/cs/iubenda_cs.js" charset="UTF-8" async></' + 'script>' +
+            '</head><body>' +
+            '<script class="_iub_cs_activate" type="text/plain" data-iub-purposes="4"' +
+            ' data-suppressedsrc="https://a.example/ga.js"></' + 'script>' +
+            '<p>x</p></body></html>',
+        drive: w => {
+            w.eval('window._iub = { csConfiguration: { siteId: 1234567,' +
+                ' cookiePolicyId: 7654321, lang: "it", perPurposeConsent: true,' +
+                ' enableTcf: true, gdprApplies: true, purposes: "1,2,3,4,5" } };');
+        },
+    },
+    {
+        resource: 'iubenda-accept.js',
+        cmp: 'iubenda',
+        page: '<html lang="it"><head>' +
+            '<script src="https://cdn.iubenda.com/cs/iubenda_cs.js" charset="UTF-8" async></' + 'script>' +
+            '</head><body>' +
+            '<script class="_iub_cs_activate" type="text/plain" data-iub-purposes="4"' +
+            ' data-suppressedsrc="https://a.example/ga.js"></' + 'script>' +
+            '<p>x</p></body></html>',
+        drive: w => {
+            w.eval('window._iub = { csConfiguration: { siteId: 1234567,' +
+                ' cookiePolicyId: 7654321, lang: "it", perPurposeConsent: true,' +
+                ' enableTcf: true, gdprApplies: true, purposes: "1,2,3,4,5" } };');
+        },
+    },
+    {
         resource: 'cookiez-reject.js',
         cmp: 'Cookiez',
         page: '<html lang="de"><head>' +

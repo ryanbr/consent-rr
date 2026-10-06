@@ -53,6 +53,9 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `cookiez-reject-unblock.js` | Cookiez, for a site that withholds something until a category is on: the same stored refusal, and the scripts their blocker parked freed by their own selector - including leaving `data-cc-mode="always"` nodes parked, which is their never-free marker. |
 | `ampconsent-reject.js` | AMP's own `amp-consent` extension: their refusal (`REJECTED`) in their own store, `amp-consent:<instanceId>` as `{"s":0}`, and every consent policy answered with their own `unblockOn` arithmetic - an element on the default policy stays blocked, one on `_till_responded` builds, because a refusal is a response. This one cannot be blocked instead: with no extension registered the AMP runtime never builds anything carrying `data-block-on-consent`. |
 | `ampconsent-reject-unblock.js` | AMP `amp-consent`, for a page that withholds content behind the default policy: the same stored and reported refusal, with only the runtime's build gate answered yes. |
+| `iubenda-reject.js` | iubenda's Cookie Solution: their own refusal in their own record - necessary true, functionality, experience, measurement and marketing false - under the cookie their configuration names, with their api answering, their callbacks fired in their own order, consent mode told denied through their own mapping and the IAB layer refusing as cmp 123 where their tenant switched it on. One rule drops a 4KB loader and the 450KB core behind it. |
+| `iubenda-reject-unblock.js` | iubenda, for a site that withholds content: the same stored and sent refusal, while the page's own scripts are told every purpose is on and the tags their auto-blocker parked are freed by their own `_iub_cs_activate` and `data-suppressedsrc` markers. |
+| `iubenda-accept.js` | iubenda, for when you actually mean it - which on their deployments is often the only way past the page, because theirs is frequently run as a consent wall and a wall answers to the record rather than to the tags. Grants every purpose, tells consent mode granted, and consents to their own vendor count in the IAB string. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -95,42 +98,45 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/cookiescript-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/didomi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/didomi-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/complianz-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/complianz-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/zdconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/zdconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/fundingchoices-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/tarteaucitron-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/tarteaucitron-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/cookieyes-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/cookieyes-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/consentmanager-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/consentmanager-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/cookiez-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/cookiez-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/ampconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/ampconsent-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/iubenda-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/iubenda-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/iubenda-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/didomi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/didomi-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/complianz-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/complianz-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/zdconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/zdconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/fundingchoices-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/tarteaucitron-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/tarteaucitron-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/cookieyes-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/cookieyes-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/consentmanager-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/consentmanager-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/cookiez-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/cookiez-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/ampconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/ampconsent-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -144,8 +150,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.40.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.40.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.41.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.41.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -2405,6 +2411,113 @@ real extension registers first, it wins and this resource does nothing.
 - **The runtime is left alone.** `v0.mjs` and `v0.js` are the whole page on an
   AMP document.
 
+## iubenda
+
+`cdn.iubenda.com/cs/iubenda_cs.js`, which is a 4KB loader: it reads
+`_iub.csConfiguration`, installs `window._cmp.pubSub`, sets a few `_iub`
+fields and fetches the real thing -
+
+```js
+"https://cdn.iubenda.com/cookie_solution/iubenda_cs/1.108.0/core-" + o.lang + ".js"
+```
+
+— 450KB of it. Replace the loader and neither arrives.
+
+**Their record**, which is what stops the banner coming back, built the way
+their own `getConsentObj` builds it and written where theirs is: a cookie named
+`_iub_cs-` plus their storage id, URL-encoded because their own converter
+encodes a value that looks like JSON for a cookie and leaves it decoded for
+`localStorage`.
+
+```json
+{"timestamp":"2026-10-06T00:00:00.000Z","version":"1.108.0",
+ "purposes":{"1":true,"2":false,"3":false,"4":false,"5":false}}
+```
+
+Their five purposes, from their own `per_purpose` table: 1 necessary,
+2 functionality, 3 experience, 4 measurement, 5 marketing. Purpose 1 is true in
+every mode because their own `storeConsent` forces it, and a tenant without
+`perPurposeConsent` gets their simple form, `"consent": false`, instead. The
+storage id is `"s" + siteId` where `storage.useSiteId` is on and the
+`cookiePolicyId` otherwise, and `storage.type` - per item, with a group default
+behind it - picks between the cookie and `localStorage`. Where a record already
+sits in the other one it is overwritten there too, because with their
+`autoSync` on the one left behind would be read back.
+
+Their preference id is **not** minted: `cons.rand` comes from their consent-log
+server, and a record without it simply has no preference id, which is a shape
+their own `getPreferenceId` handles. An existing one is carried over.
+
+**Their callbacks** fire in the order their own code fires them for a stored
+decision, including the two quirks worth copying: `onReady` is called with
+`consent.consent` as its argument, and `onConsentRead` falls back to
+`onConsentGiven` where consent was given and no `onConsentRead` is defined -
+which is how a page's `onConsentGiven` fires on a return visit.
+
+**Google consent mode** is theirs as well, mapping and sender both: `gtag`
+where the page has one, their `template` pair at `_iub.gtmDataLayer` and
+`_iub.gtmDataLayerV2` where the tenant asked for it, and the data layer their
+`googleConsentModeDataLayerName` names otherwise.
+
+| signal | purpose |
+| --- | --- |
+| `analytics_storage` | 4 |
+| `ad_storage`, `ad_personalization`, `ad_user_data` | 5 |
+| `functionality_storage`, `security_storage` | 2 |
+| `personalization_storage` | 3 |
+
+### Their auto-blocker stays
+
+`cs.iubenda.com/autoblocking/<siteId>.js` is the file parking the trackers: it
+rewrites a tag's `src` into `data-suppressedsrc` and marks it
+`_iub_cs_activate` before anything runs. **Blocking it would let every tracker
+load unparked**, so nothing here touches it, and the reject resource leaves
+what it parked exactly where it is.
+
+`iubenda-reject-unblock.js` frees those tags by their own markers, and the pass
+runs again as the document arrives because this resource stands in for a script
+in `<head>` and the parked tags are below it.
+
+### The consent wall
+
+Theirs is often run as a wall, and a wall answers to the record rather than to
+the tags - freeing the parked scripts does not take it down. `iubenda-accept.js`
+is the one for that case: every purpose true in their record, consent mode told
+granted, and the IAB string consenting to their own vendor count, 1223, which
+their loader states as `_iub.vendorsCountGVL3`. It consents on your behalf;
+`iubenda-reject.js` is the default everywhere else.
+
+### The IAB layer
+
+Installed only where their tenant sets `"enableTcf": true`, and every constant
+read off something of theirs: cmp id **123** from the IAB's published list
+(their own bundle reads `_iub.IUBENDA_CMP_ID`, which arrives with the per-tenant
+configuration), vendor list **179** from their loader's `_iub.GVL3`, policy
+version **5** from their own TCF module, publisher country `AA` because
+`tcfPublisherCC` is per tenant. The cookie goes under the name their
+`preferenceCookie.tcfV2Name` gives it, `euconsent-v2` by default, so a stored
+acceptance cannot outlive the refusal.
+
+Their own `cs/tcf/stub-v2.js` and `cs/gpp/stub.js` are dropped by the list: each
+installs a window-level API that queues every call until their core arrives, and
+a stub that loads *after* this resource would overwrite a working `__tcfapi`
+with one that answers nothing.
+
+### Deliberate gaps
+
+- **`__gpp` and `usprivacy`.** Their US flow writes `_iub_cs-uspr` and
+  `usprivacy` and answers `__gpp` through a module of its own. Nothing here
+  writes or answers either, so a US page gets the refusal above and no US
+  signal.
+- **Their CCPA opt-out.** `isCcpaAcknowledged` and `isCcpaOptedOut` answer
+  false, which is their own default for a visitor who was never asked.
+- **Global Privacy Control.** Their own `getPreferences` applies a GPC signal to
+  the US purposes `s`, `sh` and `adv`. A refusal here is already stronger than
+  that, and accept is an explicit choice that overrides it.
+- **A granting additional-consent string.** It would need the tenant's own
+  Google vendor list, which is not on the page. The refusal carries `2~~dv`, the
+  shape their `gacVersion` 2 gives for consenting to nothing.
+
 ## Development
 
 ```sh
@@ -2444,7 +2557,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.40.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.41.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

@@ -1,0 +1,156 @@
+! Title: consent-rr - iubenda
+! Description: Replaces iubenda's Cookie Solution loader with a stub that
+!              records their own refusal, answers their api, and leaves their
+!              auto-blocker's work alone.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! What a page actually loads is a 4KB loader. It reads _iub.csConfiguration,
+! installs window._cmp.pubSub, sets a few _iub fields and fetches the real
+! thing - 450KB of it:
+!
+!   "https://cdn.iubenda.com/cookie_solution/iubenda_cs/1.108.0/core-"
+!       + o.lang + ".js"
+!
+! Replace the loader and neither arrives.
+!
+! Swap in iubenda-accept.js where a refusal is not an option: theirs is often
+! run as a consent wall, and a wall answers to the record rather than to the
+! tags - freeing the parked scripts does not take the wall down.
+! -----------------------------------------------------------------------------
+||cdn.iubenda.com/cs/iubenda_cs.js$script,redirect=iubenda-reject.js
+
+! -----------------------------------------------------------------------------
+! Their safemode loader, which is the same entry point with the core named by
+! hash instead of version:
+!
+!   cdn.iubenda.com/cookie_solution/safemode/iubenda_cs.js
+!   -> cookie_solution/iubenda_cs/core-<32 hex>.js
+! -----------------------------------------------------------------------------
+||cdn.iubenda.com/cookie_solution/safemode/iubenda_cs.js$script,redirect=iubenda-reject.js
+
+! -----------------------------------------------------------------------------
+! The core itself, in both url shapes. With the loader replaced neither is
+! requested, so these are belt and braces for a page that references one
+! directly.
+!
+!   cookie_solution/iubenda_cs/1.108.0/core-en.js
+!   cookie_solution/iubenda_cs/core-fcf8c9eac36aece9d290934b54a63296.js
+! -----------------------------------------------------------------------------
+||cdn.iubenda.com/cookie_solution/iubenda_cs/*/core-*.js$script,redirect=noopjs
+||cdn.iubenda.com/cookie_solution/iubenda_cs/core-*.js$script,redirect=noopjs
+
+! -----------------------------------------------------------------------------
+! THEIR IAB STUBS GO, because this resource is the CMP now.
+!
+! A page loads these itself, ahead of the loader, and each one installs a
+! window-level api that queues every call until their core arrives:
+!
+!   cs/tcf/stub-v2.js    __tcfapi, which answers ping with cmpStatus "stub"
+!                        and pushes everything else into a closure array
+!   cs/gpp/stub.js       __gpp, the same shape
+!
+! Left in place, a stub that loads AFTER this resource overwrites the working
+! __tcfapi with one that answers nothing, and a vendor waiting on it waits for
+! ever. Their full TCF module is named here for the same reason.
+! -----------------------------------------------------------------------------
+||cdn.iubenda.com/cs/tcf/stub-v2.js$script,redirect=noopjs
+||cdn.iubenda.com/cs/tcf/safe-tcf-v2.js$script,redirect=noopjs
+||cdn.iubenda.com/cs/gpp/stub.js$script,redirect=noopjs
+
+! -----------------------------------------------------------------------------
+! DO NOT BLOCK THEIR AUTO-BLOCKER.
+!
+!   cs.iubenda.com/autoblocking/<siteId>.js
+!
+! That file is the thing parking the trackers: it rewrites a tag's src into
+! data-suppressedsrc and marks it _iub_cs_activate before anything runs. Block
+! it and every tracker on the page loads unparked, which is the opposite of
+! what any of this is for. It is deliberately left alone, and so is their
+! per-site configuration at
+!
+!   cs.iubenda.com/cookie-solution/confs/js/<cookiePolicyId>.js
+!
+! which only their core asks for.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! For a site that withholds content until consent.
+!
+! Same refusal stored and sent - the record is a refusal, consent mode is told
+! denied and the IAB string grants nothing - while the page's own scripts are
+! told every purpose is on and the tags their blocker parked are freed:
+!
+! example.com##+js(iubenda-reject-unblock)
+!
+! Where the site needs the consent itself rather than the tags, which is what a
+! wall needs:
+!
+! example.com##+js(iubenda-accept)
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Where a redirect cannot land.
+!
+! A user resource is served as a data: URI, so a site whose CSP omits data: for
+! scripts refuses it - and their loader is the one file that must run, because
+! with it gone their auto-blocker's parked tags have nobody to free them and
+! nothing answers their api. The scriptlet form is injected rather than
+! fetched:
+!
+! example.com##+js(iubenda-reject)
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! THEIR RECORD, which is what stops the banner coming back.
+!
+! Their own getConsentObj builds it, and it is written where theirs is - a
+! cookie named _iub_cs- plus their storage id, which is "s" + siteId when
+! storage.useSiteId is on and the cookiePolicyId otherwise, URL-encoded
+! because their own converter encodes a value that looks like JSON for a
+! cookie and leaves it decoded for localStorage:
+!
+!   {"timestamp":"2026-10-06T00:00:00.000Z","version":"1.108.0",
+!    "purposes":{"1":true,"2":false,"3":false,"4":false,"5":false}}
+!
+! Their five purposes, from their own per_purpose table: 1 necessary,
+! 2 functionality, 3 experience, 4 measurement, 5 marketing. Purpose 1 is true
+! in every mode because their own storeConsent forces it. A tenant without
+! perPurposeConsent gets their simple form instead, "consent": false.
+!
+! THE PREFERENCE ID IS NOT MINTED: their cons.rand comes from their
+! consent-log server, and a record without it simply has no preference id,
+! which is a shape their own getPreferenceId handles. An existing one is
+! carried over rather than replaced.
+!
+! To see it work:
+!
+!   [consent-rr] iubenda-reject 1.0.0 cookie=_iub_cs-7654321 stored=cookie
+!                mode=per-purpose accepted=necessary surface=denied
+!                tcf=refused told=2 banner=none sent=none
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! WHAT THIS DOES NOT ANSWER YET.
+!
+!   __gpp and usprivacy       their US flow writes _iub_cs-uspr and usprivacy
+!                             and answers __gpp through a module of its own.
+!                             Nothing here writes or answers either, so a US
+!                             page gets the refusal above and no US signal.
+!   their CCPA opt-out        isCcpaAcknowledged and isCcpaOptedOut answer
+!                             false, which is their own default for a visitor
+!                             who was never asked.
+!   Global Privacy Control    their own getPreferences applies a GPC signal to
+!                             the US purposes s, sh and adv. A refusal here is
+!                             already stronger than that, and accept is an
+!                             explicit choice that overrides it.
+!   an additional-consent     the granting one would need the tenant's own
+!   string for accept         Google vendor list, which is not on the page.
+!                             The refusal carries 2~~dv, the shape their
+!                             gacVersion 2 gives for consenting to nothing.
+! -----------------------------------------------------------------------------

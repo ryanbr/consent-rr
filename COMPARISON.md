@@ -109,7 +109,7 @@ Sizes: `reject` 36.1 KB, `reject-unblock` 36.1 KB, `accept` 36.1 KB.
 
 # Every resource, side by side
 
-23 consent managers, 36 resources. Each one was booted on a page its own
+24 consent managers, 39 resources. Each one was booted on a page its own
 consent manager would recognise, and the rows below are what it did there - the
 globals it defined, the cookies it wrote, the signals it sent. A resource that
 shares a page with another (the OneTrust three, the Civic two) was measured on
@@ -136,6 +136,9 @@ the same fixture as its sibling.
 | `consentmanager-reject-unblock` | 23.5 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
 | `ampconsent-reject` | 14.9 KB | `AMP` |
 | `ampconsent-reject-unblock` | 14.9 KB | `AMP` |
+| `iubenda-reject` | 37.3 KB | `__tcfapi`, `_cmp` |
+| `iubenda-reject-unblock` | 37.3 KB | `__tcfapi`, `_cmp` |
+| `iubenda-accept` | 37.3 KB | `__tcfapi`, `_cmp` |
 | `cookiez-reject` | 8.8 KB | - |
 | `cookiez-reject-unblock` | 8.9 KB | - |
 | `cookieyes-reject` | 19.6 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
@@ -177,6 +180,9 @@ the same fixture as its sibling.
 | `consentmanager-reject-unblock` | `euconsent-v2`, `euconsent-v2` | - | - | `__tcfapi`, `__uspapi` | no |
 | `ampconsent-reject` | - | - | - | - | no |
 | `ampconsent-reject-unblock` | - | - | - | - | no |
+| `iubenda-reject` | `_iub_cs-7654321`, `euconsent-v2` | - | default: granted nothing | `__tcfapi` | no |
+| `iubenda-reject-unblock` | `_iub_cs-7654321`, `euconsent-v2` | - | default: granted nothing | `__tcfapi` | no |
+| `iubenda-accept` | `_iub_cs-7654321`, `euconsent-v2` | - | default: granted analytics_storage, ad_storage, functionality_storage, personalization_storage, security_storage, ad_personalization, ad_user_data | `__tcfapi` | no |
 | `cookiez-reject` | `cookiez-user-consent` | - | update: granted nothing | - | no |
 | `cookiez-reject-unblock` | `cookiez-user-consent` | - | update: granted nothing | - | no |
 | `cookieyes-reject` | `cookieyes-consent`, `cookieyes-consent` | - | - | `__tcfapi` | no |
@@ -202,7 +208,7 @@ The last column is measured by booting each one twice, with the clock and the
 randomness pinned so the two runs differ in nothing but the signal, and then
 comparing what the visitor is left carrying. The 7 it changes carry a
 field for it to change - OneTrust's own `browserGpcFlag`, InMobi's
-legitimate interest, Osano's opt-out. The 29 it does not have nowhere to
+legitimate interest, Osano's opt-out. The 32 it does not have nowhere to
 put it: every category is refused with or without the signal either way.
 
 ## What each one does to a parked tag
@@ -251,6 +257,9 @@ uBlock Origin does the blocking.
 [consent-rr] zdconsent-accept/onetrust 1.0.0 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
 [consent-rr] consentmanager-reject 1.1.0 purposes=none vendors=none api=__cmp+__uspapi tcf=refused freed=0 events=5 told=0 banner=none crossdomain=none tracking=none
 [consent-rr] consentmanager-reject-unblock 1.1.0 purposes=none vendors=none api=__cmp+__uspapi tcf=refused freed=1 events=5 told=0 banner=none crossdomain=none tracking=none
+[consent-rr] iubenda-reject 1.0.0 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary surface=denied tcf=refused told=2 banner=none sent=none
+[consent-rr] iubenda-reject-unblock 1.0.0 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary surface=granted tcf=refused told=2 banner=none sent=none
+[consent-rr] iubenda-accept 1.0.0 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary,functionality,experience,measurement,marketing surface=granted tcf=granted told=2 banner=none sent=none
 [consent-rr] cookiez-reject 1.1.0 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=0 gpc=unset banner=none log=none
 [consent-rr] cookiez-reject-unblock 1.1.0 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=1 gpc=unset banner=none log=none
 [consent-rr] cookieyes-reject 1.1.0 categories=necessary cookie=written consentid=none freed=0 events=2 tcf=refused gpc=unset banner=none log=none
