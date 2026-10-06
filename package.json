@@ -1,6 +1,6 @@
 {
   "name": "consent-rr",
-  "version": "1.42.2",
+  "version": "1.43.0",
   "resourceVersions": {
     "ampconsent": "1.0.0",
     "appconsent": "1.0.4",
@@ -21,7 +21,7 @@
     "osano": "1.1.0",
     "pubtech": "1.0.0",
     "securiti": "1.0.0",
-    "tarteaucitron": "1.0.1",
+    "tarteaucitron": "1.1.0",
     "termly": "1.1.0",
     "transcend": "1.1.0",
     "usercentrics": "1.4.0",

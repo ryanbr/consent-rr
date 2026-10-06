@@ -57,6 +57,29 @@
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
+! THEIR DO-NOT-TRACK SWITCH IS HONOURED, because it is theirs. Their own code
+! reads the header four ways and acts on it only where the page asked them to:
+!
+!   isDNTRequested = (navigator.doNotTrack === "1" ||
+!       navigator.doNotTrack === "yes" || navigator.msDoNotTrack === "1" ||
+!       window.doNotTrack === "1")
+!   } else if ( !isResponded && isDNTRequested &&
+!       tarteaucitron.handleBrowserDNTRequest ) {
+!       tarteaucitron.cookie.create(service.key, 'false');
+!
+! A refusal is that already. The unblock resource consents to video and social,
+! and on a page that set handleBrowserDNTRequest theirs would not - so with
+! that switch on and the header sent, it consents to nothing either.
+!
+! The switch is also exposed the way theirs is, a boolean off their parameters
+! assigned inside init. A page reading it used to find a function here, which
+! is always truthy - the opposite of what it says.
+!
+! The console line below cannot report any of it: it is said at boot and their
+! own init runs after it.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
 ! Deliberately left alone:
 !
 !   no banner      nothing is built, so there is no external CSS to fetch.

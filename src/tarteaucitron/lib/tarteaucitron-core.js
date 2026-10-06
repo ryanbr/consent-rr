@@ -129,6 +129,38 @@ function consentRRTarteaucitron(mode) {
     const VERSION = '@@VERSION@@';
     const NAME = 'tarteaucitron-' + mode;
     // Their own type vocabulary, and the cut this makes in it.
+    // Their own DNT read, verbatim from their bundle:
+    //
+    //   isDNTRequested = (navigator.doNotTrack === "1" ||
+    //       navigator.doNotTrack === "yes" || navigator.msDoNotTrack === "1" ||
+    //       window.doNotTrack === "1")
+    //
+    // and what they do with it, on their own parameters.handleBrowserDNTRequest:
+    //
+    //   } else if ( !isResponded && isDNTRequested &&
+    //       tarteaucitron.handleBrowserDNTRequest ) {
+    //       tarteaucitron.cookie.create(service.key, 'false');
+    //
+    // a refusal per service. A refusal here is that already, but the unblock
+    // resource consents to video and social - and on a page that asked them to
+    // honour DNT, theirs would not. So where the page set that flag and the
+    // browser sends the header, nothing is consented to at all.
+    const dntRequested = ( ) => {
+        try {
+            const nav = w.navigator;
+            return nav.doNotTrack === '1' || nav.doNotTrack === 'yes' ||
+                nav.msDoNotTrack === '1' || w.doNotTrack === '1';
+        } catch ( ex ) {
+        }
+        return false;
+    };
+    // Read when it is needed rather than once: their own init runs after this,
+    // so the flag may not be set yet when this file is evaluated.
+    const honourDnt = ( ) =>
+        parameters.handleBrowserDNTRequest === true && dntRequested();
+    const allowedTypes = ( ) => mode === 'reject-unblock' && honourDnt() === false
+        ? [ 'video', 'social' ]
+        : [];
     const ALLOWED = mode === 'reject-unblock' ? [ 'video', 'social' ] : [];
     // And the exception to it, which exists because TWO OF THEIR OWN BUNDLES
     // DISAGREE. info.gouv.fr's self-hosted build types acast as "other", and
@@ -531,7 +563,8 @@ function consentRRTarteaucitron(mode) {
     const decide = name => {
         const key = named(name);
         if ( key === '' ) { return; }
-        if ( ALLOWED.length === 0 ) {
+        const allowed = allowedTypes();
+        if ( allowed.length === 0 ) {
             refuse(key);
             return;
         }
@@ -541,7 +574,7 @@ function consentRRTarteaucitron(mode) {
             refuse(key);
             return;
         }
-        if ( ALLOWED.indexOf(type) !== -1 &&
+        if ( allowed.indexOf(type) !== -1 &&
             REFUSED_ANYWAY.indexOf(key) === -1 ) {
             allow(key);
             return;
@@ -558,7 +591,7 @@ function consentRRTarteaucitron(mode) {
             const type = typeOf(key);
             if ( type === '' ) { continue; }
             pending.splice(pending.indexOf(key), 1);
-            if ( ALLOWED.indexOf(type) !== -1 ) { allow(key); }
+            if ( allowedTypes().indexOf(type) !== -1 ) { allow(key); }
         }
     };
     const fetchRegistry = ( ) => {
@@ -700,6 +733,13 @@ function consentRRTarteaucitron(mode) {
                         parameters[key] = DEFAULTS[key];
                     }
                 }
+                // Theirs copies these onto the object inside init, which is
+                // the only place a page can see them change.
+                out.handleBrowserDNTRequest =
+                    parameters.handleBrowserDNTRequest === true;
+                out.highPrivacy = parameters.highPrivacy !== false;
+                out.hashtag = String(parameters.hashtag || '');
+                out.orientation = String(parameters.orientation || 'middle');
             }
             settle();
         },
@@ -747,7 +787,11 @@ function consentRRTarteaucitron(mode) {
         orientation: 'middle',
         hashtag: '',
         customCloserId: '',
-        handleBrowserDNTRequest: noopfalsefn,
+        // Theirs is a boolean taken from their parameters -
+        // tarteaucitron.handleBrowserDNTRequest =
+        //     tarteaucitron.parameters.handleBrowserDNTRequest - so a page
+        // reading it must not find a function here, which is always truthy.
+        handleBrowserDNTRequest: parameters.handleBrowserDNTRequest === true,
         checkIfExist: id => doc.getElementById(String(id)) !== null,
         cleanArray: array => (Array.isArray(array) ? array.slice() : []),
         addClickEventToId: noopfn,
@@ -845,6 +889,9 @@ function consentRRTarteaucitron(mode) {
             ' refused=' + refused +
             ' allowed=' + allowed +
             ' launched=' + launched +
+            // The mode's types, not the ones their do-not-track switch may
+            // take away: this line is said at boot and their own init runs
+            // after it, so the switch is not knowable here.
             (ALLOWED.length !== 0 ? ' types=' + ALLOWED.join('+') : '') +
             (pending.length !== 0 ? ' pending=' + pending.length : '') +
             ' cookie=' + (wrote !== 0 ? cookieName() : 'none') +

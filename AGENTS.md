@@ -331,6 +331,18 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   language, whether Google vendors are enabled. None is derivable from a page.
 - Categories and cookie fields are a deliberate superset, so a site asking about
   one its tenant never defined still gets an answer.
+- **A browser signal their own code reads is theirs to honour, and the gate is
+  their own switch.** A refusal is already as strong as GPC or DNT can make it,
+  which is why most families here say "GPC changes their side, not this one".
+  The divergence is in the other variants: tarteaucitron's unblock consents to
+  video and social, and their own code, on their own
+  `parameters.handleBrowserDNTRequest`, writes `<service>=false` when the
+  header is sent - so with that switch on it now consents to nothing. Honour it
+  where their config asks for it; where the signal is per-visitor and the
+  behaviour is per-group tenant configuration that is not on the page -
+  OneTrust's `IsDntEnabled` - say so in the gaps instead of guessing. And note
+  that a console line said at boot cannot report any of it: theirs runs init
+  afterwards.
 - **A constant copied from another family is a constant nobody measured.**
   Adapting an IAB layer from `onetrust/lib/onetrust-tcf.js` carries its
   answers with it, and two of them were wrong for iubenda: the ping's

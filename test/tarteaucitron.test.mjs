@@ -432,6 +432,76 @@ describe('tarteaucitron-reject', ( ) => {
 
 /******************************************************************************/
 
+// Their own DNT read, and their own switch for it:
+//
+//   isDNTRequested = (navigator.doNotTrack === "1" ||
+//       navigator.doNotTrack === "yes" || navigator.msDoNotTrack === "1" ||
+//       window.doNotTrack === "1")
+//   } else if ( !isResponded && isDNTRequested &&
+//       tarteaucitron.handleBrowserDNTRequest ) {
+//       tarteaucitron.cookie.create(service.key, 'false');
+describe('tarteaucitron, their do-not-track switch', ( ) => {
+    const withDnt = (which, value, flag, which2) => {
+        const w = withRegistry(which, {
+            before: ww => {
+                if ( value === null ) { return; }
+                const name = value === 'ms' ? 'msDoNotTrack' : 'doNotTrack';
+                Object.defineProperty(ww.navigator, name, {
+                    value: value === 'ms' ? '1' : value,
+                    configurable: true,
+                });
+            },
+        });
+        w.tarteaucitron.init({ handleBrowserDNTRequest: flag });
+        w.tarteaucitron.job.push('youtube');
+        w.tarteaucitron.job.push('eulerian');
+        void which2;
+        return w;
+    };
+
+    it('consents to video where their switch is off, header or not', ( ) => {
+        for ( const value of [ null, '1', 'yes' ] ) {
+            const w = withDnt(unblock, value, false);
+            assert.equal(
+                record(w), '!youtube=true!eulerian=false', 'dnt=' + value
+            );
+        }
+    });
+
+    it('consents to nothing where their switch is on and the header is sent', ( ) => {
+        for ( const value of [ '1', 'yes', 'ms' ] ) {
+            const w = withDnt(unblock, value, true);
+            assert.equal(
+                record(w), '!youtube=false!eulerian=false', 'dnt=' + value
+            );
+        }
+    });
+
+    it('still consents to video where the header is absent', ( ) => {
+        const w = withDnt(unblock, null, true);
+        assert.equal(record(w), '!youtube=true!eulerian=false');
+    });
+
+    // Theirs is a boolean off their parameters, assigned inside init - a page
+    // reading it must not find a function here, which is always truthy.
+    it('exposes their flag as the boolean theirs is', ( ) => {
+        const w = boot(unblock);
+        assert.equal(w.tarteaucitron.handleBrowserDNTRequest, false);
+        w.tarteaucitron.init({ handleBrowserDNTRequest: true });
+        assert.equal(w.tarteaucitron.handleBrowserDNTRequest, true);
+        w.tarteaucitron.init({ handleBrowserDNTRequest: false });
+        assert.equal(w.tarteaucitron.handleBrowserDNTRequest, false);
+    });
+
+    // A refusal is a refusal either way: their switch cannot make it weaker.
+    it('changes nothing for the plain refusal', ( ) => {
+        const w = withDnt(reject, '1', true);
+        assert.equal(record(w), '!youtube=false!eulerian=false');
+    });
+});
+
+/******************************************************************************/
+
 describe('tarteaucitron-reject-unblock', ( ) => {
     it('consents to video and social, and refuses the rest', ( ) => {
         const w = withRegistry(unblock);

@@ -143,8 +143,8 @@ the same fixture as its sibling.
 | `cookiez-reject-unblock` | 9.6 KB | - |
 | `cookieyes-reject` | 19.6 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
 | `cookieyes-reject-unblock` | 19.6 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
-| `tarteaucitron-reject` | 19.7 KB | `uetq` |
-| `tarteaucitron-reject-unblock` | 19.7 KB | `uetq` |
+| `tarteaucitron-reject` | 20.6 KB | `uetq` |
+| `tarteaucitron-reject-unblock` | 20.6 KB | `uetq` |
 | `fundingchoices-reject` | 15.1 KB | `googlefc`, `__fcInternalApiManager`, `__fcInternalApiPostMessageReady`, `__tcfapi` |
 | `didomi-reject` | 13.8 KB | `Didomi`, `didomiState`, `didomiEventListeners`, `didomiOnReady` |
 | `didomi-accept` | 13.8 KB | `Didomi`, `didomiState`, `didomiEventListeners`, `didomiOnReady` |
@@ -264,8 +264,8 @@ uBlock Origin does the blocking.
 [consent-rr] cookiez-reject-unblock 1.1.1 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=1 gpc=unset banner=none log=none
 [consent-rr] cookieyes-reject 1.1.0 categories=necessary cookie=written consentid=none freed=0 events=2 tcf=refused gpc=unset banner=none log=none
 [consent-rr] cookieyes-reject-unblock 1.1.0 categories=necessary+functional+analytics+performance+advertisement+other cookie=written consentid=none freed=1 events=2 tcf=refused gpc=unset banner=none log=none
-[consent-rr] tarteaucitron-reject 1.0.1 refused=2 allowed=0 launched=0 cookie=tarteaucitron entries=2 events=5 banner=none reload=no beacon=none
-[consent-rr] tarteaucitron-reject-unblock 1.0.1 refused=1 allowed=1 launched=1 types=video+social cookie=tarteaucitron entries=2 events=5 banner=none reload=no beacon=none
+[consent-rr] tarteaucitron-reject 1.1.0 refused=2 allowed=0 launched=0 cookie=tarteaucitron entries=2 events=5 banner=none reload=no beacon=none
+[consent-rr] tarteaucitron-reject-unblock 1.1.0 refused=1 allowed=1 launched=1 types=video+social cookie=tarteaucitron entries=2 events=5 banner=none reload=no beacon=none
 [consent-rr] fundingchoices-reject 1.1.1 frames=2 answered=0 replied=0 cleared=0 tcf=refused
 [consent-rr] didomi-reject 1.0.0 purposes=none token=written ready=0 listeners=0 tcf=absent
 [consent-rr] didomi-accept 1.0.0 purposes=all token=written ready=0 listeners=0 tcf=absent
