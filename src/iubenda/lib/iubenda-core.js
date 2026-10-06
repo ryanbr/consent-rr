@@ -115,6 +115,78 @@ function consentRRIubenda(mode, installTcf) {
 
     const w = window;
     const doc = w.document;
+    const iub = w._iub = w._iub || {};
+
+    // What their loader puts on _iub before it fetches anything, which is what
+    // an integration reads while it waits.
+    try {
+        iub.csConfigLegacy = false;
+        iub.invTcfC = Date.now() - 31104e6;
+        iub.GVL2 = iub.GVL2 || 224;
+        iub.GVL3 = iub.GVL3 || 179;
+        iub.vendorsCountGVL3 = iub.vendorsCountGVL3 || 1223;
+    } catch ( ex ) {
+    }
+
+    // Their loader reads _iub.csConfiguration synchronously and cannot work
+    // without it - it reads o.lang off it on the next line - so a page always
+    // sets it above their script tag, which is where a redirect lands too.
+    //
+    // A SCRIPTLET RUNS EARLIER THAN THAT. At document_start the page has run
+    // nothing, so there is no configuration to read, and everything that comes
+    // off it - the cookie name their storage id builds, whether consent is
+    // per-purpose, the tenant's own callbacks - would be read off an empty
+    // object. Measured, before this waited: a record named _iub_cs- with no
+    // tenant id, in their simple form on a per-purpose tenant, and not one of
+    // the page's callbacks fired.
+    //
+    // So nothing is done until it exists: at once where it already does, and
+    // otherwise as the document arrives.
+    let installed = false;
+    const configured = ( ) => {
+        const config = iub.csConfiguration;
+        if ( typeof config !== 'object' || config === null ) { return false; }
+        return Object.keys(config).length !== 0;
+    };
+    const start = ( ) => {
+        if ( installed ) { return 0; }
+        if ( configured() === false ) { return 0; }
+        installed = true;
+        consentRRIubendaInstall(mode, installTcf);
+        return 0;
+    };
+    start();
+    if ( installed === false ) {
+        // The pass-again is the guarantee: it looks once more on every batch
+        // of nodes the parser delivers, at DOMContentLoaded and at load. The
+        // tick below only decides how SOON - a configuration set by an inline
+        // script in <head> is picked up on the next tick rather than waiting
+        // for the first batch of body nodes, which is the difference between
+        // writing the refusal before the page's other scripts run and after.
+        // No test distinguishes the two, because in a harness the document is
+        // ready within the same few milliseconds either way.
+        try {
+            w.setTimeout(start, 0);
+        } catch ( ex ) {
+        }
+        consentRRDeferred(w, doc, start, '');
+    }
+}
+
+function consentRRIubendaInstall(mode, installTcf) {
+    'use strict';
+
+    // Once only, whatever lands this here. A user with the network rule AND
+    // the scriptlet gets both, and without this the page's own callbacks fire
+    // twice and the consent-mode signals go out twice. The marker is the
+    // guard, the same way the Cookiez family guards itself.
+    if ( typeof window.iubendaConsentRR === 'object' &&
+        window.iubendaConsentRR !== null ) {
+        return;
+    }
+
+    const w = window;
+    const doc = w.document;
     const NAME = 'iubenda-' + mode;
     const VERSION = '@@VERSION@@';
 
@@ -192,6 +264,17 @@ function consentRRIubenda(mode, installTcf) {
 
     const perPurpose = option('perPurposeConsent', false) === true;
     const gdprApplies = option('gdprApplies', undefined);
+    // Their own setGdprApplies, in their own order: CIPA forces it on, a
+    // tenant with enableGdpr off forces it off, gdprAppliesGlobally - true by
+    // default - forces it on, and only then does their own gdprApplies decide.
+    // Their geo detection is the one step not reproducible here.
+    const gdprOn = ( ) => {
+        if ( option('enableCipa', false) === true ) { return true; }
+        if ( option('enableGdpr', true) === false ) { return false; }
+        if ( option('gdprAppliesGlobally', true) === true ) { return true; }
+        return gdprApplies === true;
+    };
+    const gdpr = gdprOn();
     const lgpdApplies = option('lgpdApplies', undefined);
     const fadpApplies = option('fadpApplies', undefined);
     const ccpaApplies = option('ccpaApplies', undefined);
@@ -300,8 +383,8 @@ function consentRRIubenda(mode, installTcf) {
         'timestamp': new Date().toISOString(),
         'version': BUNDLE_VERSION,
     };
-    if ( perPurpose && (gdprApplies !== false || lgpdApplies || fadpApplies) ) {
-        record.purposes = storedPurposes;
+    if ( perPurpose && (gdpr || lgpdApplies === true || fadpApplies === true) ) {
+        record.purposes = Object.assign({}, storedPurposes);
     } else {
         record.consent = accept;
     }
@@ -472,13 +555,16 @@ function consentRRIubenda(mode, installTcf) {
         return false;
     };
 
+    // The default goes in now, because a tag that fires before any default
+    // fires as granted - and theirs relies on the page or their own GTM
+    // template having put one in. The update waits for announce below, which
+    // is where theirs lands: their core is fetched asynchronously, so a page's
+    // own gtag defaults are already in by the time it answers. Pushed from
+    // here at document_start, an update would be overridden by a default the
+    // page pushes afterwards.
     let told = 0;
-    if ( consentMode !== false ) {
-        const values = signals();
-        if ( hasDefault() === false ) {
-            if ( send('consent', 'default', values) ) { told += 1; }
-        }
-        if ( send('consent', 'update', values) ) { told += 1; }
+    if ( consentMode !== false && hasDefault() === false ) {
+        if ( send('consent', 'default', signals()) ) { told += 1; }
     }
 
     // Their uetConsentMode, for Bing's own signal.
@@ -547,7 +633,7 @@ function consentRRIubenda(mode, installTcf) {
             }
             return undefined;
         },
-        gdprApplies: ( ) => gdprApplies !== false,
+        gdprApplies: ( ) => gdpr,
         lgpdApplies: ( ) => lgpdApplies === true,
         ccpaApplies: ( ) => ccpaApplies === true,
         // Nothing was asked of their US flow and nothing was sent, so their
@@ -557,6 +643,9 @@ function consentRRIubenda(mode, installTcf) {
         // Theirs answers true unconditionally.
         isGoogleNonPersonalizedAds: ( ) => true,
         getGoogleAdditionalConsent: ( ) => undefined,
+        // Theirs flattens their whole default table, which is the list of
+        // every option they support and is not derivable without the bundle
+        // this stands in for. The tenant's own keys are what is on the page.
         getSupportedOptions: ( ) => Object.keys(config),
         arePurposesAccepted: (ids, options) => {
             const list = Array.isArray(ids) ? ids : [];
@@ -816,16 +905,6 @@ function consentRRIubenda(mode, installTcf) {
 
     /**************************************************************************/
 
-    // What their loader puts on _iub before the core arrives.
-    try {
-        iub.csConfigLegacy = false;
-        iub.invTcfC = Date.now() - 31104e6;
-        iub.GVL2 = iub.GVL2 || 224;
-        iub.GVL3 = iub.GVL3 || 179;
-        iub.vendorsCountGVL3 = iub.vendorsCountGVL3 || 1223;
-    } catch ( ex ) {
-    }
-
     // A small cs around their api, which is the object their own docs point a
     // page at. Only what answers from the record above is on it.
     const cs = {
@@ -842,7 +921,6 @@ function consentRRIubenda(mode, installTcf) {
     };
     try {
         iub.cs = cs;
-        iub.api = api;
     } catch ( ex ) {
     }
 
@@ -880,6 +958,9 @@ function consentRRIubenda(mode, installTcf) {
     });
 
     const announce = ( ) => {
+        if ( consentMode !== false ) {
+            if ( send('consent', 'update', signals()) ) { told += 1; }
+        }
         fire('onBeforePreload');
         iub.csReady = true;
         fire('onReady', record.consent);
@@ -895,6 +976,31 @@ function consentRRIubenda(mode, installTcf) {
             fireExpressed(expressed());
         }
         fire('onActivationDone');
+        // Said here rather than at the top: told and fired are only final
+        // once their callbacks and the consent-mode update have gone out.
+        if ( typeof console === 'object' && typeof console.info === 'function' ) {
+            const names = [];
+            for ( const id of purposeIds ) {
+                if ( storedPurposes[id] !== true ) { continue; }
+                names.push(PURPOSE_NAMES[id] || String(id));
+            }
+            console.info(
+                '[consent-rr] ' + NAME + ' ' + VERSION +
+                ' cookie=' + cookieName +
+                ' stored=' + (written === '' ? 'none' : written) +
+                ' mode=' + (perPurpose ? 'per-purpose' : 'simple') +
+                ' accepted=' + (names.length !== 0 ? names.join(',') : 'none') +
+                ' surface=' + (reported ? 'granted' : 'denied') +
+                ' tcf=' + (enableTcf
+                    ? (tcString !== ''
+                        ? (accept ? 'granted' : 'refused')
+                        : 'absent')
+                    : 'off') +
+                ' told=' + told +
+                ' banner=none sent=none'
+            );
+    
+        }
     };
 
     // After the page has had a chance to define them: their loader runs
@@ -937,26 +1043,4 @@ function consentRRIubenda(mode, installTcf) {
     } catch ( ex ) {
     }
 
-    if ( typeof console === 'object' && typeof console.info === 'function' ) {
-        const names = [];
-        for ( const id of purposeIds ) {
-            if ( storedPurposes[id] !== true ) { continue; }
-            names.push(PURPOSE_NAMES[id] || String(id));
-        }
-        console.info(
-            '[consent-rr] ' + NAME + ' ' + VERSION +
-            ' cookie=' + cookieName +
-            ' stored=' + (written === '' ? 'none' : written) +
-            ' mode=' + (perPurpose ? 'per-purpose' : 'simple') +
-            ' accepted=' + (names.length !== 0 ? names.join(',') : 'none') +
-            ' surface=' + (reported ? 'granted' : 'denied') +
-            ' tcf=' + (enableTcf
-                ? (tcString !== ''
-                    ? (accept ? 'granted' : 'refused')
-                    : 'absent')
-                : 'off') +
-            ' told=' + told +
-            ' banner=none sent=none'
-        );
-    }
 }

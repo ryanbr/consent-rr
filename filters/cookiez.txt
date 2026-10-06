@@ -46,6 +46,15 @@
 ! J = e => Object.fromEntries(Object.values(R).map(t => [t, t === Necessary || e]))
 ! so J(false) is exactly the refusal above.
 !
+! THIS WAITS FOR THEIR SETTINGS. Their plugin prints
+! window.cookiezBannerSettings before their bundle, so a redirect finds it
+! there - but a scriptlet runs at document_start, before the page has run
+! anything. Measured, before this waited: the record went in carrying an empty
+! cookiesHash, so their own gate threw it away and the banner came back.
+!
+! A settings object of theirs that carries no hash is a different thing, and
+! still gets a record with an empty one, exactly as their own writer does it.
+!
 ! THE HASH DECIDES WHETHER THE RECORD COUNTS. Their gate throws a record away
 ! when meta.cookiesHash does not match window.cookiezBannerSettings.cookiesHash,
 ! or when it is older than consentExpiration days - and then the banner shows

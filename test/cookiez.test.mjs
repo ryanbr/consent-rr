@@ -155,11 +155,24 @@ describe('cookiez-reject', ( ) => {
         assert.equal(record(other).meta.cookiesHash, 'beef');
     });
 
-    it('writes an empty hash where the page gives none', ( ) => {
-        // Theirs is cookiesHash ?? "", and their gate passes a record when
-        // there is no current hash to compare against.
-        const w = boot(reject, { settings: 'window.cookiezBannerSettings = {};' });
+    // Theirs is cookiesHash ?? "", and their gate passes a record when there
+    // is no current hash to compare against - so a settings object of theirs
+    // that carries no hash still gets a record, with an empty one.
+    it('writes an empty hash where their settings carry none', ( ) => {
+        const w = boot(reject, {
+            settings: 'window.cookiezBannerSettings = {' +
+                ' settings: { consentExpiration: 180 } };',
+        });
         assert.equal(record(w).meta.cookiesHash, '');
+    });
+
+    // No settings at all is a different thing from settings without a hash:
+    // their plugin always prints them, so their absence means not yet rather
+    // than never. This used to write a record with an empty hash either way,
+    // and an empty hash is what their gate throws away once a real one exists.
+    it('writes nothing at all where there are no settings', ( ) => {
+        const w = boot(reject, { settings: 'window.cookiezBannerSettings = {};' });
+        assert.equal(record(w), null);
     });
 
     it('survives their own gate', ( ) => {
@@ -448,6 +461,80 @@ describe('filters, cookiez', ( ) => {
     it('says in the list that the hash decides', ( ) => {
         assert.match(filtersText, /THE HASH DECIDES WHETHER THE RECORD COUNTS/);
         assert.match(filtersText, /THE consentId IS NOT MINTED/);
+    });
+});
+
+/******************************************************************************/
+
+// Their plugin prints window.cookiezBannerSettings before their bundle, so a
+// redirect finds it. A scriptlet runs before any of that.
+describe('cookiez, before their settings exist', ( ) => {
+    const SETTINGS_LATE = 'window.cookiezBannerSettings = {' +
+        ' cookiesHash: "79a37b2f51fbb37963e67d8d7061484e",' +
+        ' settings: { consentExpiration: 180, supportGcm: true },' +
+        ' integrations: { wpConsentApiActive: true } };';
+
+    it('writes nothing until they are there', ( ) => {
+        const w = runDom(reject, URL, PAGE).window;
+        assert.equal(cookies(w).get('cookiez-user-consent'), undefined);
+    });
+
+    // Their hash is the one thing their own gate checks before deciding a
+    // record counts, and an empty one is what this used to write.
+    it('writes their hash once they arrive, not an empty one', async ( ) => {
+        const w = runDom(reject, URL, PAGE).window;
+        w.eval(SETTINGS_LATE);
+        await settle(25);
+        const raw = cookies(w).get('cookiez-user-consent');
+        assert.ok(raw, 'a record at all');
+        const stored = JSON.parse(decodeURIComponent(raw));
+        assert.equal(
+            stored.meta.cookiesHash, '79a37b2f51fbb37963e67d8d7061484e'
+        );
+        assert.equal(stored.data.consent.analytics, false);
+    });
+
+    // Counted rather than compared: their record carries a timestamp in
+    // seconds, so two writes in the same second are the same string - which
+    // is how a second evaluation hid in this family once before.
+    it('installs once, not once per pass', async ( ) => {
+        const told = [];
+        const w = runDom(reject, URL, PAGE, ww => {
+            ww.wp_set_consent = (category, value) => {
+                told.push(category + '=' + value);
+            };
+        }).window;
+        w.eval(SETTINGS_LATE);
+        await settle(60);
+        const first = told.length;
+        assert.ok(first > 0, 'their bridge was told once');
+        w.document.body.append(w.document.createElement('div'));
+        await settle(250);
+        assert.equal(told.length, first, told.join(','));
+    });
+
+    // Their settings printed by a script further down the document are past
+    // the first look and past the tick after it.
+    it('installs when they arrive a tick later', async ( ) => {
+        const w = runDom(reject, URL, PAGE).window;
+        await settle(40);
+        assert.equal(cookies(w).get('cookiez-user-consent'), undefined);
+        w.eval(SETTINGS_LATE);
+        w.document.body.append(w.document.createElement('div'));
+        await settle(250);
+        const raw = cookies(w).get('cookiez-user-consent');
+        assert.ok(raw, 'the pass that runs as the document arrives catches it');
+        assert.equal(
+            JSON.parse(decodeURIComponent(raw)).meta.cookiesHash,
+            '79a37b2f51fbb37963e67d8d7061484e'
+        );
+    });
+
+    it('is not fooled by an empty settings object', async ( ) => {
+        const w = runDom(reject, URL, PAGE).window;
+        w.eval('window.cookiezBannerSettings = {};');
+        await settle(60);
+        assert.equal(cookies(w).get('cookiez-user-consent'), undefined);
     });
 });
 

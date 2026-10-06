@@ -331,6 +331,32 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   language, whether Google vendors are enabled. None is derivable from a page.
 - Categories and cookie fields are a deliberate superset, so a site asking about
   one its tenant never defined still gets an answer.
+- **A configuration the page sets is not there at document_start.** Several of
+  these read a global the page prints above the CMP's script tag -
+  `_iub.csConfiguration`, `window.cookiezBannerSettings`, `window.complianz`.
+  A redirect lands where that tag was, so the global is already there; a
+  scriptlet runs before the page has run anything at all, and the same code
+  then reads an empty object. Measured on iubenda: a record under `_iub_cs-`
+  with no tenant id, in their simple form on a per-purpose tenant, and not one
+  of the page's callbacks fired. On Cookiez: a record carrying an empty
+  `cookiesHash`, which is the one thing their own gate checks. **Both filter
+  lists recommend the scriptlet form for CSP sites, so this was the
+  recommended path.** The fix is the same in both: do nothing until the
+  configuration exists, then install - at once where it already does, on the
+  next tick otherwise, and on every pass of
+  `src/shared/lib/deferred.js` until it appears. Check this for any family
+  that reads a page-authored global; complianz and tarteaucitron were checked
+  and behave the same either way.
+- **An absent configuration is not an empty one.** Waiting has to end
+  somewhere, and `Object.keys(config).length !== 0` is the line: a settings
+  object of theirs that is present but missing a field is a real deployment
+  and still gets a record, while nothing at all means not yet.
+- **The marker is the once-only guard.** A user with the network rule AND the
+  scriptlet gets the resource twice. Cookiez already returned early on its own
+  marker; iubenda did not, and injected twice it fired the page's callbacks
+  twice and pushed the consent-mode signals twice. Guard on the marker, and
+  mutate BOTH guards at once when testing it - a mutation that leaves the
+  other one standing survives and looks like a coverage gap.
 - **A loader is a better thing to replace than a bundle.** iubenda ships a
   4KB loader that reads the page's configuration and fetches 450KB of core;
   Ziff Davis and consentmanager are the same shape. Replacing the loader means

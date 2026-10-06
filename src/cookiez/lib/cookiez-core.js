@@ -133,6 +133,41 @@
 function consentRRCookiez(mode) {
     const w = window;
     const doc = w.document;
+
+    // Their plugin prints window.cookiezBannerSettings before their bundle, so
+    // a redirect finds it there - but a scriptlet runs at document_start,
+    // before the page has run anything at all. Measured: with no settings, the
+    // record went in carrying an empty cookiesHash, and the hash is the one
+    // thing their own gate checks before deciding a record counts. So nothing
+    // is written until their settings exist: at once where they already do,
+    // and otherwise as the document arrives. The pass-again is the guarantee;
+    // the tick only decides how soon.
+    const ready = ( ) => {
+        const given = w.cookiezBannerSettings;
+        return given !== null && typeof given === 'object' &&
+            Object.keys(given).length !== 0;
+    };
+    if ( ready() === false ) {
+        let installed = false;
+        const start = ( ) => {
+            if ( installed || ready() === false ) { return 0; }
+            installed = true;
+            consentRRCookiezInstall(mode);
+            return 0;
+        };
+        try {
+            w.setTimeout(start, 0);
+        } catch ( ex ) {
+        }
+        consentRRDeferred(w, doc, start, '');
+        return;
+    }
+    consentRRCookiezInstall(mode);
+}
+
+function consentRRCookiezInstall(mode) {
+    const w = window;
+    const doc = w.document;
     // Substituted from package.json by tools/build.mjs.
     const VERSION = '@@VERSION@@';
     const NAME = 'cookiez-' + mode;

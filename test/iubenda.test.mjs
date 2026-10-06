@@ -277,8 +277,12 @@ describe('iubenda-reject', ( ) => {
         assert.deepEqual(w.__cb, [ 'onConsentRead' ]);
     });
 
-    it('tells google consent mode denied, by their mapping', ( ) => {
+    // Their default goes in as the resource runs; their update waits, which is
+    // where their own async core would have put it.
+    it('tells google consent mode denied, by their mapping', async ( ) => {
         const w = win(reject);
+        assert.equal(w.dataLayer.length, 1, 'the default first, on its own');
+        await settle(40);
         assert.equal(w.dataLayer.length, 2);
         const [ first, second ] = w.dataLayer;
         // Across realms, deepEqual on their array is never reference-equal.
@@ -295,13 +299,14 @@ describe('iubenda-reject', ( ) => {
         });
     });
 
-    it('prefers their gtag where the page has one', ( ) => {
+    it('prefers their gtag where the page has one', async ( ) => {
         const calls = [];
         const w = win(reject, {
             before: ww => {
                 ww.gtag = (...args) => { calls.push(args); };
             },
         });
+        await settle(40);
         assert.equal(w.dataLayer.length, 0, 'not pushed as well');
         assert.equal(calls.length, 2);
         assert.deepEqual(Array.from(calls[1]).slice(0, 2), [ 'consent', 'update' ]);
@@ -309,13 +314,14 @@ describe('iubenda-reject', ( ) => {
 
     // Their template mode pushes to two data layers of their own, and strips
     // the two newer signals out of the first.
-    it('honours their template mode', ( ) => {
+    it('honours their template mode', async ( ) => {
         const w = win(reject, {
             config: CONFIG.replace(
                 'gdprApplies: true',
                 'gdprApplies: true, googleConsentMode: "template"'
             ),
         });
+        await settle(40);
         assert.equal(w.dataLayer.length, 0);
         assert.equal(w._iub.gtmDataLayer.length, 2);
         assert.equal(w._iub.gtmDataLayerV2.length, 2);
@@ -326,13 +332,41 @@ describe('iubenda-reject', ( ) => {
         assert.equal(w._iub.gtmDataLayerV2[1][2].ad_user_data, 'denied');
     });
 
-    it('says nothing to google where their tenant turned it off', ( ) => {
+    it('says nothing to google where their tenant turned it off', async ( ) => {
         const w = win(reject, {
             config: CONFIG.replace(
                 'gdprApplies: true', 'gdprApplies: true, googleConsentMode: false'
             ),
         });
+        await settle(40);
         assert.equal(w.dataLayer.length, 0);
+    });
+
+    // Their own sender looks for a default already in the data layer before
+    // sending anything, so one the page pushed first is left alone.
+    it('leaves a default the page pushed first alone', async ( ) => {
+        const w = win(reject, {
+            before: ww => {
+                ww.dataLayer.push([
+                    'consent', 'default', { ad_storage: 'denied' },
+                ]);
+            },
+        });
+        await settle(40);
+        const kinds = w.dataLayer.map(entry => Array.from(entry)[1]);
+        assert.deepEqual(kinds, [ 'default', 'update' ], kinds.join(','));
+        assert.equal(w.iubendaConsentRR.state().told, 1, 'only the update');
+    });
+
+    // A page's own gtag default lands after a resource that runs at
+    // document_start, so an update pushed then would be overridden by it.
+    it('puts their update after a default the page pushes later', async ( ) => {
+        const w = win(reject);
+        w.dataLayer.push([ 'consent', 'default', { ad_storage: 'granted' } ]);
+        await settle(40);
+        const last = Array.from(w.dataLayer[w.dataLayer.length - 1]);
+        assert.deepEqual(last.slice(0, 2), [ 'consent', 'update' ]);
+        assert.equal(last[2].ad_storage, 'denied');
     });
 
     it('leaves their parked tags exactly where they are', ( ) => {
@@ -570,8 +604,9 @@ describe('iubenda-reject-unblock', ( ) => {
         assert.equal(w.document.querySelectorAll('script').length, settled);
     });
 
-    it('stores and sends the same refusal', ( ) => {
+    it('stores and sends the same refusal', async ( ) => {
         const w = win(unblock);
+        await settle(40);
         assert.deepEqual(
             JSON.parse(JSON.stringify(record(w).purposes)),
             { 1: true, 2: false, 3: false, 4: false, 5: false }
@@ -612,8 +647,9 @@ describe('iubenda-accept', ( ) => {
         assert.equal(record(w).consent, true);
     });
 
-    it('tells google consent mode granted', ( ) => {
+    it('tells google consent mode granted', async ( ) => {
         const w = win(accept);
+        await settle(40);
         assert.deepEqual(JSON.parse(JSON.stringify(w.dataLayer[1][2])), {
             analytics_storage: 'granted',
             ad_storage: 'granted',
@@ -726,11 +762,173 @@ describe('iubenda, their storage types', ( ) => {
 
 /******************************************************************************/
 
+// Their loader reads _iub.csConfiguration synchronously and cannot work
+// without it, so a page always sets it above their script tag. A scriptlet
+// runs before any of that.
+describe('iubenda, before their configuration exists', ( ) => {
+    const CONFIG_SCRIPT = 'window._iub = window._iub || {};' +
+        ' _iub.csConfiguration = { cookiePolicyId: 7654321,' +
+        ' perPurposeConsent: true, enableTcf: true, gdprApplies: true,' +
+        ' purposes: "1,2,3,4,5",' +
+        ' callback: { onConsentRejected: ( ) => { window.__late = 1; } } };';
+
+    it('does nothing at all until it is there', ( ) => {
+        const w = runDom(reject, URL_PAGE, PAGE).window;
+        assert.deepEqual(cookies(w), new Map(), 'no record under a guessed name');
+        assert.equal(w._iub.cs, undefined, 'and no api answering for a tenant');
+        // What their own loader sets before fetching anything is still set,
+        // because an integration reads those while it waits.
+        assert.equal(w._iub.GVL3, 179);
+        assert.equal(w._iub.csConfigLegacy, false);
+    });
+
+    // On the tick after it appears, not on the next pass over the document:
+    // a page script that reads their api right afterwards should find it, and
+    // the record should be in before the rest of the page runs.
+    it('installs on the tick after the page sets it', async ( ) => {
+        const w = runDom(reject, URL_PAGE, PAGE).window;
+        w.eval(CONFIG_SCRIPT);
+        await settle(25);
+        const stored = JSON.parse(
+            decodeURIComponent(cookies(w).get('_iub_cs-7654321'))
+        );
+        assert.deepEqual(
+            JSON.parse(JSON.stringify(stored.purposes)),
+            { 1: true, 2: false, 3: false, 4: false, 5: false },
+            'their per-purpose shape, not the simple one'
+        );
+        assert.equal(w.__late, 1, 'and the tenant own callback fires');
+        assert.ok(cookies(w).get('euconsent-v2'), 'and their IAB layer goes in');
+    });
+
+    // A page that sets it from a script further down the document is past the
+    // first look and past the tick after it, so the retry has to outlive both.
+    it('installs when it arrives a tick later, from the document', async ( ) => {
+        const dom = runDom(reject, URL_PAGE, PAGE);
+        const w = dom.window;
+        await settle(40);
+        assert.deepEqual(cookies(w), new Map(), 'nothing yet');
+        const script = w.document.createElement('script');
+        script.textContent = CONFIG_SCRIPT;
+        w.eval(CONFIG_SCRIPT);
+        w.document.body.append(script);
+        await settle(250);
+        assert.ok(
+            cookies(w).get('_iub_cs-7654321'),
+            'the pass that runs as the document arrives catches it'
+        );
+        assert.equal(w.__late, 1);
+    });
+
+    it('installs once, not once per pass', async ( ) => {
+        const w = runDom(reject, URL_PAGE, PAGE).window;
+        w.eval(CONFIG_SCRIPT);
+        await settle(120);
+        const first = cookies(w).get('_iub_cs-7654321');
+        w.document.body.append(w.document.createElement('div'));
+        await settle(250);
+        assert.equal(cookies(w).get('_iub_cs-7654321'), first);
+        assert.equal(w.iubendaConsentRR.state().fired, 1);
+    });
+
+    it('is not fooled by an empty configuration', async ( ) => {
+        const w = runDom(reject, URL_PAGE, PAGE).window;
+        w.eval('window._iub.csConfiguration = {};');
+        await settle(120);
+        assert.deepEqual(cookies(w), new Map());
+    });
+});
+
+/******************************************************************************/
+
+describe('iubenda, their gdprApplies chain', ( ) => {
+    // Their setGdprApplies, in their own order.
+    const base = 'window._iub = { csConfiguration: { cookiePolicyId: 7654321,' +
+        ' perPurposeConsent: true, ';
+
+    it('applies globally by default, which is their own default', ( ) => {
+        const w = win(reject, { config: base + '} };' });
+        assert.equal(w._iub.cs.api.gdprApplies(), true);
+        assert.ok(record(w).purposes, 'so the per-purpose shape is written');
+    });
+
+    it('does not apply where their tenant disabled gdpr', ( ) => {
+        const w = win(reject, { config: base + 'enableGdpr: false } };' });
+        assert.equal(w._iub.cs.api.gdprApplies(), false);
+        // Their own reader takes the simple form in that case.
+        assert.equal(record(w).consent, false);
+        assert.equal(record(w).purposes, undefined);
+    });
+
+    it('takes their own flag where it is not global', ( ) => {
+        const w = win(reject, {
+            config: base + 'gdprAppliesGlobally: false, gdprApplies: false } };',
+        });
+        assert.equal(w._iub.cs.api.gdprApplies(), false);
+        assert.equal(record(w).consent, false);
+        const on = win(reject, {
+            config: base + 'gdprAppliesGlobally: false, gdprApplies: true } };',
+        });
+        assert.equal(on._iub.cs.api.gdprApplies(), true);
+        assert.ok(record(on).purposes);
+    });
+
+    it('is forced on by their CIPA', ( ) => {
+        const w = win(reject, {
+            config: base + 'enableGdpr: false, enableCipa: true } };',
+        });
+        assert.equal(w._iub.cs.api.gdprApplies(), true);
+    });
+});
+
+/******************************************************************************/
+
+describe('iubenda, what is theirs and what is not', ( ) => {
+    // Their bundle has no _iub.api: the api hangs off _iub.cs.
+    it('invents no _iub.api', ( ) => {
+        const w = win(reject);
+        assert.equal(w._iub.api, undefined);
+        assert.equal(typeof w._iub.cs.api.isConsentGiven, 'function');
+    });
+
+    // A user with the network rule and the scriptlet gets both.
+    it('installs once however many times it lands', async ( ) => {
+        let fired = 0;
+        const dom = runDom(reject, URL_PAGE, PAGE, ww => {
+            ww.dataLayer = [];
+            ww.eval(CONFIG.replace('gdprApplies: true', 'gdprApplies: true,' +
+                ' callback: { onConsentRejected: ( ) => { window.__n =' +
+                ' (window.__n || 0) + 1; } }'));
+        });
+        const w = dom.window;
+        w.eval(reject);
+        await settle(60);
+        fired = w.__n || 0;
+        assert.equal(fired, 1, 'their callback fires once');
+        const kinds = w.dataLayer.map(entry => Array.from(entry)[1]);
+        assert.deepEqual(kinds, [ 'default', 'update' ], kinds.join(','));
+        assert.equal(w.iubendaConsentRR.state().fired, 1);
+    });
+
+    // A page holding cs.consent must not be able to move what the
+    // consent-mode signals are built from.
+    it('does not hand out the object its signals are built from', async ( ) => {
+        const w = win(reject);
+        w._iub.cs.consent.purposes[5] = true;
+        await settle(40);
+        const update = Array.from(w.dataLayer[w.dataLayer.length - 1]);
+        assert.equal(update[2].ad_storage, 'denied');
+    });
+});
+
+/******************************************************************************/
+
 describe('iubenda, the console line and the lists', ( ) => {
-    it('says what it did', ( ) => {
+    it('says what it did', async ( ) => {
         let out;
         const w = win(reject, { before: ww => { out = lines(ww); } });
         void w;
+        await settle(40);
         const line = out.find(text => text.includes('iubenda-reject'));
         assert.ok(line, out.join('\n'));
         assert.match(line, /cookie=_iub_cs-7654321 stored=cookie/);
@@ -739,9 +937,10 @@ describe('iubenda, the console line and the lists', ( ) => {
         assert.match(line, /banner=none sent=none/);
     });
 
-    it('says what accept did', ( ) => {
+    it('says what accept did', async ( ) => {
         let out;
         win(accept, { before: ww => { out = lines(ww); } });
+        await settle(40);
         const line = out.find(text => text.includes('iubenda-accept'));
         assert.match(
             line,
@@ -751,7 +950,7 @@ describe('iubenda, the console line and the lists', ( ) => {
     });
 
     it('is pinned at the version the package names', ( ) => {
-        assert.equal(versions.iubenda, '1.0.0');
+        assert.equal(versions.iubenda, '1.0.1');
     });
 
     it('names their loader and both of their cores', ( ) => {

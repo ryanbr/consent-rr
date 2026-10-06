@@ -107,6 +107,20 @@
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
+! THIS WAITS FOR THEIR CONFIGURATION, which is what makes the scriptlet form
+! above safe. Their loader reads _iub.csConfiguration synchronously and cannot
+! work without it, so a page always sets it above their script tag - where a
+! redirect lands. A scriptlet runs earlier than that, at document_start,
+! before the page has run anything, and this used to read an empty object:
+! measured, that wrote a record named _iub_cs- with no tenant id, in their
+! simple form on a per-purpose tenant, and fired none of the page's callbacks.
+!
+! Nothing is written until it exists. An empty configuration object is not the
+! same thing as none: a settings object of theirs that is missing a field is a
+! real deployment and still gets a record.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
 ! THEIR RECORD, which is what stops the banner coming back.
 !
 ! Their own getConsentObj builds it, and it is written where theirs is - a
