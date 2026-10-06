@@ -109,7 +109,7 @@ Sizes: `reject` 36.1 KB, `reject-unblock` 36.1 KB, `accept` 36.1 KB.
 
 # Every resource, side by side
 
-25 consent managers, 42 resources. Each one was booted on a page its own
+26 consent managers, 43 resources. Each one was booted on a page its own
 consent manager would recognise, and the rows below are what it did there - the
 globals it defined, the cookies it wrote, the signals it sent. A resource that
 shares a page with another (the OneTrust three, the Civic two) was measured on
@@ -142,6 +142,7 @@ the same fixture as its sibling.
 | `cookieconsent-reject` | 26.7 KB | `CookieConsent`, `_ccRun` |
 | `cookieconsent-reject-unblock` | 26.7 KB | `CookieConsent`, `_ccRun` |
 | `cookieconsent-accept` | 26.7 KB | `CookieConsent`, `_ccRun` |
+| `cookielawinfo-reject` | 5.9 KB | `cli_show_cookiebar`, `l1hs` |
 | `cookiez-reject` | 9.6 KB | - |
 | `cookiez-reject-unblock` | 9.6 KB | - |
 | `cookieyes-reject` | 19.6 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
@@ -189,6 +190,7 @@ the same fixture as its sibling.
 | `cookieconsent-reject` | `cc_cookie` | - | - | - | yes |
 | `cookieconsent-reject-unblock` | `cc_cookie` | - | - | - | yes |
 | `cookieconsent-accept` | `cc_cookie` | - | - | - | yes |
+| `cookielawinfo-reject` | `viewed_cookie_policy` | - | - | - | no |
 | `cookiez-reject` | `cookiez-user-consent` | - | update: granted nothing | - | no |
 | `cookiez-reject-unblock` | `cookiez-user-consent` | - | update: granted nothing | - | no |
 | `cookieyes-reject` | `cookieyes-consent`, `cookieyes-consent` | - | - | `__tcfapi` | no |
@@ -214,7 +216,7 @@ The last column is measured by booting each one twice, with the clock and the
 randomness pinned so the two runs differ in nothing but the signal, and then
 comparing what the visitor is left carrying. The 10 it changes carry a
 field for it to change - OneTrust's own `browserGpcFlag`, InMobi's
-legitimate interest, Osano's opt-out. The 32 it does not have nowhere to
+legitimate interest, Osano's opt-out. The 33 it does not have nowhere to
 put it: every category is refused with or without the signal either way.
 
 ## What each one does to a parked tag
@@ -269,6 +271,7 @@ uBlock Origin does the blocking.
 [consent-rr] cookieconsent-reject 1.0.1 store=cookie name=cc_cookie accepted=necessary type=necessary surface=necessary parked=1 freed=0 cleared=0 told=2 banner=none
 [consent-rr] cookieconsent-reject-unblock 1.0.1 store=cookie name=cc_cookie accepted=necessary type=necessary surface=all parked=1 freed=1 cleared=0 told=2 banner=none
 [consent-rr] cookieconsent-accept 1.0.1 store=cookie name=cc_cookie accepted=necessary,analytics type=all surface=all parked=1 freed=1 cleared=0 told=2 banner=none
+[consent-rr] cookielawinfo-reject 1.0.0 cookie=viewed_cookie_policy=no stored=yes was=absent removed=2 banner=none blocked=none sent=none
 [consent-rr] cookiez-reject 1.1.1 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=0 gpc=unset banner=none log=none
 [consent-rr] cookiez-reject-unblock 1.1.1 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=1 gpc=unset banner=none log=none
 [consent-rr] cookieyes-reject 1.1.0 categories=necessary cookie=written consentid=none freed=0 events=2 tcf=refused gpc=unset banner=none log=none

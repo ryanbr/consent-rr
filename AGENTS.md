@@ -7,7 +7,7 @@ pointed at it. The notes below are the things that have actually gone wrong.
 ## Layout
 
 - One directory per consent manager under `src/`, shared code in its `lib/`.
-  `dist/` stays flat: uBO addresses a resource by name alone. Twenty-five
+  `dist/` stays flat: uBO addresses a resource by name alone. Twenty-six
   families so far; `ls src/` is the list, and `src/shared/` is the one
   directory there that is not a consent manager.
 - `src/shared/lib/deferred.js` - the only cross-family lib: running a pass
@@ -331,6 +331,15 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   language, whether Google vendors are enabled. None is derivable from a page.
 - Categories and cookie fields are a deliberate superset, so a site asking about
   one its tenant never defined still gets an answer.
+- **Ask who puts the banner in the page.** The legacy Cookie Law Info plugin
+  looks like the easiest family here - two globals, one cookie, nothing parked
+  - and a stub that only wrote the cookie would have left a visible, dead
+  cookie bar on half its deployments. 3.3.2 and 4.1.10 prepend their markup
+  themselves, so replacing the file leaves nothing; 1.5.4 and 1.6.3 have no
+  prepend at all, because PHP prints the markup and their script only hides
+  it. Grep the file for `prepend`, `appendTo`, `innerHTML` and `body` before
+  deciding a no-op is enough, and look at a live page to see whether the
+  markup is already there and whether their CSS hides it.
 - **When the CMP is open source, run it beside the resource.** CookieConsent
   v3 is MIT-licensed, so its own `cookieconsent.umd.js` could be loaded into
   the same jsdom page as the replacement, given the same config, and compared:

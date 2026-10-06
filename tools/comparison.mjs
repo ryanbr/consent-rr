@@ -446,6 +446,16 @@ const FIXTURES = [
         },
     },
     {
+        resource: 'cookielawinfo-reject.js',
+        cmp: 'Cookie Law Info (legacy)',
+        page: '<html lang="en"><head>' +
+            '<script src="https://example.com/wp-content/plugins/cookie-law-info/js/cookielawinfo.js?ver=1.6.3"></' + 'script>' +
+            '</head><body>' +
+            '<div id="cookie-law-info-bar"><span>Cookies.</span></div>' +
+            '<div id="cookie-law-info-again">Privacy</div>' +
+            '<p>x</p></body></html>',
+    },
+    {
         resource: 'cookiez-reject.js',
         cmp: 'Cookiez',
         page: '<html lang="de"><head>' +

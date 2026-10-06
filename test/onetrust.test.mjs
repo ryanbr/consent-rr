@@ -50,6 +50,7 @@ describe('resources file', ( ) => {
                 'cookieconsent-reject-unblock.js',
                 'cookieconsent-reject.js',
                 'cookieinformation-reject.js',
+                'cookielawinfo-reject.js',
                 'cookiescript-reject.js',
                 'cookieyes-reject-unblock.js',
                 'cookieyes-reject.js',
