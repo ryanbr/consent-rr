@@ -67,6 +67,24 @@ const banner = (slugs = [ 'analytics', 'tracking', 'marketing' ]) =>
     ' name="cookie_consent[_token]" value="e3b09130cb4d7e3f.uXQkDI80txHz" />' +
     '</div></form></div></div>';
 
+// Their simplified option defaults to FALSE, so this - one save button, no
+// accept-all - is the shape most of their deployments render. Measured on
+// zoo-frankfurt.de, which carries five categories of its own naming and a
+// save button beside the other two.
+const saveOnly = (slugs = [ 'matomo', 'youtube', 'open_street_map' ]) =>
+    '<div class="ch-cookie-consent ch-cookie-consent--light-theme' +
+    ' ch-cookie-consent--bottom ">' +
+    '<form name="cookie_consent" method="post"' +
+    ' action="/cookie-consent-form-action" class="ch-cookie-consent__form">' +
+    '<div class="ch-cookie-consent__category-group">' +
+    slugs.map(slug => category(slug, false)).join('') +
+    '</div><div class="ch-cookie-consent__btn-group">' +
+    '<button type="button" id="cookie_consent_save"' +
+    ' name="cookie_consent[save]" class="btn ch-cookie-consent__btn">' +
+    'Speichern</button>' +
+    '<input type="hidden" name="cookie_consent[_token]" value="abc.def" />' +
+    '</div></form></div>';
+
 const PAGE = '<!doctype html><html lang="es"><head>' +
     '<script src="' + SRC + '"></script>' +
     '</head><body><p id="content">page</p>' + banner() + '</body></html>';
@@ -334,6 +352,48 @@ describe('chcookieconsent-reject', ( ) => {
         await settle(300);
         assert.equal(w.__events.length, 1);
         assert.equal(w.chCookieConsentRR.state().told, 1);
+    });
+
+    // Their default shape, and the one this had no fixture for: no
+    // accept-all button, a save that posts whatever the radios say, and
+    // category names that are the site's own.
+    it('answers their default shape, with only a save button', ( ) => {
+        const w = win({
+            html: '<!doctype html><html lang="de"><head>' +
+                '<script src="' + SRC + '"></script></head><body>' +
+                '<p id="content">page</p>' + saveOnly() + '</body></html>',
+        });
+        const held = cookies(w);
+        assert.deepEqual(
+            Array.from(w.chCookieConsentRR.state().refused),
+            [ 'matomo', 'youtube', 'open_street_map' ]
+        );
+        assert.equal(held.get(CATEGORY + 'matomo'), 'false');
+        assert.equal(held.get(CATEGORY + 'save'), undefined);
+        assert.ok(held.get('Cookie_Consent'));
+        assert.equal(w.document.querySelector('.ch-cookie-consent'), null);
+        assert.equal(
+            w.__events[0].detail.getAttribute('name'),
+            'cookie_consent[save]',
+            'the only button there is to carry'
+        );
+    });
+
+    // A form of theirs can have no action at all - measured on
+    // commune-cransmontana.ch, where their own script falls back to
+    // location.href. Nothing is posted here either way.
+    it('answers a form of theirs with no action', ( ) => {
+        const w = win({
+            html: '<!doctype html><html lang="fr"><head>' +
+                '<script src="' + SRC + '"></script></head><body>' +
+                saveOnly([ 'analytics' ])
+                    .replace(' action="/cookie-consent-form-action"', '') +
+                '</body></html>',
+        });
+        assert.deepEqual(
+            Array.from(w.chCookieConsentRR.state().refused), [ 'analytics' ]
+        );
+        assert.equal(cookies(w).get(CATEGORY + 'analytics'), 'false');
     });
 
     /**************************************************************************/

@@ -347,6 +347,10 @@ function consentRRChCookieConsent() {
     let told = 0;
     const tell = ( ) => {
         if ( told !== 0 ) { return; }
+        // By name first, then by the class their own form theme puts on every
+        // one of their buttons. The last two overlap on every deployment
+        // measured, so a test cannot tell them apart - the name is kept for a
+        // theme that renders their button without their class.
         let button = null;
         try {
             button = doc.querySelector(
