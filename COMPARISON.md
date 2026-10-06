@@ -136,9 +136,9 @@ the same fixture as its sibling.
 | `consentmanager-reject-unblock` | 23.5 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
 | `ampconsent-reject` | 14.9 KB | `AMP` |
 | `ampconsent-reject-unblock` | 14.9 KB | `AMP` |
-| `iubenda-reject` | 37.3 KB | `__tcfapi`, `_cmp` |
-| `iubenda-reject-unblock` | 37.3 KB | `__tcfapi`, `_cmp` |
-| `iubenda-accept` | 37.3 KB | `__tcfapi`, `_cmp` |
+| `iubenda-reject` | 37.2 KB | `__tcfapi`, `_cmp` |
+| `iubenda-reject-unblock` | 37.2 KB | `__tcfapi`, `_cmp` |
+| `iubenda-accept` | 37.2 KB | `__tcfapi`, `_cmp` |
 | `cookiez-reject` | 8.8 KB | - |
 | `cookiez-reject-unblock` | 8.9 KB | - |
 | `cookieyes-reject` | 19.6 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
