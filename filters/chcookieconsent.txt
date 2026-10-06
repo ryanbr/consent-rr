@@ -1,0 +1,112 @@
+! Title: consent-rr - ConnectHolland CookieConsentBundle
+! Description: Replaces ConnectHolland's CookieConsentBundle script for
+!              Symfony with a stub that writes their own refusal in their own
+!              cookies and takes their banner out.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! ConnectHolland's CookieConsentBundle, a Symfony bundle - composer package
+! connectholland/cookie-consent-bundle. Every Symfony app publishes a bundle's
+! assets under the same path, so one rule by path covers all of them:
+!
+!   <any site>/bundles/chcookieconsent/js/cookie_consent.js
+! -----------------------------------------------------------------------------
+/bundles/chcookieconsent/js/cookie_consent.js$script,redirect=chcookieconsent-reject.js
+
+! -----------------------------------------------------------------------------
+! THEIR SERVER WRITES THE CONSENT, which makes this family a different shape
+! from the rest of this repo. Their script stores nothing: it posts the
+! banner's form over XHR, and the Set-Cookie headers on that response are the
+! record. Their Twig helper then decides server-side, at render time, whether
+! a tracker goes into the page at all:
+!
+!   {% if cookie_consent_is_category_allowed('analytics') %}
+!
+! so there is nothing parked in the page for an un-block to free, and the
+! refusal has to be in their cookies before the next render. Their own
+! Cookie/CookieHandler.php and Enum/CookieNameEnum.php:
+!
+!   Cookie_Consent              date('r')
+!   Cookie_Consent_Key          the visitor's existing key, else uniqid()
+!   Cookie_Category_<category>  the string true or false
+!
+! a year out, path /, host-only, SameSite=Lax - and NO Secure flag, even on an
+! https page, which is measured rather than read: their Symfony Cookie takes a
+! null secure flag, which resolves to the request as the app sees it, and
+! theirs is behind a proxy. What their server sets on the live page:
+!
+!   Cookie_Category_analytics  false                            HttpOnly  Lax
+!   Cookie_Consent             Tue, 06 Oct 2026 08:00:20 +0000  HttpOnly  Lax
+!   Cookie_Consent_Key         6ac4aa94b9c7f                    HttpOnly  Lax
+!
+! so no Secure here either - a cookie without it is sent on both schemes, so
+! their server reads the refusal either way - and the date goes in in UTC like
+! theirs rather than in the visitor's zone. Their gate is an exact compare with
+! the string true.
+!
+! THEIR YEAR IS NOT ALWAYS A YEAR. Their CookieHandler asks for P1Y in every
+! released version and so does this, but a browser may cap what a page writes
+! harder than what a server writes: Brave caps a cookie set from JavaScript at
+! 7 days and one set by a header at 6 months, which is why their own Expires
+! reads April rather than October. Nothing in a resource can change that, so
+! where a browser caps, their banner comes back when the cap runs out and this
+! writes the refusal again.
+!
+! The categories are a config list, so the page's own form is read for them:
+!
+!   <input type="radio" name="cookie_consent[analytics]" value="true">
+!   <input type="radio" name="cookie_consent[analytics]" value="false">
+!
+! Their refusal button was clicked on the live markup with their own file
+! loaded and XMLHttpRequest stubbed, and it posts
+!
+!   cookie_consent[analytics]=false&cookie_consent[tracking]=false
+!   &cookie_consent[marketing]=false&cookie_consent[_token]=...
+!   &cookie_consent[use_only_functional_cookies]=
+!
+! which is exactly what the cookies above are written from.
+!
+! To see it work:
+!
+!   [consent-rr] chcookieconsent-reject 1.0.0 cookie=Cookie_Consent written=5
+!                blocked=0 refused=analytics,tracking,marketing removed=1
+!                told=1 banner=none parked=none posted=none logged=none
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! IT CANNOT BE BLOCKED INSTEAD, and this one is worse than most. Their banner
+! is server-rendered and their own template puts the script tag inside it:
+!
+!   {% block script %}
+!       <script src="{{ asset('bundles/chcookieconsent/js/cookie_consent.js') }}"></script>
+!   {% endblock %}
+!   <div class="ch-cookie-consent ...">
+!
+! and their own form theme renders the buttons through Symfony's button_widget,
+! which is type="button", not type="submit". Measured on the live page: both
+! buttons are type="button". Their click handler is the only thing that submits
+! anything, so with the file blocked the banner cannot be dismissed at all -
+! and their stylesheet gives .ch-cookie-consent a z-index of 99999 with no
+! position and no display:none, so it sits in the middle of the document.
+!
+! THEIR HTTP_ONLY DEFAULT is the one thing this cannot answer. The bundle's
+! http_only option defaults to true, and no page is allowed to replace an
+! HttpOnly cookie, so a visitor who accepted before installing this cannot be
+! walked back from here - clearing the site's cookies is the only way. The
+! console line says so rather than reporting a refusal it did not store:
+!
+!   written=0 blocked=5
+!
+! Nothing is posted, so their CookieLogger writes no cookie_consent_log row
+! and stores no IP. Their stylesheet is left alone - it styles a banner that is
+! no longer there - and so is the form's action, which on the site sampled is
+! /cookies/save, a route of the site's own.
+!
+! ONE RESOURCE. An un-block has nothing to free, and an accept would be their
+! Cookie_Category cookies set to true, which is simply consenting.
+! -----------------------------------------------------------------------------

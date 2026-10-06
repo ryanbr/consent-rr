@@ -492,6 +492,25 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   (`data-cmp-ab`, `cmplz-activated`) and honour it; where there is none, keep a
   `WeakSet` here rather than writing a marker onto their page. Pin it with a
   test that counts after settling twice.
+- **Where the CMP's server writes the record, the oracle is the request its
+  own script would have sent.** ConnectHolland's CookieConsentBundle stores
+  nothing from JavaScript: its script POSTs the banner's form and the
+  response's Set-Cookie headers are the consent, so there is no cookie of
+  theirs to compare with. Their own file was loaded onto the live markup with
+  XMLHttpRequest stubbed and their refusal button clicked, and the body it
+  posted - `cookie_consent[analytics]=false&...` - is what their server turns
+  into `Cookie_Category_analytics=false`. That body is as good an oracle as a
+  stored record, and it also pins their one helper function exactly.
+- **A default list is as wrong at document_start as a scan is.** The same
+  family takes its categories off the form in the banner, with the four names
+  from its enum as a fallback - and the banner is parsed one line *below* the
+  script tag, so the fallback fired on every page and refused a category the
+  site did not have (measured: a `Cookie_Category_social_media` cookie no
+  Symfony route would ever read). A fallback has to wait until the thing it
+  falls back from is impossible - here, until the document is no longer
+  loading - and it has to stop applying once the real list has been read,
+  because the pass runs again after the banner has been removed and the form
+  is gone by then.
 - **An attribute in a CMP's markup is not its data model.** WebToffee's
   settings modal disables its necessary checkbox, so reading `disabled` looks
   like the obvious way to tell which category is theirs to keep - but their own

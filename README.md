@@ -62,6 +62,7 @@ Control**, **Cookiebot**, **Securiti**, **Transcend**, **Usercentrics**,
 | `cookielawinfo-reject.js` | The legacy Cookie Law Info plugin for WordPress (WebToffee's "GDPR Cookie Consent", not the hosted CookieYes script): their decline in their own `viewed_cookie_policy` cookie, their two globals put back because the page calls one from an inline script, and their server-rendered bar taken out - on 1.x the markup is printed by PHP and their own script is what hides it. The smallest resource here, and one rule by path covers every site that self-hosts it. |
 | `webtoffee-reject.js` | WebToffee's current GDPR Cookie Consent plugin - the one with categories, an API and real script blocking, which the legacy resource above does not cover. Their refusal in all three of their records (`viewed_cookie_policy`, `cli_user_preference` and the base64 `CookieLawInfoConsent`), their non-necessary category cookies erased, their whole banner and settings modal taken out, their parked tags left parked, and their `cli_consent_update` fired at the document where theirs fires it. |
 | `webtoffee-reject-unblock.js` | The same stored refusal, for a site that withholds something: the page is told every category is allowed and the tags their blocker parked are freed by their own `data-cli-src` / `data-cli-script-type` contract. |
+| `chcookieconsent-reject.js` | ConnectHolland's CookieConsentBundle for Symfony, where the consent is written by their *server*: their script only POSTs the banner's form, and their Twig helper gates trackers at render time. Their own refusal goes straight into their cookies - `Cookie_Consent`, `Cookie_Consent_Key` and `Cookie_Category_<category>` set to `false` - and their server-rendered banner is removed, because their own buttons are `type="button"` and blocking the file leaves a banner that cannot be dismissed. |
 | `osano-reject.js` | Osano: their own default state, which is already a refusal - `ESSENTIAL` accepted, `STORAGE`, `MARKETING`, `PERSONALIZATION` and `ANALYTICS` denied - stored where they store it, with `Osano.cm`, `__tcfapi`, `__gpp` and `__uspapi` answering. |
 | `onetrust-reject-unblock.js` | Stores and sends the same refusal as reject - cookie, TCF and GPP all say no - while telling the page's own scripts every category is on, and letting every parked tag go. |
 
@@ -104,51 +105,52 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookielawinfo-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/webtoffee-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/webtoffee-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/iubenda-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/iubenda-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/iubenda-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookieconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookieconsent-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookieconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookiescript-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/didomi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/didomi-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/complianz-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/complianz-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/zdconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/zdconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/fundingchoices-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/tarteaucitron-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/tarteaucitron-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookieyes-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookieyes-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/consentmanager-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/consentmanager-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookiez-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/cookiez-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/ampconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/ampconsent-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/cookielawinfo-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/webtoffee-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/webtoffee-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/chcookieconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/iubenda-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/iubenda-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/iubenda-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/cookieconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/cookieconsent-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/cookieconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/didomi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/didomi-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/complianz-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/complianz-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/zdconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/zdconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/fundingchoices-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/tarteaucitron-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/tarteaucitron-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/cookieyes-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/cookieyes-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/consentmanager-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/consentmanager-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/cookiez-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/cookiez-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/ampconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/ampconsent-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -162,8 +164,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.46.0/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.46.0/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.47.0/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.47.0/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -2828,6 +2830,160 @@ Three ship with the plugin, and none needs replacing:
   whether their banner shows at all; with no banner there is nothing to gate,
   and the refusal is stored either way.
 
+## ConnectHolland CookieConsentBundle (Symfony)
+
+`/bundles/chcookieconsent/js/cookie_consent.js` - composer package
+`connectholland/cookie-consent-bundle`. Every Symfony app publishes a bundle's
+assets under the same path, so one rule by path covers every site that uses it.
+
+**Their server writes the consent**, which makes this family a different shape
+from every other one here. Their script stores nothing at all: it POSTs the
+banner's form over XHR, and the `Set-Cookie` headers on that response are the
+record. Their Twig helper then decides server-side, at render time, whether a
+tracker goes into the page:
+
+```twig
+{% if cookie_consent_is_category_allowed('analytics') %}
+```
+
+So there is nothing parked in the page for an un-block to free, and the refusal
+has to be in their cookies before the next render.
+
+**Their record**, from their own `Cookie/CookieHandler.php` and
+`Enum/CookieNameEnum.php`:
+
+```php
+Cookie_Consent              date('r')
+Cookie_Consent_Key          the visitor's existing key, else uniqid()
+Cookie_Category_<category>  the string true or false
+```
+
+A year out, `path=/`, host-only, `SameSite=Lax` - and **no `Secure` flag**,
+even on an https page. That last one is measured rather than read: their
+Symfony `Cookie` is built with a null secure flag, which resolves to
+`Response::prepare`'s secure default, which is the request as the *app* sees
+it, and behind a proxy without `trusted_proxies` that is not secure. What
+their server actually sets on the live page:
+
+| Name | Value | Path | HttpOnly | Secure | SameSite |
+| --- | --- | --- | --- | --- | --- |
+| `Cookie_Category_analytics` | `false` | `/` | yes | - | Lax |
+| `Cookie_Category_marketing` | `false` | `/` | yes | - | Lax |
+| `Cookie_Category_tracking` | `false` | `/` | yes | - | Lax |
+| `Cookie_Consent` | `Tue, 06 Oct 2026 08:00:20 +0000` | `/` | yes | - | Lax |
+| `Cookie_Consent_Key` | `6ac4aa94b9c7f` | `/` | yes | - | Lax |
+
+So no `Secure` here either - which is also what a refusal wants, because a
+cookie without it is sent on both schemes and their server reads it either
+way. Their date goes in in UTC like theirs, not in the visitor's zone, which
+would hand the server a timezone offset it is not otherwise given.
+
+Their gate is an exact compare:
+
+```php
+return $request->cookies->get(CookieNameEnum::getCookieCategoryName($category))
+    === 'true';
+```
+
+and their banner shows on `Cookie_Consent` being *absent* rather than on its
+value, so writing it is what stops the banner coming back.
+
+### The oracle is what their own button posts
+
+Their file stores nothing, so there is nothing of theirs to compare cookies
+with - but their click handler posts the answer, and their server turns that
+body into exactly those cookies. Their real `cookie_consent.js` was loaded onto
+the live banner markup with `XMLHttpRequest` stubbed and their refusal button
+clicked:
+
+```
+POST /cookies/save
+cookie_consent[analytics]=false&cookie_consent[tracking]=false
+&cookie_consent[marketing]=false&cookie_consent[_token]=...
+&cookie_consent[use_only_functional_cookies]=
+```
+
+which is what the three category cookies are written from, and what pins
+`serializeForm` in the tests.
+
+### Their categories come off their form
+
+`categories` is a config list - `Enum/CategoryEnum.php` names `analytics`,
+`tracking`, `marketing` and `social_media`, their default config names the last
+three, and a tenant can name one that no enum of theirs has. So the page's own
+form is the authority:
+
+```html
+<input type="radio" name="cookie_consent[analytics]" value="true">
+<input type="radio" name="cookie_consent[analytics]" value="false">
+```
+
+with their buttons and their CSRF token, which live in the same namespace,
+skipped. The four names are only the fallback for a page that turns out to
+carry no form at all - and that fallback waits for the document to finish,
+because their banner is parsed *after* their script tag and a fallback at that
+point would refuse a category the site does not have.
+
+### It cannot be blocked instead
+
+Their own template puts the script tag inside the banner:
+
+```twig
+{% block script %}
+    <script src="{{ asset('bundles/chcookieconsent/js/cookie_consent.js') }}"></script>
+{% endblock %}
+<div class="ch-cookie-consent ...">
+```
+
+and their own form theme renders both buttons through Symfony's
+`button_widget`, which is `type="button"`, not `type="submit"` - measured on the
+live page. Their click handler is the only thing that submits anything, so with
+the file blocked the banner **cannot be dismissed at all**; and their stylesheet
+gives `.ch-cookie-consent` a `z-index` of 99999 with no `position` and no
+`display:none`, so it sits in the middle of the document. Their banner is
+removed here, and the margins their own positioning puts on `<body>` are
+cleared, as their own submit clears them.
+
+### Their http_only default is the one thing this cannot answer
+
+The bundle's `http_only` option defaults to `true`, and no page is allowed to
+replace an `HttpOnly` cookie. A visitor who accepted *before* installing this
+cannot be walked back from the page - clearing the site's cookies is the only
+way. The resource detects it (a cookie it wrote is readable, so one that reads
+back as something else is theirs) and says so rather than reporting a refusal it
+did not store:
+
+```
+[consent-rr] chcookieconsent-reject 1.0.0 cookie=Cookie_Consent written=0 blocked=5 ...
+```
+
+Where a site sets `http_only: false`, a stored acceptance is overwritten
+normally.
+
+### Their year is not always a year
+
+Their `CookieHandler` asks for `P1Y` in every released version, and that is
+what this asks for too - but a browser may cap what a *page* writes harder
+than what a server writes. Brave caps a cookie set from JavaScript at 7 days
+and one set by a response header at 6 months, which is why the live
+screenshot's `Expires` reads April 2027 rather than October 2027 for their own
+server-set cookies. Nothing in a resource can change that: `HttpOnly` and
+header-set lifetimes are not a page's to use, so in a browser that caps, their
+banner comes back when the cap runs out and this writes the refusal again.
+
+### Deliberate gaps
+
+- **No accept or un-block variant.** Their gating is server-side, so nothing in
+  the page is parked for an un-block to free, and an accept would be their
+  `Cookie_Category` cookies set to `true`, which is simply consenting.
+- **Nothing is posted**, so their `CookieLogger` writes no `cookie_consent_log`
+  row and stores no IP. Their form's action is left alone in the filter list -
+  on the site sampled it is `/cookies/save`, a route of the site's own.
+- **Their `CustomEvent` polyfill is not reinstalled.** It is for browsers
+  uBlock Origin does not run in.
+- **Their stylesheet is left alone.** It styles a banner that is no longer
+  there.
+
 ## Development
 
 ```sh
@@ -2867,7 +3023,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.46.0/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.47.0/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token

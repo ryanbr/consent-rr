@@ -187,6 +187,22 @@ const FIXTURES = [
     { resource: 'onetrust-accept.js', cmp: 'OneTrust', sameAs: 'onetrust-reject.js' },
     { resource: 'onetrust-reject-unblock.js', cmp: 'OneTrust', sameAs: 'onetrust-reject.js' },
     {
+        resource: 'chcookieconsent-reject.js',
+        cmp: 'ConnectHolland CookieConsentBundle',
+        page: '<html lang="es"><head>' +
+            '<script src="https://example.com/bundles/chcookieconsent/js/cookie_consent.js"></' + 'script>' +
+            '</head><body>' +
+            '<div class="ch-cookie-consent ch-cookie-consent--light-theme ch-cookie-consent--top">' +
+            '<form name="cookie_consent" method="post" action="/cookies/save" class="ch-cookie-consent__form">' +
+            '<input type="radio" name="cookie_consent[analytics]" value="true">' +
+            '<input type="radio" name="cookie_consent[analytics]" value="false" checked>' +
+            '<input type="radio" name="cookie_consent[tracking]" value="true">' +
+            '<input type="radio" name="cookie_consent[tracking]" value="false" checked>' +
+            '<button type="button" name="cookie_consent[use_only_functional_cookies]">no</button>' +
+            '</form></div>' +
+            '<p>x</p></body></html>',
+    },
+    {
         resource: 'cookieinformation-reject.js',
         cmp: 'Cookie Information',
         page: '<html lang="da"><head>' +

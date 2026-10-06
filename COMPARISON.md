@@ -109,7 +109,7 @@ Sizes: `reject` 36.1 KB, `reject-unblock` 36.1 KB, `accept` 36.1 KB.
 
 # Every resource, side by side
 
-27 consent managers, 45 resources. Each one was booted on a page its own
+28 consent managers, 46 resources. Each one was booted on a page its own
 consent manager would recognise, and the rows below are what it did there - the
 globals it defined, the cookies it wrote, the signals it sent. A resource that
 shares a page with another (the OneTrust three, the Civic two) was measured on
@@ -120,6 +120,7 @@ the same fixture as its sibling.
 | `onetrust-reject` | 36.1 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
 | `onetrust-accept` | 36.1 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
 | `onetrust-reject-unblock` | 36.1 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
+| `chcookieconsent-reject` | 9.4 KB | `serializeForm` |
 | `cookieinformation-reject` | 10.9 KB | `CookieInformation`, `CookieConsent`, `CookieConsentDialog`, `cicc`, `cicl`, `isCookieInformationAPIReady` |
 | `inmobi-reject` | 24.8 KB | `__gpp`, `__uspapi`, `__tcfapiui` |
 | `osano-reject` | 34.0 KB | `Osano`, `__uspapi`, `__tcfapi`, `__gpp` |
@@ -170,6 +171,7 @@ the same fixture as its sibling.
 | `onetrust-reject` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2` | `cookieChoiceMade` | - | `__tcfapi`, `__gpp` | yes |
 | `onetrust-accept` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2` | `cookieChoiceMade` | - | `__tcfapi`, `__gpp` | yes |
 | `onetrust-reject-unblock` | `OptanonConsent`, `OptanonAlertBoxClosed`, `OTAdditionalConsentString`, `eupubconsent-v2` | `cookieChoiceMade` | - | `__tcfapi`, `__gpp` | yes |
+| `chcookieconsent-reject` | `Cookie_Consent`, `Cookie_Consent_Key`, `Cookie_Category_analytics`, `Cookie_Category_tracking` | - | - | - | no |
 | `cookieinformation-reject` | `CookieInformationConsent` | - | - | - | no |
 | `inmobi-reject` | `euconsent-v2`, `IABGPP_HDR_GppString` | - | - | `__tcfapi`, `__gpp`, `__uspapi` | yes |
 | `osano-reject` | `osano_consentmanager`, `osano_consentmanager_uuid` | `osano_consentmanager`, `osano_consentmanager_uuid` | default: granted security_storage, functionality_storage | `__tcfapi`, `__gpp`, `__uspapi` | yes |
@@ -220,7 +222,7 @@ The last column is measured by booting each one twice, with the clock and the
 randomness pinned so the two runs differ in nothing but the signal, and then
 comparing what the visitor is left carrying. The 10 it changes carry a
 field for it to change - OneTrust's own `browserGpcFlag`, InMobi's
-legitimate interest, Osano's opt-out. The 35 it does not have nowhere to
+legitimate interest, Osano's opt-out. The 36 it does not have nowhere to
 put it: every category is refused with or without the signal either way.
 
 ## What each one does to a parked tag
@@ -255,6 +257,7 @@ uBlock Origin does the blocking.
 [consent-rr] onetrust-reject 1.5.1 groups=,C0001, tcf=refused gpp=refused
 [consent-rr] onetrust-accept 1.5.1 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
 [consent-rr] onetrust-reject-unblock 1.5.1 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
+[consent-rr] chcookieconsent-reject 1.0.0 cookie=Cookie_Consent written=4 blocked=0 refused=analytics,tracking removed=1 told=1 banner=none parked=none posted=none logged=none
 [consent-rr] cookieinformation-reject 1.0.2 approved=cookie_cat_necessary denied=cookie_cat_functional,cookie_cat_statistic,cookie_cat_marketing,cookie_cat_unclassified cookie=written
 [consent-rr] inmobi-reject 1.0.1 config=read cc=IT lang=IT tcf=refused li=kept gpp=refused usp=1--- cookie=written gppcookie=written
 [consent-rr] osano-reject 1.1.0 consent=ESSENTIAL denied=STORAGE,MARKETING,PERSONALIZATION,ANALYTICS,OPT_OUT tcf=refused li=kept gpp=refused usp=1--- cookie=written

@@ -39,6 +39,7 @@ describe('resources file', ( ) => {
                 'ampconsent-reject.js',
                 'appconsent-accept.js',
                 'appconsent-reject.js',
+                'chcookieconsent-reject.js',
                 'civic-reject-unblock.js',
                 'civic-reject.js',
                 'complianz-accept.js',
