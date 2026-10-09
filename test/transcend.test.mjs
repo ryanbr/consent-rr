@@ -523,6 +523,61 @@ describe('transcend-reject, where their engine never readies', ( ) => {
         );
     });
 
+    // Their airgap is their own API object behind their realm protection by
+    // the time the engine has booted, so a read of a key it does not hold can
+    // throw - and every read of it here is from inside their ready callback,
+    // which is wrapped in a catch of its own. An unguarded one used to take
+    // the whole refusal with it, silently.
+    it('refuses anyway where reading their options throws', async ( ) => {
+        let out;
+        const w = runDom(reject, URL, '<html><body><p>x</p></body></html>',
+            ww => {
+                out = lines(ww);
+                ww.eval(AIRGAP + READY_NOW);
+                ww.eval('window.airgap.loadOptions = new Proxy({}, {' +
+                    ' get(t, k) { throw new TypeError(String(k)); } });');
+            }
+        ).window;
+        // With requireAuth unreadable there is nothing saying null will be
+        // taken, so it waits for their trusted load event - the path for a
+        // decision nobody clicked - rather than giving up.
+        assert.deepEqual(out, []);
+        await settle(60);
+        assert.equal(w.__calls.length, 1, 'their setConsent still called');
+        assert.ok(out[0].endsWith(' via=load'), out[0]);
+        assert.deepEqual(plain(w.__calls[0][1]), {
+            AlwaysBlock: false,
+            SaleOfInfo: false,
+            DiRinProgress: false,
+            Advertising: false,
+            Analytics: false,
+            Functional: false,
+        });
+    });
+
+    // And where something in their own objects does abort it, the line says
+    // their engine was here - not that it never arrived, which would send
+    // the reader to the wrong place entirely.
+    it('says their engine was here when nothing was recorded', async ( ) => {
+        let out;
+        const w = runDom(reject, URL, '<html><body><p>x</p></body></html>',
+            ww => {
+                out = lines(ww);
+                ww.eval(AIRGAP + READY_NOW);
+                // A purposes object their realm protection will not let
+                // anything enumerate.
+                ww.eval('window.airgap.getConsent = function() {' +
+                    ' return { purposes: new Proxy({}, {' +
+                    ' ownKeys() { throw new TypeError("denied"); } }) }; };');
+            }
+        ).window;
+        assert.deepEqual(out, [], 'nothing said yet');
+        await settle(1300);
+        assert.equal(out.length, 1, out.join(' | '));
+        assert.ok(out[0].endsWith(' via=no record'), out[0]);
+        assert.equal(w.__calls.length, 0);
+    });
+
     it('stays quiet where their engine does arrive', async ( ) => {
         let out;
         asUi({ before: ww => { out = lines(ww); } });

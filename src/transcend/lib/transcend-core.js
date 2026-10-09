@@ -108,13 +108,23 @@ function consentRRTranscend() {
 
     // Their loadOptions, installed by the same prelude that carries the
     // purposes, so these are readable without the engine having run.
-    const loadOptions = ( ) => {
+    //
+    // One read per option, each in its own try, because the object is
+    // theirs: by the time the engine has booted, airgap is their own API
+    // object behind their realm protection, and a read of a key it does not
+    // hold can throw. An unguarded read used to take the whole refusal with
+    // it - this function is called from inside their ready callback, which
+    // is wrapped in a catch of its own, so setConsent was never reached and
+    // nothing said so. Measured against an object that throws on an unknown
+    // key: setConsent went from called to never called.
+    const option = name => {
         try {
             const held = w.airgap.loadOptions;
-            if ( held !== null && typeof held === 'object' ) { return held; }
+            if ( held === null || typeof held !== 'object' ) { return undefined; }
+            return held[name];
         } catch(ex) {
         }
-        return {};
+        return undefined;
     };
 
     let cookieDomain;
@@ -186,7 +196,7 @@ function consentRRTranscend() {
     });
 
     const cookieName = ( ) => {
-        const partition = String(loadOptions().partition || '');
+        const partition = String(option('partition') || '');
         return partition !== ''
             ? BASE_COOKIE + '-' + partition
             : BASE_COOKIE;
@@ -244,7 +254,7 @@ function consentRRTranscend() {
     // A refusal written to one store and not the other is therefore a
     // refusal a tenant may never read, so this writes both.
     const storageRecord = value => {
-        const partition = String(loadOptions().partition || '');
+        const partition = String(option('partition') || '');
         const key = 'tcm' + (partition !== '' ? 'MP' : '') + 'Consent';
         let payload = value;
         if ( partition !== '' ) {
@@ -278,10 +288,17 @@ function consentRRTranscend() {
 
     // Both stores, and the line says which took. Their cookie is skipped
     // where their own reader would not look at it.
+    // Nothing in here may throw: it is called from inside their ready
+    // callback and from an event handler, both of which swallow one, so a
+    // throw would leave the refusal unrecorded and nothing said. Every piece
+    // is guarded at its own source instead of wrapping the lot - option(),
+    // storageRecord() and writeCookie() each catch their own - and the
+    // purposes handed in are this resource's own object, so the stringify
+    // cannot throw either. Keep it that way when adding to it.
     const store = purposes => {
         const value = record(purposes);
         const inStorage = storageRecord(value);
-        const inCookie = String(loadOptions().localSync || '') !== 'private-only'
+        const inCookie = String(option('localSync') || '') !== 'private-only'
             ? writeCookie(value)
             : false;
         if ( inCookie && inStorage ) { return 'cookie+storage'; }
@@ -301,7 +318,10 @@ function consentRRTranscend() {
         );
     };
 
+    let readied = false;
+
     const refuse = airgap => {
+        readied = true;
         let purposes = {};
         try {
             const consent = airgap.getConsent();
@@ -339,9 +359,7 @@ function consentRRTranscend() {
         // what a site's own manager passes for a choice nobody clicked - and
         // asking first keeps their own "Authorization proof is untrusted" out
         // of the console on every other tenant.
-        const authOff = airgap.loadOptions !== null &&
-            typeof airgap.loadOptions === 'object' &&
-            airgap.loadOptions.requireAuth === 'off';
+        const authOff = option('requireAuth') === 'off';
         if ( authOff && record(null) ) {
             announce(names, 'setConsent');
             return;
@@ -432,14 +450,18 @@ function consentRRTranscend() {
     const GRACE = 1000;
     const watch = ( ) => {
         if ( spoke ) { return; }
+        // Their engine arriving and nothing being recorded is a different
+        // fault from their engine never arriving, and saying the second
+        // where the first happened sends the reader to the wrong place.
+        const why = readied ? 'no record' : 'no engine';
         const refused = preludeRefusal();
         const names = Object.keys(refused);
         if ( names.length === 0 ) {
-            announce(names, 'no engine');
+            announce(names, why);
             return;
         }
         const where = store(refused);
-        announce(names, where !== '' ? where + ', no engine' : 'no engine');
+        announce(names, where !== '' ? where + ', ' + why : why);
     };
     try {
         if ( doc.readyState === 'complete' ) {

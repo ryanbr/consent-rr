@@ -503,6 +503,17 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   the CMP's own "consent saved" event, which a page may act on. The same test
   found the sibling case: a CMP's banner served again under the site's own
   `display:none` is a settings panel to re-open, not a banner in the way.
+- **A read off the CMP's own object can throw, and inside its own callback
+  that is silent.** Transcend's `airgap` is their API object behind their
+  realm protection by the time the engine has booted, and everything this
+  repo does with it runs inside their `ready()` callback, which is wrapped in
+  a catch of its own. One unguarded `airgap.loadOptions.requireAuth` was
+  enough to take the whole refusal with it: measured against an object that
+  throws on an unknown key, `setConsent` went from called to never called and
+  nothing was said. Read one key at a time, each in its own `try`, and give
+  the watchdog two words rather than one - `no engine` where it never
+  arrived, `no record` where it did and nothing was stored, because the
+  second sends the reader somewhere else entirely.
 - **Where the CMP's server writes the record, the oracle is the request its
   own script would have sent.** ConnectHolland's CookieConsentBundle stores
   nothing from JavaScript: its script POSTs the banner's form and the

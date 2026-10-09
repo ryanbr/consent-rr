@@ -265,7 +265,7 @@ uBlock Origin does the blocking.
 [consent-rr] civic-reject-unblock 1.4.0 mode=gdpr revoked=analytics accepted=embedded iab=off cookie=written
 [consent-rr] cookiebot-reject 1.0.1 necessary=true denied=preferences,statistics,marketing iab=off cookie=written
 [consent-rr] securiti-reject 1.0.0 consents=none tenant=read gcm=denied cookie=written
-[consent-rr] transcend-reject 1.3.0 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
+[consent-rr] transcend-reject 1.3.1 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
 [consent-rr] complianz-reject 1.1.0 categories=functional cookies=4 services=2 revived=0 told=4 prefix=cmplz_ policy=kept consenttype=optin
 [consent-rr] complianz-accept 1.1.0 categories=all cookies=4 services=2 revived=2 told=4 prefix=cmplz_ policy=kept consenttype=optin
 [consent-rr] zdconsent-reject/onetrust 1.0.1 groups=,C0001, tcf=refused gpp=refused
