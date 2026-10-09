@@ -503,6 +503,22 @@ disagree with the shipped SDK in several places (`InsertHTML` vs `InsertHtml`,
   the CMP's own "consent saved" event, which a page may act on. The same test
   found the sibling case: a CMP's banner served again under the site's own
   `display:none` is a settings panel to re-open, not a banner in the way.
+- **On Chromium a `$redirect=` rule naming a user resource cannot work, so
+  the resource has to survive being injected everywhere.** uBO gives its own
+  resources a `warURL` and serves them from the extension; one of ours has
+  only its bytes, so `toURL()` returns a `data:` URI, `traffic.js` passes it
+  through, and Chromium refuses a data: redirect - the request fails with
+  `ERR_UNSAFE_REDIRECT` and neither the CMP's script nor the replacement
+  loads. The form that works there is scriptlet injection, and a list wants
+  it without a domain, which puts every resource on every page. Measured by
+  dropping each one onto a blank page: 2 of 46 were inert; the rest wrote a
+  cookie, installed a global, changed the document or said a line.
+  `src/shared/lib/present.js` is the gate - wait for the CMP's own global to
+  be assigned, hand it back as a plain property, and do nothing where it
+  never comes - and `test/global-inject.test.mjs` holds the line, with the
+  list of families still to gate. Do not put a stub of our own where the
+  CMP's global goes if waiting for theirs will do: the stub is what makes a
+  resource loud on a page that is not its CMP's.
 - **A read off the CMP's own object can throw, and inside its own callback
   that is silent.** Transcend's `airgap` is their API object behind their
   realm protection by the time the engine has booted, and everything this

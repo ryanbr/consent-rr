@@ -85,6 +85,33 @@
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
+! ON CHROMIUM, USE THE SCRIPTLET. A redirect= rule naming a user resource
+! cannot work in Chrome, Brave or Edge: uBO can only serve one of yours as a
+! data: URI, and Chromium refuses to redirect a request to data:. The field
+! report was
+!
+!   GET https://transcend-cdn.com/cm/<id>/airgap.js net::ERR_UNSAFE_REDIRECT
+!
+! - the request fails outright, so neither their script nor the replacement
+! loads. The scriptlet form does not redirect anything, and this family needs
+! no block rule beside it: their engine has to load, and their ui.js is never
+! fetched once a refusal is recorded.
+!
+!   example.com##+js(transcend-reject)
+!
+! And it takes no domain, so one line covers every site a list would ever
+! want it on:
+!
+!   *##+js(transcend-reject)
+!
+! which is safe because this resource waits for their own self.airgap to be
+! defined before it does anything at all. On a page that never defines it
+! there is no global carrying a value, no cookie, no storage and no line. No
+! block rule is wanted beside it either: their engine has to load, and their
+! ui.js is never fetched once a refusal is recorded.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
 ! WHAT NOT TO WRITE, both reported from the field as "nothing happens, and no
 ! cookie is set":
 !
@@ -93,7 +120,10 @@
 ! Two separate faults in one line.
 !
 !   1. ^$script matches every script on their CDN, airgap.js included - so the
-!      engine is replaced by the banner's stub. Nothing then records a refusal,
+!      engine is the thing being redirected. On Chromium that request then
+!      fails with ERR_UNSAFE_REDIRECT and airgap.js does not load at all; on
+!      Firefox it loads the banner's stub in its place. Either way the engine
+!      is gone. Nothing then records a refusal,
 !      because this queues on airgap and airgap never arrives; and nothing
 !      enforces one either, because airgap is the half that does the blocking.
 !      Name the banner: the two rules at the top of this list do.

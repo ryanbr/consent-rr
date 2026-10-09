@@ -202,18 +202,45 @@ describe('transcend-reject', ( ) => {
         assert.equal(typeof w.airgap.setConsent, 'function');
     });
 
-    it('queues itself where it lands before airgap does', ( ) => {
-        // Injected as a scriptlet this runs at document_start, when there is no
-        // airgap at all. Their own stub shape is what airgap.js spreads over
-        // its own definition, so a callback queued here is one it drains.
+    // Injected as a scriptlet this runs at document_start, when there is no
+    // airgap at all - and it puts nothing there. Their own loader defines it
+    // before anything of theirs can be used, so that assignment is the
+    // signal, and the callback goes into the queue their prelude made.
+    it('waits for their loader, then queues itself in their own queue', ( ) => {
         const w = runDom(reject, URL, '<html><body><p>x</p></body></html>').window;
-        assert.equal(Array.isArray(w.airgap.readyQueue), true);
-        assert.equal(w.airgap.readyQueue.length, 1);
+        assert.equal(w.airgap, undefined, 'nothing of ours is there');
         w.eval(AIRGAP);
-        assert.equal(w.airgap.readyQueue.length, 1, 'the merge kept the queue');
+        assert.equal(Array.isArray(w.airgap.readyQueue), true, 'theirs');
+        assert.equal(w.airgap.readyQueue.length, 1, 'with this in it');
+        assert.equal(
+            w.Object.getOwnPropertyDescriptor(w, 'airgap').value !== undefined,
+            true,
+            'and handed back as a plain property, not an accessor'
+        );
         w.eval('window.airgap.readyQueue.forEach(function(c) { c(window.airgap); });');
         assert.equal(w.__calls.length, 1);
         assert.deepEqual(plain(w.__calls[0][1]).Analytics, false);
+    });
+
+    // The property that lets one global scriptlet line stand in for a
+    // $redirect= rule on Chromium, where a redirect to a user resource
+    // cannot work: on a page that has no airgap, this does nothing at all.
+    it('does nothing at all on a page that is not theirs', async ( ) => {
+        let out;
+        const dom = runDom(reject, 'https://unrelated.example/page',
+            '<html><body><p id="content">an ordinary page</p></body></html>',
+            w => { out = lines(w); }
+        );
+        const w = dom.window;
+        await settle(1300);
+        assert.deepEqual(out, [], 'not a word');
+        assert.equal(w.airgap, undefined);
+        assert.equal(w.document.cookie, '');
+        assert.equal(w.localStorage.length, 0);
+        assert.equal(
+            w.document.body.innerHTML,
+            '<p id="content">an ordinary page</p>'
+        );
     });
 
     it('records it with the page own load event where auth is required',
@@ -464,16 +491,28 @@ describe('transcend-reject, where their engine never readies', ( ) => {
     // The grace period the resource waits past load before saying so.
     const GRACE = 1300;
 
-    it('says so where their engine never arrives at all', async ( ) => {
+    // Their prelude in the page and the engine it carries never draining
+    // the queue - which is what their real airgap.js does beside this in
+    // jsdom, throwing on a browser API it does not have.
+    const BARE = 'window.airgap = Object.assign({ readyQueue: [],' +
+        ' ready(c) { this.readyQueue.push(c); } }, window.airgap);';
+
+    it('says so where their engine never drains the queue', async ( ) => {
         let out;
-        const w = boot({ before: ww => { out = lines(ww); } }).window;
+        const w = boot({
+            before: ww => {
+                out = lines(ww);
+                ww.eval(BARE);
+            },
+        }).window;
         assert.deepEqual(out, [], 'nothing while it could still arrive');
         await settle(GRACE);
         assert.equal(out.length, 1, out.join(' | '));
         assert.ok(out[0].endsWith(' refused=(none) via=no engine'), out[0]);
-        // Nothing to write: with no engine there are no purposes to name,
-        // and a record with none of them is not a refusal of anything.
+        // Nothing to write: their prelude carried no purposes, and a record
+        // with none of them is not a refusal of anything.
         assert.equal(cookies(w).get('tcm'), undefined);
+        assert.equal(w.localStorage.getItem('tcmConsent'), null);
     });
 
     // Their prelude is enough to name the purposes, so the refusal can go in
@@ -733,6 +772,15 @@ describe('transcend-reject, both of their stores', ( ) => {
 /******************************************************************************/
 
 describe('filters, transcend', ( ) => {
+    // The one install note a Chromium user needs, because a redirect= rule
+    // naming a user resource fails there with ERR_UNSAFE_REDIRECT - uBO can
+    // only serve one of yours as a data: URI.
+    it('says the scriptlet is the Chromium form', ( ) => {
+        assert.match(filtersText, /ERR_UNSAFE_REDIRECT/);
+        assert.match(filtersText, /ON CHROMIUM, USE THE SCRIPTLET/);
+        assert.ok(filtersText.includes('##+js(transcend-reject)'));
+    });
+
     const active = filtersText.split('\n')
         .filter(line => line.startsWith('!') === false)
         .join('\n');

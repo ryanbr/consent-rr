@@ -64,6 +64,8 @@
 
 */
 
+// @include ../../shared/lib/present.js
+
 function consentRRTranscend() {
     const w = self;
     const doc = w.document;
@@ -78,22 +80,6 @@ function consentRRTranscend() {
     if ( existing !== null && typeof existing === 'object' ) {
         if ( existing.consentRR !== undefined ) { return; }
     }
-
-    // Their own stub shape. Injected at document_start there is no airgap yet,
-    // and airgap.js spreads whatever it finds over its own definition - so a
-    // queue put here is the queue it drains.
-    if ( existing === null || typeof existing !== 'object' ) {
-        w.airgap = {
-            readyQueue: [],
-            ready: function(callback) {
-                this.readyQueue.push(callback);
-            },
-        };
-    }
-    w.airgap.consentRR = {
-        mode: 'reject',
-        version: VERSION,
-    };
 
     const readCookie = name => {
         const pairs = String(doc.cookie).split(';');
@@ -385,10 +371,33 @@ function consentRRTranscend() {
         announce(names, store(refused) || 'refused');
     };
 
-    try {
-        w.airgap.ready(refuse);
-    } catch(ex) {
-    }
+    // Their loader defines self.airgap before anything of theirs can be
+    // used - its own prelude, ahead of the engine it carries:
+    //
+    //   self.airgap = Object.assign({ readyQueue: [], ready(c) {
+    //       this.readyQueue.push(c) }, purposes: {...} }, self.airgap);
+    //
+    // so that assignment is the signal, and waiting for it rather than
+    // putting a stub of our own there is what lets one global scriptlet
+    // line stand in for a $redirect= rule on Chromium, where a redirect to
+    // a user resource cannot work at all. On a page that never defines it
+    // nothing here runs: no global with a value, no cookie, no line.
+    //
+    // Where it is already there - which is the $redirect= case, since their
+    // loader only asks for the banner once the engine is up - this runs at
+    // once, as it always did.
+    const start = ( ) => {
+        try {
+            w.airgap.consentRR = { mode: 'reject', version: VERSION };
+        } catch(ex) {
+        }
+        try {
+            w.airgap.ready(refuse);
+        } catch(ex) {
+        }
+        arm();
+    };
+
 
     // Their engine is what takes the decision and what enforces it, and this
     // queues on it: nothing above runs until airgap.js arrives and drains the
@@ -463,14 +472,22 @@ function consentRRTranscend() {
         const where = store(refused);
         announce(names, where !== '' ? where + ', ' + why : why);
     };
-    try {
-        if ( doc.readyState === 'complete' ) {
-            w.setTimeout(watch, GRACE);
-        } else {
-            w.addEventListener('load', ( ) => {
+    // Armed only once their airgap is in the page: on a page that has none,
+    // there is nothing to report and nobody to report it to.
+    const arm = ( ) => {
+        try {
+            if ( doc.readyState === 'complete' ) {
                 w.setTimeout(watch, GRACE);
-            }, { once: true });
+            } else {
+                w.addEventListener('load', ( ) => {
+                    w.setTimeout(watch, GRACE);
+                }, { once: true });
+            }
+        } catch(ex) {
         }
-    } catch(ex) {
-    }
+    };
+
+    // Last, because start() runs at once where their airgap is already
+    // there and everything above has to exist by then.
+    consentRRWhenPresent(w, { globals: [ 'airgap' ] }, start);
 }
