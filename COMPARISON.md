@@ -128,7 +128,7 @@ the same fixture as its sibling.
 | `civic-reject-unblock` | 22.8 KB | `CookieControl` |
 | `cookiebot-reject` | 14.7 KB | `CookieConsent`, `Cookiebot`, `uetq`, `CB_OnTagsExecuted_Processed` |
 | `securiti-reject` | 8.2 KB | `SecuritiSDK`, `__ScrtSdkApiOps`, `initCmp`, `setConsentBannerParams`, `showConsentPreferencesPopup`, `overrideThemeMatching` +4 more |
-| `transcend-reject` | 10.5 KB | - |
+| `transcend-reject` | 10.8 KB | - |
 | `complianz-reject` | 13.4 KB | `cmplz_get_cookie`, `cmplz_set_cookie`, `cmplz_has_consent`, `cmplz_in_array`, `cmplz_get_banner_status`, `cmplz_set_banner_status` +9 more |
 | `complianz-accept` | 13.4 KB | `cmplz_get_cookie`, `cmplz_set_cookie`, `cmplz_has_consent`, `cmplz_in_array`, `cmplz_get_banner_status`, `cmplz_set_banner_status` +9 more |
 | `zdconsent-reject` | 48.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |

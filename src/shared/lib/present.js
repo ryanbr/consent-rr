@@ -37,6 +37,13 @@
         plain property so the page sees what it wrote.
       - never: nothing happens. No global with a value, no cookie, no line.
 
+    With one exception, because silence is wrong where the CMP was certainly
+    there: a resource served in place of a file - a $redirect= install - runs
+    at once whether the global turns up or not. A rule broad enough to catch
+    more than the CMP's one file replaces the half that defines it, and then
+    the line a resource says is the only thing that tells a filter author
+    what went wrong.
+
     The accessor leaves the name present-but-undefined while it waits, which
     a page testing "'name' in window" could see. Nothing else does.
 
@@ -66,6 +73,26 @@ function consentRRWhenPresent(w, probes, run) {
             run(name, already);
             return;
         }
+    }
+
+    // Served in place of a file rather than injected - a $redirect= install,
+    // where the CMP's own loader asked for this url. Then its CMP is on the
+    // page by definition, or was until a rule broad enough to catch more
+    // than the one file replaced the half that defines the global. Either
+    // way the body runs and the family says what it found, rather than
+    // waiting in silence for a global that is never coming.
+    //
+    // document.currentScript carries the url for a script with a src and an
+    // empty string for one injected inline, which is what a scriptlet is.
+    try {
+        const current = w.document.currentScript;
+        if ( current !== null && current !== undefined ) {
+            if ( String(current.src || '') !== '' ) {
+                run('', undefined);
+                return;
+            }
+        }
+    } catch ( ex ) {
     }
 
     // One run, whichever name arrives first. With a single probe this guard

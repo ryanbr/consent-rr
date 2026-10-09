@@ -28,6 +28,16 @@ function consentRRWhenPresent(w, probes, run) {
             return;
         }
     }
+    try {
+        const current = w.document.currentScript;
+        if ( current !== null && current !== undefined ) {
+            if ( String(current.src || '') !== '' ) {
+                run('', undefined);
+                return;
+            }
+        }
+    } catch ( ex ) {
+    }
     let done = false;
     const once = (name, value) => {
         if ( done ) { return; }

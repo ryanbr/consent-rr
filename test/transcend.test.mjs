@@ -497,6 +497,32 @@ describe('transcend-reject, where their engine never readies', ( ) => {
     const BARE = 'window.airgap = Object.assign({ readyQueue: [],' +
         ' ready(c) { this.readyQueue.push(c); } }, window.airgap);';
 
+    // A rule broad enough to catch every script on their CDN replaces
+    // airgap.js as well as the banner, so nothing ever defines their global
+    // and the gate would wait for it forever. Being served in place of a
+    // file says the CMP was there, so the line gets said instead - which is
+    // the only thing that tells a filter author what went wrong.
+    it('says so where a rule too broad took their engine', async ( ) => {
+        let out;
+        const w = runDom(reject, URL, '<html><body><p>x</p></body></html>',
+            ww => {
+                out = lines(ww);
+                // What uBO leaves behind on a $redirect= install: the page's
+                // own tag, whose request was answered with this resource.
+                const served = ww.document.createElement('script');
+                served.src = 'https://transcend-cdn.com/cm/x/airgap.js';
+                Object.defineProperty(ww.document, 'currentScript', {
+                    get: ( ) => served,
+                    configurable: true,
+                });
+            }
+        ).window;
+        await settle(1300);
+        assert.equal(out.length, 1, out.join(' | '));
+        assert.ok(out[0].endsWith(' refused=(none) via=no engine'), out[0]);
+        assert.equal(w.airgap, undefined, 'and there is none to install');
+    });
+
     it('says so where their engine never drains the queue', async ( ) => {
         let out;
         const w = boot({

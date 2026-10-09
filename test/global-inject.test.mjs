@@ -95,12 +95,21 @@ const onAnyPage = async name => {
     );
     const w = dom.window;
     const before_ = new Set(Object.getOwnPropertyNames(w));
-    w.eval(resources.get(name));
+    // Injected the way uBO injects a scriptlet: an inline script element,
+    // which leaves document.currentScript carrying an empty src. Through
+    // eval it would be null instead, and a resource that acts on being
+    // served in place of a file could not be told apart from one that does
+    // not look at all.
+    const tag = w.document.createElement('script');
+    tag.textContent = resources.get(name);
+    w.document.head.append(tag);
+    tag.remove();
     await settle(1300);
     // A name defined as an accessor still reading undefined is how the gate
     // waits for a CMP to define its own global; a name carrying a value is a
     // global this put on somebody else's page.
     const valued = Object.getOwnPropertyNames(w)
+        .filter(key => key !== '__consentRRTag')
         .filter(key => before_.has(key) === false)
         .filter(key => {
             try {
