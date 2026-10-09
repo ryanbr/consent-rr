@@ -827,7 +827,8 @@ describe('filters, transcend', ( ) => {
             // resource cannot work at all: named sites rather than every
             // page, because their record is persistent and this only has to
             // run once on each of them.
-            'airtable.com,costco.ca,costco.com,indiegogo.com,mayoclinic.org,' +
+            'airtable.com,classy.org,costco.ca,costco.com,gofundme.com,' +
+                'indiegogo.com,mayoclinic.org,skilljar.com,' +
                 'transcend.io##+js(transcend-reject)',
         ]);
         // airgap.js is the engine, and the thing that enforces the refusal.

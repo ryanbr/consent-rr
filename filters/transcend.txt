@@ -128,12 +128,22 @@
 ! The sites below are the Transcend tenants this repo has evidence for. uBO
 ! matches subdomains too, so costco.ca covers www.costco.ca:
 !
-airtable.com,costco.ca,costco.com,indiegogo.com,mayoclinic.org,transcend.io##+js(transcend-reject)
+airtable.com,classy.org,costco.ca,costco.com,gofundme.com,indiegogo.com,mayoclinic.org,skilljar.com,transcend.io##+js(transcend-reject)
 !
-! To add one of your own: look for a request to transcend-cdn.com/cm*/ or for
-! an airgap.js anywhere, then put that site's domain on the line. The console
-! line says whether it took - via=setConsent or via=load on a page of theirs,
-! and nothing at all on a page that is not.
+! To add one of your own, and to find the rest of a tenant's domains while
+! you are there: a tenant's own airgap.js names them in its loadOptions.
+! GoFundMe's, from the id in its url -
+!
+!   transcend-cdn.com/cm/8aaeb48f-.../airgap.js
+!   sites: "gofundme.com gfm-test01.com gfm-dev.com gfm-dev01.com
+!           classy.org classy-test.org skilljar.com gfm-lab.com"
+!
+! - which is the same list their own engine matches the host against to
+! decide whether to write the tcm cookie at all. Their development hosts are
+! left off the line above; the production ones are on it.
+!
+! The console line says whether it took - via=setConsent or via=load on a
+! page of theirs, and nothing at all on a page that is not.
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
