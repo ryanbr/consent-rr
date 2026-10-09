@@ -1,6 +1,6 @@
 {
   "name": "consent-rr",
-  "version": "1.54.3",
+  "version": "1.55.0",
   "resourceVersions": {
     "ampconsent": "1.0.0",
     "appconsent": "1.0.4",
@@ -42,7 +42,8 @@
     "build": "node tools/build.mjs",
     "lint": "node tools/lint.mjs",
     "comparison": "node tools/comparison.mjs",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build && npm test",
+    "ubo-war": "node tools/ubo-war.mjs"
   },
   "keywords": [
     "ublock-origin",
