@@ -69,7 +69,10 @@ function consentRRTranscend() {
     const doc = w.document;
     const VERSION = '@@VERSION@@';
     const NAME = 'transcend-reject';
-    const COOKIE = 'tcm';
+    // Their own cookie name, from Ar = Mt ? ed + "-" + Mt : ed, with
+    // ed = "tcm" and Mt their loadOptions.partition. A partitioned tenant
+    // reads tcm-<partition> and would never look at a plain tcm.
+    const BASE_COOKIE = 'tcm';
 
     const existing = w.airgap;
     if ( existing !== null && typeof existing === 'object' ) {
@@ -101,6 +104,17 @@ function consentRRTranscend() {
             return pair.slice(pos + 1).trim();
         }
         return undefined;
+    };
+
+    // Their loadOptions, installed by the same prelude that carries the
+    // purposes, so these are readable without the engine having run.
+    const loadOptions = ( ) => {
+        try {
+            const held = w.airgap.loadOptions;
+            if ( held !== null && typeof held === 'object' ) { return held; }
+        } catch(ex) {
+        }
+        return {};
     };
 
     let cookieDomain;
@@ -163,14 +177,23 @@ function consentRRTranscend() {
     // something, not the refusal failing. The record written here names only
     // the ones it is theirs to move, because their own boot merges the names
     // it finds and defaults the rest.
-    const writeCookie = purposes => {
-        const value = JSON.stringify({
-            purposes,
-            timestamp: new Date().toISOString(),
-            confirmed: true,
-            prompted: true,
-            updated: false,
-        });
+    const record = purposes => JSON.stringify({
+        purposes,
+        timestamp: new Date().toISOString(),
+        confirmed: true,
+        prompted: true,
+        updated: false,
+    });
+
+    const cookieName = ( ) => {
+        const partition = String(loadOptions().partition || '');
+        return partition !== ''
+            ? BASE_COOKIE + '-' + partition
+            : BASE_COOKIE;
+    };
+
+    const writeCookie = value => {
+        const COOKIE = cookieName();
         if ( cookieDomain === undefined ) {
             try {
                 cookieDomain = findCookieDomain();
@@ -195,6 +218,77 @@ function consentRRTranscend() {
     };
 
     let spoke = false;
+
+    // WHERE THEIR RECORD ACTUALLY LIVES. Their persister writes two places,
+    // and the cookie is the conditional one:
+    //
+    //   Hn = "tcm" + (Mt ? "MP" : "") + "Consent"      localStorage key
+    //   Ar = Mt ? ed + "-" + Mt : ed                     cookie name, ed=tcm
+    //   qa = Lv || RR && <the sites entry matching this host>
+    //   Ai = xR !== "private-only"; Wv = Ai && xR !== "private"
+    //   Zr = C && qa && Wv
+    //   ...
+    //   mt[Hn] = Mt && o || r;                           always
+    //   if ( Zr ) { ... mu(i) }                           the cookie
+    //
+    // off their loadOptions { site: Lv, sites: RR, localSync: xR,
+    // partition: Mt }. So a tenant that configures neither site nor a sites
+    // entry matching the host it is on, or sets localSync to private, never
+    // writes a tcm cookie at all and keeps the record in
+    // localStorage.tcmConsent - which is also the only store their reader
+    // looks at where localSync is private-only, because the cookie read is
+    // behind that same Ai. Their own log line says which it used:
+    //
+    //   Consent read from cookie (tcm) | localStorage[tcmConsent]
+    //
+    // A refusal written to one store and not the other is therefore a
+    // refusal a tenant may never read, so this writes both.
+    const storageRecord = value => {
+        const partition = String(loadOptions().partition || '');
+        const key = 'tcm' + (partition !== '' ? 'MP' : '') + 'Consent';
+        let payload = value;
+        if ( partition !== '' ) {
+            // Theirs merges into whatever is there, by partition.
+            let held = {};
+            try {
+                const raw = w.localStorage.getItem(key);
+                if ( typeof raw === 'string' && raw !== '' ) {
+                    const parsed = JSON.parse(raw);
+                    if ( parsed !== null && typeof parsed === 'object' ) {
+                        held = parsed;
+                    }
+                }
+            } catch(ex) {
+                held = {};
+            }
+            try {
+                held[partition] = JSON.parse(value);
+                payload = JSON.stringify(held);
+            } catch(ex) {
+                return false;
+            }
+        }
+        try {
+            w.localStorage.setItem(key, payload);
+            return w.localStorage.getItem(key) === payload;
+        } catch(ex) {
+        }
+        return false;
+    };
+
+    // Both stores, and the line says which took. Their cookie is skipped
+    // where their own reader would not look at it.
+    const store = purposes => {
+        const value = record(purposes);
+        const inStorage = storageRecord(value);
+        const inCookie = String(loadOptions().localSync || '') !== 'private-only'
+            ? writeCookie(value)
+            : false;
+        if ( inCookie && inStorage ) { return 'cookie+storage'; }
+        if ( inCookie ) { return 'cookie'; }
+        if ( inStorage ) { return 'storage'; }
+        return '';
+    };
 
     const announce = (names, how) => {
         spoke = true;
@@ -263,13 +357,14 @@ function consentRRTranscend() {
                     announce(names, 'load');
                     return;
                 }
-                announce(names, writeCookie(refused) ? 'cookie' : 'refused');
+                announce(names, store(refused) || 'refused');
             }, { once: true });
             return;
         }
-        // Loaded already, so that event has been and gone: their cookie is
-        // what is left, and it is read on the next page rather than this one.
-        announce(names, writeCookie(refused) ? 'cookie' : 'refused');
+        // Loaded already, so that event has been and gone: their own stores
+        // are what is left, and they are read on the next page rather than
+        // this one.
+        announce(names, store(refused) || 'refused');
     };
 
     try {
@@ -343,10 +438,8 @@ function consentRRTranscend() {
             announce(names, 'no engine');
             return;
         }
-        announce(
-            names,
-            writeCookie(refused) ? 'cookie, no engine' : 'no engine'
-        );
+        const where = store(refused);
+        announce(names, where !== '' ? where + ', no engine' : 'no engine');
     };
     try {
         if ( doc.readyState === 'complete' ) {

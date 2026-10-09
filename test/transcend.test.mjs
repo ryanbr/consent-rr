@@ -270,7 +270,7 @@ describe('transcend-reject', ( ) => {
         // It tried with the load event, was refused, and wrote their cookie.
         assert.equal(w.__calls.length, 1);
         assert.equal(w.__calls[0][0].type, 'load');
-        assert.ok(out[0].endsWith(' via=cookie'), out[0]);
+        assert.ok(out[0].endsWith(' via=cookie+storage'), out[0]);
         assert.deepEqual(JSON.parse(cookies(w).get('tcm')).purposes.Analytics, false);
     });
 
@@ -289,7 +289,7 @@ describe('transcend-reject', ( ) => {
             }
         );
         const w = dom.window;
-        assert.ok(out[0].endsWith(' via=cookie'), out[0]);
+        assert.ok(out[0].endsWith(' via=cookie+storage'), out[0]);
         const record = JSON.parse(cookies(w).get('tcm'));
         assert.equal(record.confirmed, true);
         assert.deepEqual(record.purposes.Analytics, false);
@@ -310,7 +310,7 @@ describe('transcend-reject', ( ) => {
                     });
                 },
             }).window;
-            assert.ok(out[0].endsWith(' via=cookie'), out[0]);
+            assert.ok(out[0].endsWith(' via=cookie+storage'), out[0]);
             const record = JSON.parse(cookies(w).get('tcm'));
             assert.deepEqual(record.purposes, {
                 AlwaysBlock: false,
@@ -488,7 +488,9 @@ describe('transcend-reject, where their engine never readies', ( ) => {
         }).window;
         await settle(GRACE);
         assert.equal(out.length, 1, out.join(' | '));
-        assert.ok(out[0].endsWith(' via=cookie, no engine'), out[0]);
+        assert.ok(
+            out[0].endsWith(' via=cookie+storage, no engine'), out[0]
+        );
         const held = JSON.parse(cookies(w).get('tcm'));
         assert.deepEqual(held.purposes, {
             Functional: false,
@@ -551,6 +553,125 @@ describe('transcend-reject, where their engine never readies', ( ) => {
         assert.equal(out.length, 2, out.join(' | '));
         assert.ok(out[1].endsWith(' via=setConsent'), out[1]);
         assert.equal(w.__calls.length, 1);
+    });
+});
+
+/******************************************************************************/
+
+// Their persister writes two places and the cookie is the conditional one:
+// localStorage[tcmConsent] always, the cookie only where the tenant
+// configures site or a sites entry matching the host, and localSync is not
+// private. Reported from the field as "not seeing the tcm cookie" on a
+// tenant that configures neither.
+describe('transcend-reject, both of their stores', ( ) => {
+    const refusedByCookie = (options = {}) => {
+        let out;
+        const dom = runDom(reject, options.url || URL,
+            '<html><body><p>x</p></body></html>',
+            w => {
+                out = lines(w);
+                w.eval(airgap(undefined, IGG_PURPOSES) + READY_NOW);
+                // Their airgap refusing the decision, so their own stores
+                // are the only way left to record it.
+                w.eval('window.__setConsentResult = false;');
+                if ( options.load !== undefined ) {
+                    w.eval('window.airgap.loadOptions = Object.assign(' +
+                        'window.airgap.loadOptions || {}, ' +
+                        JSON.stringify(options.load) + ');');
+                }
+                if ( typeof options.before === 'function' ) {
+                    options.before(w);
+                }
+                Object.defineProperty(w.document, 'readyState', {
+                    value: 'complete', configurable: true,
+                });
+            }
+        );
+        return { w: dom.window, out: ( ) => out };
+    };
+
+    it('writes the same record to both of them', ( ) => {
+        const { w, out } = refusedByCookie();
+        assert.ok(out()[0].endsWith(' via=cookie+storage'), out()[0]);
+        const inCookie = cookies(w).get('tcm');
+        const inStorage = w.localStorage.getItem('tcmConsent');
+        assert.ok(inStorage, 'the store theirs always writes');
+        assert.equal(inStorage, inCookie, 'the same bytes in both');
+        assert.equal(JSON.parse(inStorage).confirmed, true);
+    });
+
+    // Their reader only looks at the cookie where localSync is not
+    // private-only - the read is behind the same flag - so there is nothing
+    // to gain by writing one there.
+    it('skips their cookie where their reader would not read it', ( ) => {
+        const { w, out } = refusedByCookie({
+            load: { localSync: 'private-only' },
+        });
+        assert.ok(out()[0].endsWith(' via=storage'), out()[0]);
+        assert.equal(cookies(w).get('tcm'), undefined);
+        assert.ok(w.localStorage.getItem('tcmConsent'));
+    });
+
+    it('still writes their cookie where localSync is only private', ( ) => {
+        const { w, out } = refusedByCookie({ load: { localSync: 'private' } });
+        assert.ok(out()[0].endsWith(' via=cookie+storage'), out()[0]);
+        assert.ok(cookies(w).get('tcm'));
+    });
+
+    // Their partitioned shape: a different key, and the record under the
+    // partition rather than at the top, merged into whatever is there.
+    it('writes their partitioned key the way theirs does', ( ) => {
+        const { w, out } = refusedByCookie({
+            load: { partition: 'eu' },
+            before: ww => {
+                ww.localStorage.setItem('tcmMPConsent', JSON.stringify({
+                    us: { purposes: { Analytics: true }, confirmed: true },
+                }));
+            },
+        });
+        assert.ok(out()[0].endsWith(' via=cookie+storage'), out()[0]);
+        assert.equal(w.localStorage.getItem('tcmConsent'), null);
+        const held = JSON.parse(w.localStorage.getItem('tcmMPConsent'));
+        assert.deepEqual(Object.keys(held).sort(), [ 'eu', 'us' ]);
+        assert.equal(held.eu.confirmed, true);
+        assert.deepEqual(held.eu.purposes, {
+            SaleOfInfo: false,
+            Analytics: false,
+            Functional: false,
+            Advertising: false,
+        });
+        assert.equal(
+            held.us.purposes.Analytics, true,
+            'another partition of theirs is left alone'
+        );
+        // Their cookie carries the partition in its name too, by the same
+        // formula - a partitioned tenant would never look at a plain tcm.
+        assert.ok(cookies(w).get('tcm-eu'), 'their Ar name');
+        assert.equal(cookies(w).get('tcm'), undefined);
+        assert.equal(
+            cookies(w).get('tcm-eu'),
+            JSON.stringify(JSON.parse(w.localStorage.getItem('tcmMPConsent')).eu),
+            'and the same record as the partition holds'
+        );
+    });
+
+    it('reports the cookie alone where storage will not take it', ( ) => {
+        const { w, out } = refusedByCookie({
+            before: ww => {
+                Object.defineProperty(ww, 'localStorage', {
+                    get( ) { throw new Error('denied'); },
+                    configurable: true,
+                });
+            },
+        });
+        assert.ok(out()[0].endsWith(' via=cookie'), out()[0]);
+        assert.ok(cookies(w).get('tcm'));
+    });
+
+    it('writes neither where their API took the refusal', ( ) => {
+        const w = asUi().window;
+        assert.equal(cookies(w).get('tcm'), undefined);
+        assert.equal(w.localStorage.getItem('tcmConsent'), null);
     });
 });
 

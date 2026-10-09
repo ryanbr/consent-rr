@@ -104,14 +104,39 @@
 !
 ! Either way the console says so now, a second after load:
 !
-!   [consent-rr] transcend-reject 1.2.0 refused=(none) via=no engine
+!   [consent-rr] transcend-reject 1.3.0 refused=(none) via=no engine
 !
 ! and where their engine is in the page but never becomes ready, the purposes
 ! their own prelude carries are enough to write the refusal to their cookie for
 ! the next page:
 !
-!   [consent-rr] transcend-reject 1.2.0 refused=Functional,SaleOfInfo,
-!                Advertising,Marketing,Sales,Analytics via=cookie, no engine
+!   [consent-rr] transcend-reject 1.3.0 refused=Functional,SaleOfInfo,
+!                Advertising,Marketing,Sales,Analytics via=cookie+storage,
+!                no engine
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! WHERE THEIR RECORD LIVES, and why there may be no tcm cookie to look at.
+! Their persister writes two stores and the cookie is the conditional one:
+!
+!   mt[Hn] = ...            localStorage["tcmConsent"], always
+!   if ( Zr ) { mu(i) }     the cookie, where Zr = C && qa && Wv
+!
+! with qa the site or the sites entry matching this host, and Wv requiring
+! localSync to be neither private nor private-only - all three off their
+! loadOptions. So a tenant that configures neither site nor a matching sites
+! entry never writes a tcm cookie at all and keeps the record in
+! localStorage.tcmConsent. Seeing tcmConsent and no cookie is the refusal
+! recorded, not a failure. Their own log says which store it read:
+!
+!   Consent read from localStorage[tcmConsent]
+!   Consent read from cookie (tcm)
+!
+! and airgap.loadOptions.site / .sites / .localSync say whether a cookie was
+! ever going to be written. The fallback here writes both, or storage alone
+! where localSync is private-only, because their cookie read is behind that
+! same flag. A partitioned tenant gets their partitioned shapes:
+! tcmMPConsent keyed by partition, and a tcm-<partition> cookie.
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
