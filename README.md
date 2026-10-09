@@ -105,52 +105,52 @@ files, not described.
    whitespace-separated:
 
    ```
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/onetrust-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/onetrust-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/onetrust-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/cookieinformation-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/cookielawinfo-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/webtoffee-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/webtoffee-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/chcookieconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/inmobi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/iubenda-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/iubenda-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/iubenda-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/osano-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/civic-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/civic-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/cookiebot-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/cookieconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/cookieconsent-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/cookieconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/securiti-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/transcend-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/usercentrics-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/pubtech-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/termly-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/ketch-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/ketch-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/appconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/appconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/cookiescript-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/didomi-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/didomi-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/complianz-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/complianz-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/zdconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/zdconsent-accept.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/fundingchoices-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/tarteaucitron-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/tarteaucitron-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/cookieyes-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/cookieyes-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/consentmanager-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/consentmanager-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/cookiez-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/cookiez-reject-unblock.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/ampconsent-reject.js
-   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/ampconsent-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/onetrust-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/onetrust-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/onetrust-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/cookieinformation-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/cookielawinfo-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/webtoffee-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/webtoffee-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/chcookieconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/inmobi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/iubenda-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/iubenda-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/iubenda-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/osano-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/civic-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/civic-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/cookiebot-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/cookieconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/cookieconsent-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/cookieconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/securiti-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/transcend-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/usercentrics-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/pubtech-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/termly-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/ketch-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/ketch-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/appconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/appconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/cookiescript-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/didomi-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/didomi-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/complianz-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/complianz-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/zdconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/zdconsent-accept.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/fundingchoices-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/tarteaucitron-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/tarteaucitron-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/cookieyes-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/cookieyes-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/consentmanager-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/consentmanager-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/cookiez-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/cookiez-reject-unblock.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/ampconsent-reject.js
+   https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/ampconsent-reject-unblock.js
    ```
 
    Then reload the filter lists (*Filter lists* → *Purge all caches* →
@@ -164,8 +164,8 @@ files, not described.
    would rather not fetch from GitHub - same bytes, same pinning:
 
    ```
-   https://cdn.jsdelivr.net/npm/consent-rr@1.54.1/dist/onetrust-reject.js
-   https://unpkg.com/consent-rr@1.54.1/dist/onetrust-reject.js
+   https://cdn.jsdelivr.net/npm/consent-rr@1.54.2/dist/onetrust-reject.js
+   https://unpkg.com/consent-rr@1.54.2/dist/onetrust-reject.js
    ```
 
    The package is `dist/` and `filters/` and nothing else; `npm i consent-rr`
@@ -249,6 +249,22 @@ the `/`-prefixed extension paths. Chromium refuses to redirect a network
 request to a `data:` URL, so the request fails outright: the real script does
 not load and neither does the replacement. Firefox allows it, which is the
 platform that path is built around.
+
+Which api does what, per mechanism:
+
+| mechanism | Firefox | Chromium |
+| --- | --- | --- |
+| `$redirect=` to one of **uBO's own** resources | `webRequest.onBeforeRequest` returns `redirectUrl`, an extension url under the manifest's `web_accessible_resources: ["/web_accessible_resources/*"]` | the same |
+| `$redirect=` to one of **your** resources | the same call, with `redirectUrl: data:...` - Firefox accepts a `data:` redirect target | **nothing to call.** Chromium accepts only http(s) or an extension url as a redirect target, and `web_accessible_resources` is declared in the manifest - there is no api, in MV2 or MV3, that adds a file to it at runtime. So a resource uBO was handed at runtime can never have an extension url, and the `data:` url it does have is refused: `ERR_UNSAFE_REDIRECT` |
+| `$replace=` | `webRequest.filterResponseData()`, a StreamFilter with `ondata` / `onstop` | **no equivalent.** uBO gates the whole feature on `canFilterResponseData: typeof browser.webRequest.filterResponseData === 'function'`, and `Session.canFilter()` returns early when it is false |
+| scriptlet `##+js(...)` | `scripting.registerContentScripts()`, `tabs.executeScript` | the same |
+
+So the asymmetry is not that Chromium is missing a body-rewriting api it could be
+given - it is that both ways of *replacing* a request need something Chromium
+does not offer a user resource, while *injection* needs neither. Brave's own
+shields, with no extension in the picture, land the same way: their engine
+implements `$redirect` only to its own bundled resource library, and does not
+parse `replace` at all (brave/brave-browser#56671).
 
 So on a Chromium browser, inject instead of redirecting - same resource, same
 `document_start`, no redirect involved:
@@ -3365,7 +3381,7 @@ and its tag gives a URL that never moves - useful both for pinning and as its ow
 cache-buster, since uBO will not refetch a URL it already has:
 
 ```
-https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.1/dist/onetrust-reject.js
+https://raw.githubusercontent.com/ryanbr/consent-rr/v1.54.2/dist/onetrust-reject.js
 ```
 
 [AGENTS.md](AGENTS.md) is the working guide - the format traps, the filter-token
