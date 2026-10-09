@@ -797,6 +797,12 @@ describe('filters, transcend', ( ) => {
             // above can reach.
             '||assets.mayoclinic.org/content/dam/cpm-transcend/ui.js' +
                 '$script,redirect=transcend-reject.js',
+            // And the form Chromium needs, where a redirect to a user
+            // resource cannot work at all: named sites rather than every
+            // page, because their record is persistent and this only has to
+            // run once on each of them.
+            'airtable.com,costco.ca,costco.com,indiegogo.com,mayoclinic.org,' +
+                'transcend.io##+js(transcend-reject)',
         ]);
         // airgap.js is the engine, and the thing that enforces the refusal.
         assert.equal(active.includes('airgap.js'), false);

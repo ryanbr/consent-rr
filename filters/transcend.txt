@@ -99,7 +99,7 @@
 !
 !   example.com##+js(transcend-reject)
 !
-! And it takes no domain, so one line covers every site a list would ever
+! And it takes no domain, so one line can cover every site a list would ever
 ! want it on:
 !
 !   *##+js(transcend-reject)
@@ -109,6 +109,31 @@
 ! there is no global carrying a value, no cookie, no storage and no line. No
 ! block rule is wanted beside it either: their engine has to load, and their
 ! ui.js is never fetched once a refusal is recorded.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! OR NAME THE SITES, because it only has to run once on each of them.
+!
+! Their record is persistent and their own boot takes it: with a confirmed
+! refusal stored - in localStorage[tcmConsent], and in the tcm cookie where
+! the tenant configures one - their engine does not prompt, and so never
+! fetches the banner at all. The tenants read here carry
+!
+!   consentExpiry: 525600     minutes, so a year
+!   onConsentExpiry: Prompt
+!
+! so one run answers for a year, and the line wants leaving in place for the
+! next one - and for a visitor who clears their storage.
+!
+! The sites below are the Transcend tenants this repo has evidence for. uBO
+! matches subdomains too, so costco.ca covers www.costco.ca:
+!
+airtable.com,costco.ca,costco.com,indiegogo.com,mayoclinic.org,transcend.io##+js(transcend-reject)
+!
+! To add one of your own: look for a request to transcend-cdn.com/cm*/ or for
+! an airgap.js anywhere, then put that site's domain on the line. The console
+! line says whether it took - via=setConsent or via=load on a page of theirs,
+! and nothing at all on a page that is not.
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
