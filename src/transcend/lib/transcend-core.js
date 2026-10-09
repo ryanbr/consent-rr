@@ -125,6 +125,44 @@ function consentRRTranscend() {
 
     // Last resort, for a tenant whose airgap will not take a decision without
     // a trusted event. Their own cookie carries this record as plain JSON.
+    // Five genuine ones, off five tenants - the first from Indiegogo:
+    //
+    //   {"purposes":{"SaleOfInfo":false,"Analytics":false,"Functional":false,
+    //     "Advertising":false},"timestamp":"2026-10-02T01:33:15.268Z",
+    //     "confirmed":true,"prompted":true,"updated":true}
+    //   {"purposes":{"GcmAdvanced":"Auto",...},"updated":true}
+    //   {"purposes":{...,"EnrichmentConsent":false,...},"updated":false}
+    //   {"purposes":{"AlwaysBlock":"Auto",...},"updated":true}
+    //   {"purposes":{"Functional":"Auto","BrowserCookies":false,
+    //     "AdvertisingSaleOfInfo":false,...},"updated":true}
+    //
+    // confirmed and prompted are true in all five, and confirmed is the one
+    // their engine gates the prompt on: its boot takes the stored record as
+    // the answer where that is set and the record has not expired. updated
+    // is not a gate and is not constant - four say true, one false - so it
+    // stays false here, which is what it means for a record that replaced no
+    // earlier decision. Their parser coerces it with !! and recomputes it.
+    //
+    // Those records also say which purposes theirs carries, and that is not
+    // the same question as which this sets. Three of the five kept a purpose
+    // at their tri-state Auto through a confirmed refusal - GcmAdvanced on
+    // one, AlwaysBlock on another, and Functional on a third, which is a
+    // purpose other tenants declare configurable, so it is the tenant's
+    // choice rather than a class of purpose - and another carries
+    // EnrichmentConsent, which that tenant declares not configurable, at
+    // false. Their own
+    // writer applies a value only where the purpose is configurable -
+    //
+    //   w(Be(d), $ => { (B = Te(Fn, $)) != null && B.configurable
+    //       && (Yo[$] = d[$]) })
+    //
+    // - so a purpose of that kind sits in their record at whatever its
+    // default resolved to, rather than because anything decided it. Asking
+    // for every purpose to be off is theirs to filter and it filters it, so
+    // a stored Auto after this has run is their engine declining to move
+    // something, not the refusal failing. The record written here names only
+    // the ones it is theirs to move, because their own boot merges the names
+    // it finds and defaults the rest.
     const writeCookie = purposes => {
         const value = JSON.stringify({
             purposes,
@@ -156,7 +194,10 @@ function consentRRTranscend() {
         return false;
     };
 
+    let spoke = false;
+
     const announce = (names, how) => {
+        spoke = true;
         if ( typeof console !== 'object' ) { return; }
         if ( typeof console.info !== 'function' ) { return; }
         console.info(
@@ -233,6 +274,88 @@ function consentRRTranscend() {
 
     try {
         w.airgap.ready(refuse);
+    } catch(ex) {
+    }
+
+    // Their engine is what takes the decision and what enforces it, and this
+    // queues on it: nothing above runs until airgap.js arrives and drains the
+    // queue it finds. Where it never arrives there is nothing to record a
+    // refusal with - and nothing blocking anything either - so this says so,
+    // because a resource that goes silent is the one outcome nobody can
+    // debug. Two ways that happens, both reported from the field:
+    //
+    //   - a rule broad enough to catch every script on their CDN, which
+    //     replaces airgap.js along with the banner.
+    //   - airgap.js blocked outright by another list.
+    //
+    // A tenant that loads it late through a tag manager gets this line and
+    // then the real one when it arrives, in that order.
+    // What their prelude knows. The hand-written head of airgap.js runs
+    // before the engine it carries, and it puts the tenant's purposes on the
+    // object it merges:
+    //
+    //   self.airgap = Object.assign({ readyQueue: [], ready(c) {...},
+    //     purposes: { useDefault: false, types: {
+    //       Functional: { name, essential: false, configurable: true, ... },
+    //       ... } } }, self.airgap);
+    //
+    // so where their engine is in the page but never becomes ready, the
+    // names are still knowable from their own object and the refusal can go
+    // in their cookie for the next page to read. Measured on a live tenant:
+    // seven types, none essential, one of them not configurable.
+    //
+    // Which of them to turn off is read off their own boot rather than
+    // judged. This is the set their isOptedOut reports on:
+    //
+    //   let M = T.configurable && !T.essential && (!nC || Ie(oo, d));
+    //   ...
+    //   M && (y(Wh, d), Z(Ou, d));
+    //
+    // configurable and not essential, which is also the pair their writer
+    // enforces on the way in.
+    const preludeRefusal = ( ) => {
+        const out = {};
+        let types;
+        try {
+            const held = w.airgap.purposes;
+            if ( held === null || typeof held !== 'object' ) { return out; }
+            types = held.types;
+        } catch(ex) {
+            return out;
+        }
+        if ( types === null || typeof types !== 'object' ) { return out; }
+        for ( const name of Object.keys(types) ) {
+            const entry = types[name];
+            if ( entry === null || typeof entry !== 'object' ) { continue; }
+            if ( entry.essential === true ) { continue; }
+            if ( entry.configurable === false ) { continue; }
+            out[name] = false;
+        }
+        return out;
+    };
+
+    const GRACE = 1000;
+    const watch = ( ) => {
+        if ( spoke ) { return; }
+        const refused = preludeRefusal();
+        const names = Object.keys(refused);
+        if ( names.length === 0 ) {
+            announce(names, 'no engine');
+            return;
+        }
+        announce(
+            names,
+            writeCookie(refused) ? 'cookie, no engine' : 'no engine'
+        );
+    };
+    try {
+        if ( doc.readyState === 'complete' ) {
+            w.setTimeout(watch, GRACE);
+        } else {
+            w.addEventListener('load', ( ) => {
+                w.setTimeout(watch, GRACE);
+            }, { once: true });
+        }
     } catch(ex) {
     }
 }

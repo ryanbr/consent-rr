@@ -15,7 +15,10 @@ import {
 const URL = 'https://www.costco.ca/shop';
 
 // The purposes a real tenant carries, in the state their own cookie showed:
-// two off, two on, and two of their tri-state "Auto".
+// two off, two on, and two of their tri-state "Auto". A later record off
+// that tenant shows AlwaysBlock still reading "Auto" after a confirmed
+// refusal, which is their engine declining to move a purpose it does not
+// hold configurable - see writeCookie's note.
 const PURPOSES = {
     AlwaysBlock: false,
     SaleOfInfo: false,
@@ -176,7 +179,12 @@ describe('transcend-reject', ( ) => {
         assert.equal(ours.prompted, theirs.prompted);
         assert.ok(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(ours.timestamp));
         // The one field that differs, and the only one that may: theirs says
-        // the decision replaced an earlier one, this one is the first record.
+        // the decision replaced an earlier one, this one is the first
+        // record. It is not constant in theirs either - of three genuine
+        // records off three tenants, two say true and one says false:
+        //
+        //   ..."prompted":true,"updated":false}   2026-10-09T07:28:36.346Z
+        //
         // airgap takes it either way - its parser coerces with !!, and their
         // own schema has confirmed and timestamp required with updated
         // optional - and it is reported upstream rather than enforced.
@@ -396,6 +404,152 @@ describe('transcend-reject', ( ) => {
         const out = lines(w);
         w.eval(reject);
         assert.deepEqual(out, []);
+        assert.equal(w.__calls.length, 1);
+    });
+});
+
+/******************************************************************************/
+
+// Everything above queues on their engine: nothing runs until airgap.js
+// arrives and drains the queue it finds. Reported from the field - a rule
+// broad enough to catch every script on their CDN, which replaces airgap.js
+// along with the banner - and measured here as well, where their real
+// airgap.js throws on a browser API jsdom does not have: the prelude merges,
+// the engine never readies, and the queue is never drained.
+describe('transcend-reject, where their engine never readies', ( ) => {
+    // Their prelude - the hand-written head of airgap.js, which runs before
+    // the engine it carries. Off a live tenant: seven purposes, one of them
+    // not configurable.
+    const PRELUDE = 'window.airgap = Object.assign({ readyQueue: [],' +
+        ' ready(c) { this.readyQueue.push(c); }, purposes: ' +
+        JSON.stringify({
+            useDefault: false,
+            types: {
+                Functional: { name: 'Functional', essential: false,
+                    configurable: true, showInConsentManager: true },
+                Analytics: { name: 'Analytics', essential: false,
+                    configurable: true, showInConsentManager: true },
+                Advertising: { name: 'Advertising', essential: false,
+                    configurable: true, showInConsentManager: true },
+                SaleOfInfo: { name: 'SaleOfInfo', essential: false,
+                    configurable: true, showInConsentManager: true },
+                Marketing: { name: 'Marketing', essential: false,
+                    configurable: true, showInConsentManager: false },
+                EnrichmentConsent: { name: 'EnrichmentConsent',
+                    essential: false, configurable: false,
+                    showInConsentManager: false },
+                Essential: { name: 'Essential', essential: true,
+                    configurable: false, showInConsentManager: false },
+                // Their admin has the two switches apart, so this is the
+                // shape that tells the two guards below apart: essential,
+                // and still marked configurable.
+                SessionReplay: { name: 'SessionReplay', essential: true,
+                    configurable: true, showInConsentManager: true },
+            },
+        }) + ' }, window.airgap);';
+
+    const boot = (options = {}) => {
+        const dom = runDom(
+            reject, options.url || URL,
+            '<html><body><p id="content">x</p></body></html>',
+            w => {
+                if ( typeof options.before === 'function' ) {
+                    options.before(w);
+                }
+            }
+        );
+        return dom;
+    };
+
+    // The grace period the resource waits past load before saying so.
+    const GRACE = 1300;
+
+    it('says so where their engine never arrives at all', async ( ) => {
+        let out;
+        const w = boot({ before: ww => { out = lines(ww); } }).window;
+        assert.deepEqual(out, [], 'nothing while it could still arrive');
+        await settle(GRACE);
+        assert.equal(out.length, 1, out.join(' | '));
+        assert.ok(out[0].endsWith(' refused=(none) via=no engine'), out[0]);
+        // Nothing to write: with no engine there are no purposes to name,
+        // and a record with none of them is not a refusal of anything.
+        assert.equal(cookies(w).get('tcm'), undefined);
+    });
+
+    // Their prelude is enough to name the purposes, so the refusal can go in
+    // their cookie for the next page to read.
+    it('writes their cookie from the purposes their prelude carries', async ( ) => {
+        let out;
+        const w = boot({
+            before: ww => {
+                out = lines(ww);
+                ww.eval(PRELUDE);
+            },
+        }).window;
+        await settle(GRACE);
+        assert.equal(out.length, 1, out.join(' | '));
+        assert.ok(out[0].endsWith(' via=cookie, no engine'), out[0]);
+        const held = JSON.parse(cookies(w).get('tcm'));
+        assert.deepEqual(held.purposes, {
+            Functional: false,
+            Analytics: false,
+            Advertising: false,
+            SaleOfInfo: false,
+            Marketing: false,
+        }, 'every one their own code would flip, and no others');
+        // confirmed is the field their engine gates the prompt on.
+        assert.equal(held.confirmed, true);
+        assert.equal(held.prompted, true);
+        assert.match(held.timestamp, /^\d{4}-\d\d-\d\dT/);
+    });
+
+    it('leaves out the ones their own code will not flip', async ( ) => {
+        const w = boot({ before: ww => { ww.eval(PRELUDE); } }).window;
+        await settle(GRACE);
+        const held = JSON.parse(cookies(w).get('tcm'));
+        assert.equal(
+            'Essential' in held.purposes, false,
+            'airgap keeps essential outside consent'
+        );
+        assert.equal(
+            'SessionReplay' in held.purposes, false,
+            'even where the tenant marks an essential one configurable'
+        );
+        assert.equal(
+            'EnrichmentConsent' in held.purposes, false,
+            'and only ever turns off a configurable purpose'
+        );
+    });
+
+    it('stays quiet where their engine does arrive', async ( ) => {
+        let out;
+        asUi({ before: ww => { out = lines(ww); } });
+        assert.equal(out.length, 1);
+        assert.ok(out[0].endsWith(' via=setConsent'), out[0]);
+        await settle(GRACE);
+        assert.equal(out.length, 1, 'no second line: ' + out.join(' | '));
+    });
+
+    // A tenant that loads airgap.js late through a tag manager gets the line
+    // and then the real one, in that order, rather than the line instead of
+    // the real one.
+    it('does not stop their engine working when it is late', async ( ) => {
+        let out;
+        const dom = boot({
+            before: ww => {
+                out = lines(ww);
+                ww.eval(PRELUDE);
+            },
+        });
+        const w = dom.window;
+        await settle(GRACE);
+        assert.equal(out.length, 1);
+        w.eval(AIRGAP);
+        for ( const callback of w.airgap.readyQueue ) {
+            callback(w.airgap);
+        }
+        assert.equal(out.length, 2, out.join(' | '));
+        assert.ok(out[1].endsWith(' via=setConsent'), out[1]);
         assert.equal(w.__calls.length, 1);
     });
 });

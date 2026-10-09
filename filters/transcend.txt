@@ -85,6 +85,51 @@
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
+! WHAT NOT TO WRITE, both reported from the field as "nothing happens, and no
+! cookie is set":
+!
+!   ||transcend-cdn.com^$script,redirect-rule=transcend-reject.js
+!
+! Two separate faults in one line.
+!
+!   1. ^$script matches every script on their CDN, airgap.js included - so the
+!      engine is replaced by the banner's stub. Nothing then records a refusal,
+!      because this queues on airgap and airgap never arrives; and nothing
+!      enforces one either, because airgap is the half that does the blocking.
+!      Name the banner: the two rules at the top of this list do.
+!
+!   2. redirect-rule= only fires where some other filter blocks the request. On
+!      its own it does nothing at all, and their real ui.js loads as usual. The
+!      rules here use redirect=, which blocks and serves in one.
+!
+! Either way the console says so now, a second after load:
+!
+!   [consent-rr] transcend-reject 1.2.0 refused=(none) via=no engine
+!
+! and where their engine is in the page but never becomes ready, the purposes
+! their own prelude carries are enough to write the refusal to their cookie for
+! the next page:
+!
+!   [consent-rr] transcend-reject 1.2.0 refused=Functional,SaleOfInfo,
+!                Advertising,Marketing,Sales,Analytics via=cookie, no engine
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! READING THEIR COOKIE AFTERWARDS. A purpose may still say "Auto" in tcm once
+! this has run, and that is not the refusal failing. Five genuine records off
+! five tenants show it: GcmAdvanced on one, AlwaysBlock on another, Functional
+! on a third - and Functional is configurable on other tenants, so which
+! purpose it is is the tenant's choice rather than a class of purpose. Their
+! own writer applies a value only where the purpose is configurable, so one
+! their tenant does not hold configurable keeps whatever its default resolved
+! to. Every purpose is asked to go off; theirs decides which of them move.
+!
+! confirmed:true is the field their engine gates the prompt on. updated is not
+! a gate and is not constant in their own records either - four of those five
+! say true, one false.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
 ! ui.js is what asks for these, so with the banner replaced they are not
 ! fetched. The cross-domain frame is what syncs a decision between a tenant's
 ! domains; with a refusal recorded, a refusal is what it syncs.

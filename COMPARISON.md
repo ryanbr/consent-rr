@@ -128,7 +128,7 @@ the same fixture as its sibling.
 | `civic-reject-unblock` | 22.8 KB | `CookieControl` |
 | `cookiebot-reject` | 14.7 KB | `CookieConsent`, `Cookiebot`, `uetq`, `CB_OnTagsExecuted_Processed` |
 | `securiti-reject` | 8.2 KB | `SecuritiSDK`, `__ScrtSdkApiOps`, `initCmp`, `setConsentBannerParams`, `showConsentPreferencesPopup`, `overrideThemeMatching` +4 more |
-| `transcend-reject` | 5.2 KB | - |
+| `transcend-reject` | 6.7 KB | - |
 | `complianz-reject` | 13.4 KB | `cmplz_get_cookie`, `cmplz_set_cookie`, `cmplz_has_consent`, `cmplz_in_array`, `cmplz_get_banner_status`, `cmplz_set_banner_status` +9 more |
 | `complianz-accept` | 13.4 KB | `cmplz_get_cookie`, `cmplz_set_cookie`, `cmplz_has_consent`, `cmplz_in_array`, `cmplz_get_banner_status`, `cmplz_set_banner_status` +9 more |
 | `zdconsent-reject` | 48.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
@@ -265,7 +265,7 @@ uBlock Origin does the blocking.
 [consent-rr] civic-reject-unblock 1.4.0 mode=gdpr revoked=analytics accepted=embedded iab=off cookie=written
 [consent-rr] cookiebot-reject 1.0.1 necessary=true denied=preferences,statistics,marketing iab=off cookie=written
 [consent-rr] securiti-reject 1.0.0 consents=none tenant=read gcm=denied cookie=written
-[consent-rr] transcend-reject 1.1.0 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
+[consent-rr] transcend-reject 1.2.0 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
 [consent-rr] complianz-reject 1.1.0 categories=functional cookies=4 services=2 revived=0 told=4 prefix=cmplz_ policy=kept consenttype=optin
 [consent-rr] complianz-accept 1.1.0 categories=all cookies=4 services=2 revived=2 told=4 prefix=cmplz_ policy=kept consenttype=optin
 [consent-rr] zdconsent-reject/onetrust 1.0.1 groups=,C0001, tcf=refused gpp=refused
