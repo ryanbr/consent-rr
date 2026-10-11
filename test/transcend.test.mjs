@@ -519,8 +519,54 @@ describe('transcend-reject, where their engine never readies', ( ) => {
         ).window;
         await settle(1300);
         assert.equal(out.length, 1, out.join(' | '));
-        assert.ok(out[0].endsWith(' refused=(none) via=no engine'), out[0]);
+        // Their object is what a purpose list is read off, and replacing
+        // their file leaves none - so the refusal goes in against the names
+        // their own records carry rather than going unwritten.
+        assert.ok(
+            out[0].endsWith(
+                ' refused=Advertising,Analytics,BrowserCookies,' +
+                'EnrichmentConsent,Functional,SaleOfInfo' +
+                ' via=cookie+storage, no engine'
+            ),
+            out[0]
+        );
         assert.equal(w.airgap, undefined, 'and there is none to install');
+        const held = JSON.parse(cookies(w).get('tcm'));
+        assert.deepEqual(held.purposes, {
+            Advertising: false,
+            Analytics: false,
+            BrowserCookies: false,
+            EnrichmentConsent: false,
+            Functional: false,
+            SaleOfInfo: false,
+        }, 'every one of them refused, none of them essential');
+        assert.deepEqual(
+            JSON.parse(w.localStorage.getItem('tcmConsent')).purposes,
+            held.purposes,
+            'and both stores carry the same record'
+        );
+    });
+
+    // The list is a stand-in for theirs, not a replacement: where their
+    // object is present it is read, however little it carries.
+    it('prefers their own purposes over the stand-in list', async ( ) => {
+        let out;
+        const w = boot({
+            before: ww => {
+                out = lines(ww);
+                ww.eval(PRELUDE);
+            },
+        }).window;
+        await settle(GRACE);
+        const held = JSON.parse(cookies(w).get('tcm'));
+        assert.ok(
+            Object.keys(held.purposes).every(
+                name => name !== 'BrowserCookies' && name !== 'GcmAdvanced'
+            ),
+            'no name from the stand-in list that their prelude did not name: ' +
+                Object.keys(held.purposes).join(',')
+        );
+        assert.equal(out.length, 1, out.join(' | '));
     });
 
     it('says so where their engine never drains the queue', async ( ) => {

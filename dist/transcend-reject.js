@@ -295,12 +295,33 @@ function consentRRTranscend() {
         }
         return out;
     };
+    const WITHOUT_THEIRS = [
+        'Advertising',
+        'Analytics',
+        'BrowserCookies',
+        'EnrichmentConsent',
+        'Functional',
+        'SaleOfInfo',
+    ];
+    const withoutTheirs = ( ) => {
+        try {
+            return w.airgap === null || typeof w.airgap !== 'object';
+        } catch(ex) {
+            return true;
+        }
+    };
     const GRACE = 1000;
     const watch = ( ) => {
         if ( spoke ) { return; }
         const why = readied ? 'no record' : 'no engine';
         const refused = preludeRefusal();
-        const names = Object.keys(refused);
+        let names = Object.keys(refused);
+        if ( names.length === 0 && withoutTheirs() ) {
+            for ( const name of WITHOUT_THEIRS ) {
+                refused[name] = false;
+            }
+            names = Object.keys(refused);
+        }
         if ( names.length === 0 ) {
             announce(names, why);
             return;

@@ -456,6 +456,38 @@ function consentRRTranscend() {
         return out;
     };
 
+    // Where their file never arrives there is no airgap to read a purpose
+    // list off, so preludeRefusal() has nothing to work with and a refusal
+    // would go unwritten. These are the names seen set to false in real tcm
+    // records, which is the set that can be refused without their object. A
+    // tenant purpose absent from here keeps their own default, and a name
+    // here that a tenant does not have is ignored by their reader, so the
+    // list erring long is the safe direction.
+    //
+    // Essential and AlwaysBlock are left out because their own writer only
+    // takes configurable and non-essential purposes. GcmAdvanced is left out
+    // because every sampled record carrying it had it at "Auto" - it has
+    // never been observed refused.
+    const WITHOUT_THEIRS = [
+        'Advertising',
+        'Analytics',
+        'BrowserCookies',
+        'EnrichmentConsent',
+        'Functional',
+        'SaleOfInfo',
+    ];
+
+    // Their object being absent is what separates "replaced their file" and
+    // "their file was blocked" from "their engine is here and recorded
+    // nothing": the first two have nothing to read, the third does.
+    const withoutTheirs = ( ) => {
+        try {
+            return w.airgap === null || typeof w.airgap !== 'object';
+        } catch(ex) {
+            return true;
+        }
+    };
+
     const GRACE = 1000;
     const watch = ( ) => {
         if ( spoke ) { return; }
@@ -464,7 +496,13 @@ function consentRRTranscend() {
         // where the first happened sends the reader to the wrong place.
         const why = readied ? 'no record' : 'no engine';
         const refused = preludeRefusal();
-        const names = Object.keys(refused);
+        let names = Object.keys(refused);
+        if ( names.length === 0 && withoutTheirs() ) {
+            for ( const name of WITHOUT_THEIRS ) {
+                refused[name] = false;
+            }
+            names = Object.keys(refused);
+        }
         if ( names.length === 0 ) {
             announce(names, why);
             return;
