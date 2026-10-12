@@ -241,7 +241,8 @@ describe('inmobi-reject', ( ) => {
         assert.equal(decoded.cmpId, 10);
         assert.equal(decoded.cmpVersion, 61);
         assert.equal(decoded.policyVersion, 5);
-        assert.equal(decoded.vendorListVersion, 178);
+        // The pinned fallback, for a visitor with no string of their own.
+        assert.equal(decoded.vendorListVersion, 180);
         assert.equal(decoded.isServiceSpecific, true);
         const now = new Date();
         const midnight = Date.UTC(
@@ -249,6 +250,70 @@ describe('inmobi-reject', ( ) => {
         );
         assert.equal(decoded.created.getTime(), midnight);
         assert.equal(decoded.lastUpdated.getTime(), midnight);
+    });
+
+    // The list version arrives with the GVL, which this never fetches - so a
+    // returning visitor's own string is the only place a tenant-accurate one
+    // can come from. Anything else is a pin that drifts.
+    //
+    // Their string only has to carry the core segment's leading fields for
+    // that to be read off it, so one is built here rather than pulling a whole
+    // vendor list in to encode a real one.
+    const priorString = (listVersion, version = 2) => {
+        const alphabet =
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+        let bits = '';
+        const push = (value, width) => {
+            for ( let i = width - 1; i >= 0; i-- ) {
+                bits += (value >> i) & 1;
+            }
+        };
+        push(version, 6);           // version
+        push(0, 36);                // created
+        push(0, 36);                // last updated
+        push(10, 12);               // cmpId
+        push(61, 12);               // cmpVersion
+        push(0, 6);                 // consent screen
+        push(0, 12);                // consent language
+        push(listVersion, 12);      // vendor list version, at offset 120
+        push(0, 24);                // enough tail for a 24-character core
+        let out = '';
+        for ( let i = 0; i < bits.length; i += 6 ) {
+            out += alphabet.charAt(parseInt(bits.substr(i, 6), 2));
+        }
+        return out;
+    };
+
+    it('carries the vendor list version out of their own last string', ( ) => {
+        const w = boot({
+            before: ww => {
+                ww.document.cookie =
+                    'euconsent-v2=' + priorString(199) + ';path=/';
+            },
+        }).window;
+        assert.equal(decode(w).vendorListVersion, 199, 'theirs, not the pin');
+    });
+
+    it('falls back where their string is not one', ( ) => {
+        const cases = [
+            [ '', 'nothing' ],
+            [ 'nonsense', 'not base64url' ],
+            [ 'A', 'too short to hold the field' ],
+            [ 'CPcqrstuvwx', 'still too short' ],
+            // Long enough to reach the field, and still not a string this can
+            // read: the first one is a TCF v1 core, the second carries no
+            // version at all where one has to be.
+            [ priorString(199, 1), 'a v1 core' ],
+            [ priorString(0), 'a zero where a list version goes' ],
+        ];
+        for ( const [ value, why ] of cases ) {
+            const w = boot({
+                before: ww => {
+                    ww.document.cookie = 'euconsent-v2=' + value + ';path=/';
+                },
+            }).window;
+            assert.equal(decode(w).vendorListVersion, 180, why);
+        }
     });
 
     it('objects to legitimate interest under Global Privacy Control', ( ) => {

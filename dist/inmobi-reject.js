@@ -6,7 +6,7 @@
 // comment to JavaScript. uBO drops these "//" lines when it parses.
 (function() {
     'use strict';
-function consentRRInMobiTcf(coreConfig) {
+function consentRRInMobiTcf(coreConfig, priorTcString) {
     const w = window;
     const doc = w.document;
     const B64 =
@@ -14,7 +14,28 @@ function consentRRInMobiTcf(coreConfig) {
     const CMP_ID = 10;              // InMobi's own IAB CMP id
     const CMP_VERSION = 61;         // as the sampled refusal carried
     const POLICY_VERSION = 5;
-    const VENDOR_LIST_VERSION = 178;
+    const VENDOR_LIST_VERSION_FALLBACK = 180;
+    const priorVendorListVersion = tcString => {
+        try {
+            if ( typeof tcString !== 'string' ) { return 0; }
+            const core = tcString.split('.')[0];
+            if ( core.length < 24 ) { return 0; }
+            let bits = '';
+            for ( const character of core.slice(0, 24) ) {
+                const index = B64.indexOf(character);
+                if ( index === -1 ) { return 0; }
+                bits += index.toString(2).padStart(6, '0');
+            }
+            if ( parseInt(bits.substr(0, 6), 2) !== 2 ) { return 0; }
+            return parseInt(bits.substr(120, 12), 2);
+        } catch(ex) {
+        }
+        return 0;
+    };
+    const carried = priorVendorListVersion(priorTcString);
+    const VENDOR_LIST_VERSION = carried !== 0
+        ? carried
+        : VENDOR_LIST_VERSION_FALLBACK;
     const VENDOR_MAX = 2000;
     const PURPOSES_LI_DEFAULT = [ 2, 7, 8, 9, 10, 11 ];
     const config = typeof coreConfig === 'object' && coreConfig !== null
@@ -739,7 +760,7 @@ function consentRRInMobi(installTcf, installGpp) {
         } catch(ex) {
         }
     }
-    const tcf = installTcf(core);
+    const tcf = installTcf(core, readCookie(CONSENT_COOKIE));
     const tcString = tcf.tcString;
     w.__tcfapi.consentRR = {
         mode: 'reject',

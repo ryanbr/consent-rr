@@ -154,7 +154,11 @@ function consentRRInMobi(installTcf, installGpp) {
         }
     }
 
-    const tcf = installTcf(core);
+    // A returning visitor's own string says which vendor list the last
+    // decision was made against, and that is better than anything this can
+    // pin: the list version arrives with the GVL, which a replaced cmp2.js
+    // never fetches.
+    const tcf = installTcf(core, readCookie(CONSENT_COOKIE));
     const tcString = tcf.tcString;
     w.__tcfapi.consentRR = {
         mode: 'reject',

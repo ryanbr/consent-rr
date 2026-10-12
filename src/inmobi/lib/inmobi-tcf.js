@@ -33,7 +33,7 @@
 
 */
 
-function consentRRInMobiTcf(coreConfig) {
+function consentRRInMobiTcf(coreConfig, priorTcString) {
     const w = window;
     const doc = w.document;
 
@@ -42,7 +42,42 @@ function consentRRInMobiTcf(coreConfig) {
     const CMP_ID = 10;              // InMobi's own IAB CMP id
     const CMP_VERSION = 61;         // as the sampled refusal carried
     const POLICY_VERSION = 5;
-    const VENDOR_LIST_VERSION = 178;
+    // Pinned rather than observed: the list version comes back with the GVL,
+    // which a replaced cmp2.js never fetches. It says which list the decisions
+    // were made against, and every decision here is no. 180 is what
+    // vendor-list.consensu.org served on 2026-10-08. A returning visitor's own
+    // euconsent-v2 overrides it below, which is the only way this can be the
+    // tenant's own number rather than a pin that drifts.
+    const VENDOR_LIST_VERSION_FALLBACK = 180;
+
+    // The core segment's leading fields are fixed width, so the version can be
+    // lifted out of a string without a library: 6 version, 36 created, 36 last
+    // updated, 12 cmpId, 12 cmpVersion, 6 consent screen, 12 language, and the
+    // vendor list version at 120.
+    const priorVendorListVersion = tcString => {
+        try {
+            if ( typeof tcString !== 'string' ) { return 0; }
+            const core = tcString.split('.')[0];
+            if ( core.length < 24 ) { return 0; }
+            let bits = '';
+            for ( const character of core.slice(0, 24) ) {
+                const index = B64.indexOf(character);
+                if ( index === -1 ) { return 0; }
+                bits += index.toString(2).padStart(6, '0');
+            }
+            if ( parseInt(bits.substr(0, 6), 2) !== 2 ) { return 0; }
+            // Twelve bits hold 4095 at most, and a zero falls through to the
+            // pin below, so the value needs no range check of its own.
+            return parseInt(bits.substr(120, 12), 2);
+        } catch(ex) {
+        }
+        return 0;
+    };
+
+    const carried = priorVendorListVersion(priorTcString);
+    const VENDOR_LIST_VERSION = carried !== 0
+        ? carried
+        : VENDOR_LIST_VERSION_FALLBACK;
     // Vendor ids are granted as one range, so a generous ceiling costs nothing
     // in the string. The sampled refusal carried ids up to 1645 of 1015 named.
     const VENDOR_MAX = 2000;
