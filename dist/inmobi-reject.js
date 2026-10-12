@@ -376,25 +376,120 @@ function consentRRInMobiTcf(coreConfig) {
         keptLegitimateInterest: keepLegitimateInterest,
     };
 }
-function consentRRInMobiGpp(tcString, section) {
+function consentRRInMobiGpp(tcString, section, coreConfig) {
     const w = window;
     const doc = w.document;
     const CMP_ID = 10;              // InMobi's own id
     const SECTION_ID = 2;
     const SECTION_NAME = 'tcfeuv2';
-    const HEADER = 'DBABMA';
-    const gppString = HEADER + '~' + tcString;
+    const USNAT_ID = 7;
+    const USNAT_NAME = 'usnat';
+    const HEADER_TCF = 'DBABMA';
+    const HEADER_TCF_USNAT = 'DBACMMA';
+    const core = coreConfig !== null && typeof coreConfig === 'object'
+        ? coreConfig
+        : {};
+    const underMspa = core.mspaJurisdiction === 'NATIONAL' ||
+        core.mspaJurisdiction === 'STATE_AND_NATIONAL';
+    const B64 =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    const toBase64 = bits => {
+        let padded = bits;
+        while ( padded.length % 8 !== 0 ) { padded += '0'; }
+        while ( padded.length % 6 !== 0 ) { padded += '0'; }
+        let out = '';
+        for ( let i = 0; i < padded.length; i += 6 ) {
+            out += B64.charAt(parseInt(padded.slice(i, i + 6), 2));
+        }
+        return out;
+    };
+    const gpcSignal = ( ) => {
+        try {
+            return w.navigator.globalPrivacyControl === true;
+        } catch(ex) {
+        }
+        return false;
+    };
+    const usnatSection = {
+        Version: 2,
+        SharingNotice: 1,
+        SaleOptOutNotice: 1,
+        SharingOptOutNotice: 1,
+        TargetedAdvertisingOptOutNotice: 1,
+        SensitiveDataProcessingOptOutNotice: 1,
+        SensitiveDataLimitUseNotice: 1,
+        SaleOptOut: 1,
+        SharingOptOut: 1,
+        TargetedAdvertisingOptOut: 1,
+        SensitiveDataProcessing: [
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        ],
+        KnownChildSensitiveDataConsents: [ 1, 1, 1 ],
+        PersonalDataConsents: 1,
+        MspaCoveredTransaction: core.isCoveredTransaction === true ? 1 : 2,
+        MspaOptOutOptionMode: core.mspaSignalMode === 'OPT_OUT' ? 1 : 0,
+        MspaServiceProviderMode: 2,
+        GpcSegmentType: 1,
+        Gpc: gpcSignal(),
+    };
+    const encodeUsnat = ( ) => {
+        let bits = '';
+        const push = (value, width) => {
+            let out = '';
+            for ( let i = width - 1; i >= 0; i-- ) {
+                out += (value >> i) & 1;
+            }
+            bits += out;
+        };
+        push(usnatSection.Version, 6);
+        push(usnatSection.SharingNotice, 2);
+        push(usnatSection.SaleOptOutNotice, 2);
+        push(usnatSection.SharingOptOutNotice, 2);
+        push(usnatSection.TargetedAdvertisingOptOutNotice, 2);
+        push(usnatSection.SensitiveDataProcessingOptOutNotice, 2);
+        push(usnatSection.SensitiveDataLimitUseNotice, 2);
+        push(usnatSection.SaleOptOut, 2);
+        push(usnatSection.SharingOptOut, 2);
+        push(usnatSection.TargetedAdvertisingOptOut, 2);
+        for ( const value of usnatSection.SensitiveDataProcessing ) {
+            push(value, 2);
+        }
+        for ( const value of usnatSection.KnownChildSensitiveDataConsents ) {
+            push(value, 2);
+        }
+        push(usnatSection.PersonalDataConsents, 2);
+        push(usnatSection.MspaCoveredTransaction, 2);
+        push(usnatSection.MspaOptOutOptionMode, 2);
+        push(usnatSection.MspaServiceProviderMode, 2);
+        const core64 = toBase64(bits);
+        let gpcBits = '';
+        gpcBits += '01';
+        gpcBits += usnatSection.Gpc ? '1' : '0';
+        return core64 + '.' + toBase64(gpcBits);
+    };
+    const gppString = underMspa
+        ? HEADER_TCF_USNAT + '~' + tcString + '~' + encodeUsnat()
+        : HEADER_TCF + '~' + tcString;
+    const sectionIds = underMspa
+        ? [ SECTION_ID, USNAT_ID ]
+        : [ SECTION_ID ];
+    const supportedApis = underMspa
+        ? [ SECTION_ID + ':' + SECTION_NAME, USNAT_ID + ':' + USNAT_NAME ]
+        : [ SECTION_ID + ':' + SECTION_NAME ];
+    const parsed = underMspa
+        ? { tcfeuv2: section, usnat: usnatSection }
+        : { tcfeuv2: section };
     const pingData = ( ) => ({
         gppVersion: '1.1',
         cmpStatus: 'loaded',
         cmpDisplayStatus: 'hidden',
         signalStatus: 'ready',
-        supportedAPIs: [ SECTION_ID + ':' + SECTION_NAME ],
+        supportedAPIs: supportedApis,
         cmpId: CMP_ID,
-        sectionList: [ SECTION_ID ],
-        applicableSections: [ SECTION_ID ],
+        sectionList: sectionIds,
+        applicableSections: sectionIds,
         gppString,
-        parsedSections: { tcfeuv2: section },
+        parsedSections: parsed,
     });
     const listeners = new Map();
     let nextListenerId = 1;
@@ -407,14 +502,18 @@ function consentRRInMobiGpp(tcString, section) {
     const sectionFrom = name => {
         if ( name === SECTION_NAME ) { return section; }
         if ( Number(name) === SECTION_ID ) { return section; }
+        if ( underMspa === false ) { return null; }
+        if ( name === USNAT_NAME ) { return usnatSection; }
+        if ( Number(name) === USNAT_ID ) { return usnatSection; }
         return null;
     };
     const fieldFrom = path => {
         if ( typeof path !== 'string' ) { return undefined; }
         const pos = path.indexOf('.');
         if ( pos === -1 ) { return undefined; }
-        if ( sectionFrom(path.slice(0, pos)) === null ) { return undefined; }
-        return section[path.slice(pos + 1)];
+        const held = sectionFrom(path.slice(0, pos));
+        if ( held === null ) { return undefined; }
+        return held[path.slice(pos + 1)];
     };
     const gppApi = (command, callback, parameter) => {
         if ( command === undefined || command === 'queue' ) {
@@ -654,7 +753,7 @@ function consentRRInMobi(installTcf, installGpp) {
         } catch(ex) {
         }
     }
-    const gppString = installGpp(tcString, tcf.section);
+    const gppString = installGpp(tcString, tcf.section, core);
     const gppWanted = typeof core.gdprEncodingMode !== 'string' ||
         core.gdprEncodingMode.indexOf('GPP') !== -1;
     const uspApi = (command, version, callback) => {

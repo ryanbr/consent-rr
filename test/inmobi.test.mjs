@@ -352,6 +352,102 @@ describe('inmobi-reject', ( ) => {
         assert.equal(reference.PublisherCountryCode, 'IT');
     });
 
+    // A tenant that runs MSPA says so in the config choice.js hands over, so
+    // the US national section is the tenant's own answer rather than a guess.
+    it('adds usnat where the tenant runs MSPA', ( ) => {
+        const w = boot({
+            core: Object.assign({}, CORE, {
+                mspaJurisdiction: 'STATE_AND_NATIONAL',
+                mspaSignalMode: 'OPT_OUT',
+                mspaOptOutPurposeIds: [ 1, 2, 3, 4 ],
+                isCoveredTransaction: false,
+            }),
+        }).window;
+        let data;
+        w.__gpp('ping', value => { data = value; });
+        assert.deepEqual([ ...data.sectionList ], [ 2, 7 ]);
+        assert.deepEqual([ ...data.applicableSections ], [ 2, 7 ]);
+        assert.deepEqual([ ...data.supportedAPIs ], [ '2:tcfeuv2', '7:usnat' ]);
+        assert.ok(data.gppString.startsWith('DBACMMA~'), data.gppString);
+
+        // Their own library has to agree, field for field.
+        const model = new GppModel();
+        model.decode(data.gppString);
+        assert.deepEqual(model.getSectionIds(), [ 2, 7 ]);
+        const held = JSON.parse(JSON.stringify(model.getSection('usnat')));
+        assert.equal(held.Version, 2);
+        assert.equal(held.SaleOptOut, 1, 'opted out of sale');
+        assert.equal(held.SharingOptOut, 1, 'opted out of sharing');
+        assert.equal(held.TargetedAdvertisingOptOut, 1);
+        assert.equal(held.SaleOptOutNotice, 1, 'notice recorded as given');
+        assert.equal(held.PersonalDataConsents, 1);
+        assert.deepEqual(held.SensitiveDataProcessing, new Array(16).fill(1));
+        assert.deepEqual(held.KnownChildSensitiveDataConsents, [ 1, 1, 1 ]);
+        // isCoveredTransaction false is their 2, not a dropped field.
+        assert.equal(held.MspaCoveredTransaction, 2);
+        assert.equal(held.MspaOptOutOptionMode, 1, 'from mspaSignalMode');
+        assert.equal(held.MspaServiceProviderMode, 2);
+        assert.equal(held.Gpc, false);
+
+        // Byte for byte what their library encodes for these same fields: a
+        // decoder tolerates a segment that is a character short, so comparing
+        // only the decoded values would miss a padding drift.
+        const expected = new GppModel();
+        for ( const [ name, value ] of Object.entries(held) ) {
+            if ( name === 'GpcSegmentType' ) { continue; }
+            expected.setFieldValue('usnat', name, value);
+        }
+        assert.equal(
+            data.gppString.split('~')[2],
+            expected.encodeSection('usnat'),
+            'the usnat segment matches their own encoder exactly'
+        );
+
+        // And what __gpp answers is the same object their library decoded.
+        let mine;
+        w.__gpp('getSection', value => { mine = value; }, 'usnat');
+        assert.deepEqual(JSON.parse(JSON.stringify(mine)), held);
+        let field;
+        w.__gpp('getField', value => { field = value; }, 'usnat.SaleOptOut');
+        assert.equal(field, 1);
+    });
+
+    it('carries the GPC signal into usnat where the browser sets it', ( ) => {
+        const w = boot({
+            before: ww => {
+                Object.defineProperty(ww.navigator, 'globalPrivacyControl', {
+                    get: ( ) => true,
+                    configurable: true,
+                });
+            },
+            core: Object.assign({}, CORE, {
+                mspaJurisdiction: 'NATIONAL',
+                mspaSignalMode: 'OPT_OUT',
+            }),
+        }).window;
+        let data;
+        w.__gpp('ping', value => { data = value; });
+        const model = new GppModel();
+        model.decode(data.gppString);
+        assert.equal(model.getFieldValue('usnat', 'Gpc'), true);
+    });
+
+    // A tenant that does not run MSPA keeps the string it had: section 2 alone,
+    // because an empty US section is a claim about a jurisdiction, not a nothing.
+    it('leaves usnat out where the tenant does not run MSPA', ( ) => {
+        const w = boot().window;
+        let data;
+        w.__gpp('ping', value => { data = value; });
+        assert.deepEqual([ ...data.sectionList ], [ 2 ]);
+        assert.ok(data.gppString.startsWith('DBABMA~'), data.gppString);
+        let found;
+        w.__gpp('hasSection', value => { found = value; }, 'usnat');
+        assert.equal(found, false);
+        let section;
+        w.__gpp('getSection', value => { section = value; }, 'usnat');
+        assert.equal(section, null);
+    });
+
     it('answers the GPP commands, and refuses the one that is not one', ( ) => {
         const w = boot().window;
         const answers = {};

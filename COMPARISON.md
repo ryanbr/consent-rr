@@ -122,7 +122,7 @@ the same fixture as its sibling.
 | `onetrust-reject-unblock` | 36.1 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
 | `chcookieconsent-reject` | 11.2 KB | `serializeForm` |
 | `cookieinformation-reject` | 10.9 KB | `CookieInformation`, `CookieConsent`, `CookieConsentDialog`, `cicc`, `cicl`, `isCookieInformationAPIReady` |
-| `inmobi-reject` | 24.8 KB | `__gpp`, `__uspapi`, `__tcfapiui` |
+| `inmobi-reject` | 28.5 KB | `__gpp`, `__uspapi`, `__tcfapiui` |
 | `osano-reject` | 34.0 KB | `Osano`, `__uspapi`, `__tcfapi`, `__gpp` |
 | `civic-reject` | 22.8 KB | `CookieControl` |
 | `civic-reject-unblock` | 22.8 KB | `CookieControl` |
