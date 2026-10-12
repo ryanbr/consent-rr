@@ -36,6 +36,24 @@
     here. Notice given with an opt-out recorded is the pair MSPA's own
     consistency rules expect; notice absent with an opt-out is not.
 
+    The two sections do not say the same thing about advertising, and that is
+    on purpose. The TCF section keeps legitimate interest for the purposes the
+    tenant's legitimateInterestOptIn asks for - purpose 2 among them, which is
+    selecting advertising - while usnat opts out of targeted advertising
+    outright. cmp2.js never disagrees with itself there, because it ties both
+    to GPC and leaves both permissive without it.
+
+    Keeping that asymmetry is the deliberate choice: MSPA has no
+    legitimate-interest basis to keep, so there is nothing in usnat for the
+    tenant's LI configuration to be mirrored into - an opt-out is the only
+    thing that section can carry. Objecting to LI in the TCF section instead
+    would diverge from the tenant's own configuration on the European side,
+    and gating usnat on GPC would send "did not opt out" to US vendors for
+    every visitor who has not set it, which is the state this section was
+    added to stop. GPC still withdraws the TCF legitimate interests, as
+    inmobi-tcf.js has it, so a visitor who sends that signal gets both
+    sections saying no.
+
     The header is DBABMA for section 2 alone and DBACMMA for 2 and 7, which is
     what @iabgpp/cmpapi encodes for those section lists. The tests decode what
     this builds with that library and compare section for section, so a drift
