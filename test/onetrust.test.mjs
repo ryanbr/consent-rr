@@ -60,6 +60,7 @@ describe('resources file', ( ) => {
                 'didomi-accept.js',
                 'didomi-reject.js',
                 'fundingchoices-reject.js',
+                'inmobi-accept.js',
                 'inmobi-reject.js',
                 'iubenda-accept.js',
                 'iubenda-reject-unblock.js',

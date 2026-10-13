@@ -46,7 +46,7 @@
 
 */
 
-function consentRRInMobi(installTcf, installGpp) {
+function consentRRInMobi(installTcf, installGpp, grantAll) {
     const w = window;
     const doc = w.document;
     const VERSION = '@@VERSION@@';
@@ -56,10 +56,25 @@ function consentRRInMobi(installTcf, installGpp) {
     const COOKIE_MAX_AGE = 33696000;
     const CONSENT_COOKIE = 'euconsent-v2';
     const GPP_COOKIE = 'IABGPP_HDR_GppString';
-    // No notice was given and no opt-out applies, which is what a visitor
-    // outside the tenant's US jurisdictions gets. Where in the world the
-    // visitor is, this cannot know.
-    const USP_STRING = '1---';
+    // Where CCPA applies at all comes from a location lookup their cmp2.js
+    // makes and these filters noop, so it is not claimed: the notice and the
+    // LSPA characters stay dashes. The middle one is not a claim about
+    // jurisdiction though - it is the visitor's own signal, and Global Privacy
+    // Control is the one input that is an opt-out by itself. So 1--- normally,
+    // 1-Y- where the browser sends it, which is what osano-usp.js does with
+    // the same reasoning.
+    //
+    // Brave sends it by default, so a Brave visitor gets the opt-out and the
+    // objection to legitimate interest without having to ask; elsewhere it is
+    // off unless the visitor turns it on.
+    const gpcSignal = ( ) => {
+        try {
+            return w.navigator.globalPrivacyControl === true;
+        } catch(ex) {
+        }
+        return false;
+    };
+    const USP_STRING = '1-' + (gpcSignal() ? 'Y' : '-') + '-';
 
     const previous = w.__tcfapi;
     if ( typeof previous === 'function' && previous.consentRR !== undefined ) {
@@ -158,7 +173,7 @@ function consentRRInMobi(installTcf, installGpp) {
     // decision was made against, and that is better than anything this can
     // pin: the list version arrives with the GVL, which a replaced cmp2.js
     // never fetches.
-    const tcf = installTcf(core, readCookie(CONSENT_COOKIE));
+    const tcf = installTcf(core, readCookie(CONSENT_COOKIE), grantAll);
     const tcString = tcf.tcString;
     w.__tcfapi.consentRR = {
         mode: 'reject',
@@ -223,7 +238,7 @@ function consentRRInMobi(installTcf, installGpp) {
             ' config=' + (sawConfig ? 'read' : 'default') +
             ' cc=' + tcf.section.PublisherCountryCode +
             ' lang=' + tcf.section.ConsentLanguage +
-            ' tcf=refused' +
+            ' tcf=' + (tcf.granted ? 'granted' : 'refused') +
             ' li=' + (tcf.keptLegitimateInterest ? 'kept' : 'objected') +
             ' gpp=refused' +
             ' usp=' + USP_STRING +

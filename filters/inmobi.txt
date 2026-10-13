@@ -23,6 +23,14 @@
 ||cmp.inmobi.com/tcfv2/cmp2.js$script,redirect=inmobi-reject.js
 ||cmp.inmobi.com/tcfv2/cmp2-polyfilled.js$script,redirect=inmobi-reject.js
 
+! Granting instead, per site, for a wall that keeps the page shut until the
+! answer is yes. It consents to the purposes, special features and vendors the
+! tenant's own configuration names, so it is not a default - a string that
+! consents to 2000 vendor ids is read by every one of them that asks:
+!
+! ||cmp.inmobi.com/tcfv2/cmp2.js$script,redirect=inmobi-accept.js:10,domain=example.com
+! ||cmp.inmobi.com/tcfv2/cmp2-polyfilled.js$script,redirect=inmobi-accept.js:10,domain=example.com
+
 ! -----------------------------------------------------------------------------
 ! Where a redirect cannot land.
 !

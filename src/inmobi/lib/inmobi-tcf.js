@@ -33,7 +33,7 @@
 
 */
 
-function consentRRInMobiTcf(coreConfig, priorTcString) {
+function consentRRInMobiTcf(coreConfig, priorTcString, grantAll) {
     const w = window;
     const doc = w.document;
 
@@ -83,6 +83,10 @@ function consentRRInMobiTcf(coreConfig, priorTcString) {
     const VENDOR_MAX = 2000;
     // cmp2.js' own coreConfig defaults, for a page that has no config to read.
     const PURPOSES_LI_DEFAULT = [ 2, 7, 8, 9, 10, 11 ];
+    // TCF 2.2 has eleven purposes and two special features; a tenant that
+    // names none of them in its configuration is granted all of them.
+    const PURPOSES_ALL = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ];
+    const SPECIAL_FEATURES_ALL = [ 1, 2 ];
 
     const config = typeof coreConfig === 'object' && coreConfig !== null
         ? coreConfig
@@ -109,14 +113,38 @@ function consentRRInMobiTcf(coreConfig, priorTcString) {
 
     // A refusal is not an objection to legitimate interest, which needs its own
     // action - but Global Privacy Control is exactly that objection.
+    // Read the same way the core reads it for the USP string: guarded, and
+    // true only where it is exactly true. Two readers that disagree about the
+    // one signal would put a refusal in one layer and not the other.
+    const gpcSignal = ( ) => {
+        try {
+            return w.navigator.globalPrivacyControl === true;
+        } catch(ex) {
+        }
+        return false;
+    };
     const keepLegitimateInterest =
-        config.legitimateInterestOptIn !== false &&
-        w.navigator.globalPrivacyControl !== true;
+        config.legitimateInterestOptIn !== false && gpcSignal() === false;
 
     const purposesLi = keepLegitimateInterest
         ? idsFrom(
             config.vendorPurposeLegitimateInterestIds, 11, PURPOSES_LI_DEFAULT
         )
+        : [];
+
+    // Granting is for a wall that keeps the page shut until the answer is yes.
+    // What it grants is the tenant's own lists where they carry one, because a
+    // string that consents to a purpose their configuration does not name is
+    // not an answer their own reader expects.
+    const granted = grantAll === true;
+    const purposeConsents = granted
+        ? idsFrom(config.vendorPurposeIds, 24, PURPOSES_ALL)
+        : [];
+    const specialFeatures = granted
+        ? idsFrom(config.vendorSpecialFeaturesIds, 12, SPECIAL_FEATURES_ALL)
+        : [];
+    const publisherConsents = granted
+        ? idsFrom(config.publisherPurposeIds, 24, PURPOSES_ALL)
         : [];
     const publisherCC = twoLetters(config.publisherCountryCode, 'AA');
     const language = twoLetters(
@@ -208,12 +236,16 @@ function consentRRInMobiTcf(coreConfig, priorTcString) {
         push(POLICY_VERSION, 6);
         push(serviceSpecific ? 1 : 0, 1);
         push(0, 1);                     // standard stacks and texts
-        pushFlags([], 12);              // special features: none opted into
-        pushFlags([], 24);              // purpose consents: none
+        pushFlags(specialFeatures, 12); // special features opted into
+        pushFlags(purposeConsents, 24); // purpose consents
         pushFlags(purposesLi, 24);      // purpose legitimate interests
         push(0, 1);                     // purpose one treatment
         pushLetters(publisherCC);
-        pushNoVendors();                // vendor consents: none at all
+        if ( granted ) {
+            pushVendorRange();          // vendor consents, as one range
+        } else {
+            pushNoVendors();            // vendor consents: none at all
+        }
         if ( keepLegitimateInterest ) {
             pushVendorRange();          // vendor legitimate interests, kept
         } else {
@@ -228,8 +260,8 @@ function consentRRInMobiTcf(coreConfig, priorTcString) {
     const encodePublisherSegment = ( ) => {
         const { push, pushFlags, toString } = bitWriter();
         push(3, 3);                     // segment type
-        pushFlags([], 24);              // publisher consents: none
-        pushFlags(purposesLi, 24);      // publisher legitimate interests
+        pushFlags(publisherConsents, 24);   // publisher consents
+        pushFlags(purposesLi, 24);          // publisher legitimate interests
         push(0, 6);                     // no custom purposes
         return toString();
     };
@@ -266,11 +298,16 @@ function consentRRInMobiTcf(coreConfig, priorTcString) {
 
     // Built once: a vendor object runs to a few hundred entries and every
     // getTCData answer shares it.
-    const noPurposes = flags([], 11);
+    const purposeConsentFlags = flags(purposeConsents, 11);
+    const publisherConsentFlags = flags(publisherConsents, 11);
+    const specialFeatureFlags = flags(specialFeatures, 2);
     const purposeLegitimateInterests = flags(purposesLi, 11);
     const vendorLegitimateInterests = keepLegitimateInterest
         ? range(VENDOR_MAX)
         : {};
+    // The same range the string carries, so what is answered and what is
+    // stored cannot drift apart.
+    const vendorConsentFlags = granted ? range(VENDOR_MAX) : {};
 
     const tcData = listenerId => {
         const data = {
@@ -291,16 +328,16 @@ function consentRRInMobiTcf(coreConfig, priorTcString) {
                 disclosedVendors: {},
             },
             purpose: {
-                consents: noPurposes,
+                consents: purposeConsentFlags,
                 legitimateInterests: purposeLegitimateInterests,
             },
             vendor: {
-                consents: {},
+                consents: vendorConsentFlags,
                 legitimateInterests: vendorLegitimateInterests,
             },
-            specialFeatureOptins: flags([], 2),
+            specialFeatureOptins: specialFeatureFlags,
             publisher: {
-                consents: noPurposes,
+                consents: publisherConsentFlags,
                 legitimateInterests: purposeLegitimateInterests,
                 customPurpose: {
                     consents: {},
@@ -497,6 +534,7 @@ function consentRRInMobiTcf(coreConfig, priorTcString) {
         tcString,
         section,
         gdprApplies,
+        granted,
         keptLegitimateInterest: keepLegitimateInterest,
     };
 }

@@ -33,5 +33,5 @@
     // @include lib/inmobi-tcf.js
     // @include lib/inmobi-gpp.js
     // @include lib/inmobi-core.js
-    consentRRInMobi(consentRRInMobiTcf, consentRRInMobiGpp);
+    consentRRInMobi(consentRRInMobiTcf, consentRRInMobiGpp, false);
 })();

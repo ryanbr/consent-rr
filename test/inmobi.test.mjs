@@ -53,9 +53,12 @@ const PAGE = '<html lang="en"><head></head><body>' +
     '<p id="content">x</p></body></html>';
 
 let reject;
+let accept;
 
 before(async ( ) => {
-    reject = (await loadResources()).get('inmobi-reject.js');
+    const resources = await loadResources();
+    reject = resources.get('inmobi-reject.js');
+    accept = resources.get('inmobi-accept.js');
 });
 
 const boot = (options = {}) => {
@@ -115,8 +118,9 @@ describe('inmobi-reject', ( ) => {
     it('ships as one resource, in the format uBO parses', async ( ) => {
         const names = Array.from((await loadResources()).keys())
             .filter(name => name.startsWith('inmobi-'));
-        // One resource: a refusal. No accept-all variant for this one.
-        assert.deepEqual(names, [ 'inmobi-reject.js' ]);
+        // Two: a refusal, and a grant for a wall that will not open without
+        // one. No unblock variant - the grant is the unblock here.
+        assert.deepEqual(names, [ 'inmobi-accept.js', 'inmobi-reject.js' ]);
         assert.equal(/^[ \t]*$/m.test(reject), false);
         assert.equal(/[^\x20-\x7e\t\n]/.test(reject), false);
         assert.ok(reject.includes("const VERSION = '" + versions.inmobi + "'"));
@@ -468,6 +472,33 @@ describe('inmobi-reject', ( ) => {
         assert.deepEqual(plain(answers[1]), [ null, false ]);
     });
 
+    // Their own encoder turns Global Privacy Control into an opt-out by
+    // itself, and Brave sends it by default - so this is the normal answer
+    // there, and the exception elsewhere.
+    it('turns Global Privacy Control into the USP opt-out', ( ) => {
+        let out;
+        const w = boot({
+            before: ww => {
+                out = lines(ww);
+                Object.defineProperty(ww.navigator, 'globalPrivacyControl', {
+                    get: ( ) => true,
+                    configurable: true,
+                });
+            },
+        }).window;
+        let held;
+        w.__uspapi('getUSPData', 1, value => { held = value; });
+        assert.deepEqual(
+            JSON.parse(JSON.stringify(held)),
+            { version: 1, uspString: '1-Y-' }
+        );
+        assert.ok(out[0].includes(' usp=1-Y-'), out[0]);
+        // The same signal still withdraws legitimate interest, which is the
+        // behaviour it already had - one signal, both layers.
+        assert.ok(out[0].includes(' li=objected'), out[0]);
+        assert.deepEqual(idsOn(decode(w).purposeLegitimateInterests), []);
+    });
+
     it('answers the commands the page itself calls', ( ) => {
         const w = boot().window;
         const answers = {};
@@ -619,5 +650,119 @@ describe('filters, inmobi', ( ) => {
         // Both file names: choice.js picks the polyfilled one on old browsers.
         assert.ok(active.includes('/cmp2.js'));
         assert.ok(active.includes('/cmp2-polyfilled.js'));
+    });
+});
+
+/******************************************************************************/
+
+// The grant is for a wall that keeps the page shut until the answer is yes, so
+// what matters is that the yes is one their own reader and the IAB's library
+// both accept - and that it carries the tenant's lists rather than everything.
+describe('inmobi-accept', ( ) => {
+    const bootAccept = (options = {}) => {
+        const core = 'core' in options ? options.core : CORE;
+        return runDom(accept, options.url || URL, options.html || PAGE, w => {
+            if ( options.stub !== false ) { w.eval(STUB); }
+            if ( typeof options.before === 'function' ) { options.before(w); }
+            if ( core === null ) { return; }
+            w.eval(
+                'window.__tcfapi("init", 2, function() {}, { "coreConfig": ' +
+                JSON.stringify(core) + ' });'
+            );
+        });
+    };
+
+    it('consents to the purposes the tenant names', ( ) => {
+        const w = bootAccept({
+            core: Object.assign({}, CORE, {
+                vendorPurposeIds: [ 1, 2, 3, 4 ],
+                vendorSpecialFeaturesIds: [ 1 ],
+                publisherPurposeIds: [ 1, 2 ],
+            }),
+        }).window;
+        const decoded = decode(w);
+        assert.deepEqual(idsOn(decoded.purposeConsents), [ 1, 2, 3, 4 ]);
+        assert.deepEqual(idsOn(decoded.specialFeatureOptins), [ 1 ]);
+        assert.deepEqual(idsOn(decoded.publisherConsents), [ 1, 2 ]);
+        assert.ok(decoded.vendorConsents.size > 1000, 'vendors consented');
+    });
+
+    it('grants every purpose where the tenant names none', ( ) => {
+        const core = Object.assign({}, CORE);
+        delete core.vendorPurposeIds;
+        delete core.vendorSpecialFeaturesIds;
+        delete core.publisherPurposeIds;
+        const decoded = decode(bootAccept({ core }).window);
+        assert.deepEqual(
+            idsOn(decoded.purposeConsents),
+            [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ]
+        );
+        assert.deepEqual(idsOn(decoded.specialFeatureOptins), [ 1, 2 ]);
+    });
+
+    it('answers getTCData with what the string carries', ( ) => {
+        const w = bootAccept({
+            core: Object.assign({}, CORE, { vendorPurposeIds: [ 1, 7 ] }),
+        }).window;
+        const data = tcData(w);
+        assert.equal(data.purpose.consents[1], true);
+        assert.equal(data.purpose.consents[7], true);
+        assert.equal(data.purpose.consents[3], false, 'not one they named');
+        assert.equal(data.vendor.consents[1], true);
+        assert.equal(data.specialFeatureOptins[1], true);
+    });
+
+    it('says granted in its own line, and writes the same cookies', ( ) => {
+        let out;
+        const w = bootAccept({ before: ww => { out = lines(ww); } }).window;
+        assert.equal(out.length, 1, out.join(' | '));
+        assert.ok(out[0].includes(' tcf=granted'), out[0]);
+        assert.ok(out[0].includes('inmobi-accept') === false, 'one name');
+        assert.ok(cookies(w).get('euconsent-v2'), 'their consent cookie');
+        assert.ok(
+            cookies(w).get('IABGPP_HDR_GppString').startsWith('DBABMA~'),
+            'section 2 alone, as the refusing resource has it'
+        );
+    });
+
+    // Brave sends Global Privacy Control by default, so this is what a Brave
+    // visitor gets from the granting resource rather than an edge case: the
+    // consent the wall is waiting for, and the standing browser signal left
+    // standing. They are answers to different questions.
+    it('grants the purposes and still carries GPC where it is set', ( ) => {
+        const w = bootAccept({
+            before: ww => {
+                Object.defineProperty(ww.navigator, 'globalPrivacyControl', {
+                    get: ( ) => true,
+                    configurable: true,
+                });
+            },
+            core: Object.assign({}, CORE, { vendorPurposeIds: [ 1, 2, 3 ] }),
+        }).window;
+        const decoded = decode(w);
+        assert.deepEqual(
+            idsOn(decoded.purposeConsents), [ 1, 2, 3 ],
+            'the wall still gets its yes'
+        );
+        assert.deepEqual(
+            idsOn(decoded.purposeLegitimateInterests), [],
+            'and the signal still objects to legitimate interest'
+        );
+        let held;
+        w.__uspapi('getUSPData', 1, value => { held = value; });
+        assert.equal(held.uspString, '1-Y-');
+    });
+
+    it('is the same resource otherwise - refusing is the only difference', ( ) => {
+        const acceptOnly = accept.replace(
+            'consentRRInMobi(consentRRInMobiTcf, consentRRInMobiGpp, true);',
+            'consentRRInMobi(consentRRInMobiTcf, consentRRInMobiGpp, false);'
+        );
+        assert.notEqual(acceptOnly, accept, 'the call was found');
+        assert.equal(
+            acceptOnly.replace(/^.*?\(function\(\) \{/s, ''),
+            reject.replace(/^.*?\(function\(\) \{/s, ''),
+            'the two differ only in the header and that one argument'
+        );
     });
 });

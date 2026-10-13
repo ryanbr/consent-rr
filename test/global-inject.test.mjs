@@ -52,7 +52,7 @@ const UNGATED = new Set([
     'cookiez-reject-unblock.js', 'cookiez-reject.js',
     'didomi-accept.js', 'didomi-reject.js',
     'fundingchoices-reject.js',
-    'inmobi-reject.js',
+    'inmobi-accept.js', 'inmobi-reject.js',
     'iubenda-accept.js', 'iubenda-reject-unblock.js', 'iubenda-reject.js',
     'ketch-reject-unblock.js', 'ketch-reject.js',
     'onetrust-accept.js', 'onetrust-reject-unblock.js', 'onetrust-reject.js',

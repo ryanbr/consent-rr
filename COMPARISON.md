@@ -122,7 +122,7 @@ the same fixture as its sibling.
 | `onetrust-reject-unblock` | 36.1 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
 | `chcookieconsent-reject` | 11.2 KB | `serializeForm` |
 | `cookieinformation-reject` | 10.9 KB | `CookieInformation`, `CookieConsent`, `CookieConsentDialog`, `cicc`, `cicl`, `isCookieInformationAPIReady` |
-| `inmobi-reject` | 25.7 KB | `__gpp`, `__uspapi`, `__tcfapiui` |
+| `inmobi-reject` | 26.9 KB | `__gpp`, `__uspapi`, `__tcfapiui` |
 | `osano-reject` | 34.0 KB | `Osano`, `__uspapi`, `__tcfapi`, `__gpp` |
 | `civic-reject` | 22.8 KB | `CookieControl` |
 | `civic-reject-unblock` | 22.8 KB | `CookieControl` |
@@ -259,7 +259,7 @@ uBlock Origin does the blocking.
 [consent-rr] onetrust-reject-unblock 1.5.1 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
 [consent-rr] chcookieconsent-reject 1.1.0 cookie=Cookie_Consent written=4 blocked=0 refused=analytics,tracking allowed=none removed=1 told=1 banner=none parked=none posted=none logged=none
 [consent-rr] cookieinformation-reject 1.0.2 approved=cookie_cat_necessary denied=cookie_cat_functional,cookie_cat_statistic,cookie_cat_marketing,cookie_cat_unclassified cookie=written
-[consent-rr] inmobi-reject 1.1.1 config=read cc=IT lang=IT tcf=refused li=kept gpp=refused usp=1--- cookie=written gppcookie=written
+[consent-rr] inmobi-reject 1.2.0 config=read cc=IT lang=IT tcf=refused li=kept gpp=refused usp=1--- cookie=written gppcookie=written
 [consent-rr] osano-reject 1.1.0 consent=ESSENTIAL denied=STORAGE,MARKETING,PERSONALIZATION,ANALYTICS,OPT_OUT tcf=refused li=kept gpp=refused usp=1--- cookie=written
 [consent-rr] civic-reject 1.4.0 mode=gdpr revoked=analytics,embedded iab=off cookie=written
 [consent-rr] civic-reject-unblock 1.4.0 mode=gdpr revoked=analytics accepted=embedded iab=off cookie=written
