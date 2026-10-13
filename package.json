@@ -1,6 +1,6 @@
 {
   "name": "consent-rr",
-  "version": "1.56.0",
+  "version": "1.56.1",
   "resourceVersions": {
     "ampconsent": "1.0.0",
     "appconsent": "1.0.4",
@@ -16,7 +16,7 @@
     "cookiez": "1.1.1",
     "didomi": "1.0.0",
     "fundingchoices": "1.1.1",
-    "inmobi": "1.1.0",
+    "inmobi": "1.1.1",
     "iubenda": "1.0.2",
     "ketch": "1.1.1",
     "onetrust": "1.5.1",

@@ -24,10 +24,7 @@
     for - and for 212 named vendors. Which 212 is a fact about the vendor list,
     not about the page, so vendors are granted as one range here, the same way
     the OneTrust resource does it. Global Privacy Control withdraws all of it:
-    that signal is the objection a plain refusal is not. So a plain install
-    keeps these, while the usnat section opts out of targeted advertising
-    regardless: the two regimes are deliberately not aligned, and
-    inmobi-gpp.js carries the reasoning.
+    that signal is the objection a plain refusal is not.
 
     Tenant-specific fields come from the coreConfig that choice.js passes to
     __tcfapi('init'), so the publisher country, the consent language and the

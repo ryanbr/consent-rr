@@ -178,7 +178,7 @@ function consentRRInMobi(installTcf, installGpp) {
     // GPP is installed whichever encoding the tenant asked for, because a
     // script gated on __gpp stalls either way. The cookie follows the tenant:
     // cmp2.js only writes one when the mode carries GPP.
-    const gppString = installGpp(tcString, tcf.section, core);
+    const gppString = installGpp(tcString, tcf.section);
     const gppWanted = typeof core.gdprEncodingMode !== 'string' ||
         core.gdprEncodingMode.indexOf('GPP') !== -1;
 
