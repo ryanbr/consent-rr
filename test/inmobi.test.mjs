@@ -753,6 +753,33 @@ describe('inmobi-accept', ( ) => {
         assert.equal(held.uspString, '1-Y-');
     });
 
+    // The same comparison the refusing resource gets: what __gpp reports for
+    // the section has to be what their own library decodes out of the string
+    // beside it. Granting is where the two can drift, because the section is a
+    // second copy of the same answer.
+    it('reports a section that matches the string it ships', ( ) => {
+        const w = bootAccept({
+            core: Object.assign({}, CORE, { vendorPurposeIds: [ 1, 2, 7 ] }),
+        }).window;
+        let data;
+        w.__gpp('ping', value => { data = value; });
+        const model = new GppModel();
+        model.decode(data.gppString);
+        const reference = JSON.parse(
+            JSON.stringify(model.getSection('tcfeuv2'))
+        );
+        let mine;
+        w.__gpp('getSection', value => { mine = value; }, 'tcfeuv2');
+        assert.deepEqual(JSON.parse(JSON.stringify(mine)), reference);
+        assert.deepEqual(
+            reference.PurposeConsents.map((on, i) => on ? i + 1 : 0)
+                .filter(Boolean),
+            [ 1, 2, 7 ],
+            'and it is the grant, not a refusal'
+        );
+        assert.ok(reference.VendorConsents.length > 1000);
+    });
+
     it('is the same resource otherwise - refusing is the only difference', ( ) => {
         const acceptOnly = accept.replace(
             'consentRRInMobi(consentRRInMobiTcf, consentRRInMobiGpp, true);',
