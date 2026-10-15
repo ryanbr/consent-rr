@@ -297,5 +297,5 @@ uBlock Origin does the blocking.
 [consent-rr] ketch-reject 1.1.1 purposes=2 denied surface=granted stored=denied record=revoked gcm=denied queue=ready drained=0
 [consent-rr] termly-reject 1.1.0 consented=essential denied=advertising,analytics,performance,social_networking,unclassified dns=true gcm=denied freed=1 api=ready tcf=off cache=written
 [consent-rr] pubtech-reject 1.0.0 pc=0-000 tcf=refused cc=AA/default ac=empty queues=drained gtm=sent
-[consent-rr] usercentrics-reject 1.4.0 settings=sROYKApBP lang=de revoked=none gcm=denied gpc=off cmp=v3 answered=true iab=off gpp=off data=written
+[consent-rr] usercentrics-reject 1.5.0 settings=sROYKApBP lang=de revoked=none gcm=denied gpc=off cmp=v3 answered=true iab=off gpp=off data=written
 ```
