@@ -255,10 +255,47 @@ function consentRRUsercentrics() {
 
     const refused = refuse();
 
+    // Their consentStatus keys its services by name rather than by id, and
+    // carries both halves of the Google consent state under gcmStatus. A
+    // manual deny-all on a v3 tenant writes exactly this shape.
+    //
+    // Four of its fields are left out because they cannot be known from here:
+    // consentHash, which varies per visitor for the same consent state and so
+    // is not derivable; settingsVersion and reshowAfterDays, which come from
+    // the configuration this never fetches; and categories, whose names are
+    // the tenant's own. A reader after any of those finds them missing rather
+    // than invented.
+    const byName = ( ) => {
+        const named = {};
+        for ( const id of Object.keys(refused.services) ) {
+            const service = refused.services[id];
+            const name = service !== null && typeof service === 'object'
+                ? service.name
+                : undefined;
+            if ( typeof name === 'string' && name !== '' ) {
+                named[name] = false;
+            }
+        }
+        return named;
+    };
+
+    const consentStatus = {
+        type: 'EXPLICIT',
+        updatedBy: 'onDenyAllServices',
+        services: byName(),
+    };
+    if ( settingsId !== '' ) {
+        consentStatus.settingsId = settingsId;
+    }
+
     // The record their blocker reads.
     const record = {
-        gcm: GCM,
         consent: { services: refused.services },
+        gcmStatus: {
+            consentStatus,
+            gcmUpdate: GCM,
+            dataLayerNames: [ 'dataLayer' ],
+        },
         ui: { language: language() },
     };
 

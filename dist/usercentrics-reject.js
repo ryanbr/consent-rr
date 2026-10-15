@@ -586,9 +586,34 @@ function consentRRUsercentrics() {
         return { services, legacy };
     };
     const refused = refuse();
+    const byName = ( ) => {
+        const named = {};
+        for ( const id of Object.keys(refused.services) ) {
+            const service = refused.services[id];
+            const name = service !== null && typeof service === 'object'
+                ? service.name
+                : undefined;
+            if ( typeof name === 'string' && name !== '' ) {
+                named[name] = false;
+            }
+        }
+        return named;
+    };
+    const consentStatus = {
+        type: 'EXPLICIT',
+        updatedBy: 'onDenyAllServices',
+        services: byName(),
+    };
+    if ( settingsId !== '' ) {
+        consentStatus.settingsId = settingsId;
+    }
     const record = {
-        gcm: GCM,
         consent: { services: refused.services },
+        gcmStatus: {
+            consentStatus,
+            gcmUpdate: GCM,
+            dataLayerNames: [ 'dataLayer' ],
+        },
         ui: { language: language() },
     };
     const value = JSON.stringify(record);

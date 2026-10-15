@@ -158,14 +158,22 @@ const plain = value => JSON.parse(JSON.stringify(value));
 
 const accepted = (services) => w => {
     w.localStorage.setItem('ucData', JSON.stringify({
-        gcm: {
-            adsDataRedaction: false,
-            adStorage: 'granted',
-            adPersonalization: 'granted',
-            adUserData: 'granted',
-            analyticsStorage: 'granted',
-        },
         consent: { services },
+        gcmStatus: {
+            consentStatus: {
+                type: 'EXPLICIT',
+                updatedBy: 'onAcceptAllServices',
+                services: {},
+            },
+            gcmUpdate: {
+                adsDataRedaction: false,
+                adStorage: 'granted',
+                adPersonalization: 'granted',
+                adUserData: 'granted',
+                analyticsStorage: 'granted',
+            },
+            dataLayerNames: [ 'dataLayer' ],
+        },
         ui: { language: 'de' },
     }));
 };
@@ -327,13 +335,38 @@ describe('usercentrics-reject', ( ) => {
 
     it('denies every Google consent-mode key', ( ) => {
         const w = asLoader().window;
-        assert.deepEqual(plain(data(w).gcm), {
+        assert.deepEqual(plain(data(w).gcmStatus.gcmUpdate), {
             adsDataRedaction: true,
             adStorage: 'denied',
             adPersonalization: 'denied',
             adUserData: 'denied',
             analyticsStorage: 'denied',
         });
+    });
+
+    it('writes their consentStatus shape, naming their own deny-all', ( ) => {
+        const w = asLoader({ before: accepted({
+            HkIVcNiuoZX: { name: 'Cloudflare', consent: true },
+            HkocEodjb7: { name: 'Google Analytics', consent: true },
+        }) }).window;
+        const status = plain(data(w).gcmStatus.consentStatus);
+        // Their field, and the value their own deny-all button writes, which
+        // is what a page checking how the answer was given looks at.
+        assert.equal(status.updatedBy, 'onDenyAllServices');
+        assert.equal(status.type, 'EXPLICIT');
+        // Keyed by name here, where consent.services is keyed by id.
+        assert.deepEqual(status.services, {
+            Cloudflare: false,
+            'Google Analytics': false,
+        });
+        assert.deepEqual(plain(data(w).gcmStatus.dataLayerNames), [ 'dataLayer' ]);
+        // Their three, and nothing of ours left beside them.
+        assert.deepEqual(Object.keys(plain(data(w))).sort(), [
+            'consent', 'gcmStatus', 'ui',
+        ]);
+        // Not invented: per-visitor, or out of a configuration never fetched.
+        assert.equal(status.consentHash, undefined);
+        assert.equal(status.categories, undefined);
     });
 
     it('pushes their consent mode the way gtag pushes', ( ) => {
@@ -577,7 +610,7 @@ describe('usercentrics-reject', ( ) => {
         // is refused without it. The console says whether it was sent.
         assert.ok(out[0].includes(' gpc=on'), out[0]);
         assert.deepEqual(plain(data(w).consent.services), {});
-        assert.equal(data(w).gcm.adStorage, 'denied');
+        assert.equal(data(w).gcmStatus.gcmUpdate.adStorage, 'denied');
     });
 });
 
