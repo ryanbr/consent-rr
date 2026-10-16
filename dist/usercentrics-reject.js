@@ -984,8 +984,9 @@ function consentRRUsercentrics(grant) {
             '[consent-rr] ' + NAME + ' ' + VERSION +
             ' settings=' + (settingsId !== '' ? settingsId : 'unknown') +
             ' lang=' + record.ui.language +
-            ' revoked=' + (Object.keys(refused.services).length || 'none') +
-            ' gcm=' + (pushed ? 'denied' : 'refused') +
+            ' ' + (GRANT ? 'granted=' : 'revoked=') +
+            (Object.keys(refused.services).length || 'none') +
+            ' gcm=' + (pushed ? (GRANT ? 'granted' : 'denied') : 'refused') +
             ' gpc=' + (gpc ? 'on' : 'off') +
             ' cmp=' + (isV3 ? 'v3' : (isV2 ? 'v2' : 'unknown')) +
             ' answered=' + (answered ? 'true' : 'refused') +

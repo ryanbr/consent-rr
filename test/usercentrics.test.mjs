@@ -1445,5 +1445,9 @@ describe('usercentrics-accept', ( ) => {
         assert.ok(out.length !== 0, 'said something');
         assert.ok(out[0].includes('usercentrics-accept'), out[0]);
         assert.ok(out[0].includes('usercentrics-reject') === false, out[0]);
+        // And says it granted, rather than reporting a refusal it did not make.
+        assert.ok(out[0].includes(' gcm=granted'), out[0]);
+        assert.ok(out[0].includes(' granted='), out[0]);
+        assert.ok(out[0].includes(' revoked=') === false, out[0]);
     });
 });
