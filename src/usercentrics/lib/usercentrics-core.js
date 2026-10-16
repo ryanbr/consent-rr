@@ -212,9 +212,54 @@ function consentRRUsercentrics() {
     // Every service id already on record, named so the refusal revokes it.
     // Their own deny-all keeps each service's name beside its consent, so a
     // name already there is kept.
+    // What their own deny-all leaves consented. Their essential services stay
+    // true through it - a captured deny on a v3 tenant kept six, among them a
+    // payment CDN, Cloudflare, Google Fonts and the CMP itself - so refusing
+    // those is refusing more than the visitor's own Deny would, and takes out
+    // delivery and checkout with it.
+    //
+    // Which services a tenant calls essential is the tenant's own, and it is
+    // not in any record here. Two ways to tell, in order:
+    //
+    //   - a record their CMP wrote for a deny-all names them: anything still
+    //     consented in it survived a refusal, so it is essential by their own
+    //     classification. Exact, and it needs no list here.
+    //   - with no such record - a visitor who accepted, where everything is
+    //     true and says nothing - only the names are left. The set below is
+    //     deliberately small: consent plumbing, fonts and anything named a CDN.
+    //     reCAPTCHA is not in it, because this same tenant marks it
+    //     non-essential, which is the reminder that a guess here overrides
+    //     their classification rather than reading it.
+    const ESSENTIAL_NAMES = [
+        'google fonts',
+        'cloudflare',
+    ];
+    const isEssentialName = name => {
+        if ( typeof name !== 'string' || name === '' ) { return false; }
+        const lower = name.toLowerCase();
+        // Their own CMP, which a tenant names as it likes: the captured one
+        // calls it "Usercentrics Consent Management Platform", and refusing
+        // the consent plumbing itself is never what a visitor asked for.
+        if ( lower.startsWith('usercentrics') ) { return true; }
+        if ( ESSENTIAL_NAMES.includes(lower) ) { return true; }
+        return /(^|[^a-z])cdn([^a-z]|$)/.test(lower);
+    };
+
+    // Their deny-all is what wrote the record, so what is still consented in
+    // it is their essential set rather than a leftover grant.
+    const deniedBefore = record_ => {
+        try {
+            const status = record_.gcmStatus.consentStatus;
+            return status.updatedBy === 'onDenyAllServices';
+        } catch(ex) {
+        }
+        return false;
+    };
+
     const refuse = ( ) => {
         const services = {};
         const previous = read(DATA);
+        const theirsIsDenial = previous !== null && deniedBefore(previous);
         try {
             const theirs = previous !== null && previous.consent !== null &&
                 typeof previous.consent === 'object'
@@ -226,9 +271,12 @@ function consentRRUsercentrics() {
                     const name = service !== null && typeof service === 'object'
                         ? service.name
                         : undefined;
+                    const consent = theirsIsDenial
+                        ? service.consent === true
+                        : isEssentialName(name);
                     services[id] = typeof name === 'string'
-                        ? { name, consent: false }
-                        : { consent: false };
+                        ? { name, consent }
+                        : { consent };
                 }
             }
         } catch(ex) {
@@ -243,9 +291,10 @@ function consentRRUsercentrics() {
                     const id = service.id;
                     if ( typeof id !== 'string' || id === '' ) { continue; }
                     if ( services[id] !== undefined ) { continue; }
+                    const consent = isEssentialName(service.name);
                     services[id] = typeof service.name === 'string'
-                        ? { name: service.name, consent: false }
-                        : { consent: false };
+                        ? { name: service.name, consent }
+                        : { consent };
                 }
             }
         } catch(ex) {
@@ -273,7 +322,7 @@ function consentRRUsercentrics() {
                 ? service.name
                 : undefined;
             if ( typeof name === 'string' && name !== '' ) {
-                named[name] = false;
+                named[name] = service.consent === true;
             }
         }
         return named;
@@ -298,6 +347,19 @@ function consentRRUsercentrics() {
         },
         ui: { language: language() },
     };
+
+    // Theirs, from the record a returning visitor already carries. It is the
+    // one field of their identity that is in a record this reads, and a page
+    // asking for it is better answered with their own than with nothing.
+    const controllerId = ( ( ) => {
+        try {
+            const legacy = refused.legacy;
+            const id = legacy !== null ? legacy.controllerId : '';
+            if ( typeof id === 'string' ) { return id; }
+        } catch(ex) {
+        }
+        return '';
+    } )();
 
     const value = JSON.stringify(record);
 
@@ -329,11 +391,13 @@ function consentRRUsercentrics() {
                     if ( service === null || typeof service !== 'object' ) {
                         return service;
                     }
-                    return Object.assign({}, service, { status: false });
+                    return Object.assign({}, service, {
+                        status: isEssentialName(service.name),
+                    });
                 })
                 : [];
             const base = existing ? legacy : {
-                controllerId: '',
+                controllerId,
                 id: settingsId,
                 language: record.ui.language,
             };
@@ -393,7 +457,7 @@ function consentRRUsercentrics() {
         getServicesBaseInfo: resolved([]),
         getServicesFullInfo: resolved([]),
         getActiveLanguage: resolved(record.ui.language),
-        getControllerId: resolved(''),
+        getControllerId: resolved(controllerId),
         getSettingsCore: resolved(settingsId === ''
             ? undefined
             : { id: settingsId }),

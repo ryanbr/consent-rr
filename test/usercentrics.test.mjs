@@ -156,6 +156,30 @@ const data = w => JSON.parse(w.localStorage.getItem('ucData'));
 // prototypes too.
 const plain = value => JSON.parse(JSON.stringify(value));
 
+// A record their CMP wrote for a deny-all: what is still consented in it is
+// the tenant's essential set, by their own classification.
+const deniedByThem = (services) => w => {
+    w.localStorage.setItem('ucData', JSON.stringify({
+        consent: { services },
+        gcmStatus: {
+            consentStatus: {
+                type: 'EXPLICIT',
+                updatedBy: 'onDenyAllServices',
+                services: {},
+            },
+            gcmUpdate: {
+                adsDataRedaction: true,
+                adStorage: 'denied',
+                adPersonalization: 'denied',
+                adUserData: 'denied',
+                analyticsStorage: 'denied',
+            },
+            dataLayerNames: [ 'dataLayer' ],
+        },
+        ui: { language: 'en' },
+    }));
+};
+
 const accepted = (services) => w => {
     w.localStorage.setItem('ucData', JSON.stringify({
         consent: { services },
@@ -223,6 +247,54 @@ describe('usercentrics-reject', ( ) => {
             [ [ 'HkocEodjb7', false ], [ 'XYQZBUojc', false ] ]);
         assert.equal(w.uc.whitelisted.size, 0);
         assert.equal(w.uc.disabled().length, 4);
+    });
+
+    it('keeps an essential service in their v2 record too', ( ) => {
+        const w = asScriptlet({
+            head: '',
+            before: w_ => {
+                w_.localStorage.setItem('uc_settings', JSON.stringify({
+                    controllerId: 'abc',
+                    services: [
+                        { id: 'HkIVcNiuoZX', name: 'Cloudflare', status: true },
+                        { id: 'HkocEodjb7', name: 'Google Analytics', status: true },
+                    ],
+                }));
+            },
+        }).window;
+        const legacy = JSON.parse(w.localStorage.getItem('uc_settings'));
+        assert.deepEqual(plain(legacy.services.map(s => [ s.id, s.status ])), [
+            [ 'HkIVcNiuoZX', true ],
+            [ 'HkocEodjb7', false ],
+        ]);
+        // And the v3 record this also writes agrees with it.
+        const w3 = JSON.parse(w.localStorage.getItem('ucData'));
+        assert.equal(w3.consent.services.HkIVcNiuoZX.consent, true);
+        assert.equal(w3.consent.services.HkocEodjb7.consent, false);
+    });
+
+    it('answers with the controller id they already recorded', async ( ) => {
+        const w = asScriptlet({
+            head: '',
+            before: w_ => {
+                w_.localStorage.setItem('uc_settings', JSON.stringify({
+                    controllerId: 'abc',
+                    services: [
+                        { id: 'HkocEodjb7', name: 'Google Analytics', status: true },
+                    ],
+                }));
+            },
+        }).window;
+        assert.equal(await w.__ucCmp.getControllerId(), 'abc');
+    });
+
+    it('calls their own CMP essential whatever the tenant named it', ( ) => {
+        const w = asLoader({ before: accepted({
+            H1Vl5NidjWX: { name: 'Usercentrics', consent: true },
+            HkocEodjb7: { name: 'Google Analytics', consent: true },
+        }) }).window;
+        assert.equal(data(w).consent.services.H1Vl5NidjWX.consent, true);
+        assert.equal(data(w).consent.services.HkocEodjb7.consent, false);
     });
 
     it('revokes through their v2 record as well', ( ) => {
@@ -356,7 +428,7 @@ describe('usercentrics-reject', ( ) => {
         assert.equal(status.type, 'EXPLICIT');
         // Keyed by name here, where consent.services is keyed by id.
         assert.deepEqual(status.services, {
-            Cloudflare: false,
+            Cloudflare: true,
             'Google Analytics': false,
         });
         assert.deepEqual(plain(data(w).gcmStatus.dataLayerNames), [ 'dataLayer' ]);
@@ -367,6 +439,46 @@ describe('usercentrics-reject', ( ) => {
         // Not invented: per-visitor, or out of a configuration never fetched.
         assert.equal(status.consentHash, undefined);
         assert.equal(status.categories, undefined);
+    });
+
+    it('keeps what their own deny-all keeps, and denies the rest', ( ) => {
+        // Their essential services survive their own Deny: refusing those
+        // refuses more than the visitor did, and takes delivery with it.
+        const w = asLoader({ before: accepted({
+            HkIVcNiuoZX: { name: 'Cloudflare', consent: true },
+            '6xMkafpaT1K_LK': { name: 'Adyen CDN for Checkout', consent: true },
+            HkPBYFofN: { name: 'Google Fonts', consent: true },
+            HkocEodjb7: { name: 'Google Analytics', consent: true },
+            '2wopwegpKV4eJV': { name: 'reCAPTCHA', consent: true },
+        }) }).window;
+        assert.deepEqual(plain(data(w).consent.services), {
+            HkIVcNiuoZX: { name: 'Cloudflare', consent: true },
+            '6xMkafpaT1K_LK': { name: 'Adyen CDN for Checkout', consent: true },
+            HkPBYFofN: { name: 'Google Fonts', consent: true },
+            HkocEodjb7: { name: 'Google Analytics', consent: false },
+            // Their tenant marks it non-essential, so a guess here would be
+            // overriding their classification rather than reading it.
+            '2wopwegpKV4eJV': { name: 'reCAPTCHA', consent: false },
+        });
+    });
+
+    it('reads their essential set out of a deny they already recorded', ( ) => {
+        // No name here is in the fallback list: the record itself says which
+        // services survived a refusal, which is their own classification.
+        const w = asLoader({ before: deniedByThem({
+            lr2r9zHdS37Tn7: { name: 'Cognigy', consent: true },
+            spio8gI5aId4xB: { name: 'Dash0', consent: true },
+            HkocEodjb7: { name: 'Google Analytics', consent: false },
+            'S1kgcNo_j-m': { name: 'Hotjar', consent: true },
+        }) }).window;
+        assert.deepEqual(plain(data(w).consent.services), {
+            lr2r9zHdS37Tn7: { name: 'Cognigy', consent: true },
+            spio8gI5aId4xB: { name: 'Dash0', consent: true },
+            HkocEodjb7: { name: 'Google Analytics', consent: false },
+            // Consented through their deny, so essential by their reckoning,
+            // whatever the name suggests.
+            'S1kgcNo_j-m': { name: 'Hotjar', consent: true },
+        });
     });
 
     it('pushes their consent mode the way gtag pushes', ( ) => {
