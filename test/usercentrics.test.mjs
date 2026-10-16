@@ -543,6 +543,51 @@ describe('usercentrics-reject', ( ) => {
         });
     });
 
+    it('answers getConsentDetails in the shape their own API answers', async ( ) => {
+        const w = asLoader({ before: withCategories({
+            marketing: true,
+            essential: true,
+        }) }).window;
+        const details = plain(await w.__ucCmp.getConsentDetails());
+        assert.deepEqual(Object.keys(details).sort(),
+            [ 'categories', 'consent', 'services' ]);
+        // A page indexing into this used to find an empty object here, and
+        // .consent.given threw rather than answering no.
+        assert.deepEqual(details.services.HkocEodjb7, {
+            name: 'Google Analytics',
+            consent: { given: false, type: 'EXPLICIT' },
+            essential: false,
+            subservices: {},
+        });
+        assert.deepEqual(details.categories, {
+            marketing: { dps: {}, state: 'ALL_DENIED' },
+            essential: { dps: {}, state: 'ALL_ACCEPTED', essential: true },
+        });
+        // Their consent record, which is what their ucString carries.
+        assert.equal(details.consent.status, 'ALL_DENIED');
+        assert.equal(details.consent.updatedBy, 'onDenyAllServices');
+        assert.deepEqual(details.consent.serviceIds, []);
+        assert.equal(details.consent.fromUserAction, true);
+        // Not invented: theirs to issue, out of a configuration never fetched.
+        assert.equal(details.consent.hash, undefined);
+        assert.equal(details.services.HkocEodjb7.version, undefined);
+    });
+
+    it('lists the services the record names, not an empty list', ( ) => {
+        const w = asLoader({ before: accepted({
+            HkIVcNiuoZX: { name: 'Cloudflare', consent: true },
+            HkocEodjb7: { name: 'Google Analytics', consent: true },
+        }) }).window;
+        const base = w.UC_UI.getServicesBaseInfo();
+        // Still synchronous and still an array, which is what their blocker
+        // checks for.
+        assert.equal(Array.isArray(base), true);
+        assert.deepEqual(plain(base).map(e => [ e.id, e.consent.status, e.isEssential ]), [
+            [ 'HkIVcNiuoZX', true, true ],
+            [ 'HkocEodjb7', false, false ],
+        ]);
+    });
+
     it('pushes their consent mode the way gtag pushes', ( ) => {
         const w = asLoader().window;
         assert.equal(w.dataLayer.length, 2);

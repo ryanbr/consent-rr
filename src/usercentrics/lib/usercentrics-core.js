@@ -487,6 +487,94 @@ function consentRRUsercentrics(grant) {
 
     const resolved = value_ => ( ) => Promise.resolve(value_);
 
+    // The answers their own API gives, in the shape it gives them. Empty
+    // objects were the stand-in before these were read off a live tenant, and
+    // a page indexing into one - details.services[id].consent.given - got a
+    // TypeError rather than a no.
+    //
+    // Their fields that are theirs to issue are left out, the way consentHash
+    // is: version, processorId, description and legalBasis come from the
+    // configuration this never fetches. What is here is what the record knows.
+    const serviceEntries = ( ) => {
+        const entries = [];
+        for ( const id of Object.keys(refused.services) ) {
+            const service = refused.services[id];
+            const consented = service.consent === true;
+            const entry = {
+                id,
+                consent: { status: consented, history: [] },
+                isEssential: consented && GRANT === false,
+                isHidden: false,
+                subServices: [],
+                subServicesLength: 0,
+            };
+            if ( typeof service.name === 'string' ) { entry.name = service.name; }
+            entries.push(entry);
+        }
+        return entries;
+    };
+
+    // Their categories, as getConsentDetails reports them: a dps map of the
+    // services in each, and the state of the lot. Only the names a record
+    // already carries, for the same reason the record's own categories are
+    // only carried over.
+    const detailCategories = ( ) => {
+        const named = {};
+        const base = consentStatus.categories;
+        if ( base === undefined ) { return named; }
+        for ( const slug of Object.keys(base) ) {
+            const on = base[slug] === true;
+            named[slug] = {
+                dps: {},
+                state: on ? 'ALL_ACCEPTED' : 'ALL_DENIED',
+            };
+            if ( /essential/i.test(slug) ) { named[slug].essential = true; }
+        }
+        return named;
+    };
+
+    // Their consent record, which is what getConsentDetails answers with and
+    // what their ucString carries compressed. serviceIds is the consented set,
+    // empty for a refusal of everything.
+    const consentRecord = ( ) => {
+        const consented = [];
+        for ( const id of Object.keys(refused.services) ) {
+            if ( refused.services[id].consent === true ) { consented.push(id); }
+        }
+        const out = {
+            language: record.ui.language,
+            updatedBy: consentStatus.updatedBy,
+            required: false,
+            status: GRANT ? 'ALL_ACCEPTED' : 'ALL_DENIED',
+            type: 'EXPLICIT',
+            serviceIds: consented,
+            interaction: 'user',
+            fromUserAction: true,
+        };
+        if ( settingsId !== '' ) {
+            out.setting = { type: 'GDPR', id: settingsId };
+        }
+        if ( controllerId !== '' ) { out.controllerId = controllerId; }
+        return out;
+    };
+
+    const consentDetails = ( ) => {
+        const services = {};
+        for ( const entry of serviceEntries() ) {
+            services[entry.id] = {
+                consent: { given: entry.consent.status, type: 'EXPLICIT' },
+                essential: entry.isEssential,
+                subservices: {},
+            };
+            if ( entry.name !== undefined ) { services[entry.id].name = entry.name; }
+        }
+        return {
+            consent: consentRecord(),
+            services,
+            categories: detailCategories(),
+        };
+    };
+
     // Their __ucCmp facade, which answers with promises as theirs does. The
     // ones that would show a layer, save a decision or take one resolve
     // without doing anything: there is no UI, and nothing is granted here.
@@ -495,9 +583,9 @@ function consentRRUsercentrics(grant) {
         init: resolved(undefined),
         isInitialized: resolved(true),
         getCmpConfig: resolved({ i18n: {}, ui: {} }),
-        getConsentDetails: resolved({ services: {}, categories: {} }),
-        getServicesBaseInfo: resolved([]),
-        getServicesFullInfo: resolved([]),
+        getConsentDetails: ( ) => Promise.resolve(consentDetails()),
+        getServicesBaseInfo: ( ) => Promise.resolve(serviceEntries()),
+        getServicesFullInfo: ( ) => Promise.resolve(serviceEntries()),
         getActiveLanguage: resolved(record.ui.language),
         getControllerId: resolved(controllerId),
         getSettingsCore: resolved(settingsId === ''
@@ -539,8 +627,10 @@ function consentRRUsercentrics(grant) {
     const ui = {
         consentRR: VERSION,
         isInitialized: ( ) => true,
-        getServicesBaseInfo: ( ) => [],
-        getServicesFullInfo: ( ) => [],
+        // Synchronous here, as v2's are and as their blocker expects - but the
+        // entries are the record's, not an empty list.
+        getServicesBaseInfo: ( ) => serviceEntries(),
+        getServicesFullInfo: ( ) => serviceEntries(),
         getSettingsLabels: ( ) => ({}),
         // Theirs answer undefined on a v3 page, so these do too.
         getSettingsCore: ( ) => undefined,

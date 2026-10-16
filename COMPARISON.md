@@ -162,7 +162,7 @@ the same fixture as its sibling.
 | `ketch-reject-unblock` | 13.0 KB | - |
 | `termly-reject` | 10.8 KB | `Termly` |
 | `pubtech-reject` | 16.0 KB | `__tcfapi`, `__pub_tech_cmp_on_consent_queue__pre`, `__pub_tech_cmp_on_consent_queue`, `__pub_tech_cmp_consent_rr` |
-| `usercentrics-reject` | 33.0 KB | `__ucCmp`, `UC_UI` |
+| `usercentrics-reject` | 35.5 KB | `__ucCmp`, `UC_UI` |
 
 ## What each one stores and sends
 
