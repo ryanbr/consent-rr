@@ -1,6 +1,6 @@
 {
   "name": "consent-rr",
-  "version": "1.61.0",
+  "version": "1.62.0",
   "resourceVersions": {
     "ampconsent": "1.0.0",
     "appconsent": "1.0.4",
@@ -26,7 +26,7 @@
     "tarteaucitron": "1.1.0",
     "termly": "1.1.0",
     "transcend": "1.5.0",
-    "usercentrics": "1.8.0",
+    "usercentrics": "1.9.0",
     "webtoffee": "1.0.0",
     "zdconsent": "1.0.1",
     "chcookieconsent": "1.1.0"
