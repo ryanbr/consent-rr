@@ -269,9 +269,12 @@ function consentRRUsercentrics(grant) {
         return false;
     };
 
+    let previousRecord = null;
+
     const refuse = ( ) => {
         const services = {};
         const previous = read(DATA);
+        previousRecord = previous;
         const theirsIsDenial = previous !== null && deniedBefore(previous);
         try {
             const theirs = previous !== null && previous.consent !== null &&
@@ -341,6 +344,28 @@ function consentRRUsercentrics(grant) {
         return named;
     };
 
+    // Their categories, whose names are the tenant's own - marketing and
+    // essential on the one captured, but that is theirs to choose. So they are
+    // carried over from a record that already names them rather than invented:
+    // all consented where this grants, and all refused where it refuses except
+    // the one their own deny keeps, which is the essential one. A first visit
+    // has none to carry, and the field stays absent rather than guessed.
+    const categories = ( ) => {
+        try {
+            const theirs = previousRecord.gcmStatus.consentStatus.categories;
+            if ( theirs === null || typeof theirs !== 'object' ) { return null; }
+            const names = Object.keys(theirs);
+            if ( names.length === 0 ) { return null; }
+            const next = {};
+            for ( const name of names ) {
+                next[name] = GRANT || /essential/i.test(name);
+            }
+            return next;
+        } catch(ex) {
+        }
+        return null;
+    };
+
     const consentStatus = {
         type: 'EXPLICIT',
         updatedBy: GRANT ? 'onAcceptAllServices' : 'onDenyAllServices',
@@ -348,6 +373,10 @@ function consentRRUsercentrics(grant) {
     };
     if ( settingsId !== '' ) {
         consentStatus.settingsId = settingsId;
+    }
+    const theirCategories = categories();
+    if ( theirCategories !== null ) {
+        consentStatus.categories = theirCategories;
     }
 
     // The record their blocker reads.

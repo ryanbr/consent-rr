@@ -183,6 +183,33 @@ const deniedByThem = (services) => w => {
     }));
 };
 
+// A record of theirs that names the tenant's own categories, which is the only
+// place those names exist for a resource that never fetches the configuration.
+const withCategories = (categories, updatedBy) => w => {
+    w.localStorage.setItem('ucData', JSON.stringify({
+        consent: { services: {
+            HkocEodjb7: { name: 'Google Analytics', consent: true },
+        } },
+        gcmStatus: {
+            consentStatus: {
+                type: 'EXPLICIT',
+                updatedBy: updatedBy || 'onAcceptAllServices',
+                services: {},
+                categories,
+            },
+            gcmUpdate: {
+                adsDataRedaction: false,
+                adStorage: 'granted',
+                adPersonalization: 'granted',
+                adUserData: 'granted',
+                analyticsStorage: 'granted',
+            },
+            dataLayerNames: [ 'dataLayer' ],
+        },
+        ui: { language: 'en' },
+    }));
+};
+
 const accepted = (services) => w => {
     w.localStorage.setItem('ucData', JSON.stringify({
         consent: { services },
@@ -483,6 +510,20 @@ describe('usercentrics-reject', ( ) => {
             // Consented through their deny, so essential by their reckoning,
             // whatever the name suggests.
             'S1kgcNo_j-m': { name: 'Hotjar', consent: true },
+        });
+    });
+
+    it('carries their category names over, refusing all but the essential', ( ) => {
+        const w = asLoader({ before: withCategories({
+            marketing: true,
+            functional: true,
+            essential: true,
+        }) }).window;
+        assert.deepEqual(plain(data(w).gcmStatus.consentStatus.categories), {
+            marketing: false,
+            functional: false,
+            // Theirs keeps this one through their own deny, so this does too.
+            essential: true,
         });
     });
 
@@ -1275,6 +1316,17 @@ describe('usercentrics-accept', ( ) => {
         assert.deepEqual(plain(data(w).gcmStatus.consentStatus.services), {
             'Google Analytics': true,
             Facebook: true,
+        });
+    });
+
+    it('consents to every category their record names', ( ) => {
+        const w = runDom(accept, URL, page(''), w_ => {
+            withCategories({ marketing: false, essential: true })(w_);
+            w_.eval(BLOCKER);
+        }).window;
+        assert.deepEqual(plain(data(w).gcmStatus.consentStatus.categories), {
+            marketing: true,
+            essential: true,
         });
     });
 
