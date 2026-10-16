@@ -546,12 +546,19 @@ function consentRRUsercentrics(grant) {
         getSettingsCore: ( ) => undefined,
         getSettingsUI: ( ) => undefined,
         getTCFVendors: ( ) => undefined,
-        areAllConsentsAccepted: ( ) => false,
-        areAllRequiredConsentsAccepted: ( ) => false,
+        // What the record says, rather than a fixed no: granting consents to
+        // every service it names, and the answer a page gates on has to agree
+        // with the record it reads beside it.
+        areAllConsentsAccepted: ( ) => GRANT,
+        // Their required consents are the essential services, which survive
+        // their own deny - so a refusal leaves these accepted, and answering
+        // no re-prompts a visitor who has already answered. An empty record
+        // names no required service, which makes it vacuously so.
+        areAllRequiredConsentsAccepted: ( ) => true,
         // Synchronous, as v2's are: a page doing getActiveLanguage()
         // .toUpperCase() breaks on a promise, while awaiting a plain value is
         // fine either way.
-        getControllerId: ( ) => '',
+        getControllerId: ( ) => controllerId,
         getActiveLanguage: ( ) => record.ui.language,
         getThirdPartyCount: ( ) => 0,
         getConsentDetails: cmp.getConsentDetails,

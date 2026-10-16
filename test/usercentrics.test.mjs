@@ -329,6 +329,22 @@ describe('usercentrics-reject', ( ) => {
         assert.equal(data(w).consent.services.HkocEodjb7.consent, false);
     });
 
+    it('answers the controller id the same way through both APIs', async ( ) => {
+        const w = asScriptlet({
+            head: '',
+            before: w_ => {
+                w_.localStorage.setItem('uc_settings', JSON.stringify({
+                    controllerId: 'abc',
+                    services: [
+                        { id: 'HkocEodjb7', name: 'Google Analytics', status: true },
+                    ],
+                }));
+            },
+        }).window;
+        assert.equal(w.UC_UI.getControllerId(), 'abc');
+        assert.equal(await w.__ucCmp.getControllerId(), 'abc');
+    });
+
     it('revokes through their v2 record as well', ( ) => {
         // No loader tag, so the blocker takes its v2 branch and builds the
         // whitelist out of uc_settings instead.
@@ -582,6 +598,9 @@ describe('usercentrics-reject', ( ) => {
         assert.equal(w.UC_UI.isInitialized(), true);
         assert.deepEqual(plain(w.UC_UI.getServicesBaseInfo()), []);
         assert.equal(w.UC_UI.areAllConsentsAccepted(), false);
+        // Their required consents are the essential services, which survive a
+        // deny - so answering no here re-prompts a visitor who has answered.
+        assert.equal(w.UC_UI.areAllRequiredConsentsAccepted(), true);
         // Theirs answer undefined on a v3 page, so these do too.
         assert.equal(w.UC_UI.getSettingsCore(), undefined);
         assert.deepEqual(plain(w.UC_UI.getSettingsLabels()), {});
@@ -1328,6 +1347,12 @@ describe('usercentrics-accept', ( ) => {
             marketing: true,
             essential: true,
         });
+    });
+
+    it('says every consent is accepted, as the record it wrote does', ( ) => {
+        const w = asAccept().window;
+        assert.equal(w.UC_UI.areAllConsentsAccepted(), true);
+        assert.equal(w.UC_UI.areAllRequiredConsentsAccepted(), true);
     });
 
     it('grants their Google consent mode, redaction off', ( ) => {
