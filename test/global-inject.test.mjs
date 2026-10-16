@@ -61,7 +61,7 @@ const UNGATED = new Set([
     'securiti-reject.js',
     'tarteaucitron-reject-unblock.js', 'tarteaucitron-reject.js',
     'termly-reject.js',
-    'usercentrics-reject.js',
+    'usercentrics-accept.js', 'usercentrics-reject.js',
     'webtoffee-reject-unblock.js', 'webtoffee-reject.js',
     'zdconsent-accept.js', 'zdconsent-reject.js',
 ]);

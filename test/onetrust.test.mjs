@@ -77,6 +77,7 @@ describe('resources file', ( ) => {
                 'tarteaucitron-reject.js',
                 'termly-reject.js',
                 'transcend-reject.js',
+                'usercentrics-accept.js',
                 'usercentrics-reject.js',
                 'webtoffee-reject-unblock.js',
                 'webtoffee-reject.js',

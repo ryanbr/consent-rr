@@ -117,10 +117,13 @@ const BLOCKER = `(function() {
     w.uc = uc;
 })();`;
 
+let accept;
 let reject;
 
 before(async ( ) => {
-    reject = (await loadResources()).get('usercentrics-reject.js');
+    const loaded = await loadResources();
+    reject = loaded.get('usercentrics-reject.js');
+    accept = loaded.get('usercentrics-accept.js');
 });
 
 // As the loader.js replacement: their blocker is already there, because the
@@ -208,7 +211,9 @@ describe('usercentrics-reject', ( ) => {
     it('ships as one resource, in the format uBO parses', async ( ) => {
         const names = Array.from((await loadResources()).keys())
             .filter(name => name.startsWith('usercentrics-'));
-        assert.deepEqual(names, [ 'usercentrics-reject.js' ]);
+        assert.deepEqual(names, [
+            'usercentrics-accept.js', 'usercentrics-reject.js',
+        ]);
         assert.equal(/^[ \t]*$/m.test(reject), false);
         assert.equal(/[^\x20-\x7e\t\n]/.test(reject), false);
         assert.ok(
@@ -1217,5 +1222,106 @@ describe('filters, usercentrics', ( ) => {
                 );
             }
         }
+    });
+});
+
+/******************************************************************************/
+
+// Granting is the same record with the answer the other way round, and what it
+// cannot do matters more than what it can: the service ids are not ours to
+// invent, so a visitor with no record of their own is granted nothing.
+describe('usercentrics-accept', ( ) => {
+    const asAccept = (options = {}) => runDom(
+        accept, options.url || URL, page(options.head),
+        w => {
+            if ( typeof options.before === 'function' ) { options.before(w); }
+            w.eval(BLOCKER);
+        }
+    );
+
+    it('consents to every service the record already names', ( ) => {
+        const w = asAccept({ before: w_ => {
+            w_.localStorage.setItem('ucData', JSON.stringify({
+                consent: { services: {
+                    HkocEodjb7: { name: 'Google Analytics', consent: false },
+                    XYQZBUojc: { name: 'Facebook', consent: false },
+                } },
+                gcmStatus: {
+                    consentStatus: {
+                        type: 'EXPLICIT',
+                        updatedBy: 'onDenyAllServices',
+                        services: {},
+                    },
+                    gcmUpdate: {
+                        adsDataRedaction: true,
+                        adStorage: 'denied',
+                        adPersonalization: 'denied',
+                        adUserData: 'denied',
+                        analyticsStorage: 'denied',
+                    },
+                    dataLayerNames: [ 'dataLayer' ],
+                },
+                ui: { language: 'en' },
+            }));
+        } }).window;
+        assert.deepEqual(plain(data(w).consent.services), {
+            HkocEodjb7: { name: 'Google Analytics', consent: true },
+            XYQZBUojc: { name: 'Facebook', consent: true },
+        });
+        // Their accept-all writes this, and a page checking how the answer was
+        // given reads it.
+        assert.equal(data(w).gcmStatus.consentStatus.updatedBy,
+            'onAcceptAllServices');
+        assert.deepEqual(plain(data(w).gcmStatus.consentStatus.services), {
+            'Google Analytics': true,
+            Facebook: true,
+        });
+    });
+
+    it('grants their Google consent mode, redaction off', ( ) => {
+        const w = asAccept().window;
+        assert.deepEqual(plain(data(w).gcmStatus.gcmUpdate), {
+            adsDataRedaction: false,
+            adStorage: 'granted',
+            adPersonalization: 'granted',
+            adUserData: 'granted',
+            analyticsStorage: 'granted',
+        });
+    });
+
+    it('grants nothing on a first visit, having no ids to name', ( ) => {
+        // Their ids come from the settings payload this never fetches, and
+        // their blocker blocks an id it was never told about - so this is the
+        // one case a grant cannot deliver, and it says so rather than pretend.
+        const w = asAccept().window;
+        assert.deepEqual(plain(data(w).consent.services), {});
+        assert.equal(w.uc.whitelisted.size, 0);
+    });
+
+    it('consents through their v2 record as well', ( ) => {
+        const w = runDom(accept, URL, page(''), w_ => {
+            w_.localStorage.setItem('uc_settings', JSON.stringify({
+                controllerId: 'abc',
+                services: [
+                    { id: 'HkocEodjb7', name: 'Google Analytics', status: false },
+                ],
+            }));
+            w_.eval(BLOCKER);
+        }).window;
+        const legacy = JSON.parse(w.localStorage.getItem('uc_settings'));
+        assert.deepEqual(plain(legacy.services.map(s => [ s.id, s.status ])), [
+            [ 'HkocEodjb7', true ],
+        ]);
+    });
+
+    it('says which resource it is on the console', ( ) => {
+        const out = [];
+        const w = runDom(accept, URL, page(''), w_ => {
+            w_.console.info = line => out.push(line);
+        }).window;
+        assert.ok(w !== null);
+        assert.ok(out.length !== 0, 'said something');
+        assert.ok(out[0].includes('usercentrics-accept'), out[0]);
+        assert.ok(out[0].includes('usercentrics-reject') === false, out[0]);
     });
 });

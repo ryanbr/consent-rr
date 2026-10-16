@@ -96,11 +96,15 @@
 
 */
 
-function consentRRUsercentrics() {
+function consentRRUsercentrics(grant) {
     const w = window;
     const doc = w.document;
     const VERSION = '@@VERSION@@';
-    const NAME = 'usercentrics-reject';
+    // Granting is the same record with the answer the other way round. What it
+    // cannot do is name a service the record does not already carry, so a first
+    // visit grants nothing - see the accept resource's own header.
+    const GRANT = grant === true;
+    const NAME = GRANT ? 'usercentrics-accept' : 'usercentrics-reject';
 
     // Does nothing the second time it is injected.
     if ( w.__ucCmp !== null && typeof w.__ucCmp === 'object' ) {
@@ -165,15 +169,24 @@ function consentRRUsercentrics() {
 
     const gpc = w.navigator.globalPrivacyControl === true;
 
-    // Their GcmModel map with nothing granted. adsDataRedaction is theirs for
-    // a denied visitor, and it is the one field that is not a consent state.
-    const GCM = {
-        adsDataRedaction: true,
-        adStorage: 'denied',
-        adPersonalization: 'denied',
-        adUserData: 'denied',
-        analyticsStorage: 'denied',
-    };
+    // Their GcmModel map. adsDataRedaction is the one field that is not a
+    // consent state: theirs is true for a denied visitor and false for a
+    // granting one, which is what their own accept-all writes.
+    const GCM = GRANT
+        ? {
+            adsDataRedaction: false,
+            adStorage: 'granted',
+            adPersonalization: 'granted',
+            adUserData: 'granted',
+            analyticsStorage: 'granted',
+        }
+        : {
+            adsDataRedaction: true,
+            adStorage: 'denied',
+            adPersonalization: 'denied',
+            adUserData: 'denied',
+            analyticsStorage: 'denied',
+        };
 
     // Writing can throw, because the blocker patches Storage.prototype.setItem
     // and its hook runs before the real write. On a page still carrying the
@@ -271,9 +284,9 @@ function consentRRUsercentrics() {
                     const name = service !== null && typeof service === 'object'
                         ? service.name
                         : undefined;
-                    const consent = theirsIsDenial
+                    const consent = GRANT || ( theirsIsDenial
                         ? service.consent === true
-                        : isEssentialName(name);
+                        : isEssentialName(name) );
                     services[id] = typeof name === 'string'
                         ? { name, consent }
                         : { consent };
@@ -291,7 +304,7 @@ function consentRRUsercentrics() {
                     const id = service.id;
                     if ( typeof id !== 'string' || id === '' ) { continue; }
                     if ( services[id] !== undefined ) { continue; }
-                    const consent = isEssentialName(service.name);
+                    const consent = GRANT || isEssentialName(service.name);
                     services[id] = typeof service.name === 'string'
                         ? { name: service.name, consent }
                         : { consent };
@@ -330,7 +343,7 @@ function consentRRUsercentrics() {
 
     const consentStatus = {
         type: 'EXPLICIT',
-        updatedBy: 'onDenyAllServices',
+        updatedBy: GRANT ? 'onAcceptAllServices' : 'onDenyAllServices',
         services: byName(),
     };
     if ( settingsId !== '' ) {
@@ -392,7 +405,7 @@ function consentRRUsercentrics() {
                         return service;
                     }
                     return Object.assign({}, service, {
-                        status: isEssentialName(service.name),
+                        status: GRANT || isEssentialName(service.name),
                     });
                 })
                 : [];

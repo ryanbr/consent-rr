@@ -110,3 +110,11 @@
 ||app.usercentrics.eu/browser-ui/*/Default*.js$script,redirect=noopjs
 ||app.usercentrics.eu/browser-ui/*/*Customization-*.js$script,redirect=noopjs
 ||app.usercentrics.eu/browser-ui/*/SecondLayerUI-*.js$script,redirect=noopjs
+
+! A granting resource ships beside the refusing one, for a wall that keeps the
+! page shut until the answer is yes. It is not a default: it only consents to
+! services a record already names, so a first visit grants nothing, and on a
+! TCF tenant the TC string it answers with still refuses. Point it at a site
+! that needs it, by name.
+!
+! ||web.cmp.usercentrics.eu/ui/loader.js$script,redirect=usercentrics-accept.js:10,domain=example.com
