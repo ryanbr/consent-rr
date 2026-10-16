@@ -29,10 +29,15 @@
     It can only name services the record already carries. Their ids come from
     the settings API this resource exists to avoid calling, so a visitor
     arriving with no record of their own gets an empty services map - and their
-    blocker treats an id it was never told about as blocked. A first visit
-    therefore grants nothing, and behaves like the refusing resource. That is
-    the opposite of the intent, and it is the reason this is for a site a
-    returning visitor finds shut rather than for a default.
+    blocker treats an id it was never told about as blocked.
+
+    So a first visit consents to no service, while still granting their Google
+    consent mode: ad_storage and the rest go out as granted, with redaction
+    off. Usually that reaches nobody, because the tag manager which would read
+    it is itself a service the blocker is blocking - but on a site that loads
+    one regardless, the grant lands with nothing behind it. That pairing is the
+    reason this is pointed at a site by name rather than enabled as a default,
+    and the reason the filters file ships its example with a domain=.
 
     It grants their services, not IAB consent. On a TCF tenant the TC string
     this still answers with refuses every purpose and vendor, because consenting
