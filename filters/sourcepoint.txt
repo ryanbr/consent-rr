@@ -1,0 +1,170 @@
+! Title: consent-rr - Sourcepoint
+! Description: Replaces Sourcepoint's unified wrapper with a stored refusal:
+!              no message iframe, their _sp_ surface and event callbacks
+!              answering, and __tcfapi refusing as cmpId 6.
+! Expires: 7 days
+! Homepage: https://github.com/ryanbr/consent-rr
+!
+! These filters do nothing on their own: the resources they name have to be
+! installed through uBlock Origin's userResourcesLocation setting first. See the
+! README.
+
+! -----------------------------------------------------------------------------
+! ONE FILE IS THE WHOLE CMP. wrapperMessagingWithoutDetection.js is a webpack
+! bundle whose campaign modules are chunks it fetches itself, from its own
+! publicPath:
+!
+!   window._sp_.config.baseEndpoint || "https://cdn.privacy-mgmt.com"
+!       + "/unified/4.40.3/"
+!
+! ccpa, ccpa-gpp, custom, gdpr, gdpr-tcf, globalcmp, hbbtv, preferences, usnat
+! and usnat-uspapi. Nothing else ever asks for them, so replacing the wrapper
+! takes the message iframe, the privacy manager and the consent call with it -
+! and there is no banner left to hide, because their banner is one of those
+! iframes.
+!
+! Matched by filename rather than by host and path: the same file is served
+! from cdn.privacy-mgmt.com, from their preprod endpoint, from a versioned
+! /unified/<version>/ path when a page asks for one with _sp_version, and from
+! a first-party host where a tenant points their own CDN at it.
+! -----------------------------------------------------------------------------
+/wrapperMessagingWithoutDetection.js$script,important,redirect=sourcepoint-reject.js
+
+! -----------------------------------------------------------------------------
+! WHY important. Blocking this file is what the lists already do in places, and
+! it breaks the sites that wall off behind it - which is why there are so many
+! exceptions for it in the big lists:
+!
+!   @@||privacy-mgmt.com^$script,domain=n-tv.de
+!   @@||privacy-mgmt.com^$script,domain=chip.de
+!   @@||privacy-mgmt.com^$script,domain=bild.de
+!   @@||privacy-mgmt.com^$script,domain=handelsblatt.com
+!   @@||privacy-mgmt.com^$script,domain=faz.net|focus.de|golem.de|stern.de
+!   @@||cdn.privacy-mgmt.com/wrapperMessagingWithoutDetection.js$script,domain=giga.de|spieletipps.de
+!
+! An exception beats a plain $redirect, so without important the resource never
+! loads on exactly the sites it was written for. Those exceptions exist because
+! the page needs an answer, not because it needs their banner - and an answer
+! is what this gives it. A site-wide allowlist of the user's own still wins,
+! which is the behaviour to keep.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! WHAT THE RESOURCE REPRODUCES is the state their own script reaches on a
+! property with nothing to show. All of it measured in build 4.40.3 of that
+! file and in its gdpr-tcf chunk:
+!
+!   window._sp_, with their own surface on it - addEventListener,
+!   removeEventListener, destroyMessages, destroyMessaging, resetUserState,
+!   requestUUID, version, writeCookie, metricUrl, metricData, gcm,
+!   updateGoogleConsentMode, and the per-campaign objects ccpa, gdpr,
+!   globalcmp, preferences and usnat.
+!
+!   window._sp_queue handed over the way theirs hands it over: what is queued
+!   runs with the _sp_ object, the array is kept as _sp_.processedQueue, and
+!   _sp_queue is replaced by one whose push IS the runner, so a later push
+!   executes at once.
+!
+!   _sp_.gdpr with deleteConsentCookies, loadPrivacyManagerModal,
+!   loadPrivacyManagerOtt, loadNativeOtt, getCustomVendorConsents,
+!   postCustomConsent, postRejectAll and getVendorPurposeMapping. The privacy
+!   manager resolves without a dialog - theirs is an iframe from a chunk that
+!   is never fetched - and getVendorPurposeMapping answers (null, false),
+!   which is their own failure path for it.
+!
+!   their event callbacks, in their order: onSPPMObjectReady, onSPReady,
+!   onMessageReceiveData with {messageId: 0}, onConsentReady, then
+!   sp:onBeforeShowMessages at the window with messageCount 0,
+!   onInteractionComplete and sp:onAfterShowMessages.
+!
+! THEIR CAMPAIGNS DO NOT ANSWER ALIKE, which is worth reading off their own
+! chunks rather than assuming. Each one's checkForMessage, with nothing to
+! show:
+!
+!   gdpr          onConsentReady [uuid, euconsent,
+!                 {addtlConsent, applies, consentedToAll}]
+!   ccpa          onConsentReady [uuid, uspString, {applies, gpcEnabled}]
+!   usnat         the same two fields as ccpa
+!   globalcmp     the same again
+!   custom        onMessageReceiveData and nothing else
+!   preferences   onMessageReceiveData and nothing else
+!
+! so a US campaign is answered in their US shape - a page reading
+! info.gpcEnabled gets it, read the way their own wrapper reads it, and one
+! reading consentedToAll does not get a field their ccpa path never carries.
+! The US string is null: theirs is minted by their consent service, and
+! __uspapi and __gpp are not answered here.
+!
+! THEIR CALLBACK SIGNATURE PUTS THE CAMPAIGN FIRST, which is worth knowing if
+! you read their docs instead of their dispatcher: executeEventCallback calls
+! each registered function as cb.call(null, category, ...args), so a page's
+! onConsentReady is called (campaign, uuid, euconsent, info).
+!
+! THE IAB LAYER IS ANSWERED, AND REFUSES. "__tcfapi" does not appear in the
+! wrapper at all - it is in the gdpr-tcf chunk - so blocking the file leaves
+! every vendor waiting on a CMP that is never coming. __tcfapi answers here as
+! cmpId 6, which is their own default in the bundle and Sourcepoint
+! Technologies, Inc. on the IAB's published list, with cmpVersion 1, policy
+! version 5, apiVersion "2" and a string that grants nothing in any set it
+! carries. Their five custom commands answer too. The postMessage relay goes
+! up only where the page's own IAB stub had not already defined __tcfapi,
+! because that stub's relay forwards to this one and two replies to one
+! callId is what answering as well would mean - and the locator frame only
+! where there is none. The stub is what that is decided on rather than the
+! frame: a snippet that adds a frame and no relay would otherwise leave every
+! vendor in a frame unanswered.
+!
+! THE REFUSAL IS euconsent-v2 AND NOTHING ELSE OF THEIRS. Their own script
+! writes no consent cookie directly: the campaign response carries a cookies
+! array and their setCookiesAction writes what their service says, so
+! consentUUID and the rest are their server's to mint. euconsent-v2 is the one
+! in that set anything else reads, so that one is written, with the refusal.
+! A record a visitor consented to before this was installed is cleared - the
+! localStorage record under _sp_user_consent_<propertyId>, its
+! _sp_sync_consent_ twin, the legacy _sp_user_consent their own cleanOldConsent
+! removes, and the consentUUID that keys them.
+! -----------------------------------------------------------------------------
+
+! -----------------------------------------------------------------------------
+! Deliberately left alone:
+!
+!   wrapperMessagingWithDetection.js   their adblock-detection wrapper, which
+!                                      is a different file and was not
+!                                      measured. Replacing it would also
+!                                      replace the detection a page may act
+!                                      on, so it keeps whatever handles it
+!                                      today.
+!
+!   gdprApplies                        a cookie of theirs that says whether
+!                                      the regulation applies to this
+!                                      visitor, which is not an answer a
+!                                      visitor gave. Neither written nor
+!                                      cleared.
+!
+!   __gpp and __uspapi                 a CCPA, usnat or globalcmp property
+!                                      gets the _sp_ surface and no US
+!                                      signal: those live in three more
+!                                      chunks, and their refusal strings are
+!                                      minted by their consent service rather
+!                                      than being derivable from the page.
+!
+!   their Google consent mode          _sp_.updateGoogleConsentMode takes a
+!                                      callback and nothing is pushed to a
+!                                      page's dataLayer, because the gcmStatus
+!                                      their callbacks are handed is built by
+!                                      their service.
+!
+!   everything but scripts             the rule is $script.
+!
+! On a CSP site, or on Chromium where a $redirect= to a user resource cannot
+! work at all, inject it instead - same resource, no request to redirect:
+!
+! example.com##+js(sourcepoint-reject)
+!
+! To see it work:
+!
+!   [consent-rr] sourcepoint-reject 1.0.0 campaigns=gdpr tcf=refused written=1
+!                cleared=0 events=4 queued=1 banner=none
+!
+! cleared=1 or more is a visitor who had answered before this was installed.
+! -----------------------------------------------------------------------------

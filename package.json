@@ -1,6 +1,6 @@
 {
   "name": "consent-rr",
-  "version": "1.64.0",
+  "version": "1.65.0",
   "resourceVersions": {
     "ampconsent": "1.0.0",
     "appconsent": "1.0.4",
@@ -29,7 +29,8 @@
     "usercentrics": "1.9.0",
     "webtoffee": "1.0.0",
     "zdconsent": "1.0.1",
-    "chcookieconsent": "1.1.0"
+    "chcookieconsent": "1.1.0",
+    "sourcepoint": "1.0.0"
   },
   "description": "Cookie-consent resource replacements for uBlock Origin",
   "files": [
