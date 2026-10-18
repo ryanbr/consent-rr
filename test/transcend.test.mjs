@@ -680,8 +680,12 @@ describe('transcend-reject, where their engine never readies', ( ) => {
         }, 'every one their own code would flip, and no others');
         // confirmed is the field their engine gates the prompt on.
         assert.equal(held.confirmed, true);
-        assert.equal(held.prompted, true);
         assert.match(held.timestamp, /^\d{4}-\d\d-\d\dT/);
+        // And prompted is left out, because nothing prompted anybody: their
+        // engine never readied, so their banner never reached the render
+        // that sets it. Their schema has it optional and airgap coerces it
+        // with !!, so absent reads as false - which is what happened.
+        assert.equal('prompted' in held, false, JSON.stringify(held));
     });
 
     it('leaves out the ones their own code will not flip', async ( ) => {

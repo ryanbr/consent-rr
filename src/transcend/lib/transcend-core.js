@@ -188,13 +188,34 @@ function consentRRTranscend() {
     // something, not the refusal failing. The record written here names only
     // the ones it is theirs to move, because their own boot merges the names
     // it finds and defaults the rest.
-    const record = purposes => JSON.stringify({
-        purposes,
-        timestamp: new Date().toISOString(),
-        confirmed: true,
-        prompted: true,
-        updated: false,
-    });
+    //
+    // prompted is theirs to mean "this user has been shown a prompt", and it
+    // is only ours to claim where this resource stood in for the one that
+    // would have shown it. Their banner sets it itself, on render:
+    //
+    //   !hs(t) && !e.getConsent().prompted && e.setPrompted(!0)
+    //
+    // and passes { confirmed: true, prompted: true } with a decision - the
+    // object ui.js carries as Xe, which is what options() mirrors. So a
+    // refusal taken at the moment their banner would have rendered says
+    // true, and one written with no engine and no banner anywhere leaves it
+    // out: nothing prompted anybody, and their schema has it optional -
+    // r.partial({ updated, prompted, metadata, metadataTimestamp }) against
+    // r.type({ confirmed, timestamp }). Asserting it there told their sync
+    // endpoint a prompt had been answered that was never shown. It gates
+    // nothing either way: airgap loads it into qn, defaults a later
+    // setConsent from it, and reports it upstream, while the prompt itself
+    // turns on confirmed.
+    const record = (purposes, prompted) => {
+        const held = {
+            purposes,
+            timestamp: new Date().toISOString(),
+            confirmed: true,
+        };
+        if ( prompted === true ) { held.prompted = true; }
+        held.updated = false;
+        return JSON.stringify(held);
+    };
 
     const cookieName = ( ) => {
         const partition = String(option('partition') || '');
@@ -296,8 +317,8 @@ function consentRRTranscend() {
     // storageRecord() and writeCookie() each catch their own - and the
     // purposes handed in are this resource's own object, so the stringify
     // cannot throw either. Keep it that way when adding to it.
-    const store = purposes => {
-        const value = record(purposes);
+    const store = (purposes, prompted) => {
+        const value = record(purposes, prompted);
         const inStorage = storageRecord(value);
         const inCookie = String(option('localSync') || '') !== 'private-only'
             ? writeCookie(value)
@@ -376,14 +397,14 @@ function consentRRTranscend() {
                     announce(names, 'load');
                     return;
                 }
-                announce(names, store(refused) || 'refused');
+                announce(names, store(refused, true) || 'refused');
             }, { once: true });
             return;
         }
         // Loaded already, so that event has been and gone: their own stores
         // are what is left, and they are read on the next page rather than
         // this one.
-        announce(names, store(refused) || 'refused');
+        announce(names, store(refused, true) || 'refused');
     };
 
     // Their loader defines self.airgap before anything of theirs can be
@@ -561,7 +582,7 @@ function consentRRTranscend() {
             announce(names, why);
             return;
         }
-        const where = store(refused);
+        const where = store(refused, false);
         announce(names, where !== '' ? where + ', ' + why : why);
     };
     // Armed only once their airgap is in the page: on a page that has none,
