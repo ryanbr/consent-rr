@@ -1123,6 +1123,37 @@ Two separate faults in one line:
    its own it does nothing at all and their real `ui.js` loads as usual. The
    rules here use `redirect=`, which blocks and serves in one.
 
+Neither fault needs that exact line. Two more shapes reported, both using
+`redirect=` so the second fault does not apply - and both still losing the
+engine to the first:
+
+```
+||transcend-cdn.com/*/airgap.js$script,redirect=transcend-reject.js
+||transcend-cdn.com/cm/$script,redirect=transcend-reject.js
+```
+
+The first names the engine outright. The second catches everything under
+`/cm/`, the engine among it. Either way `ui.js` is then never requested at
+all - airgap is what requests it - so the rule that was wanted could not fire
+even if it were alongside.
+
+What the difference looks like, measured on the Informa tenant across two
+loads of the same page:
+
+| | engine replaced | banner replaced |
+| --- | --- | --- |
+| the line | `refused=Advertising,Analytics,BrowserCookies,EnrichmentConsent,Functional,SaleOfInfo via=cookie+storage, no engine` | `refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent` |
+| purposes | the stand-in list, two of them names this tenant does not declare | the tenant's own four, `GcmAdvanced` left at `"Auto"` as theirs leaves it |
+| `updated` | `false`, written by this | `true`, computed by airgap |
+| `gpt.js`, `clarity.ms` | still loading | gone from the network log |
+
+The second column is byte-identical to a real click-through refusal on that
+tenant in everything but `prompted`, which theirs omits because that visitor
+reached the modal themselves rather than being prompted.
+
+So the engine wants leaving strictly alone: not redirected, and not blocked
+either.
+
 Either fault used to be silent, because everything this does hangs off
 `airgap.ready()`. It now says so, a second after `load`:
 
