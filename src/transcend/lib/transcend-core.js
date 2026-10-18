@@ -81,6 +81,21 @@ function consentRRTranscend() {
         if ( existing.consentRR !== undefined ) { return; }
     }
 
+    // Whether this was served in place of a file rather than injected as a
+    // scriptlet. Read here and only here: document.currentScript is the tag
+    // whose request was answered with this body, and it is null again once
+    // the page has moved on - so watch(), which runs a second after load,
+    // cannot ask. A script with a src carries one; a scriptlet is inline and
+    // carries the empty string. withoutTheirs() is what reads it, and why.
+    let SERVED_AS_FILE = false;
+    try {
+        const current = doc.currentScript;
+        if ( current !== null && current !== undefined ) {
+            SERVED_AS_FILE = String(current.src || '') !== '';
+        }
+    } catch(ex) {
+    }
+
     const readCookie = name => {
         const pairs = String(doc.cookie).split(';');
         for ( const pair of pairs ) {
@@ -477,15 +492,54 @@ function consentRRTranscend() {
         'SaleOfInfo',
     ];
 
-    // Their object being absent is what separates "replaced their file" and
-    // "their file was blocked" from "their engine is here and recorded
-    // nothing": the first two have nothing to read, the third does.
+    // What separates "replaced their file" and "their file was blocked" from
+    // "their engine is here and recorded nothing". The first two have nothing
+    // to read, the third does - but their object being there is NOT the test,
+    // because a page can build one itself. Routledge does, in two inline
+    // scripts above their tag:
+    //
+    //   self.airgap?.ready || (self.airgap = { readyQueue: [],
+    //       ready(e) { this.readyQueue.push(e) }, ...self.airgap });
+    //   self.airgap = { overrides: [], cookieOverrides: [], ...self.airgap };
+    //   self.airgap.overrides.push({ override: allowGcmAdvanced });
+    //
+    // which is their documented "Advanced Consent Override" shape, so it is a
+    // tenant pattern rather than one site's quirk. That object survives their
+    // file never arriving and carries neither purposes nor their engine's
+    // API, so the old "typeof w.airgap !== object" test came back false and
+    // the refusal below was skipped: the resource reported "no engine" and
+    // concluded theirs was present in the same breath, and wrote nothing.
+    // Reported from routledge.com, on a rule that took airgap.js.
+    //
+    // The object alone cannot tell the two apart - their own prelude dying
+    // mid-boot leaves the same shape - so the cause is read off the install
+    // instead. Served in place of a file, their loader asked for that url and
+    // got this, so their file is gone; injected as a scriptlet, their engine
+    // may still be on its way and inventing a purpose list would be guessing.
+    // Their markers are what proves theirs is really there: their prelude
+    // puts purposes on the object it merges, their engine adds
+    // getConsent/setConsent once it boots, and a page's own prelude has none
+    // of the three.
+    const theirMarkers = ( ) => {
+        try {
+            const held = w.airgap;
+            if ( held === null || typeof held !== 'object' ) { return false; }
+            if ( typeof held.getConsent === 'function' ) { return true; }
+            if ( typeof held.setConsent === 'function' ) { return true; }
+            const purposes = held.purposes;
+            return purposes !== null && typeof purposes === 'object';
+        } catch(ex) {
+        }
+        return false;
+    };
     const withoutTheirs = ( ) => {
+        if ( theirMarkers() ) { return false; }
+        if ( SERVED_AS_FILE ) { return true; }
         try {
             return w.airgap === null || typeof w.airgap !== 'object';
         } catch(ex) {
-            return true;
         }
+        return true;
     };
 
     const GRACE = 1000;

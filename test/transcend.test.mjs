@@ -547,6 +547,74 @@ describe('transcend-reject, where their engine never readies', ( ) => {
         );
     });
 
+    // Their object being in the page is not proof their file arrived: a page
+    // can build one itself. Routledge does, in two inline scripts above their
+    // tag - the second their documented "Advanced Consent Override" block -
+    // and that object outlives their file never coming. Reported from the
+    // field as "refused=(none) via=no engine" with nothing written anywhere,
+    // because the test for "theirs is gone" used to be the object's absence
+    // and the object was right there.
+    const PAGE_BUILT = 'self.airgap = Object.assign({ readyQueue: [],' +
+        ' ready(c) { this.readyQueue.push(c); } }, self.airgap);' +
+        'self.airgap = Object.assign({ overrides: [], cookieOverrides: [] },' +
+        ' self.airgap);';
+
+    it('refuses where the page built their object and their file never came',
+        async ( ) => {
+            let out;
+            const w = runDom(reject, URL,
+                '<html><body><p>x</p></body></html>',
+                ww => {
+                    out = lines(ww);
+                    ww.eval(PAGE_BUILT);
+                    // Served in place of their file, which is what says their
+                    // file is gone - the object cannot, since this one is the
+                    // page's own.
+                    const served = ww.document.createElement('script');
+                    served.src = 'https://transcend-cdn.com/cm/x/airgap.js';
+                    Object.defineProperty(ww.document, 'currentScript', {
+                        get: ( ) => served,
+                        configurable: true,
+                    });
+                }
+            ).window;
+            await settle(1300);
+            assert.equal(out.length, 1, out.join(' | '));
+            assert.ok(
+                out[0].endsWith(
+                    ' refused=Advertising,Analytics,BrowserCookies,' +
+                    'EnrichmentConsent,Functional,SaleOfInfo' +
+                    ' via=cookie+storage, no engine'
+                ),
+                out[0]
+            );
+            const refused = {
+                Advertising: false,
+                Analytics: false,
+                BrowserCookies: false,
+                EnrichmentConsent: false,
+                Functional: false,
+                SaleOfInfo: false,
+            };
+            assert.deepEqual(
+                plain(JSON.parse(
+                    w.localStorage.getItem('tcmConsent')
+                ).purposes),
+                refused,
+                'the store the reader consults first'
+            );
+            assert.deepEqual(
+                plain(JSON.parse(cookies(w).get('tcm')).purposes),
+                refused,
+                'and their cookie beside it'
+            );
+            // The page's own object is left as the page's, bar the marker.
+            assert.deepEqual(
+                Object.keys(w.airgap).filter(k => k !== 'consentRR').sort(),
+                [ 'cookieOverrides', 'overrides', 'readyQueue', 'ready' ].sort()
+            );
+        });
+
     // The list is a stand-in for theirs, not a replacement: where their
     // object is present it is read, however little it carries.
     it('prefers their own purposes over the stand-in list', async ( ) => {
