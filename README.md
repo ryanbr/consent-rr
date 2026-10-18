@@ -1049,6 +1049,45 @@ regime and under a different prefix - Airtable's is
 API are the same in both, so the resource is too; only the filename and the
 path move, and a test checks the rules against a real url of each kind.
 
+**A third file, and the wildcard reaches it on purpose.** A tenant with the IAB
+layer on serves a second banner at `/cm/<id>/tcf/ui.js`, and because `*` spans a
+path separator the rules above match that one too. It is the file that owns the
+TCF record, declaring the keys itself -
+
+```js
+var Xr = "tcmTcf", zt = "tcmTcfMP";
+```
+
+- and its own modal copy names the whole store set: *"saved in local storage
+entries called tcmConsent and tcmTcf for websites as well as
+Transcend_Consent_Data and IABTCF_TCString for mobile apps. They may also be
+stored in a cookie called tcm."* Replacing it means no TCF banner, no
+`__tcfapi` and no `tcmTcf`, which leaves a TCF vendor with no consent signal
+rather than a fabricated one - the same reason a TC string is not invented
+anywhere here. Leaving it alone instead would put their real TCF modal back in
+front of the visitor, which is what the resource exists to avoid. For a tenant
+where that trade is the wrong way round, add
+`@@||transcend-cdn.com/cm*/*/tcf/ui.js$script`; an `@@` exception beats a plain
+`$redirect`.
+
+**One store is not the resource's business, and reads like a failure.**
+`tcmQuarantine` holds the requests and cookies airgap intercepted, so it can
+replay them if consent is later granted, and the engine writes it. An empty
+`{"requests":[],"cookies":[]}` says nothing about whether a refusal took: the
+feature is off unless the tenant sets `quarantineSyncBudget`, because `ss()`
+attaches the block only where that is non-zero, and the Informa tenant sets
+neither it nor `quarantineSize`. What does say so is the tenant's own matcher
+table - 66 host-to-purpose entries on that tenant - so refusing Advertising and
+Analytics there takes `securepubads.g.doubleclick.net/tag/js/gpt.js` and
+`clarity.ms` out of the network log. Both confirmed gone in a browser, which is
+the only way that question gets answered; the consent record only ever shows
+that a refusal was written.
+
+Worth knowing before reading breakage as a bug: that same table maps
+`https://www.routledge.com/ajax/*` and `hubspot.*` to **Functional**, so a
+blanket refusal has airgap block some of the site's own endpoints. That is the
+tenant's mapping, not the stub's doing.
+
 **And the bundle need not be on their CDN at all.** airgap takes the UI from
 `loadOptions.ui`, so a tenant can point that anywhere: Mayo Clinic's airgap
 config names the usual `/cm/<id>/ui.js`, yet the page overrides it and serves

@@ -973,6 +973,12 @@ describe('filters, transcend', ( ) => {
             'https://transcend-cdn.com/cm/ef49a3f1-d8c1-47d6-88fc-50e41130631f/ui.js',
             // And one served from the tenant's own assets.
             'https://assets.mayoclinic.org/content/dam/cpm-transcend/ui.js',
+            // The TCF banner, which a tenant with the IAB layer on serves
+            // beside the other. * spans the path separator, so the rules
+            // reach it - deliberately, and the README says what that trades:
+            // no TCF modal, and no __tcfapi or tcmTcf either, that file being
+            // the one that owns them.
+            'https://transcend-cdn.com/cm/ef49a3f1-d8c1-47d6-88fc-50e41130631f/tcf/ui.js',
         ];
         for ( const url of urls ) {
             assert.ok(

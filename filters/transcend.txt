@@ -20,6 +20,18 @@
 ! So airgap.js is deliberately left alone: with a refusal recorded it is the
 ! thing enforcing it. Replacing it would drop that blocking and mean
 ! reimplementing the API it exposes.
+!
+! The two rules below also reach a third file, /cm/<id>/tcf/ui.js - the banner
+! a tenant with the IAB layer on serves beside the other - because * spans a
+! path separator. That is on purpose. It owns the TCF record, declaring
+! "tcmTcf" and "tcmTcfMP" itself, so replacing it leaves a TCF vendor with no
+! __tcfapi and no stored string, which is no consent signal rather than an
+! invented one. Leaving it alone would put their real TCF modal back in front
+! of the visitor instead. Where that trade is the wrong way round for a tenant:
+!
+!   @@||transcend-cdn.com/cm*/*/tcf/ui.js$script
+!
+! An @@ exception beats a plain $redirect, so that is all it takes.
 ! -----------------------------------------------------------------------------
 ||transcend-cdn.com/cm*/*/ui.js$script,redirect=transcend-reject.js
 ||transcend-cdn.com/cm*/*/uiV2.js$script,redirect=transcend-reject.js
