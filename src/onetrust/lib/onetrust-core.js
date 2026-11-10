@@ -620,7 +620,6 @@ function consentRROneTrust(mode, installTcf, installGpp, named) {
         BlockGoogleAnalytics: noopfn,
         TriggerGoogleAnalyticsEvent: noopfn,
         UpdateGCM: noopfn,
-        getVendorConsentsRequestV2: noopfn,
         testLog: noopfn,
         Api: { TriggerReceiptAction: noopfn },
     };
@@ -689,6 +688,44 @@ function consentRROneTrust(mode, installTcf, installGpp, named) {
     };
 
     /**************************************************************************/
+
+    // Four more where the tenant has the IAB module, which is the same
+    // condition this file installs a TCF layer under. A tenant without one
+    // does not publish them, so neither does this.
+    //
+    // Their two request helpers do not answer anything themselves: each calls
+    // the page's own __tcfapi and hands what came back to the caller's
+    // callback - ping's first argument only, getInAppTCData's pair - so these
+    // do that rather than answering in the layer's place. Measured in
+    // otBannerSdk.js 202609.2.0, where they are getPingRequestForTcf and
+    // getVendorConsentsRequestV2.
+    const tcfRequest = (command, keep, callback) => {
+        if ( typeof callback !== 'function' ) { return; }
+        let answer = [];
+        try {
+            w.__tcfapi(command, 2, (...given) => {
+                answer = given.slice(0, keep);
+            });
+        } catch ( ex ) {
+        }
+        try {
+            return callback(...answer);
+        } catch ( ex ) {
+        }
+    };
+
+    if ( typeof installTcf === 'function' ) {
+        api.getPingRequest = callback => tcfRequest('ping', 1, callback);
+        api.getVendorConsentsRequestV2 = callback =>
+            tcfRequest('getInAppTCData', 2, callback);
+        // Theirs is async and ends by loading the banner. There is no banner
+        // to load and the record is already written, so the work is done - but
+        // it still has to be a promise, because a page can wait on it.
+        api.updateConsentFromCookies = ( ) => Promise.resolve();
+        // Opens the vendor list layer of their preference centre, which is
+        // not in the page.
+        api.showVendorsList = noopfn;
+    }
 
     w.OneTrust = w.Optanon = Object.assign({}, preset, api);
 

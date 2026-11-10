@@ -648,6 +648,65 @@ describe('tcf', ( ) => {
         return data;
     };
 
+    // IsIabEnabled publishes four more methods, measured in otBannerSdk.js
+    // 202609.2.0. The two request helpers answer nothing of their own: each
+    // puts the page's __tcfapi call through and hands what came back to the
+    // caller's callback, and the two keep a different number of arguments.
+    it('answers their four IAB-only methods', async ( ) => {
+        const win = run(reject);
+        for ( const name of [
+            'getPingRequest', 'getVendorConsentsRequestV2',
+            'updateConsentFromCookies', 'showVendorsList',
+        ] ) {
+            assert.equal(typeof win.OneTrust[name], 'function', name);
+        }
+
+        // ping: their helper captures the first argument only.
+        let seen;
+        win.OneTrust.getPingRequest((...args) => { seen = args; });
+        assert.equal(seen.length, 1, 'one argument, as theirs keeps');
+        assert.equal(seen[0].cmpId, 28);
+        assert.equal(seen[0].apiVersion, '2.0');
+
+        // getInAppTCData: theirs keeps the pair.
+        let pair;
+        win.OneTrust.getVendorConsentsRequestV2((...args) => { pair = args; });
+        assert.equal(pair.length, 2, 'the pair, as theirs keeps');
+        assert.equal(pair[1], true);
+        assert.equal(
+            Object.values(pair[0].purpose.consents).includes(true), false,
+            'and it is the same refusal the layer gives anyone else'
+        );
+
+        // Theirs is async, so a page can wait on it.
+        const waited = win.OneTrust.updateConsentFromCookies();
+        assert.equal(typeof waited.then, 'function');
+        assert.equal(await waited, undefined);
+
+        // Their preference centre is not in the page.
+        assert.equal(win.OneTrust.showVendorsList(), undefined);
+    });
+
+    // Theirs throws on a missing callback, having nothing to apply. The TCF
+    // surface in this file does not: its own __tcfapi returns early on one,
+    // and these two are held to the same rule - and then there is no reason
+    // to ask the layer a question whose answer has nowhere to go.
+    it('asks the layer nothing when there is no callback to answer', ( ) => {
+        const win = run(reject);
+        let asked = 0;
+        const real = win.__tcfapi;
+        win.__tcfapi = function(...args) {
+            asked += 1;
+            return real.apply(this, args);
+        };
+        assert.equal(win.OneTrust.getPingRequest(), undefined);
+        assert.equal(win.OneTrust.getVendorConsentsRequestV2('nope'),
+            undefined);
+        assert.equal(asked, 0, 'the layer was never consulted');
+        win.OneTrust.getPingRequest(( ) => {});
+        assert.equal(asked, 1, 'and is consulted when there is a callback');
+    });
+
     // Their own layer is @iabtcf/core with the live vendor-list.json, so the
     // version a real OneTrust writes is the list's, not a constant - and a
     // returning visitor's own string is the only copy of it a replacement can
