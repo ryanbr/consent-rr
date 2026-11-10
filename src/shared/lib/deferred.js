@@ -26,20 +26,54 @@
     load because a tag manager injects parked tags long after it. Every caller's
     scan replaces the node it frees, so running it again is a no-op.
 
+    Not every caller frees tags, though. Three of them - sourcepoint, iubenda
+    and cookiez - wait here for a configuration the page prints above the CMP's
+    script tag, install once it arrives, and cannot act a second time. For
+    those the watch is waste the moment it succeeds, so a scan may return false
+    to say it is finished, and the observer and its timer come down with it. A
+    scan that returns a count says the opposite, which is why the ones that
+    free parked tags keep their watch.
+
 */
 
 function consentRRDeferred(w, doc, scan, label) {
     'use strict';
+
+    let observer;
+    let timer;
+    let stopped = false;
+
+    // A scan that is finished takes the watch down with it, rather than being
+    // called for the rest of the page's life to return at once. A throwing
+    // scan is not finished: freed stays 0 and the passes go on.
+    const stop = ( ) => {
+        stopped = true;
+        try {
+            if ( observer !== undefined ) { observer.disconnect(); }
+        } catch ( ex ) {
+        }
+        if ( timer === undefined ) { return; }
+        try {
+            w.clearTimeout(timer);
+        } catch ( ex ) {
+        }
+        timer = undefined;
+    };
 
     // The boot console line reports what the first pass freed, which on a real
     // page is nothing, because nothing is there yet. So a pass after the first
     // that frees something says so, and a pass that frees nothing stays quiet.
     let passes = 0;
     const run = ( ) => {
+        if ( stopped ) { return; }
         let freed = 0;
         try {
             freed = scan();
         } catch ( ex ) {
+        }
+        if ( freed === false ) {
+            stop();
+            return;
         }
         passes += 1;
         if ( passes === 1 || typeof freed !== 'number' || freed === 0 ) { return; }
@@ -49,7 +83,6 @@ function consentRRDeferred(w, doc, scan, label) {
         console.info('[consent-rr] ' + label + ' freed=' + freed + ' deferred');
     };
 
-    let timer;
     const flush = ( ) => {
         timer = undefined;
         run();
@@ -66,8 +99,15 @@ function consentRRDeferred(w, doc, scan, label) {
 
     run();
 
+    // Nothing is watched where the first pass was also the last one. No
+    // caller here can stop on that pass - each is wired up only while what it
+    // waits for is still absent - but the contract has to hold for one that
+    // could, or its observer would outlive the stop that came before it.
+    if ( stopped ) { return; }
+
     try {
-        new w.MutationObserver(defer).observe(doc.documentElement || doc, {
+        observer = new w.MutationObserver(defer);
+        observer.observe(doc.documentElement || doc, {
             childList: true,
             subtree: true,
         });

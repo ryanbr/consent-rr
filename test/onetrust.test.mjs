@@ -13,7 +13,7 @@ import { before, describe, it } from 'node:test';
 import { readFile } from 'node:fs/promises';
 import {
     consentParams, cookies, cookiesInJar, filtersText, fixture, loadResources,
-    run, runDom, settle, versions,
+    run, runDom, settle, versions, withVendorListVersion,
 } from './helpers.mjs';
 
 let accept;
@@ -647,6 +647,33 @@ describe('tcf', ( ) => {
         win.__tcfapi('getTCData', 2, d => { data = d; });
         return data;
     };
+
+    // Their own layer is @iabtcf/core with the live vendor-list.json, so the
+    // version a real OneTrust writes is the list's, not a constant - and a
+    // returning visitor's own string is the only copy of it a replacement can
+    // reach without a network call.
+    it('carries a returning visitor own vendor list version', ( ) => {
+        const theirs = getTCData(run(reject)).tcString;
+        assert.equal(TCString.decode(theirs).vendorListVersion, 184,
+            'the list current when this was measured, on a first visit');
+        const older = withVendorListVersion(theirs, 150);
+        assert.equal(TCString.decode(older).vendorListVersion, 150);
+        const win = run(reject, fixture, w => {
+            w.document.cookie = 'eupubconsent-v2=' + older + '; path=/';
+        });
+        assert.equal(
+            TCString.decode(getTCData(win).tcString).vendorListVersion, 150
+        );
+    });
+
+    it('falls back where their cookie carries nothing to read', ( ) => {
+        const win = run(reject, fixture, w => {
+            w.document.cookie = 'eupubconsent-v2=not-a-tc-string; path=/';
+        });
+        assert.equal(
+            TCString.decode(getTCData(win).tcString).vendorListVersion, 184
+        );
+    });
 
     it('encodes a TC string the IAB decoder reads as a refusal', ( ) => {
         const win = run(reject, '<html lang="de"><body><p id="content">x');

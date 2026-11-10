@@ -230,6 +230,15 @@ describe('fundingchoices-reject', ( ) => {
             '[null,[4]]');
         assert.equal(manager.getSerializedReturnMessageForInvalidCommand(),
             '[null,[2]]');
+        // Their inactive path sets the error before anything asks, and in that
+        // state the command name is not consulted: an unknown one answers the
+        // same. Cleared - which nothing here does - there is no measurement of
+        // their active path to answer with, so it answers unknown.
+        assert.equal(manager.getSerializedReturnMessageForCommand('nope'),
+            '[null,[4]]');
+        manager.error = false;
+        assert.equal(manager.getSerializedReturnMessageForCommand('loaded'),
+            '[null,[2]]');
     });
 
     it('says the postMessage side is ready', ( ) => {

@@ -19,7 +19,7 @@ import { strict as assert } from 'node:assert';
 import { before, describe, it } from 'node:test';
 import {
     cookies, cookiesInJar, filtersText, loadResources, runDom, settle,
-    versions,
+    versions, watchObservers,
 } from './helpers.mjs';
 
 const URL = 'https://glockenklang.de/seite';
@@ -528,6 +528,24 @@ describe('cookiez, before their settings exist', ( ) => {
             JSON.parse(decodeURIComponent(raw)).meta.cookiesHash,
             '79a37b2f51fbb37963e67d8d7061484e'
         );
+    });
+
+    // Installed, these passes are finished: their settings cannot arrive
+    // twice. The plain refusal frees nothing, so this is the only watch it
+    // has and nothing should be left watching the page.
+    it('stops watching the page once their settings arrive', async ( ) => {
+        let counts;
+        const w = runDom(reject, URL, PAGE, ww => {
+            counts = watchObservers(ww);
+        }).window;
+        await settle(40);
+        assert.equal(counts.observed, 1, 'watching while it waits');
+        assert.equal(counts.disconnected, 0);
+        w.eval(SETTINGS_LATE);
+        w.document.body.append(w.document.createElement('div'));
+        await settle(250);
+        assert.ok(cookies(w).get('cookiez-user-consent'), 'the record went in');
+        assert.equal(counts.disconnected, 1, 'and took the watch down');
     });
 
     it('is not fooled by an empty settings object', async ( ) => {

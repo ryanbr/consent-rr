@@ -697,7 +697,15 @@ function consentRROneTrust(mode, installTcf, installGpp, named) {
     // cookie OneTrust keeps the publisher TC string in; the GPP string is not
     // stored in one.
     if ( typeof installTcf === 'function' ) {
-        const tcString = installTcf(accept);
+        // In its own try: a document whose cookie getter throws still gets the
+        // layer, on the fallback list version, rather than losing the install
+        // to the read that was only ever an improvement on it.
+        let prior = '';
+        try {
+            prior = readCookie('eupubconsent-v2');
+        } catch ( ex ) {
+        }
+        const tcString = installTcf(accept, prior);
         if ( typeof tcString === 'string' && tcString !== '' ) {
             writeCookie('eupubconsent-v2', tcString);
         }

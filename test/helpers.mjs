@@ -130,6 +130,54 @@ export const cookies = win => {
 export const consentParams = win =>
     new URLSearchParams(cookies(win).get('OptanonConsent') || '');
 
+// Counting what a resource does with the page's MutationObserver: made,
+// observed and - the one that matters for a one-shot install - disconnected.
+// The real one still runs underneath, so the resource behaves as it would.
+export const watchObservers = win => {
+    const counts = { made: 0, observed: 0, disconnected: 0 };
+    const Real = win.MutationObserver;
+    win.MutationObserver = class {
+        constructor(callback) {
+            counts.made += 1;
+            this.inner = new Real(callback);
+        }
+        observe(...args) {
+            counts.observed += 1;
+            this.inner.observe(...args);
+        }
+        disconnect() {
+            counts.disconnected += 1;
+            this.inner.disconnect();
+        }
+        takeRecords() {
+            return this.inner.takeRecords();
+        }
+    };
+    return counts;
+};
+
+// A prior TC string on an older vendor list: patched rather than re-encoded,
+// because @iabtcf refuses to encode a model without a GVL, and a string a CMP
+// wrote on an older list is this one with those twelve bits changed.
+export const withVendorListVersion = (tcString, value) => {
+    const B64 =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    const parts = tcString.split('.');
+    let bits = '';
+    for ( const character of parts[0] ) {
+        bits += B64.indexOf(character).toString(2).padStart(6, '0');
+    }
+    bits = bits.slice(0, 120) + value.toString(2).padStart(12, '0') +
+        bits.slice(132);
+    while ( bits.length % 6 !== 0 ) { bits += '0'; }
+    let out = '';
+    for ( let i = 0; i < bits.length; i += 6 ) {
+        out += B64.charAt(parseInt(bits.slice(i, i + 6), 2));
+    }
+    parts[0] = out;
+    return parts.join('.');
+};
+
 export const settle = (ms = 30) => new Promise(resolve => {
     setTimeout(resolve, ms);
 });

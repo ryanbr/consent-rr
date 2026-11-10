@@ -155,12 +155,14 @@ function consentRRIubenda(mode, installTcf) {
         if ( typeof config !== 'object' || config === null ) { return false; }
         return Object.keys(config).length !== 0;
     };
+    // False ends the passes below: this installs once, so the watch is waste
+    // from the moment it succeeds.
     const start = ( ) => {
-        if ( installed ) { return 0; }
+        if ( installed ) { return false; }
         if ( configured() === false ) { return 0; }
         installed = true;
         consentRRIubendaInstall(mode, installTcf);
-        return 0;
+        return false;
     };
     start();
     if ( installed === false ) {

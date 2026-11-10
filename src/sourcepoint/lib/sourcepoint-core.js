@@ -643,8 +643,11 @@ function consentRRSourcepoint(installTcf) {
 
     const start = ( ) => {
         let done = false;
+        // False says the passes below are finished, so the observer waiting
+        // for their config comes down with the install rather than firing for
+        // the rest of the page's life on a call that returns at once.
         const attempt = ( ) => {
-            if ( done ) { return 0; }
+            if ( done ) { return false; }
             try {
                 const sp = w._sp_;
                 if ( typeof sp !== 'object' || sp === null ) { return 0; }
@@ -652,7 +655,7 @@ function consentRRSourcepoint(installTcf) {
                 // twice; the marker is what makes the second one a no-op.
                 if ( sp.consentRR !== undefined ) {
                     done = true;
-                    return 0;
+                    return false;
                 }
                 const config = configOf();
                 if ( configReady(config) === false ) { return 0; }
@@ -661,7 +664,7 @@ function consentRRSourcepoint(installTcf) {
             } catch ( ex ) {
                 done = true;
             }
-            return 0;
+            return false;
         };
         attempt();
         if ( done ) { return; }

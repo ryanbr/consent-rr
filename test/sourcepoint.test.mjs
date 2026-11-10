@@ -20,7 +20,7 @@ import { before, describe, it } from 'node:test';
 import { TCString } from '@iabtcf/core';
 import {
     cookies, cookiesInJar, filtersText, loadResources, runDom, settle,
-    versions,
+    versions, watchObservers, withVendorListVersion,
 } from './helpers.mjs';
 
 const URL = 'https://news.example.co.uk/world/article';
@@ -102,27 +102,6 @@ const tcf = (w, command, parameter) => {
         out = { value, success };
     }, parameter);
     return out;
-};
-
-const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-
-// The core segment's leading fields are fixed width, so the vendor list
-// version sits at bit 120 and can be rewritten without the library.
-const withVendorListVersion = (tcString, value) => {
-    const parts = tcString.split('.');
-    let bits = '';
-    for ( const character of parts[0] ) {
-        bits += B64.indexOf(character).toString(2).padStart(6, '0');
-    }
-    bits = bits.slice(0, 120) + value.toString(2).padStart(12, '0') +
-        bits.slice(132);
-    while ( bits.length % 6 !== 0 ) { bits += '0'; }
-    let out = '';
-    for ( let i = 0; i < bits.length; i += 6 ) {
-        out += B64.charAt(parseInt(bits.slice(i, i + 6), 2));
-    }
-    parts[0] = out;
-    return parts.join('.');
 };
 
 /******************************************************************************/
@@ -373,6 +352,29 @@ describe('sourcepoint-reject, the IAB layer', ( ) => {
             );
         }
     );
+
+    // The passes that wait for their config are finished the moment it
+    // arrives. Left watching, the observer and its 100ms timer go on firing
+    // for the lifetime of the page on a call that returns at once.
+    it('stops watching the page once their config arrives', async ( ) => {
+        let counts;
+        const w = boot({
+            noConfig: true,
+            before: w_ => {
+                counts = watchObservers(w_);
+                w_._sp_ = {};
+            },
+        }).window;
+        await settle(40);
+        assert.equal(counts.observed, 1, 'watching while it waits');
+        assert.equal(counts.disconnected, 0);
+        assert.equal(w._sp_.consentRR, undefined, 'and nothing installed yet');
+        w._sp_.config = configOf();
+        w.document.body.append(w.document.createElement('div'));
+        await settle(250);
+        assert.ok(w._sp_.consentRR, 'the pass caught the config');
+        assert.equal(counts.disconnected, 1, 'and took the watch down');
+    });
 
     it('carries a returning visitor own vendor list version', ( ) => {
         const first = boot().window;

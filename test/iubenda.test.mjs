@@ -17,7 +17,7 @@ import { before, describe, it } from 'node:test';
 import { TCString } from '@iabtcf/core';
 import {
     cookies, cookiesInJar, filtersText, loadResources, runDom, settle,
-    versions,
+    versions, watchObservers,
 } from './helpers.mjs';
 
 const URL_PAGE = 'https://example.it/pagina';
@@ -901,6 +901,24 @@ describe('iubenda, before their configuration exists', ( ) => {
         assert.equal(w.iubendaConsentRR.state().fired, 1);
     });
 
+    // Installed, these passes are finished: their configuration cannot
+    // arrive twice, so the watch goes down with the install. The tag-freeing
+    // pass is the unblock resource's and keeps its own.
+    it('stops watching the page once their config arrives', async ( ) => {
+        let counts;
+        const w = runDom(reject, URL_PAGE, PAGE, ww => {
+            counts = watchObservers(ww);
+        }).window;
+        await settle(40);
+        assert.equal(counts.observed, 1, 'watching while it waits');
+        assert.equal(counts.disconnected, 0);
+        w.eval(CONFIG_SCRIPT);
+        w.document.body.append(w.document.createElement('div'));
+        await settle(250);
+        assert.ok(cookies(w).get('_iub_cs-7654321'), 'the record went in');
+        assert.equal(counts.disconnected, 1, 'and took the watch down');
+    });
+
     it('is not fooled by an empty configuration', async ( ) => {
         const w = runDom(reject, URL_PAGE, PAGE).window;
         w.eval('window._iub.csConfiguration = {};');
@@ -1020,7 +1038,7 @@ describe('iubenda, the console line and the lists', ( ) => {
     });
 
     it('is pinned at the version the package names', ( ) => {
-        assert.equal(versions.iubenda, '1.0.2');
+        assert.equal(versions.iubenda, '1.0.3');
     });
 
     it('names their loader and both of their cores', ( ) => {

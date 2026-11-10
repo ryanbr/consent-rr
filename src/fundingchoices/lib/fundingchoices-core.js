@@ -174,8 +174,14 @@ function consentRRFundingChoices(installTcf) {
     /**************************************************************************/
 
     // Their internal API manager, by the names their own prototype carries.
-    // setError is the call their inactive path makes, and it is what makes
-    // every answer the same one.
+    // setError is the call their inactive path makes before anything asks, so
+    // the error state is where this one starts and where it stays - and in
+    // that state every command serialises to the same answer, with the name
+    // never consulted. So it is not consulted here either: the command list
+    // decides something in the two places that can reach it, their
+    // invalid-command method and the queue below. Nothing clears the error,
+    // and a page that clears it itself gets the unknown answer rather than
+    // one measured off a path this resource never takes.
     const manager = {
         error: true,
         setError: function() {
@@ -183,10 +189,8 @@ function consentRRFundingChoices(installTcf) {
         },
         setCmpModeObject: noopfn,
         setExperimentsObject: noopfn,
-        getSerializedReturnMessageForCommand: function(command) {
-            if ( this.error ) { return ANSWER; }
-            if ( COMMANDS.includes(command) ) { return ANSWER; }
-            return UNKNOWN;
+        getSerializedReturnMessageForCommand: function() {
+            return this.error ? ANSWER : UNKNOWN;
         },
         getSerializedReturnMessageForInvalidCommand: ( ) => UNKNOWN,
     };

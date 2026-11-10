@@ -35,7 +35,7 @@
 
 */
 
-function consentRRTcf(grant) {
+function consentRRTcf(grant, priorTcString) {
     const w = window;
     const doc = w.document;
 
@@ -44,7 +44,13 @@ function consentRRTcf(grant) {
     const CMP_ID = 28;              // OneTrust's own IAB CMP id
     const CMP_VERSION = 1;
     const POLICY_VERSION = 5;       // as a real reject-all writes
-    const VENDOR_LIST_VERSION = 178;
+    // Their layer is @iabtcf/core with a GVL, and that GVL is the live
+    // vendor-list.json their page fetches - so the version a real OneTrust
+    // writes is whatever the list says on the day, not a constant. Measured
+    // in otTCF.js, which carries the library whole, and against the list
+    // itself: v3 was on 184 the day this was written, with 178 the value
+    // this file had pinned.
+    const VENDOR_LIST_VERSION_FALLBACK = 184;
     // Vendor ids are granted as one range, so a generous ceiling costs nothing
     // in the string. A real one carried ids up to 1650.
     const VENDOR_MAX = 2000;
@@ -58,6 +64,39 @@ function consentRRTcf(grant) {
     // Consent overrides the signal; a refusal alongside it does not.
     const keepLegitimateInterest =
         grant || w.navigator.globalPrivacyControl !== true;
+
+    // A returning visitor's own string answers the list version instead of
+    // the fallback: it carries the list their service last wrote, which is as
+    // close as a replacement gets without a network call, and it leaves the
+    // constant above for a first visit. The core segment's leading fields are
+    // fixed width, so those twelve bits can be lifted out without a library:
+    // 6 version, 36 created, 36 last updated, 12 cmpId, 12 cmpVersion, 6
+    // consent screen, 12 language, then the list version at bit 120. The
+    // sourcepoint layer reads it the same way and keeps its own copy, for the
+    // reason every IAB layer here does: a constant adapted from another
+    // family is a constant nobody measured.
+    const priorVendorListVersion = text => {
+        try {
+            if ( typeof text !== 'string' ) { return 0; }
+            const core = text.split('.')[0];
+            if ( core.length < 24 ) { return 0; }
+            let bits = '';
+            for ( const character of core.slice(0, 24) ) {
+                const index = B64.indexOf(character);
+                if ( index === -1 ) { return 0; }
+                bits += index.toString(2).padStart(6, '0');
+            }
+            if ( parseInt(bits.substr(0, 6), 2) !== 2 ) { return 0; }
+            return parseInt(bits.substr(120, 12), 2);
+        } catch ( ex ) {
+        }
+        return 0;
+    };
+
+    const carried = priorVendorListVersion(priorTcString);
+    const VENDOR_LIST_VERSION = carried !== 0
+        ? carried
+        : VENDOR_LIST_VERSION_FALLBACK;
 
     const twoLetters = (value, fallback) => {
         const text = typeof value === 'string' ? value.toUpperCase() : '';

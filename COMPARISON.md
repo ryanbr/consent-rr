@@ -11,7 +11,7 @@ repo side by side.
 
 # The three OneTrust modes
 
-From the OneTrust resources at **1.5.1**.
+From the OneTrust resources at **1.5.2**.
 A row in bold is one where the three differ.
 
 ## What is stored
@@ -100,12 +100,12 @@ and a vendor receiving that string is entitled to act on it.
 Keep `reject` global and escalate per site. The console line names which one ran:
 
 ```
-[consent-rr] onetrust-reject 1.5.1 groups=,C0001, tcf=refused gpp=refused
-[consent-rr] onetrust-reject-unblock 1.5.1 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
-[consent-rr] onetrust-accept 1.5.1 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
+[consent-rr] onetrust-reject 1.5.2 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-reject-unblock 1.5.2 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-accept 1.5.2 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
 ```
 
-Sizes: `reject` 36.1 KB, `reject-unblock` 36.1 KB, `accept` 36.1 KB.
+Sizes: `reject` 37.0 KB, `reject-unblock` 37.0 KB, `accept` 37.0 KB.
 
 # Every resource, side by side
 
@@ -117,10 +117,10 @@ the same fixture as its sibling.
 
 | Resource | Size | What it defines |
 | --- | --- | --- |
-| `onetrust-reject` | 36.1 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
-| `onetrust-accept` | 36.1 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
-| `onetrust-reject-unblock` | 36.1 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
-| `chcookieconsent-reject` | 11.2 KB | `serializeForm` |
+| `onetrust-reject` | 37.0 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
+| `onetrust-accept` | 37.0 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
+| `onetrust-reject-unblock` | 37.0 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
+| `chcookieconsent-reject` | 11.7 KB | `serializeForm` |
 | `cookieinformation-reject` | 10.9 KB | `CookieInformation`, `CookieConsent`, `CookieConsentDialog`, `cicc`, `cicl`, `isCookieInformationAPIReady` |
 | `inmobi-reject` | 27.0 KB | `__gpp`, `__uspapi`, `__tcfapiui` |
 | `osano-reject` | 34.0 KB | `Osano`, `__uspapi`, `__tcfapi`, `__gpp` |
@@ -129,30 +129,30 @@ the same fixture as its sibling.
 | `cookiebot-reject` | 14.7 KB | `CookieConsent`, `Cookiebot`, `uetq`, `CB_OnTagsExecuted_Processed` |
 | `securiti-reject` | 8.2 KB | `SecuritiSDK`, `__ScrtSdkApiOps`, `initCmp`, `setConsentBannerParams`, `showConsentPreferencesPopup`, `overrideThemeMatching` +4 more |
 | `transcend-reject` | 12.3 KB | - |
-| `complianz-reject` | 13.4 KB | `cmplz_get_cookie`, `cmplz_set_cookie`, `cmplz_has_consent`, `cmplz_in_array`, `cmplz_get_banner_status`, `cmplz_set_banner_status` +9 more |
-| `complianz-accept` | 13.4 KB | `cmplz_get_cookie`, `cmplz_set_cookie`, `cmplz_has_consent`, `cmplz_in_array`, `cmplz_get_banner_status`, `cmplz_set_banner_status` +9 more |
-| `zdconsent-reject` | 48.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
-| `zdconsent-accept` | 48.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
-| `consentmanager-reject` | 23.5 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
-| `consentmanager-reject-unblock` | 23.5 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
+| `complianz-reject` | 14.0 KB | `cmplz_get_cookie`, `cmplz_set_cookie`, `cmplz_has_consent`, `cmplz_in_array`, `cmplz_get_banner_status`, `cmplz_set_banner_status` +9 more |
+| `complianz-accept` | 14.0 KB | `cmplz_get_cookie`, `cmplz_set_cookie`, `cmplz_has_consent`, `cmplz_in_array`, `cmplz_get_banner_status`, `cmplz_set_banner_status` +9 more |
+| `zdconsent-reject` | 49.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
+| `zdconsent-accept` | 49.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
+| `consentmanager-reject` | 24.1 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
+| `consentmanager-reject-unblock` | 24.1 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
 | `ampconsent-reject` | 14.9 KB | `AMP` |
 | `ampconsent-reject-unblock` | 14.9 KB | `AMP` |
-| `iubenda-reject` | 39.5 KB | `__tcfapi`, `_cmp` |
-| `iubenda-reject-unblock` | 39.5 KB | `__tcfapi`, `_cmp` |
-| `iubenda-accept` | 39.5 KB | `__tcfapi`, `_cmp` |
+| `iubenda-reject` | 40.0 KB | `__tcfapi`, `_cmp` |
+| `iubenda-reject-unblock` | 40.1 KB | `__tcfapi`, `_cmp` |
+| `iubenda-accept` | 40.0 KB | `__tcfapi`, `_cmp` |
 | `cookieconsent-reject` | 26.7 KB | `CookieConsent`, `_ccRun` |
 | `cookieconsent-reject-unblock` | 26.7 KB | `CookieConsent`, `_ccRun` |
 | `cookieconsent-accept` | 26.7 KB | `CookieConsent`, `_ccRun` |
-| `cookielawinfo-reject` | 5.9 KB | `cli_show_cookiebar`, `l1hs` |
-| `webtoffee-reject` | 18.1 KB | `CLI`, `CLI_Cookie`, `cli_show_cookiebar` |
-| `webtoffee-reject-unblock` | 18.1 KB | `CLI`, `CLI_Cookie`, `cli_show_cookiebar` |
-| `cookiez-reject` | 9.6 KB | - |
-| `cookiez-reject-unblock` | 9.6 KB | - |
-| `cookieyes-reject` | 19.6 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
-| `cookieyes-reject-unblock` | 19.6 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
+| `cookielawinfo-reject` | 6.4 KB | `cli_show_cookiebar`, `l1hs` |
+| `webtoffee-reject` | 18.7 KB | `CLI`, `CLI_Cookie`, `cli_show_cookiebar` |
+| `webtoffee-reject-unblock` | 18.7 KB | `CLI`, `CLI_Cookie`, `cli_show_cookiebar` |
+| `cookiez-reject` | 10.1 KB | - |
+| `cookiez-reject-unblock` | 10.2 KB | - |
+| `cookieyes-reject` | 20.1 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
+| `cookieyes-reject-unblock` | 20.1 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
 | `tarteaucitron-reject` | 20.6 KB | `uetq` |
 | `tarteaucitron-reject-unblock` | 20.6 KB | `uetq` |
-| `fundingchoices-reject` | 15.1 KB | `googlefc`, `__fcInternalApiManager`, `__fcInternalApiPostMessageReady`, `__tcfapi` |
+| `fundingchoices-reject` | 15.0 KB | `googlefc`, `__fcInternalApiManager`, `__fcInternalApiPostMessageReady`, `__tcfapi` |
 | `didomi-reject` | 13.8 KB | `Didomi`, `didomiState`, `didomiEventListeners`, `didomiOnReady` |
 | `didomi-accept` | 13.8 KB | `Didomi`, `didomiState`, `didomiEventListeners`, `didomiOnReady` |
 | `cookiescript-reject` | 19.1 KB | `CookieScriptData`, `CookieScript` |
@@ -160,7 +160,7 @@ the same fixture as its sibling.
 | `appconsent-accept` | 16.6 KB | `__tcfapi`, `appconsent` |
 | `ketch-reject` | 13.0 KB | - |
 | `ketch-reject-unblock` | 13.0 KB | - |
-| `termly-reject` | 10.8 KB | `Termly` |
+| `termly-reject` | 11.4 KB | `Termly` |
 | `pubtech-reject` | 16.0 KB | `__tcfapi`, `__pub_tech_cmp_on_consent_queue__pre`, `__pub_tech_cmp_on_consent_queue`, `__pub_tech_cmp_consent_rr` |
 | `usercentrics-reject` | 35.5 KB | `__ucCmp`, `UC_UI` |
 
@@ -254,9 +254,9 @@ uBlock Origin does the blocking.
 ## What each one says
 
 ```
-[consent-rr] onetrust-reject 1.5.1 groups=,C0001, tcf=refused gpp=refused
-[consent-rr] onetrust-accept 1.5.1 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
-[consent-rr] onetrust-reject-unblock 1.5.1 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-reject 1.5.2 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-accept 1.5.2 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
+[consent-rr] onetrust-reject-unblock 1.5.2 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
 [consent-rr] chcookieconsent-reject 1.1.0 cookie=Cookie_Consent written=4 blocked=0 refused=analytics,tracking allowed=none removed=1 told=1 banner=none parked=none posted=none logged=none
 [consent-rr] cookieinformation-reject 1.0.2 approved=cookie_cat_necessary denied=cookie_cat_functional,cookie_cat_statistic,cookie_cat_marketing,cookie_cat_unclassified cookie=written
 [consent-rr] inmobi-reject 1.2.0 config=read cc=IT lang=IT tcf=refused li=kept gpp=refused usp=1--- cookie=written gppcookie=written
@@ -268,26 +268,26 @@ uBlock Origin does the blocking.
 [consent-rr] transcend-reject 1.5.2 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
 [consent-rr] complianz-reject 1.1.0 categories=functional cookies=4 services=2 revived=0 told=4 prefix=cmplz_ policy=kept consenttype=optin
 [consent-rr] complianz-accept 1.1.0 categories=all cookies=4 services=2 revived=2 told=4 prefix=cmplz_ policy=kept consenttype=optin
-[consent-rr] zdconsent-reject/onetrust 1.0.1 groups=,C0001, tcf=refused gpp=refused
-[consent-rr] zdconsent-accept/onetrust 1.0.1 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
+[consent-rr] zdconsent-reject/onetrust 1.0.2 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] zdconsent-accept/onetrust 1.0.2 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
 [consent-rr] consentmanager-reject 1.1.0 purposes=none vendors=none api=__cmp+__uspapi tcf=refused freed=0 events=5 told=0 banner=none crossdomain=none tracking=none
 [consent-rr] consentmanager-reject-unblock 1.1.0 purposes=none vendors=none api=__cmp+__uspapi tcf=refused freed=1 events=5 told=0 banner=none crossdomain=none tracking=none
-[consent-rr] iubenda-reject 1.0.2 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary surface=denied tcf=refused told=2 banner=none sent=none
-[consent-rr] iubenda-reject-unblock 1.0.2 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary surface=granted tcf=refused told=2 banner=none sent=none
-[consent-rr] iubenda-accept 1.0.2 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary,functionality,experience,measurement,marketing surface=granted tcf=granted told=2 banner=none sent=none
+[consent-rr] iubenda-reject 1.0.3 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary surface=denied tcf=refused told=2 banner=none sent=none
+[consent-rr] iubenda-reject-unblock 1.0.3 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary surface=granted tcf=refused told=2 banner=none sent=none
+[consent-rr] iubenda-accept 1.0.3 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary,functionality,experience,measurement,marketing surface=granted tcf=granted told=2 banner=none sent=none
 [consent-rr] cookieconsent-reject 1.0.1 store=cookie name=cc_cookie accepted=necessary type=necessary surface=necessary parked=1 freed=0 cleared=0 told=2 banner=none
 [consent-rr] cookieconsent-reject-unblock 1.0.1 store=cookie name=cc_cookie accepted=necessary type=necessary surface=all parked=1 freed=1 cleared=0 told=2 banner=none
 [consent-rr] cookieconsent-accept 1.0.1 store=cookie name=cc_cookie accepted=necessary,analytics type=all surface=all parked=1 freed=1 cleared=0 told=2 banner=none
 [consent-rr] cookielawinfo-reject 1.0.0 cookie=viewed_cookie_policy=no stored=yes was=absent removed=2 banner=none blocked=none sent=none
 [consent-rr] webtoffee-reject 1.0.0 cookie=viewed_cookie_policy=no written=4 erased=0 categories=necessary,analytics surface=necessary removed=3 parked=1 freed=0 told=1 banner=none logged=none
 [consent-rr] webtoffee-reject-unblock 1.0.0 cookie=viewed_cookie_policy=no written=4 erased=0 categories=necessary,analytics surface=all removed=3 parked=1 freed=1 told=1 banner=none logged=none
-[consent-rr] cookiez-reject 1.1.1 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=0 gpc=unset banner=none log=none
-[consent-rr] cookiez-reject-unblock 1.1.1 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=1 gpc=unset banner=none log=none
+[consent-rr] cookiez-reject 1.1.2 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=0 gpc=unset banner=none log=none
+[consent-rr] cookiez-reject-unblock 1.1.2 categories=necessary cookie=written hash=theirs consentid=none told=1 freed=1 gpc=unset banner=none log=none
 [consent-rr] cookieyes-reject 1.1.0 categories=necessary cookie=written consentid=none freed=0 events=2 tcf=refused gpc=unset banner=none log=none
 [consent-rr] cookieyes-reject-unblock 1.1.0 categories=necessary+functional+analytics+performance+advertisement+other cookie=written consentid=none freed=1 events=2 tcf=refused gpc=unset banner=none log=none
 [consent-rr] tarteaucitron-reject 1.1.0 refused=2 allowed=0 launched=0 cookie=tarteaucitron entries=2 events=5 banner=none reload=no beacon=none
 [consent-rr] tarteaucitron-reject-unblock 1.1.0 refused=1 allowed=1 launched=1 types=video+social cookie=tarteaucitron entries=2 events=5 banner=none reload=no beacon=none
-[consent-rr] fundingchoices-reject 1.1.1 frames=2 answered=0 replied=0 cleared=0 tcf=refused
+[consent-rr] fundingchoices-reject 1.1.2 frames=2 answered=0 replied=0 cleared=0 tcf=refused
 [consent-rr] didomi-reject 1.0.0 purposes=none token=written ready=0 listeners=0 tcf=absent
 [consent-rr] didomi-accept 1.0.0 purposes=all token=written ready=0 listeners=0 tcf=absent
 [consent-rr] cookiescript-reject 1.0.7 action=reject categories=strict cookie=written freed=1 removed=0 gcm=denied/default api=ready watch=watching reload=reloading

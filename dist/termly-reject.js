@@ -8,12 +8,33 @@
     'use strict';
 function consentRRDeferred(w, doc, scan, label) {
     'use strict';
+    let observer;
+    let timer;
+    let stopped = false;
+    const stop = ( ) => {
+        stopped = true;
+        try {
+            if ( observer !== undefined ) { observer.disconnect(); }
+        } catch ( ex ) {
+        }
+        if ( timer === undefined ) { return; }
+        try {
+            w.clearTimeout(timer);
+        } catch ( ex ) {
+        }
+        timer = undefined;
+    };
     let passes = 0;
     const run = ( ) => {
+        if ( stopped ) { return; }
         let freed = 0;
         try {
             freed = scan();
         } catch ( ex ) {
+        }
+        if ( freed === false ) {
+            stop();
+            return;
         }
         passes += 1;
         if ( passes === 1 || typeof freed !== 'number' || freed === 0 ) { return; }
@@ -22,7 +43,6 @@ function consentRRDeferred(w, doc, scan, label) {
         if ( typeof console.info !== 'function' ) { return; }
         console.info('[consent-rr] ' + label + ' freed=' + freed + ' deferred');
     };
-    let timer;
     const flush = ( ) => {
         timer = undefined;
         run();
@@ -36,8 +56,10 @@ function consentRRDeferred(w, doc, scan, label) {
         }
     };
     run();
+    if ( stopped ) { return; }
     try {
-        new w.MutationObserver(defer).observe(doc.documentElement || doc, {
+        observer = new w.MutationObserver(defer);
+        observer.observe(doc.documentElement || doc, {
             childList: true,
             subtree: true,
         });

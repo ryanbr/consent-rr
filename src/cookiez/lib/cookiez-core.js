@@ -149,11 +149,14 @@ function consentRRCookiez(mode) {
     };
     if ( ready() === false ) {
         let installed = false;
+        // False ends the passes below: this installs once, so the watch is
+        // waste from the moment it succeeds.
         const start = ( ) => {
-            if ( installed || ready() === false ) { return 0; }
+            if ( installed ) { return false; }
+            if ( ready() === false ) { return 0; }
             installed = true;
             consentRRCookiezInstall(mode);
-            return 0;
+            return false;
         };
         try {
             w.setTimeout(start, 0);
