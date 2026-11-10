@@ -320,9 +320,13 @@ function consentRROneTrust(mode, installTcf, installGpp, named) {
         return out;
     };
 
-    const removeBanner = root => {
-        for ( const node of matching(root, bannerSelector) ) { node.remove(); }
-    };
+    // One selector for both, because the observer hands a scan one root per
+    // added node, and two passes over each subtree was twice the walk for the
+    // same answer. A node can belong to both lists - their banner markup
+    // carries a category on some tenants - so each is tested on its own
+    // rather than as an else, which would collect such a node and then leave
+    // it on the page.
+    const bothSelector = categorySelector + ',' + bannerSelector;
 
     /**************************************************************************/
 
@@ -408,10 +412,15 @@ function consentRROneTrust(mode, installTcf, installGpp, named) {
     let scanTimer;
 
     const scan = (root = doc) => {
-        const nodes = matching(root, categorySelector);
+        const nodes = [];
+        const banners = [];
+        for ( const node of matching(root, bothSelector) ) {
+            if ( node.matches(categorySelector) ) { nodes.push(node); }
+            if ( node.matches(bannerSelector) ) { banners.push(node); }
+        }
         collectGroupIds(nodes);
         const active = setGlobals();
-        removeBanner(root);
+        for ( const node of banners ) { node.remove(); }
         activateGatedTags(nodes);
         return active;
     };

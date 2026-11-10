@@ -11,7 +11,7 @@ repo side by side.
 
 # The three OneTrust modes
 
-From the OneTrust resources at **1.5.2**.
+From the OneTrust resources at **1.5.3**.
 A row in bold is one where the three differ.
 
 ## What is stored
@@ -100,12 +100,12 @@ and a vendor receiving that string is entitled to act on it.
 Keep `reject` global and escalate per site. The console line names which one ran:
 
 ```
-[consent-rr] onetrust-reject 1.5.2 groups=,C0001, tcf=refused gpp=refused
-[consent-rr] onetrust-reject-unblock 1.5.2 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
-[consent-rr] onetrust-accept 1.5.2 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
+[consent-rr] onetrust-reject 1.5.3 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-reject-unblock 1.5.3 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-accept 1.5.3 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
 ```
 
-Sizes: `reject` 37.0 KB, `reject-unblock` 37.0 KB, `accept` 37.0 KB.
+Sizes: `reject` 37.2 KB, `reject-unblock` 37.2 KB, `accept` 37.2 KB.
 
 # Every resource, side by side
 
@@ -117,9 +117,9 @@ the same fixture as its sibling.
 
 | Resource | Size | What it defines |
 | --- | --- | --- |
-| `onetrust-reject` | 37.0 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
-| `onetrust-accept` | 37.0 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
-| `onetrust-reject-unblock` | 37.0 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
+| `onetrust-reject` | 37.2 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
+| `onetrust-accept` | 37.2 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
+| `onetrust-reject-unblock` | 37.2 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` |
 | `chcookieconsent-reject` | 11.7 KB | `serializeForm` |
 | `cookieinformation-reject` | 10.9 KB | `CookieInformation`, `CookieConsent`, `CookieConsentDialog`, `cicc`, `cicl`, `isCookieInformationAPIReady` |
 | `inmobi-reject` | 27.0 KB | `__gpp`, `__uspapi`, `__tcfapiui` |
@@ -131,8 +131,8 @@ the same fixture as its sibling.
 | `transcend-reject` | 12.3 KB | - |
 | `complianz-reject` | 14.0 KB | `cmplz_get_cookie`, `cmplz_set_cookie`, `cmplz_has_consent`, `cmplz_in_array`, `cmplz_get_banner_status`, `cmplz_set_banner_status` +9 more |
 | `complianz-accept` | 14.0 KB | `cmplz_get_cookie`, `cmplz_set_cookie`, `cmplz_has_consent`, `cmplz_in_array`, `cmplz_get_banner_status`, `cmplz_set_banner_status` +9 more |
-| `zdconsent-reject` | 49.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
-| `zdconsent-accept` | 49.8 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
+| `zdconsent-reject` | 50.0 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
+| `zdconsent-accept` | 50.0 KB | `Optanon`, `OneTrust`, `OnetrustActiveGroups`, `OptanonActiveGroups`, `__tcfapi`, `__gpp` +2 more |
 | `consentmanager-reject` | 24.1 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
 | `consentmanager-reject-unblock` | 24.1 KB | `cmpmngr`, `__cmp`, `__uspapi`, `__tcfapi`, `wp_consent_type` |
 | `ampconsent-reject` | 14.9 KB | `AMP` |
@@ -254,9 +254,9 @@ uBlock Origin does the blocking.
 ## What each one says
 
 ```
-[consent-rr] onetrust-reject 1.5.2 groups=,C0001, tcf=refused gpp=refused
-[consent-rr] onetrust-accept 1.5.2 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
-[consent-rr] onetrust-reject-unblock 1.5.2 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-reject 1.5.3 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] onetrust-accept 1.5.3 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
+[consent-rr] onetrust-reject-unblock 1.5.3 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, stored=,C0001, tcf=refused gpp=refused
 [consent-rr] chcookieconsent-reject 1.1.0 cookie=Cookie_Consent written=4 blocked=0 refused=analytics,tracking allowed=none removed=1 told=1 banner=none parked=none posted=none logged=none
 [consent-rr] cookieinformation-reject 1.0.2 approved=cookie_cat_necessary denied=cookie_cat_functional,cookie_cat_statistic,cookie_cat_marketing,cookie_cat_unclassified cookie=written
 [consent-rr] inmobi-reject 1.2.0 config=read cc=IT lang=IT tcf=refused li=kept gpp=refused usp=1--- cookie=written gppcookie=written
@@ -268,8 +268,8 @@ uBlock Origin does the blocking.
 [consent-rr] transcend-reject 1.5.2 refused=Advertising,Analytics,Functional,SaleOfInfo via=setConsent
 [consent-rr] complianz-reject 1.1.0 categories=functional cookies=4 services=2 revived=0 told=4 prefix=cmplz_ policy=kept consenttype=optin
 [consent-rr] complianz-accept 1.1.0 categories=all cookies=4 services=2 revived=2 told=4 prefix=cmplz_ policy=kept consenttype=optin
-[consent-rr] zdconsent-reject/onetrust 1.0.2 groups=,C0001, tcf=refused gpp=refused
-[consent-rr] zdconsent-accept/onetrust 1.0.2 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
+[consent-rr] zdconsent-reject/onetrust 1.0.3 groups=,C0001, tcf=refused gpp=refused
+[consent-rr] zdconsent-accept/onetrust 1.0.3 groups=,C0001,C0002,C0003,C0004,C0005,V2STACK42, tcf=granted gpp=granted
 [consent-rr] consentmanager-reject 1.1.0 purposes=none vendors=none api=__cmp+__uspapi tcf=refused freed=0 events=5 told=0 banner=none crossdomain=none tracking=none
 [consent-rr] consentmanager-reject-unblock 1.1.0 purposes=none vendors=none api=__cmp+__uspapi tcf=refused freed=1 events=5 told=0 banner=none crossdomain=none tracking=none
 [consent-rr] iubenda-reject 1.0.3 cookie=_iub_cs-7654321 stored=cookie mode=per-purpose accepted=necessary surface=denied tcf=refused told=2 banner=none sent=none

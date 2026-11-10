@@ -1047,6 +1047,27 @@ describe('reject-unblock', ( ) => {
         '<iframe id="emb" class="optanon-category-C0003" data-src="https://e.example/v"></iframe>' +
         '<p id="content">x</p></body></html>';
 
+    // Their banner markup carries a category on some tenants, so one node can
+    // match the category selector and the banner selector at once. Both lists
+    // are built from a single pass now, and a node in both has to be in both:
+    // collected before the globals are published, and still removed.
+    it('collects a banner node that carries a category, and still removes it',
+        ( ) => {
+            const both = '<html lang="en"><body>' +
+                '<div id="onetrust-banner-sdk" data-optanon-category="C0042">' +
+                'banner</div><p id="content">x</p></body></html>';
+            const win = run(unblock, both);
+            assert.ok(
+                String(win.OnetrustActiveGroups).includes('C0042'),
+                'its category was collected: ' + win.OnetrustActiveGroups
+            );
+            assert.equal(
+                win.document.getElementById('onetrust-banner-sdk'), null,
+                'and the banner still went'
+            );
+        }
+    );
+
     // Stored and sent: the refusal, exactly as reject writes it.
     it('stores and sends the same refusal as reject', ( ) => {
         const win = run(unblock);
