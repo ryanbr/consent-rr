@@ -24,14 +24,35 @@
     const CLIENT_VERSION = '0.261.0';
     const POLL_INTERVAL = 20;
     const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
-    const projectIdFromScript = ( ) => {
+    // The request was redirected, not the element, so the script still
+    // carries the url it was going to fetch - the only place the identity of
+    // the project survives. Two shapes: /js/<project>.js, which is the
+    // snippet and holds the project id alone, and
+    // /public/<account>/<project>/<revision>_<hash>_edge_helper.js, which is
+    // the same client served for Performance Edge and is the only shape that
+    // carries the account and the revision as well.
+    const identityFromScript = ( ) => {
+        const blank = { accountId: null, projectId: null, revision: null };
         try {
             const el = doc.currentScript;
             const src = el && el.src || '';
-            const match = /\/(\d{6,})\.js/.exec(src);
-            return match !== null ? match[1] : null;
+            const direct = /\/(\d{6,})\.js/.exec(src);
+            if ( direct !== null ) {
+                return {
+                    accountId: null, projectId: direct[1], revision: null,
+                };
+            }
+            const nested = /\/public\/(\d+)\/(\d+)\/(?:(\d+)_)?/.exec(src);
+            if ( nested !== null ) {
+                return {
+                    accountId: nested[1],
+                    projectId: nested[2],
+                    revision: nested[3] !== undefined ? nested[3] : null,
+                };
+            }
+            return blank;
         } catch ( ex ) {
-            return null;
+            return blank;
         }
     };
     const randomId = ( ) => {
@@ -314,7 +335,7 @@
         } catch ( ex ) {
         }
     };
-    const projectId = projectIdFromScript();
+    const identity = identityFromScript();
     const state = {
         getActivationId: ( ) => null,
         getActiveExperimentIds: ( ) => [],
@@ -330,7 +351,7 @@
         isGlobalHoldback: ( ) => false,
     };
     const data = {
-        accountId: null,
+        accountId: identity.accountId,
         audiences: {},
         campaigns: {},
         clientName: CLIENT_NAME,
@@ -340,9 +361,9 @@
         experiments: {},
         groups: {},
         pages: {},
-        projectId,
-        revision: null,
-        snippetId: projectId,
+        projectId: identity.projectId,
+        revision: identity.revision,
+        snippetId: identity.projectId,
         variations: {},
     };
     // get('visitor') is assembled from their profile providers, one per key,

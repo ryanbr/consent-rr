@@ -25,6 +25,11 @@ import { parseResources, settle } from './helpers.mjs';
 
 const SNIPPET_URL = 'https://cdn.optimizely.com/js/5530288147660800.js';
 const PREVIEW_URL = 'https://cdn.optimizely.com/js/preview2/5530288147660800.js';
+// The same client served for Performance Edge: /public/<account>/<project>/
+// <revision>_<sha256>_edge_helper.js
+const EDGE_URL = 'https://cdn.optimizely.com/public/275532918/20917322951/' +
+    '10012_c2dd97f885d305fc03c78148ada49be2c09fac33ec4e25036c0f4cd7cbdd8a8c' +
+    '_edge_helper.js';
 const PROJECT_ID = '5530288147660800';
 
 let code;
@@ -230,6 +235,23 @@ describe('optimizely', ( ) => {
         const data = bootRedirected().optimizely.get('data');
         assert.equal(data.projectId, PROJECT_ID);
         assert.equal(data.snippetId, PROJECT_ID);
+    });
+
+    it('takes account, project and revision from the edge helper path', ( ) => {
+        const data = bootRedirected(EDGE_URL).optimizely.get('data');
+        assert.equal(data.accountId, '275532918');
+        assert.equal(data.projectId, '20917322951');
+        assert.equal(data.snippetId, '20917322951');
+        assert.equal(data.revision, '10012');
+    });
+
+    it('leaves account and revision unknown on the snippet path', ( ) => {
+        // /js/<project>.js carries the project id and nothing else, so
+        // claiming an account there would be inventing one.
+        const data = bootRedirected().optimizely.get('data');
+        assert.equal(data.projectId, PROJECT_ID);
+        assert.equal(data.accountId, null);
+        assert.equal(data.revision, null);
     });
 
     it('carries it over from the preview client path too', ( ) => {
