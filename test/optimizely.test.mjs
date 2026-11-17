@@ -148,6 +148,21 @@ const bootLogged = ( ) => {
     return { win: dom.window, lines };
 };
 
+// cdn3/geo4.js verbatim in shape - the || [] idiom, the array-form push, and
+// the IIFE split across lines as they ship it - with a documentation address
+// in place of the real one. The probe after it records what push answered,
+// since the route matters as much as the absence of residue.
+const GEO4 = '<script>(function(){\n' +
+    '  window["optimizely"] = window["optimizely"] || [];\n' +
+    '  window["optimizely"].push(["activateGeoDelayedExperiments", {\n' +
+    '    "location":{ "city": "TESTCITY", "continent": "XX", "country": "ZZ",' +
+    ' "region": "RR", "dma": "" },\n' +
+    '    "ip":"203.0.113.9"\n' +
+    '  }]);\n' +
+    '})\n()\n;</script>' +
+    '<script>window.geoAccepted = window.optimizely.push(' +
+    '["activateGeoDelayedExperiments", { "ip": "203.0.113.9" }]);</script>';
+
 const QUEUE_LISTENER =
     '<script>window.optimizely = window.optimizely || [];' +
     "window.optimizely.push({ type: 'addListener'," +
@@ -769,6 +784,66 @@ describe('optimizely', ( ) => {
         // And the bad level left the previous one alone.
         win.optimizely.push({ type: 'notACommand' });
         assert.deepEqual(lines.warn, []);
+    });
+
+    it('takes the real geo4 script without keeping any of it', ( ) => {
+        // Their client injects geo4 after it has installed, so the stub is
+        // first; the other order is unreachable in practice but must not
+        // break either, because the || [] idiom has to find the api and the
+        // queue drain has to carry a command that was pushed before it ran.
+        for ( const [ label, options ] of [
+            [ 'stub first', { after: GEO4 } ],
+            [ 'geo4 first', { before: GEO4 } ],
+        ] ) {
+            const win = boot(options);
+            assert.equal(
+                typeof win.optimizely.get, 'function',
+                `${label}: the || [] idiom replaced the api`
+            );
+            if ( options.after !== undefined ) {
+                // The stub is installed, so push is ours and answers true.
+                assert.equal(win.geoAccepted, true, `${label}: push refused it`);
+            } else {
+                // The stub had not run, so the page's push was still
+                // Array.prototype.push, which answers the new length. That
+                // is the whole reason their initializeApi drains an array.
+                assert.equal(typeof win.geoAccepted, 'number', label);
+                assert.equal(
+                    win.optimizely.push([
+                        'activateGeoDelayedExperiments', { ip: '203.0.113.9' },
+                    ]),
+                    true,
+                    `${label}: push refused it after install`
+                );
+            }
+            const everywhere = JSON.stringify([
+                win.optimizely.get('visitor'),
+                win.optimizely.get('data'),
+                win.optimizely.data,
+                win.document.cookie,
+                Object.entries(win.localStorage),
+            ]);
+            assert.equal(
+                everywhere.includes('203.0.113.9'), false,
+                `${label}: address retained`
+            );
+            assert.equal(
+                everywhere.includes('TESTCITY'), false,
+                `${label}: city retained`
+            );
+            // geo4 is one expression statement, so unlike the older geo.js it
+            // leaves nothing of its own on the window.
+            assert.deepEqual(
+                Object.keys(win).filter(key => /^optimizely/i.test(key)),
+                [ 'optimizely' ],
+                `${label}: a global was left behind`
+            );
+            assert.deepEqual(
+                Object.values(win.optimizely.get('visitor').location),
+                [ '', '', '', '', '' ],
+                `${label}: location was filled in`
+            );
+        }
     });
 
     it('leaves an api already installed alone', ( ) => {
