@@ -124,6 +124,30 @@ const bootCounted = ( ) => {
     return { win: dom.window, counts };
 };
 
+// Console captured before any script runs, so the resource's own lines are
+// the ones collected. The other fixtures use a VirtualConsole, which drops
+// them.
+const bootLogged = ( ) => {
+    const lines = { warn: [], error: [] };
+    const dom = new JSDOM(
+        `<!DOCTYPE html><html><head><script>${code}</script></head>` +
+        `<body></body></html>`,
+        {
+            runScripts: 'dangerously',
+            url: 'https://example.com/page',
+            beforeParse(win) {
+                win.console.warn = (...parts) => {
+                    lines.warn.push(parts);
+                };
+                win.console.error = (...parts) => {
+                    lines.error.push(parts.join(' '));
+                };
+            },
+        }
+    );
+    return { win: dom.window, lines };
+};
+
 const QUEUE_LISTENER =
     '<script>window.optimizely = window.optimizely || [];' +
     "window.optimizely.push({ type: 'addListener'," +
@@ -671,6 +695,57 @@ describe('optimizely', ( ) => {
         }
         await settle(60);
         assert.deepEqual(fired.slice().sort(), [ 'a:a1', 'b:b1', 'c:c1' ]);
+    });
+
+    it('says nothing to the console until a page asks it to', ( ) => {
+        const { win, lines } = bootLogged();
+        win.optimizely.push({ type: 'notACommand' });
+        win.optimizely.push(42);
+        win.optimizely.get('dcp');
+        // Their logger buffers and only prints once a level is set, so a
+        // visitor who never asked sees a clean console.
+        assert.deepEqual(lines.warn, []);
+        assert.deepEqual(lines.error, []);
+    });
+
+    it('uses their wording once the level allows a warning', ( ) => {
+        const { win, lines } = bootLogged();
+        assert.equal(win.optimizely.push({ type: 'log', level: 'WARN' }), true);
+        win.optimizely.push({ type: 'notACommand' });
+        win.optimizely.push('activate');
+        win.optimizely.push(42);
+        win.optimizely.get('dcp');
+        const first = lines.warn.map(parts => parts[0]);
+        assert.deepEqual(first, [
+            'API / No function found for "notACommand" (v1) with arguments:',
+            'API / No function found for "activate" (v0) with arguments:',
+            'API / Ignoring non-array/object/string argument:',
+            'Module "dcp" not found.',
+        ]);
+        // The arguments ride as a second parameter, as theirs do.
+        assert.deepEqual(lines.warn[2][1], 42);
+    });
+
+    it('takes the legacy log command and its off switch', ( ) => {
+        const { win, lines } = bootLogged();
+        win.optimizely.push([ 'log' ]);
+        win.optimizely.push({ type: 'notACommand' });
+        assert.equal(lines.warn.length, 1, 'legacy log did not enable');
+        win.optimizely.push([ 'log', false ]);
+        win.optimizely.push({ type: 'notACommand' });
+        assert.equal(lines.warn.length, 1, 'legacy log false did not silence');
+    });
+
+    it('keeps quiet below warn and complains about a level it cannot read', ( ) => {
+        const { win, lines } = bootLogged();
+        win.optimizely.push({ type: 'log', level: 'ERROR' });
+        win.optimizely.push({ type: 'notACommand' });
+        assert.deepEqual(lines.warn, [], 'ERROR is below WARN');
+        win.optimizely.push({ type: 'log', level: 'sideways' });
+        assert.deepEqual(lines.error, [ 'Unknown log level: sideways' ]);
+        // And the bad level left the previous one alone.
+        win.optimizely.push({ type: 'notACommand' });
+        assert.deepEqual(lines.warn, []);
     });
 
     it('leaves an api already installed alone', ( ) => {

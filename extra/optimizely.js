@@ -282,6 +282,38 @@
         }
         return ( ) => { };
     };
+    // Their logger buffers every line and prints nothing until a level is
+    // set - shouldLog is false while logLevel is null, which is how it
+    // starts - so a normal page sees a silent console. These lines appear
+    // the same way theirs do: push({type:'log', level:'WARN'}), or the
+    // legacy push(['log']), which means INFO. Levels, wording and the
+    // complaint about an unknown level are all theirs.
+    const LOG_LEVELS = { OFF: 0, ERROR: 1, WARN: 2, INFO: 3, DEBUG: 4 };
+    let logLevel = null;
+    const setLogLevel = level => {
+        const resolved = typeof level === 'string'
+            ? LOG_LEVELS[level.toUpperCase()]
+            : level;
+        if ( typeof resolved !== 'number' ) {
+            try {
+                w.console.error('Unknown log level: ' + level);
+            } catch ( ex ) {
+            }
+            return;
+        }
+        logLevel = resolved;
+    };
+    const warn = (message, detail) => {
+        if ( logLevel === null || logLevel < LOG_LEVELS.WARN ) { return; }
+        try {
+            if ( detail === undefined ) {
+                w.console.warn(message);
+            } else {
+                w.console.warn(message, detail);
+            }
+        } catch ( ex ) {
+        }
+    };
     const projectId = projectIdFromScript();
     const state = {
         getActivationId: ( ) => null,
@@ -405,7 +437,9 @@
         if ( name === 'jquery' ) { return w.jQuery; }
         // Declared below, and only ever reached once the api is installed.
         if ( name === 'event_emitter' ) { return eventEmitter; }
-        return hasOwn(modules, name) ? modules[name] : undefined;
+        if ( hasOwn(modules, name) ) { return modules[name]; }
+        warn('Module "' + name + '" not found.');
+        return undefined;
     };
     const listeners = [];
     const fired = Object.create(null);
@@ -492,7 +526,9 @@
         bucketUser: noop,
         bucketVisitor: noop,
         disable: noop,
-        log: noop,
+        log: enabled => {
+            setLogLevel(enabled === undefined || enabled ? 'INFO' : 'OFF');
+        },
         optOut: noop,
         setCookieDomain: noop,
         setCookieExpiration: noop,
@@ -520,7 +556,7 @@
         integrationSettings: noop,
         load: noop,
         loadEmbeddedEditor: noop,
-        log: noop,
+        log: spec => { setLogLevel(spec.level); },
         microsnippetError: noop,
         optOut: noop,
         page: noop,
@@ -551,11 +587,18 @@
             name = command;
             args = [];
         } else {
+            warn('API / Ignoring non-array/object/string argument:', command);
             return false;
         }
         const table = commandTables[version];
-        if ( table === undefined ) { return false; }
-        if ( hasOwn(table, name) === false ) { return false; }
+        if ( table === undefined || hasOwn(table, name) === false ) {
+            warn(
+                'API / No function found for "' + name + '" (v' + version +
+                ') with arguments:',
+                args
+            );
+            return false;
+        }
         try {
             table[name].apply(null, args);
         } catch ( ex ) {
