@@ -423,6 +423,53 @@ describe('optimizely', ( ) => {
         assert.equal(counts.cleared, 2);
     });
 
+    it('accepts the legacy array-form commands a page still pushes', ( ) => {
+        const win = boot();
+        const legacy = [
+            [ 'activateSiteCatalyst', { sVariable: 's1' } ],
+            [ 'bucketVisitor', '1234', 0 ],
+            [ 'setCookieDomain', '.example.com' ],
+            [ 'setCookieExpiration', 90 ],
+            [ 'setDimensionValue', 'plan', 'pro' ],
+            [ 'setGA4UserId', 'ga-1' ],
+            [ 'setUserId', 'user-1' ],
+            [ 'storeThirdPartyData', { segment: 'x' } ],
+            [ 'trackEvent', 'signup' ],
+            [ 'log' ],
+            [ 'disable' ],
+            [ 'optOut', true ],
+        ];
+        for ( const command of legacy ) {
+            assert.equal(win.optimizely.push(command), true, command[0]);
+        }
+    });
+
+    it('takes the geo callback and keeps the address out of the page', ( ) => {
+        // cdn3/geo4.js is injected by their client when an audience needs an
+        // address, and calls back with the visitor's own IP and location. The
+        // stub never injects it, and takes the call without keeping anything.
+        const win = boot();
+        const payload = {
+            location: {
+                city: 'TESTCITY', continent: 'XX', country: 'ZZ',
+                region: 'RR', dma: '',
+            },
+            ip: '203.0.113.9',
+        };
+        assert.equal(
+            win.optimizely.push([ 'activateGeoDelayedExperiments', payload ]),
+            true
+        );
+        const visitor = win.optimizely.get('visitor');
+        const serialised = JSON.stringify([
+            visitor, win.optimizely.get('data'), win.document.cookie,
+            Object.entries(win.localStorage),
+        ]);
+        assert.ok(serialised.includes('203.0.113.9') === false, 'ip retained');
+        assert.ok(serialised.includes('TESTCITY') === false, 'city retained');
+        assert.deepEqual(Object.keys(visitor.dimensions), []);
+    });
+
     it('leaves an api already installed alone', ( ) => {
         const win = boot();
         const installed = win.optimizely;

@@ -357,8 +357,15 @@
         }
     };
     const noop = ( ) => { };
+    // Two tables, as theirs has: the current names, and the legacy ones a page
+    // still pushes in array form. The legacy set proxies to the current one in
+    // their client, so a name missing here would have push answer false for a
+    // call that is real - including activateGeoDelayedExperiments, which is how
+    // cdn3/geo4.js hands the page back its own address and location.
     const commands = {
         activate: noop,
+        activateGeoDelayedExperiments: noop,
+        activateSiteCatalyst: noop,
         addListener,
         bucketVisitor: noop,
         dataFromSource: noop,
@@ -373,7 +380,13 @@
         registerModule: noop,
         removeListener,
         sendEvents: noop,
+        setCookieDomain: noop,
+        setCookieExpiration: noop,
+        setDimensionValue: noop,
+        setGA4UserId: noop,
         setOptOut: noop,
+        setUserId: noop,
+        storeThirdPartyData: noop,
         trackEvent: noop,
         user: noop,
     };
