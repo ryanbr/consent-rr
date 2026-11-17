@@ -489,7 +489,13 @@
         visitor_id: { randomId: randomId() },
     };
     const get = name => {
-        if ( name === 'jquery' ) { return w.jQuery; }
+        // Theirs does not bundle jQuery, it borrows the page's: env/jquery
+        // reads a closure-scoped $ if there is one and otherwise window.$,
+        // and it never looks at window.jQuery. So a page that called
+        // noConflict - jQuery present, $ gone - gets undefined from theirs,
+        // and gets undefined here. A fallback to jQuery would be answering
+        // something they do not.
+        if ( name === 'jquery' ) { return w.$; }
         // Declared below, and only ever reached once the api is installed.
         if ( name === 'event_emitter' ) { return eventEmitter; }
         if ( hasOwn(modules, name) ) { return modules[name]; }

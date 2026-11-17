@@ -868,6 +868,32 @@ describe('optimizely', ( ) => {
         }
     });
 
+    it('borrows the page jQuery the way their env/jquery does', ( ) => {
+        // No jQuery on the page at all.
+        assert.equal(boot().optimizely.get('jquery'), undefined);
+        // window.$ with no window.jQuery - noConflict, or another library
+        // holding $. Theirs resolves $, so this must too.
+        const dollar = boot({
+            before: '<script>window.$ = function(){ return "dollar"; };</script>',
+        });
+        assert.equal(typeof dollar.optimizely.get('jquery'), 'function');
+        assert.equal(dollar.optimizely.get('jquery')(), 'dollar');
+        // Both present, as on an ordinary jQuery page.
+        const both = boot({
+            before: '<script>window.jQuery = function(){ return "jq"; };' +
+                'window.$ = window.jQuery;</script>',
+        });
+        assert.equal(both.optimizely.get('jquery')(), 'jq');
+        // jQuery present with $ removed, which is what noConflict leaves.
+        // Their resolver never reads window.jQuery, so theirs answers
+        // undefined and so must this.
+        const noConflict = boot({
+            before: '<script>window.jQuery = function(){ return "jq"; };' +
+                'delete window.$;</script>',
+        });
+        assert.equal(noConflict.optimizely.get('jquery'), undefined);
+    });
+
     it('leaves an api already installed alone', ( ) => {
         const win = boot();
         const installed = win.optimizely;
