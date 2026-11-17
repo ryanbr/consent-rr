@@ -65,28 +65,36 @@
         mutationObserver.disconnect();
         mutationObserver = null;
     };
-    const scanObservers = ( ) => {
-        for ( let i = observers.length - 1; i >= 0; i-- ) {
-            const entry = observers[i];
-            let nodes;
+    // False means the entry is spent and should go. A callback can register
+    // another observer, which scans itself and may remove entries, so the
+    // index a loop is holding cannot be trusted afterwards - removal is by
+    // identity, and registering scans the new entry alone rather than all of
+    // them, which keeps a nested call from rescanning the document.
+    const drop = entry => {
+        const at = observers.indexOf(entry);
+        if ( at !== -1 ) { observers.splice(at, 1); }
+    };
+    const scanEntry = entry => {
+        let nodes;
+        try {
+            nodes = doc.querySelectorAll(entry.selector);
+        } catch ( ex ) {
+            return false;
+        }
+        for ( const node of nodes ) {
+            if ( entry.seen.has(node) ) { continue; }
+            entry.seen.add(node);
             try {
-                nodes = doc.querySelectorAll(entry.selector);
+                entry.callback(node);
             } catch ( ex ) {
-                observers.splice(i, 1);
-                continue;
             }
-            for ( const node of nodes ) {
-                if ( entry.seen.has(node) ) { continue; }
-                entry.seen.add(node);
-                try {
-                    entry.callback(node);
-                } catch ( ex ) {
-                }
-                if ( entry.once ) {
-                    observers.splice(i, 1);
-                    break;
-                }
-            }
+            if ( entry.once ) { return false; }
+        }
+        return true;
+    };
+    const scanObservers = ( ) => {
+        for ( const entry of observers.slice() ) {
+            if ( scanEntry(entry) === false ) { drop(entry); }
         }
         releaseObserver();
     };
@@ -126,10 +134,12 @@
                 mutationObserver = null;
             }
         }
-        scanObservers();
+        if ( scanEntry(entry) === false ) {
+            drop(entry);
+            releaseObserver();
+        }
         return ( ) => {
-            const i = observers.indexOf(entry);
-            if ( i !== -1 ) { observers.splice(i, 1); }
+            drop(entry);
             releaseObserver();
         };
     };
@@ -163,7 +173,9 @@
         };
     };
     const waitUntil = condition => new Promise(resolve => {
-        if ( typeof condition !== 'function' ) { return; }
+        // No guard on condition: theirs calls it straight away, so a value
+        // that is not callable throws inside the executor and the promise
+        // rejects. Guarding here would leave it pending for ever instead.
         if ( condition() ) {
             resolve();
             return;
@@ -182,6 +194,8 @@
     let historyPatched = false;
     let nativePushState = null;
     let nativeReplaceState = null;
+    let ourPushState = null;
+    let ourReplaceState = null;
     const notifyUrlChange = ( ) => {
         for ( const handler of Array.from(urlChangeHandlers.values()) ) {
             try {
@@ -209,6 +223,8 @@
                     nativeReplaceState.apply(w.history, arguments);
                     notifyUrlChange();
                 };
+                ourPushState = w.history.pushState;
+                ourReplaceState = w.history.replaceState;
                 historyPatched = true;
             }
         }
@@ -218,8 +234,18 @@
             w.removeEventListener('popstate', notifyUrlChange);
             w.removeEventListener('hashchange', notifyUrlChange);
             if ( historyPatched ) {
-                w.history.pushState = nativePushState;
-                w.history.replaceState = nativeReplaceState;
+                // Put the natives back only while ours are still the ones
+                // installed. Another script may have wrapped history after
+                // us, and restoring over that would unhook it - theirs
+                // checks the same identity before restoring.
+                if ( w.history.pushState === ourPushState ) {
+                    w.history.pushState = nativePushState;
+                }
+                if ( w.history.replaceState === ourReplaceState ) {
+                    w.history.replaceState = nativeReplaceState;
+                }
+                ourPushState = null;
+                ourReplaceState = null;
                 historyPatched = false;
             }
         };
@@ -230,6 +256,9 @@
         first_child: 'afterbegin',
         last_child: 'beforeend',
     };
+    // Theirs re-inserts the markup if the page removes it, which is what the
+    // persist means. This inserts once: the re-insertion exists for variation
+    // code, and no variation runs here.
     const persistHtml = (html, selector, placement) => {
         if ( typeof html !== 'string' || html === '' ) {
             throw new Error('persistHtml: html must be a non-empty string');

@@ -579,6 +579,100 @@ describe('optimizely', ( ) => {
         );
     });
 
+    it('reports a url change and goes quiet when unsubscribed', ( ) => {
+        const win = boot();
+        const seen = [];
+        const stop = win.optimizely.get('utils').onUrlChange(href => {
+            seen.push(href);
+        });
+        win.history.pushState({}, '', '/one');
+        win.history.replaceState({}, '', '/two');
+        assert.equal(seen.length, 2);
+        assert.match(seen[0], /\/one$/);
+        assert.match(seen[1], /\/two$/);
+        stop();
+        win.history.pushState({}, '', '/three');
+        assert.equal(seen.length, 2);
+    });
+
+    it('restores history only while its own wrapper is the one installed', ( ) => {
+        const win = boot();
+        const utils = win.optimizely.get('utils');
+        const pristine = win.history.pushState;
+        const pristineReplace = win.history.replaceState;
+        let stop = utils.onUrlChange(( ) => {});
+        assert.notEqual(win.history.pushState, pristine, 'pushState not patched');
+        assert.notEqual(win.history.replaceState, pristineReplace, 'replaceState not patched');
+        stop();
+        assert.equal(win.history.pushState, pristine, 'pushState not put back');
+        assert.equal(win.history.replaceState, pristineReplace, 'replaceState not put back');
+        // Now with another script wrapping history after us: unsubscribing
+        // must not unhook it.
+        stop = utils.onUrlChange(( ) => {});
+        const ours = win.history.pushState;
+        let theirCalls = 0;
+        win.history.pushState = function() {
+            theirCalls += 1;
+            return ours.apply(this, arguments);
+        };
+        const theirs = win.history.pushState;
+        stop();
+        assert.equal(win.history.pushState, theirs, 'their wrapper was clobbered');
+        win.history.pushState({}, '', '/x');
+        assert.equal(theirCalls, 1, 'their wrapper stopped being called');
+    });
+
+    it('rejects waitUntil when the condition is not callable', async ( ) => {
+        const win = boot();
+        let outcome = 'pending';
+        win.optimizely.get('utils').waitUntil(undefined).then(
+            ( ) => { outcome = 'resolved'; },
+            ( ) => { outcome = 'rejected'; }
+        );
+        await settle(40);
+        // Theirs calls the condition straight away, so this throws inside the
+        // executor. Leaving it pending for ever would be the worse answer.
+        assert.equal(outcome, 'rejected');
+    });
+
+    it('unsubscribes the observer handed back, not the last one added', async ( ) => {
+        const win = boot();
+        const utils = win.optimizely.get('utils');
+        const fired = [];
+        const stopFirst = utils.observeSelector('.first', el => {
+            fired.push(`first:${el.id}`);
+        });
+        utils.observeSelector('.second', el => { fired.push(`second:${el.id}`); });
+        stopFirst();
+        for ( const [ cls, id ] of [ [ 'first', 'f1' ], [ 'second', 's1' ] ] ) {
+            const node = win.document.createElement('div');
+            node.className = cls;
+            node.id = id;
+            win.document.body.appendChild(node);
+        }
+        await settle(60);
+        assert.deepEqual(fired, [ 'second:s1' ]);
+    });
+
+    it('lets an observer callback register another observer', async ( ) => {
+        const win = boot();
+        const utils = win.optimizely.get('utils');
+        const fired = [];
+        utils.observeSelector('.a', el => {
+            fired.push(`a:${el.id}`);
+            utils.observeSelector('.b', inner => { fired.push(`b:${inner.id}`); });
+        }, { once: true });
+        utils.observeSelector('.c', el => { fired.push(`c:${el.id}`); });
+        for ( const [ cls, id ] of [ [ 'a', 'a1' ], [ 'b', 'b1' ], [ 'c', 'c1' ] ] ) {
+            const node = win.document.createElement('div');
+            node.className = cls;
+            node.id = id;
+            win.document.body.appendChild(node);
+        }
+        await settle(60);
+        assert.deepEqual(fired.slice().sort(), [ 'a:a1', 'b:b1', 'c:c1' ]);
+    });
+
     it('leaves an api already installed alone', ( ) => {
         const win = boot();
         const installed = win.optimizely;
