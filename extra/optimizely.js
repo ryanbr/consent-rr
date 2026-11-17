@@ -304,7 +304,68 @@
         waitForElement,
         waitUntil,
     };
+    // get('behavior') is registered as a plugin by every snippet seen, so it
+    // has to answer. Their three methods read the visitor event store, which
+    // here holds nothing, and the argument checks below are theirs: a page
+    // that passes a bad descriptor should still hear about it.
+    const RECENCY_FILTERS = [ 'most_recent', 'least_recent' ];
+    const FREQUENCY_FILTERS = [ 'most_frequent', 'least_frequent' ];
+    const descriptorProblems = (descriptor, allowed) => {
+        if ( !descriptor ) { return [ 'Descriptor not defined' ]; }
+        const problems = [];
+        if ( descriptor.count ) {
+            problems.push('Unexpected "count" clause specified');
+        }
+        const pick = descriptor.pick;
+        if ( pick && pick.modifier && allowed.indexOf(pick.modifier) === -1 ) {
+            problems.push('Invalid "pick" modifier "' + pick.modifier + '"');
+        }
+        for ( const filter of descriptor.filters || [] ) {
+            if ( filter && filter.modifier !== undefined ) {
+                problems.push('Unexpected "filter" modifier "' + filter.modifier + '"');
+            }
+        }
+        return problems.length !== 0 ? problems : undefined;
+    };
+    const behavior = {
+        getEvents: descriptor => {
+            if ( descriptor === undefined ) { return []; }
+            if ( typeof descriptor === 'number' ) {
+                if ( descriptor <= 0 ) {
+                    throw new Error('Count must be a positive integer, got ' + descriptor);
+                }
+                return [];
+            }
+            const problems = descriptorProblems(descriptor, RECENCY_FILTERS);
+            if ( problems !== undefined ) { throw new Error(problems.join('\n')); }
+            return [];
+        },
+        getByFrequency: descriptor => {
+            const spec = descriptor !== undefined && descriptor !== null
+                ? descriptor
+                : {};
+            if ( !spec.pick ) {
+                throw new Error('No "pick" clause provided in query descriptor');
+            }
+            if ( !spec.pick.name ) {
+                throw new Error('No field name provided in "pick" clause');
+            }
+            const problems = descriptorProblems(spec, FREQUENCY_FILTERS);
+            if ( problems !== undefined ) { throw new Error(problems.join('\n')); }
+            return [];
+        },
+        query: descriptor => {
+            const spec = descriptor !== undefined && descriptor !== null
+                ? descriptor
+                : {};
+            // Theirs executes the spec then takes the first element when a
+            // reduce is asked for. Executed against no events that is an
+            // empty list, so a reduced query has nothing to hand back.
+            return spec.reduce ? undefined : [];
+        },
+    };
     const modules = {
+        behavior,
         data,
         state,
         utils,
@@ -313,6 +374,8 @@
     };
     const get = name => {
         if ( name === 'jquery' ) { return w.jQuery; }
+        // Declared below, and only ever reached once the api is installed.
+        if ( name === 'event_emitter' ) { return eventEmitter; }
         return hasOwn(modules, name) ? modules[name] : undefined;
     };
     const listeners = [];
@@ -334,80 +397,138 @@
             }
         }
     };
-    const addListener = spec => {
-        if ( spec === null || typeof spec !== 'object' || typeof spec.handler !== 'function' ) {
-            throw new Error('A handler function must be supplied');
+    const dropByToken = token => {
+        for ( let i = listeners.length - 1; i >= 0; i-- ) {
+            if ( listeners[i].token === token ) { listeners.splice(i, 1); }
         }
-        const entry = { filter: spec.filter, handler: spec.handler, token: spec.token };
-        listeners.push(entry);
+    };
+    // Their emitter puts a token on the spec it was handed when it has none,
+    // and hands the same token back, which is the only way a page learns the
+    // one it must pass to removeListener.
+    const register = spec => {
+        if ( !spec.token ) { spec.token = randomId(); }
+        listeners.push({
+            filter: spec.filter, handler: spec.handler, token: spec.token,
+        });
+        return spec.token;
+    };
+    const replaySticky = spec => {
         const filter = spec.filter;
         if ( !filter || filter.type !== 'lifecycle' ) { return; }
         if ( STICKY[filter.name] !== true || fired[filter.name] !== true ) { return; }
         try {
-            entry.handler({ type: 'lifecycle', name: filter.name });
+            spec.handler({ type: 'lifecycle', name: filter.name });
         } catch ( ex ) {
         }
+    };
+    const addListener = spec => {
+        if ( spec === null || typeof spec !== 'object' || typeof spec.handler !== 'function' ) {
+            throw new Error('A handler function must be supplied');
+        }
+        const token = register(spec);
+        replaySticky(spec);
+        return token;
     };
     const removeListener = spec => {
         if ( spec === null || typeof spec !== 'object' || !spec.token ) {
             throw new Error('Must supply a token to removeListener');
         }
-        for ( let i = listeners.length - 1; i >= 0; i-- ) {
-            if ( listeners[i].token === spec.token ) { listeners.splice(i, 1); }
-        }
+        dropByToken(spec.token);
+    };
+    // get('event_emitter') is in their module registry beside state and data.
+    // on takes the spec and returns its token, off takes the bare token.
+    const eventEmitter = {
+        on: spec => {
+            if ( spec === null || typeof spec !== 'object' ) { return undefined; }
+            const token = register(spec);
+            replaySticky(spec);
+            return token;
+        },
+        off: token => { dropByToken(token); },
+        emit: ev => {
+            if ( ev === null || typeof ev !== 'object' ) { return; }
+            emit(ev);
+        },
     };
     const noop = ( ) => { };
-    // Two tables, as theirs has: the current names, and the legacy ones a page
-    // still pushes in array form. The legacy set proxies to the current one in
-    // their client, so a name missing here would have push answer false for a
-    // call that is real - including activateGeoDelayedExperiments, which is how
-    // cdn3/geo4.js hands the page back its own address and location.
-    const commands = {
-        activate: noop,
+    // Their push picks a table by version: the array and string forms are
+    // version 0, an object carries its own or defaults to 1, and the third
+    // table in their client is empty, so a version 2 call finds nothing.
+    // A name in the wrong table is refused there as well, which is why this
+    // is two lists and not one - push('activate') is a version 0 call for a
+    // version 1 name, and their answer to it is false.
+    const commandsV0 = {
         activateGeoDelayedExperiments: noop,
         activateSiteCatalyst: noop,
-        addListener,
+        bucketUser: noop,
         bucketVisitor: noop,
-        dataFromSource: noop,
         disable: noop,
-        event: noop,
-        holdEvents: noop,
-        integrationSettings: noop,
-        load: noop,
         log: noop,
         optOut: noop,
-        page: noop,
-        registerModule: noop,
-        removeListener,
-        sendEvents: noop,
         setCookieDomain: noop,
         setCookieExpiration: noop,
         setDimensionValue: noop,
         setGA4UserId: noop,
-        setOptOut: noop,
         setUserId: noop,
         storeThirdPartyData: noop,
         trackEvent: noop,
-        user: noop,
     };
+    const commandsV1 = {
+        activate: noop,
+        addListener,
+        bucketVisitor: noop,
+        clientMetadata: noop,
+        cookieDomain: noop,
+        cookieExpiration: noop,
+        dataFromSource: noop,
+        disable: noop,
+        disableCrossOrigin: noop,
+        event: noop,
+        extendCookieLifetime: noop,
+        ga4User: noop,
+        holdEvents: noop,
+        initialViewStates: noop,
+        integrationSettings: noop,
+        load: noop,
+        loadEmbeddedEditor: noop,
+        log: noop,
+        microsnippetError: noop,
+        optOut: noop,
+        page: noop,
+        priorRedirectString: noop,
+        registerModule: noop,
+        removeListener,
+        rum: noop,
+        sendEvents: noop,
+        tags: noop,
+        user: noop,
+        waitForOriginSync: noop,
+    };
+    const commandTables = [ commandsV0, commandsV1, {} ];
     const push = command => {
+        let version;
         let name;
         let args;
         if ( Array.isArray(command) ) {
+            version = 0;
             name = command[0];
             args = command.slice(1);
         } else if ( command !== null && typeof command === 'object' ) {
+            version = command.version !== undefined ? command.version : 1;
             name = command.type;
             args = [ command ];
         } else if ( typeof command === 'string' ) {
+            version = 0;
             name = command;
             args = [];
         } else {
             return false;
         }
-        if ( hasOwn(commands, name) === false ) { return false; }
+        const table = commandTables[version];
+        if ( table === undefined ) { return false; }
+        if ( hasOwn(table, name) === false ) { return false; }
         try {
-            commands[name].apply(null, args);
+            table[name].apply(null, args);
         } catch ( ex ) {
         }
         return true;

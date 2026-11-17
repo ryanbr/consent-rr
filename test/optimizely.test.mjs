@@ -223,7 +223,7 @@ describe('optimizely', ( ) => {
     it('returns undefined for a module it does not carry', ( ) => {
         const win = boot();
         assert.equal(win.optimizely.get('dcp'), undefined);
-        assert.equal(win.optimizely.get('behavior'), undefined);
+        assert.equal(win.optimizely.get('session'), undefined);
         assert.equal(win.optimizely.get(), undefined);
     });
 
@@ -231,7 +231,10 @@ describe('optimizely', ( ) => {
         const win = boot();
         assert.equal(win.optimizely.push({ type: 'activate' }), true);
         assert.equal(win.optimizely.push([ 'trackEvent', { eventName: 'x' } ]), true);
-        assert.equal(win.optimizely.push('activate'), true);
+        // The string and array forms are version 0 calls, and activate is a
+        // version 1 name, so their client refuses both.
+        assert.equal(win.optimizely.push('activate'), false);
+        assert.equal(win.optimizely.push([ 'activate' ]), false);
         assert.equal(win.optimizely.push({ type: 'notACommand' }), false);
         assert.equal(win.optimizely.push(42), false);
     });
@@ -468,6 +471,112 @@ describe('optimizely', ( ) => {
         assert.ok(serialised.includes('203.0.113.9') === false, 'ip retained');
         assert.ok(serialised.includes('TESTCITY') === false, 'city retained');
         assert.deepEqual(Object.keys(visitor.dimensions), []);
+    });
+
+    it('routes a command to the table its version names', ( ) => {
+        const win = boot();
+        const cases = [
+            [ { type: 'activate' }, true ],
+            [ { type: 'trackEvent' }, false ],
+            [ { type: 'setUserId' }, false ],
+            [ { type: 'rum' }, true ],
+            [ { type: 'waitForOriginSync' }, true ],
+            [ { type: 'setOptOut' }, false ],
+            [ [ 'trackEvent', 'x' ], true ],
+            [ [ 'setUserId', 'u' ], true ],
+            [ [ 'bucketUser', '1', '0' ], true ],
+            [ [ 'addListener' ], false ],
+            [ { type: 'activate', version: 0 }, false ],
+            [ { type: 'trackEvent', version: 0 }, true ],
+            [ { type: 'activate', version: 2 }, false ],
+            [ { type: 'activate', version: 9 }, false ],
+        ];
+        for ( const [ command, expected ] of cases ) {
+            assert.equal(
+                win.optimizely.push(command), expected,
+                JSON.stringify(command)
+            );
+        }
+    });
+
+    it('hands back the listener token their emitter assigns', ( ) => {
+        const win = boot();
+        let hits = 0;
+        const spec = {
+            type: 'addListener',
+            filter: { type: 'custom' },
+            handler: ( ) => { hits += 1; },
+        };
+        win.optimizely.push(spec);
+        assert.match(spec.token, /^[0-9a-f-]{36}$/);
+        const emitter = win.optimizely.get('event_emitter');
+        emitter.emit({ type: 'custom', name: 'x' });
+        assert.equal(hits, 1);
+        win.optimizely.push({ type: 'removeListener', token: spec.token });
+        emitter.emit({ type: 'custom', name: 'x' });
+        assert.equal(hits, 1);
+    });
+
+    it('serves the event_emitter module', ( ) => {
+        const win = boot();
+        const emitter = win.optimizely.get('event_emitter');
+        assert.deepEqual(Object.keys(emitter).sort(), [ 'emit', 'off', 'on' ]);
+        let hits = 0;
+        const token = emitter.on({
+            filter: { type: 'custom' },
+            handler: ( ) => { hits += 1; },
+        });
+        assert.match(token, /^[0-9a-f-]{36}$/);
+        emitter.emit({ type: 'custom', name: 'one' });
+        emitter.emit({ type: 'other', name: 'two' });
+        assert.equal(hits, 1, 'the filter is honoured');
+        emitter.off(token);
+        emitter.emit({ type: 'custom', name: 'three' });
+        assert.equal(hits, 1);
+    });
+
+    it('serves the behavior module with no event history', ( ) => {
+        const win = boot();
+        const behavior = win.optimizely.get('behavior');
+        assert.deepEqual(
+            Object.keys(behavior).sort(),
+            [ 'getByFrequency', 'getEvents', 'query' ]
+        );
+        const empty = (value, label) => {
+            assert.ok(Array.isArray(value), `${label} is not an array`);
+            assert.equal(value.length, 0, `${label} is not empty`);
+        };
+        empty(behavior.getEvents(), 'getEvents()');
+        empty(behavior.getEvents(5), 'getEvents(5)');
+        empty(behavior.getEvents({ filters: [] }), 'getEvents(descriptor)');
+        empty(behavior.getByFrequency({ pick: { name: 'tag' } }), 'getByFrequency');
+        empty(behavior.query({}), 'query({})');
+        // Theirs takes the first element of the executed result when a reduce
+        // is asked for, and against no events there is none.
+        assert.equal(behavior.query({ reduce: { aggregator: 'count' } }), undefined);
+    });
+
+    it('raises the argument errors the behavior module raises', ( ) => {
+        const behavior = boot().optimizely.get('behavior');
+        assert.throws(( ) => behavior.getEvents(0), /Count must be a positive integer, got 0/);
+        assert.throws(( ) => behavior.getEvents(-3), /positive integer/);
+        assert.throws(( ) => behavior.getEvents({ count: 1 }), /Unexpected "count" clause/);
+        assert.throws(
+            ( ) => behavior.getEvents({ pick: { name: 'x', modifier: 'sideways' } }),
+            /Invalid "pick" modifier "sideways"/
+        );
+        assert.throws(
+            ( ) => behavior.getEvents({ filters: [ { modifier: 'odd' } ] }),
+            /Unexpected "filter" modifier "odd"/
+        );
+        assert.throws(( ) => behavior.getEvents(null), /Descriptor not defined/);
+        assert.throws(( ) => behavior.getByFrequency(), /No "pick" clause provided/);
+        assert.throws(( ) => behavior.getByFrequency({ pick: {} }), /No field name provided/);
+        // most_recent belongs to getEvents, not to getByFrequency.
+        assert.throws(
+            ( ) => behavior.getByFrequency({ pick: { name: 'x', modifier: 'most_recent' } }),
+            /Invalid "pick" modifier "most_recent"/
+        );
     });
 
     it('leaves an api already installed alone', ( ) => {
