@@ -224,6 +224,29 @@ describe('optimizely', ( ) => {
         assert.equal(data.projectId, PROJECT_ID);
     });
 
+    it('carries every key their profile providers declare', ( ) => {
+        const visitor = boot().optimizely.get('visitor');
+        // The fourteen every snippet read bundles, plus the seven a project
+        // only gets when its audiences ask for them.
+        for ( const key of [
+            'browserId', 'browserVersion', 'campaign', 'currentTimestamp',
+            'custom', 'customBehavior', 'device', 'device_type', 'events',
+            'first_session', 'offset', 'referrer', 'source_type', 'visitorId',
+            'IP', 'cookies', 'language', 'location', 'platform',
+            'queryParams', 'url',
+        ] ) {
+            assert.ok(key in visitor, `visitor is missing ${key}`);
+        }
+        // Keys I had invented, which no snippet declares.
+        assert.equal('lineItems' in visitor, false);
+        assert.equal('dimensions' in visitor, false);
+        assert.equal('campaigns' in visitor, false, 'campaigns belongs to data');
+        // location must be walkable, which is what geo.js does to it.
+        assert.equal(visitor.location.country, '');
+        assert.equal(typeof visitor.currentTimestamp, 'number');
+        assert.equal(visitor.first_session, true);
+    });
+
     it('reports an empty visitor and leaks no referrer', ( ) => {
         const visitor = boot().optimizely.get('visitor');
         assert.deepEqual(Object.keys(visitor.custom), []);
@@ -494,7 +517,7 @@ describe('optimizely', ( ) => {
         ]);
         assert.ok(serialised.includes('203.0.113.9') === false, 'ip retained');
         assert.ok(serialised.includes('TESTCITY') === false, 'city retained');
-        assert.deepEqual(Object.keys(visitor.dimensions), []);
+        assert.deepEqual(Object.values(visitor.location), [ '', '', '', '', '' ]);
     });
 
     it('routes a command to the table its version names', ( ) => {

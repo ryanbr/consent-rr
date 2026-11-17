@@ -345,17 +345,51 @@
         snippetId: projectId,
         variations: {},
     };
+    // get('visitor') is assembled from their profile providers, one per key,
+    // each declaring what it provides. Fourteen appear in every snippet read;
+    // the seven marked below are bundled only when a project's audiences ask
+    // for them, and they are here anyway so a page reading one does not meet
+    // undefined. Nothing about the visitor is measured: strings are empty,
+    // maps are empty, and location is an object rather than absent, because
+    // a property chain into it is exactly what their own geo.js walks.
+    // campaign is singular and holds their utm_campaign value; campaigns,
+    // with an s, is a key of data and not of this. first_session is true
+    // because theirs is true when the event history is empty, and this one
+    // always is. lineItems and dimensions were mine and are declared by no
+    // snippet: dimensions is project data, not a visitor key.
     const visitor = {
-        campaigns: {},
+        browserId: '',
+        browserVersion: '',
+        campaign: null,
+        cookies: {},
         custom: {},
-        dimensions: {},
+        customBehavior: [],
+        device: '',
+        device_type: '',
         events: [],
-        lineItems: [],
+        first_session: true,
+        IP: '',
+        language: '',
+        location: {
+            city: '',
+            continent: '',
+            country: '',
+            dma: '',
+            region: '',
+        },
         offset: 0,
+        platform: '',
+        queryParams: {},
         referrer: '',
         source_type: 'direct',
+        url: '',
         visitorId: null,
     };
+    // Theirs marks this one lazy, so a read takes the time of the read.
+    Object.defineProperty(visitor, 'currentTimestamp', {
+        enumerable: true,
+        get: ( ) => Date.now(),
+    });
     const utils = {
         observeSelector,
         onUrlChange,
