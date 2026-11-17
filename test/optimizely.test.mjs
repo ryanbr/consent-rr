@@ -78,6 +78,52 @@ const bootRedirected = (src = SNIPPET_URL) => {
     return win;
 };
 
+// Counters installed before any script runs, so the resource's own observer
+// and timers are the ones measured.
+const bootCounted = ( ) => {
+    const counts = {
+        made: 0, observed: 0, disconnected: 0, intervals: 0, cleared: 0,
+    };
+    const dom = new JSDOM(
+        `<!DOCTYPE html><html><head><script>${code}</script></head>` +
+        `<body><p id="content">x</p></body></html>`,
+        {
+            runScripts: 'dangerously',
+            url: 'https://example.com/page',
+            virtualConsole: new VirtualConsole(),
+            beforeParse(win) {
+                const RealObserver = win.MutationObserver;
+                win.MutationObserver = class {
+                    constructor(callback) {
+                        counts.made += 1;
+                        this.inner = new RealObserver(callback);
+                    }
+                    observe(...args) {
+                        counts.observed += 1;
+                        this.inner.observe(...args);
+                    }
+                    disconnect() {
+                        counts.disconnected += 1;
+                        this.inner.disconnect();
+                    }
+                    takeRecords() { return this.inner.takeRecords(); }
+                };
+                const realSetInterval = win.setInterval;
+                win.setInterval = (...args) => {
+                    counts.intervals += 1;
+                    return realSetInterval(...args);
+                };
+                const realClearInterval = win.clearInterval;
+                win.clearInterval = id => {
+                    counts.cleared += 1;
+                    return realClearInterval(id);
+                };
+            },
+        }
+    );
+    return { win: dom.window, counts };
+};
+
 const QUEUE_LISTENER =
     '<script>window.optimizely = window.optimizely || [];' +
     "window.optimizely.push({ type: 'addListener'," +
@@ -288,6 +334,93 @@ describe('optimizely', ( ) => {
         assert.throws(( ) => utils.observeSelector('.ok', 'notAFunction'), /function/);
         assert.throws(( ) => utils.persistHtml('', '.ok'), /non-empty string/);
         assert.throws(( ) => utils.persistHtml('<b>x</b>', '.ok', 'sideways'), /placement/);
+    });
+
+    it('makes no observer and no timer until utils is used', async ( ) => {
+        const { win, counts } = bootCounted();
+        for ( let batch = 0; batch < 5; batch += 1 ) {
+            for ( let i = 0; i < 50; i += 1 ) {
+                win.document.body.appendChild(win.document.createElement('div'));
+            }
+            await settle(20);
+        }
+        assert.deepEqual(counts, {
+            made: 0, observed: 0, disconnected: 0, intervals: 0, cleared: 0,
+        });
+    });
+
+    it('drops its observer once nothing is watching', async ( ) => {
+        const { win, counts } = bootCounted();
+        const stop = win.optimizely.get('utils').observeSelector('.x', ( ) => {});
+        assert.equal(counts.observed, 1);
+        assert.equal(counts.disconnected, 0);
+        stop();
+        assert.equal(counts.disconnected, 1);
+        // And again for a one-shot, which removes its own entry.
+        const second = bootCounted();
+        await new Promise(resolve => {
+            second.win.optimizely.get('utils').waitForElement('.target').then(resolve);
+            const node = second.win.document.createElement('div');
+            node.className = 'target';
+            second.win.document.body.appendChild(node);
+        });
+        assert.equal(second.counts.disconnected, 1);
+    });
+
+    it('scans once per mutation batch, not once per node', async ( ) => {
+        const win = boot();
+        let scans = 0;
+        const real = win.Document.prototype.querySelectorAll;
+        win.Document.prototype.querySelectorAll = function(selector) {
+            scans += 1;
+            return real.call(this, selector);
+        };
+        let seen = 0;
+        win.optimizely.get('utils').observeSelector('.match', ( ) => { seen += 1; });
+        for ( let batch = 0; batch < 5; batch += 1 ) {
+            for ( let i = 0; i < 50; i += 1 ) {
+                const node = win.document.createElement('div');
+                node.className = i === 0 ? 'match' : 'row';
+                win.document.body.appendChild(node);
+            }
+            await settle(20);
+        }
+        assert.equal(seen, 5);
+        // One scan on register, one per batch. 250 nodes would be 251.
+        assert.ok(scans <= 6, `${scans} scans for 5 batches`);
+    });
+
+    it('shares one timer between waiters on the same period', async ( ) => {
+        const { win, counts } = bootCounted();
+        const utils = win.optimizely.get('utils');
+        let flag = false;
+        const done = [];
+        for ( let i = 0; i < 10; i += 1 ) {
+            utils.waitUntil(( ) => flag).then(( ) => { done.push(i); });
+        }
+        await settle(60);
+        assert.equal(counts.intervals, 1);
+        assert.equal(counts.cleared, 0);
+        flag = true;
+        await settle(60);
+        assert.equal(done.length, 10);
+        assert.equal(counts.cleared, 1);
+    });
+
+    it('keeps a separate timer per period and cancels by waiter', async ( ) => {
+        const { win, counts } = bootCounted();
+        const utils = win.optimizely.get('utils');
+        const noop = ( ) => {};
+        const cancelFast = utils.poll(noop, 20);
+        const cancelSlow = utils.poll(noop, 50);
+        const cancelTwin = utils.poll(noop, 20);
+        assert.equal(counts.intervals, 2);
+        cancelFast();
+        assert.equal(counts.cleared, 0, 'the twin on 20 is still waiting');
+        cancelTwin();
+        assert.equal(counts.cleared, 1);
+        cancelSlow();
+        assert.equal(counts.cleared, 2);
     });
 
     it('leaves an api already installed alone', ( ) => {

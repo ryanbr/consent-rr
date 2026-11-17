@@ -56,6 +56,15 @@
     };
     const observers = [];
     let mutationObserver = null;
+    // Nothing left to watch means the records the engine builds for every
+    // childList change under the root are built for no one, so the observer
+    // goes rather than idling for the life of the page. The next register
+    // makes a new one.
+    const releaseObserver = ( ) => {
+        if ( observers.length !== 0 || mutationObserver === null ) { return; }
+        mutationObserver.disconnect();
+        mutationObserver = null;
+    };
     const scanObservers = ( ) => {
         for ( let i = observers.length - 1; i >= 0; i-- ) {
             const entry = observers[i];
@@ -79,6 +88,7 @@
                 }
             }
         }
+        releaseObserver();
     };
     const observeSelector = (selector, callback, options) => {
         let valid = typeof selector === 'string';
@@ -120,17 +130,37 @@
         return ( ) => {
             const i = observers.indexOf(entry);
             if ( i !== -1 ) { observers.splice(i, 1); }
+            releaseObserver();
         };
     };
+    // Their poll keeps one interval per distinct period with a map of
+    // callbacks on it, so ten waiters at the default period are ten calls a
+    // tick on one timer rather than ten timers. Keyed by token, not by the
+    // function, so the same callback can wait twice and cancel once.
+    const pollGroups = new Map();
     const poll = (callback, interval) => {
         if ( typeof interval !== 'number' ) { interval = POLL_INTERVAL; }
-        const id = w.setInterval(( ) => {
-            try {
-                callback();
-            } catch ( ex ) {
-            }
-        }, interval);
-        return ( ) => { w.clearInterval(id); };
+        let group = pollGroups.get(interval);
+        if ( group === undefined ) {
+            group = { id: 0, callbacks: new Map() };
+            group.id = w.setInterval(( ) => {
+                for ( const fn of Array.from(group.callbacks.values()) ) {
+                    try {
+                        fn();
+                    } catch ( ex ) {
+                    }
+                }
+            }, interval);
+            pollGroups.set(interval, group);
+        }
+        const token = {};
+        group.callbacks.set(token, callback);
+        return ( ) => {
+            if ( group.callbacks.delete(token) === false ) { return; }
+            if ( group.callbacks.size !== 0 ) { return; }
+            w.clearInterval(group.id);
+            pollGroups.delete(interval);
+        };
     };
     const waitUntil = condition => new Promise(resolve => {
         if ( typeof condition !== 'function' ) { return; }
