@@ -600,6 +600,21 @@ describe('optimizely', ( ) => {
         assert.equal(Object.keys(o.data.visitor.location).length, 0);
     });
 
+    it('reaches the same function whichever way Classic asks', ( ) => {
+        // In Classic the method and the pushed command are one function, so
+        // optimizely.log() has to turn the console on the way push(['log'])
+        // does, not be a separate no-op.
+        const { win, lines } = bootLogged();
+        win.optimizely.push([ 'nosuchcommand' ]);
+        assert.equal(lines.warn.length, 0, 'logging was on before it was asked');
+        win.optimizely.log();
+        win.optimizely.push([ 'nosuchcommand' ]);
+        assert.equal(lines.warn.length, 1, 'optimizely.log() did nothing');
+        win.optimizely.log(false);
+        win.optimizely.push([ 'nosuchcommand' ]);
+        assert.equal(lines.warn.length, 1, 'its off switch did nothing');
+    });
+
     it('takes the project id into the Classic getters too', ( ) => {
         const o = bootRedirected().optimizely;
         assert.equal(o.getProjectId(), PROJECT_ID);

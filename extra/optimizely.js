@@ -757,7 +757,12 @@
         'setUserId', 'skipPageTracking', 'storeThirdPartyData', 'timeout',
         'trackEvent', 'verbose',
     ] ) {
-        classic[name] = noop;
+        // Eleven of these are also v0 push names, and in Classic the method
+        // and the pushed command are the same function, so a page gets the
+        // same behaviour whichever way it asks. log is the one that is not
+        // a no-op, and it was the one diverging: push(['log']) turned the
+        // console on while optimizely.log() did nothing.
+        classic[name] = hasOwn(commandsV0, name) ? commandsV0[name] : noop;
     }
     const api = {
         push,
