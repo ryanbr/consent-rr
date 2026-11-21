@@ -263,13 +263,13 @@ describe('optimizely', ( ) => {
 
     it('carries every key their profile providers declare', ( ) => {
         const visitor = boot().optimizely.get('visitor');
-        // The fourteen every snippet read bundles, plus the seven a project
+        // The fourteen every snippet read bundles, plus the eight a project
         // only gets when its audiences ask for them.
         for ( const key of [
             'browserId', 'browserVersion', 'campaign', 'currentTimestamp',
             'custom', 'customBehavior', 'device', 'device_type', 'events',
             'first_session', 'offset', 'referrer', 'source_type', 'visitorId',
-            'IP', 'cookies', 'language', 'location', 'platform',
+            'IP', 'cookies', 'dcpData', 'language', 'location', 'platform',
             'queryParams', 'url',
         ] ) {
             assert.ok(key in visitor, `visitor is missing ${key}`);
@@ -278,6 +278,9 @@ describe('optimizely', ( ) => {
         assert.equal('lineItems' in visitor, false);
         assert.equal('dimensions' in visitor, false);
         assert.equal('campaigns' in visitor, false, 'campaigns belongs to data');
+        // dcpData is what their dynamic_customer_profile matcher reads, and
+        // it guards the first level only: (visitor.dcpData || {}).results
+        assert.equal(typeof visitor.dcpData, 'object');
         // location must be walkable, which is what geo.js does to it.
         assert.equal(visitor.location.country, '');
         assert.equal(typeof visitor.currentTimestamp, 'number');

@@ -368,9 +368,11 @@
     };
     // get('visitor') is assembled from their profile providers, one per key,
     // each declaring what it provides. Fourteen appear in every snippet read;
-    // the seven marked below are bundled only when a project's audiences ask
+    // the eight marked below are bundled only when a project's audiences ask
     // for them, and they are here anyway so a page reading one does not meet
-    // undefined. Nothing about the visitor is measured: strings are empty,
+    // undefined. dcpData is the Dynamic Customer Profile key, registered with
+    // the dynamic_customer_profile audience matcher; theirs fetches it, so it
+    // is an empty object here for the same reason location is an object. Nothing about the visitor is measured: strings are empty,
     // maps are empty, and location is an object rather than absent, because
     // a property chain into it is exactly what their own geo.js walks.
     // campaign is singular and holds their utm_campaign value; campaigns,
@@ -385,6 +387,7 @@
         cookies: {},
         custom: {},
         customBehavior: [],
+        dcpData: {},
         device: '',
         device_type: '',
         events: [],
