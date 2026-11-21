@@ -4,8 +4,9 @@
 // Not a cookie-consent resource: it lives outside src/ and is not built
 // into dist/ by tools/build.mjs. Hand-maintained, ship as-is.
 // The page keeps a working window.optimizely - push, get, initialized and
-// the lifecycle listeners - so code that queues commands or waits on the
-// client proceeds. What it loses is everything the real client does with
+// the lifecycle listeners, plus the flat Classic api for the projects whose
+// snippet predates the migration - so code that queues commands or waits on
+// the client proceeds. What it loses is everything the real client does with
 // them: no experiment or campaign data, no variation DOM rewriting, no
 // redirect experiments, no visitor profile, no optimizelyEndUserId or
 // session cookies, no localStorage, and no beacons to logx.optimizely.com,
@@ -682,13 +683,100 @@
         }
         return true;
     };
+    // Optimizely Classic, the product before this one, is still served for
+    // projects last saved before the migration, from the same /js/<id>.js
+    // path. It puts its whole api straight on the object instead of behind
+    // push and get, and their own bundled mode ships both at once, so the
+    // two surfaces sit together here the way they do there. Every method is
+    // a no-op; the maps are the empty ones a project with no running
+    // experiment has. referrer stays empty for the reason it is empty in
+    // get('visitor'): theirs reads document.referrer and this does not.
+    const classicData = {
+        note: "Obsolete, use optimizely.get('data') instead",
+        audiences: {},
+        customTags: {},
+        experiments: {},
+        sections: {},
+        segments: {},
+        thirdParty: {},
+        variations: {},
+        state: {
+            activeExperiments: [],
+            enabled: true,
+            integrations: { activeOAuthClientIds: [] },
+            redirectExperiment: undefined,
+            variationIdsMap: {},
+            variationMap: {},
+            variationNamesMap: {},
+        },
+        visitor: {
+            audiences: {},
+            browser: '',
+            browserVersion: '',
+            device: '',
+            deviceType: '',
+            dimensions: {},
+            ip: '',
+            lists: {},
+            location: {},
+            matchingRules: {},
+            mobile: false,
+            mobileId: '',
+            os: '',
+            params: {},
+            platform: '',
+            referrer: '',
+            segments: {},
+        },
+    };
+    const classic = {
+        activeExperiments: [],
+        allExperiments: {},
+        all_experiments: {},
+        allVariations: {},
+        getElementsByClassName: name => doc.getElementsByClassName(name),
+        revision: identity.revision,
+        variationIdsMap: {},
+        variationMap: {},
+        variationNamesMap: {},
+        variation_map: {},
+        getAccountId: ( ) => identity.accountId,
+        getProjectId: ( ) => identity.projectId,
+    };
+    for ( const name of [
+        'activate', 'activateGeoDelayedExperiments', 'activateSiteCatalyst',
+        'activateUniversalAnalytics', 'addOAuthClientId', 'addToAudience',
+        'addToSegment', 'bindTrackElement', 'bucketUser', 'bucketVisitor',
+        'clickTalePlayback', 'clickTaleRecord', 'customTag',
+        'delayDomReadyEval', 'delayPageviewTracking', 'disable',
+        'googleAnalyticsCustomVariableScope', 'integrationPrefix', 'log',
+        'optOut', 'optOutThirdPartyCookies', 'overrideUrl',
+        'removeFromAllAudiences', 'removeFromAllSegments',
+        'removeFromAudience', 'removeFromReportableAudiences',
+        'removeFromSegment', 'sc_activate', 'sc_svar', 'setDimensionValue',
+        'setUserId', 'skipPageTracking', 'storeThirdPartyData', 'timeout',
+        'trackEvent', 'verbose',
+    ] ) {
+        classic[name] = noop;
+    }
     const api = {
         push,
         get,
         initialized: true,
-        data: { note: "Obsolete, use optimizely.get('data') instead" },
+        data: classicData,
         state: {},
     };
+    for ( const name of Object.keys(classic) ) {
+        api[name] = classic[name];
+    }
+    // Their $ is the jQuery they bundled, read at the time it is asked for
+    // rather than captured, the same as get('jquery').
+    try {
+        Object.defineProperty(api, '$', {
+            configurable: true, enumerable: true, get: ( ) => w.$,
+        });
+    } catch ( ex ) {
+    }
     const queued = Array.isArray(existing) ? existing.slice() : [];
     w.optimizely = api;
     for ( const command of queued ) {

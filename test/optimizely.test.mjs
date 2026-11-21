@@ -560,6 +560,65 @@ describe('optimizely', ( ) => {
         assert.deepEqual(Object.values(visitor.location), [ '', '', '', '', '' ]);
     });
 
+    it('answers the Classic api a pre-migration snippet installs', ( ) => {
+        // Projects last saved before the migration still serve Optimizely
+        // Classic from the same /js/<id>.js path, and it puts its api on the
+        // object rather than behind push and get.
+        const o = boot().optimizely;
+        for ( const name of [
+            'activate', 'trackEvent', 'bucketUser', 'setUserId', 'disable',
+            'optOut', 'addToAudience', 'removeFromSegment', 'customTag',
+            'setDimensionValue', 'timeout', 'verbose', 'overrideUrl',
+            'activateSiteCatalyst', 'sc_activate', 'storeThirdPartyData',
+        ] ) {
+            assert.equal(typeof o[name], 'function', `missing ${name}`);
+            assert.equal(o[name](), undefined, `${name} returned something`);
+        }
+        for ( const name of [
+            'variationMap', 'variation_map', 'variationIdsMap',
+            'variationNamesMap', 'allExperiments', 'all_experiments',
+            'allVariations',
+        ] ) {
+            assert.equal(Object.keys(o[name]).length, 0, name);
+        }
+        assert.equal(o.activeExperiments.length, 0);
+        assert.equal(typeof o.getElementsByClassName, 'function');
+        // data keeps the obsolete note the current client answers with, and
+        // carries the Classic shape beside it.
+        assert.ok(o.data.note.startsWith('Obsolete'));
+        assert.equal(Object.keys(o.data.experiments).length, 0);
+        assert.equal(o.data.state.activeExperiments.length, 0);
+        assert.equal(o.data.state.enabled, true);
+        assert.equal(Object.keys(o.data.state.variationMap).length, 0);
+        assert.equal(o.data.state.integrations.activeOAuthClientIds.length, 0);
+        assert.equal(o.data.state.redirectExperiment, undefined);
+        // A Classic variation reads two levels into the visitor, so the
+        // chain has to hold, and the referrer stays withheld here too.
+        assert.equal(o.data.visitor.referrer, '');
+        assert.equal(o.data.visitor.browser, '');
+        assert.equal(Object.keys(o.data.visitor.params).length, 0);
+        assert.equal(Object.keys(o.data.visitor.location).length, 0);
+    });
+
+    it('takes the project id into the Classic getters too', ( ) => {
+        const o = bootRedirected().optimizely;
+        assert.equal(o.getProjectId(), PROJECT_ID);
+        assert.equal(o.getAccountId(), null);
+        assert.equal(o.revision, null);
+        const edge = bootRedirected(EDGE_URL).optimizely;
+        assert.equal(edge.getProjectId(), '20917322951');
+        assert.equal(edge.getAccountId(), '275532918');
+        assert.equal(edge.revision, '10012');
+    });
+
+    it('hands back the page jquery through the Classic $ as well', ( ) => {
+        const win = boot();
+        assert.equal(win.optimizely.$, undefined);
+        const jq = ( ) => {};
+        win.$ = jq;
+        assert.equal(win.optimizely.$, jq, 'not read at the time it is asked');
+    });
+
     it('honours the high-priority flag their boot pass uses', ( ) => {
         // initializePlugins does
         //   window.optimizely = window.optimizely.filter(c => !push(c, true))
