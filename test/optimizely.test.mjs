@@ -557,6 +557,65 @@ describe('optimizely', ( ) => {
         assert.deepEqual(Object.values(visitor.location), [ '', '', '', '', '' ]);
     });
 
+    it('honours the high-priority flag their boot pass uses', ( ) => {
+        // initializePlugins does
+        //   window.optimizely = window.optimizely.filter(c => !push(c, true))
+        // so the six high-priority names run out of the queue early and
+        // everything else stays in the array. With the flag, anything else is
+        // ignored and reports false.
+        const win = boot();
+        // The whitelist is checked by name, but the table is still chosen by
+        // version: disable and optOut are in both, the other four only in v1.
+        const highPriority = [
+            [ 'disable' ], [ 'optOut', true ],
+            { type: 'clientMetadata' }, { type: 'cookieDomain' },
+            { type: 'disable' }, { type: 'load' }, { type: 'optOut' },
+            { type: 'rum' },
+        ];
+        for ( const command of highPriority ) {
+            assert.equal(
+                win.optimizely.push(command, true), true,
+                'flagged ' + JSON.stringify(command)
+            );
+        }
+        // The whitelist does not bypass the table lookup: rum is high
+        // priority but v1 only, so the array form is still refused.
+        assert.equal(win.optimizely.push([ 'rum' ], true), false, 'v0 rum');
+        const refused = [
+            [ 'activateGeoDelayedExperiments', {} ], [ 'trackEvent', 'x' ],
+            [ 'setUserId', 'u' ], [ 'log' ],
+        ];
+        for ( const command of refused ) {
+            assert.equal(
+                win.optimizely.push(command, true), false,
+                'flagged ' + command[0]
+            );
+            assert.equal(
+                win.optimizely.push(command), true,
+                'unflagged ' + command[0]
+            );
+        }
+        assert.equal(win.optimizely.push({ type: 'activate' }, true), false);
+        assert.equal(win.optimizely.push({ type: 'activate' }), true);
+    });
+
+    it('does not run the command it refuses on the high-priority pass', ( ) => {
+        // log is not high priority, so the flagged push must not turn the
+        // console on - the warn that follows has to stay unprinted.
+        const { win, lines } = bootLogged();
+        assert.equal(win.optimizely.push([ 'log' ], true), false);
+        win.optimizely.push([ 'nosuchcommand' ]);
+        assert.equal(lines.warn.length, 0, 'logging was enabled anyway');
+        assert.equal(win.optimizely.push([ 'log' ]), true);
+        win.optimizely.push([ 'nosuchcommand' ]);
+        assert.equal(lines.warn.length, 1, 'the unflagged log did not take');
+        // Their flag check runs before the table lookup, so an unknown name
+        // on the high-priority pass is dropped without the warning an
+        // unknown name otherwise earns.
+        assert.equal(win.optimizely.push([ 'nosuchcommand' ], true), false);
+        assert.equal(lines.warn.length, 1, 'the refused name was warned about');
+    });
+
     it('routes a command to the table its version names', ( ) => {
         const win = boot();
         const cases = [

@@ -631,7 +631,17 @@
         waitForOriginSync: noop,
     };
     const commandTables = [ commandsV0, commandsV1, {} ];
-    const push = command => {
+    // Their push takes a second argument, used once while the client boots:
+    // window.optimizely = window.optimizely.filter(c => !push(c, true)) runs
+    // the six names below out of the queue early, before the opt-out and
+    // disable checks, and leaves everything else in the array for the normal
+    // drain. With the flag set, any other name is ignored and reports false,
+    // and that happens before the table is consulted, so an unknown name is
+    // refused quietly rather than warned about.
+    const HIGH_PRIORITY = [
+        'clientMetadata', 'cookieDomain', 'disable', 'load', 'optOut', 'rum',
+    ];
+    const push = (command, highPriorityOnly) => {
         let version;
         let name;
         let args;
@@ -649,6 +659,9 @@
             args = [];
         } else {
             warn('API / Ignoring non-array/object/string argument:', command);
+            return false;
+        }
+        if ( highPriorityOnly && HIGH_PRIORITY.indexOf(name) === -1 ) {
             return false;
         }
         const table = commandTables[version];
