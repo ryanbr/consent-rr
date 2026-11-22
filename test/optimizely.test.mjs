@@ -842,6 +842,28 @@ describe('optimizely', ( ) => {
         assert.equal(theirCalls, 1, 'their wrapper stopped being called');
     });
 
+    it('re-subscribes under another script without recursing or double-notifying', ( ) => {
+        const win = boot();
+        const utils = win.optimizely.get('utils');
+        let stop = utils.onUrlChange(( ) => {});
+        // Another script wraps history after us, so the unsubscription below
+        // cannot put the natives back and our wrapper stays in their chain.
+        const ours = win.history.pushState;
+        win.history.pushState = function() {
+            return ours.apply(this, arguments);
+        };
+        stop();
+        // The orphaned wrapper must not be re-entered through the variables
+        // this subscription sets, and must not notify a second time.
+        let seen = 0;
+        stop = utils.onUrlChange(( ) => { seen += 1; });
+        win.history.pushState({}, '', '/y');
+        assert.equal(seen, 1, 'one notification per pushState');
+        win.history.replaceState({}, '', '/z');
+        assert.equal(seen, 2, 'one notification per replaceState');
+        stop();
+    });
+
     it('rejects waitUntil when the condition is not callable', async ( ) => {
         const win = boot();
         let outcome = 'pending';
