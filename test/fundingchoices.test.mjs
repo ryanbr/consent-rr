@@ -382,7 +382,8 @@ describe('fundingchoices-reject', ( ) => {
         assert.ok(had[0].includes(' cleared=1'), had[0]);
         assert.ok(none[0].includes(' cleared=0'), none[0]);
         assert.ok(none[0].includes(' frames=2 '), none[0]);
-        assert.ok(none[0].endsWith(' tcf=refused'));
+        assert.ok(none[0].includes(' tcf=refused'), none[0]);
+        assert.ok(none[0].endsWith(' usp=1---'), none[0]);
     });
 
     it('counts by the name a record carries, not by a substring', ( ) => {
@@ -417,12 +418,15 @@ describe('fundingchoices-reject', ( ) => {
         assert.equal(w.googlefc.callbackQueue.length, 2);
     });
 
-    it('puts up no GPP or US privacy api', ( ) => {
-        // Their messaging script is a TCF CMP and nothing else, so the IAB
-        // layer is answered and these two are not.
+    it('puts up no GPP api', ( ) => {
+        // Their script carries one - fourteen references to __gpp and two to
+        // __gppLocator - but neither of the readers that matter asks for it:
+        // gpt.js and adsbygoogle.js mention __gpp zero times each, so nothing
+        // is left waiting on it. The TCF and US privacy sides are answered
+        // because both of those scripts do call them.
         const w = boot();
         assert.equal(typeof w.__gpp, 'undefined');
-        assert.equal(typeof w.__uspapi, 'undefined');
+        assert.equal(typeof w.__uspapi, 'function');
     });
 
     it('keeps whatever else the page put on googlefc', ( ) => {
@@ -659,13 +663,139 @@ describe('fundingchoices-reject, the IAB layer', ( ) => {
             w.eval(SNIPPET);
             out = lines(w);
         });
-        assert.ok(out[0].endsWith(' tcf=refused'), out[0]);
+        assert.ok(out[0].includes(' tcf=refused'), out[0]);
     });
 
     it('is the same string across a reload on the same day', ( ) => {
         const first = ask(boot(), 'getTCData')[0].tcString;
         const second = ask(boot(), 'getTCData')[0].tcString;
         assert.equal(first, second);
+    });
+});
+
+/******************************************************************************/
+
+describe('fundingchoices-reject, the US privacy layer', ( ) => {
+    const ask = (w, command, version = 1) => {
+        let got = null;
+        w.__uspapi(command, version, (data, success) => {
+            got = [ data, success ];
+        });
+        return got;
+    };
+
+    it('answers getUSPData with a string that claims nothing', ( ) => {
+        const [ data, success ] = ask(boot(), 'getUSPData');
+        assert.equal(success, true);
+        assert.equal(data.version, 1);
+        // Notice and LSPA are dashes: whether CCPA applies at all comes from
+        // a lookup a page does not have, so neither is claimed.
+        assert.equal(data.uspString, '1---');
+    });
+
+    it('opts out where the browser sends Global Privacy Control', ( ) => {
+        const w = boot({
+            before: ww => {
+                Object.defineProperty(ww.navigator, 'globalPrivacyControl', {
+                    get: ( ) => true, configurable: true,
+                });
+            },
+        });
+        assert.equal(ask(w, 'getUSPData')[0].uspString, '1-Y-');
+    });
+
+    it('refuses a version that is not theirs', ( ) => {
+        // Theirs compares strictly, so a string 1 is not 1.
+        assert.deepEqual(ask(boot(), 'getUSPData', 2), [ null, false ]);
+        assert.deepEqual(ask(boot(), 'getUSPData', '1'), [ null, false ]);
+    });
+
+    it('answers a command outside theirs with silence', ( ) => {
+        assert.equal(ask(boot(), 'getUSPString'), null);
+    });
+
+    it('survives a call with no callback', ( ) => {
+        const w = boot();
+        assert.doesNotThrow(( ) => { w.__uspapi('getUSPData', 1); });
+    });
+
+    it('adds the locator frame, waiting for a body to add it to', async ( ) => {
+        let dom;
+        const w = runDom(reject, URL, PAGE, ww => {
+            ww.eval(SNIPPET);
+            dom = ww.document;
+            dom.documentElement.removeChild(dom.body);
+        }).window;
+        assert.equal(w.frames.__uspapiLocator, undefined);
+        dom.documentElement.appendChild(dom.createElement('body'));
+        await settle(60);
+        assert.notEqual(w.frames.__uspapiLocator, undefined);
+    });
+
+    it('answers over postMessage, as an object and as a string', async ( ) => {
+        const w = boot();
+        const replies = [];
+        const source = { postMessage: message => { replies.push(message); } };
+        const send = payload => {
+            const event = new w.MessageEvent('message', { data: payload });
+            Object.defineProperty(event, 'source', { value: source });
+            Object.defineProperty(event, 'origin', { value: 'https://v.example' });
+            w.dispatchEvent(event);
+        };
+        send({ __uspapiCall: { command: 'getUSPData', version: 1, callId: 'a' } });
+        send(JSON.stringify(
+            { __uspapiCall: { command: 'getUSPData', version: 1, callId: 7 } }));
+        send({ __uspapiCall: { command: 'getUSPData', version: 1 } }); // no id
+        send({ other: 1 });
+        send('not json');
+        await settle(20);
+        assert.equal(replies.length, 2);
+        assert.equal(typeof replies[0], 'object');
+        assert.equal(replies[0].__uspapiReturn.callId, 'a');
+        assert.equal(replies[0].__uspapiReturn.returnValue.uspString, '1---');
+        assert.equal(replies[0].__uspapiReturn.success, true);
+        // A string in gets a string back, which is what the spec asks for.
+        assert.equal(typeof replies[1], 'string');
+        assert.equal(JSON.parse(replies[1]).__uspapiReturn.callId, 7);
+    });
+
+    it('tells gpt.js a bridge is already up', ( ) => {
+        // gpt.js adds one of its own where this is unset, and two bridges
+        // answer one call twice.
+        assert.equal(boot().__uspapiPostMessageReady, true);
+    });
+
+    it('leaves a publisher s own US flow alone', ( ) => {
+        let out;
+        const w = runDom(reject, URL, PAGE, ww => {
+            ww.eval(SNIPPET);
+            ww.eval('window.uspOwn = 0;' +
+                'window.__uspapi = function() { window.uspOwn += 1; };');
+            out = lines(ww);
+        }).window;
+        w.__uspapi('getUSPData', 1, ( ) => {});
+        assert.equal(w.uspOwn, 1, 'theirs is the one that answered');
+        assert.ok(out[0].endsWith(' usp=theirs'), out[0]);
+    });
+
+    it('says which string went up in the console line', ( ) => {
+        let out;
+        runDom(reject, URL, PAGE, w => {
+            w.eval(SNIPPET);
+            Object.defineProperty(w.navigator, 'globalPrivacyControl', {
+                get: ( ) => true, configurable: true,
+            });
+            out = lines(w);
+        });
+        assert.ok(out[0].endsWith(' usp=1-Y-'), out[0]);
+    });
+
+    it('stores nothing of its own', ( ) => {
+        const w = boot();
+        assert.equal(String(w.document.cookie), '');
+        assert.deepEqual(
+            Object.keys(w.localStorage).filter(k => k.startsWith('IABUSP')), []);
+        assert.equal(cookies(w).get('usprivacy'), undefined);
     });
 });
 

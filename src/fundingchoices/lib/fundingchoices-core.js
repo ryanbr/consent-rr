@@ -102,7 +102,7 @@
 
 */
 
-function consentRRFundingChoices(installTcf) {
+function consentRRFundingChoices(installTcf, installUsp) {
     const w = window;
     const doc = w.document;
     // Substituted from package.json by tools/build.mjs.
@@ -385,6 +385,19 @@ function consentRRFundingChoices(installTcf) {
         }
     }
 
+    // The US privacy side, on the same terms: handed in, and installed after
+    // the cookie is gone. Its string is the report, because 1--- and 1-Y- are
+    // different answers and which one went up is the thing worth seeing.
+    let usp = 'absent';
+    if ( typeof installUsp === 'function' ) {
+        try {
+            const api = installUsp(waitHere);
+            usp = api.install() ? api.uspString : 'theirs';
+        } catch ( ex ) {
+            usp = 'failed';
+        }
+    }
+
     googlefc.consentRR = { name: NAME, version: VERSION };
 
     // Said once, at the end, so it reports what actually went in. cleared=1
@@ -396,7 +409,8 @@ function consentRRFundingChoices(installTcf) {
             ' answered=' + answered +
             ' replied=' + replied +
             ' cleared=' + cleared +
-            ' tcf=' + tcf
+            ' tcf=' + tcf +
+            ' usp=' + usp
         );
     }
 }

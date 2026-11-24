@@ -49,6 +49,18 @@
 ! euconsent-v2 and no IABTCF_ key, because theirs keeps the string in the
 ! cookie below, which is the one being refused.
 !
+! __uspapi ANSWERS TOO, and it is the one their own US flow would have put up.
+! Both of Google's readers ask for it - gpt.js and adsbygoogle.js each call
+! getUSPData and read uspString - and each falls back to 1--- when nothing
+! answers, which is "not applicable" rather than an opt-out. The string here
+! is 1-Y- where the browser sends Global Privacy Control and 1--- otherwise,
+! the same answer osano-reject.js and inmobi-reject.js give: whether CCPA
+! applies at all comes from a location lookup a page does not have, so the
+! notice and LSPA characters stay dashes rather than claim something about
+! the publisher, and the middle one is the visitor's own signal. Brave sends
+! it by default. Their one command is getUSPData, a version that is not
+! exactly 1 is answered (null, false), and anything else gets silence.
+!
 ! THE REFUSAL IS THEIR COOKIE'S ABSENCE. gpt.js and adsbygoogle.js each read
 ! exactly one Funding Choices thing, the FCCDCF cookie: URI-decoded if it
 ! starts with %, parsed as JSPB, field 4, whose field 1 is the TC string. No
@@ -60,6 +72,13 @@
 
 ! -----------------------------------------------------------------------------
 ! Deliberately left alone:
+!
+!   __gpp                    their script carries one, fourteen references to
+!                            __gpp and two to __gppLocator, but neither
+!                            reader asks for it: gpt.js and adsbygoogle.js
+!                            mention it zero times each, so nothing is left
+!                            waiting on it. It goes in when something that
+!                            waits on it turns up.
 !
 !   googlefc.callbackQueue   their own inactive path does not run it - pushing
 !                            two callbacks before booting their script leaves
@@ -75,8 +94,10 @@
 !
 ! To see it work:
 !
-!   [consent-rr] fundingchoices-reject 1.1.3 frames=2 answered=0 replied=0
-!                cleared=1 tcf=refused
+!   [consent-rr] fundingchoices-reject 1.1.4 frames=2 answered=0 replied=0
+!                cleared=1 tcf=refused usp=1---
 !
-! cleared=1 is a visitor who had consented before this was installed.
+! cleared=1 is a visitor who had consented before this was installed, and usp
+! is the string that went up - 1-Y- on a browser sending Global Privacy
+! Control, or "theirs" where a publisher's own US flow was already standing.
 ! -----------------------------------------------------------------------------

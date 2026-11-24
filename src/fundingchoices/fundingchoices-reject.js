@@ -25,7 +25,9 @@
     The IAB layer is a refusal too, and the part their inactive path leaves
     out: __tcfapi answers, with cmpId 300 and a string that grants nothing,
     where blocking the request leaves a page waiting on a CMP that is never
-    coming.
+    coming. __uspapi answers beside it, 1-Y- where the browser sends Global
+    Privacy Control and 1--- otherwise, which is the string their own US flow
+    would have put up - and which gpt.js and adsbygoogle.js both ask for.
 
     No accept resource. There is nothing a page needs consent for here that
     blocking the request would not already have taken away.
@@ -36,5 +38,7 @@
     'use strict';
     // @include lib/fundingchoices-core.js
     // @include lib/fundingchoices-tcf.js
-    consentRRFundingChoices(consentRRFundingChoicesTcf);
+    // @include lib/fundingchoices-usp.js
+    consentRRFundingChoices(
+        consentRRFundingChoicesTcf, consentRRFundingChoicesUsp);
 })();
