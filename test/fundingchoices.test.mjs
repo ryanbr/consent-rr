@@ -880,8 +880,8 @@ describe('fundingchoices-reject, the page api', ( ) => {
         const w = boot({
             before: parked([
                 cb('INITIAL_CCPA_DATA_READY', 'ccpa'),
-                cb('CONSENT_MODE_DATA_READY', 'mode'),
                 cb('INITIAL_US_STATES_DATA_READY', 'states'),
+                cb('INITIAL_US_STATES_OPT_OUT_DATA_READY', 'optout'),
             ]),
         });
         assert.deepEqual([ ...w.ranKeys ], []);
@@ -921,6 +921,31 @@ describe('fundingchoices-reject, the page api', ( ) => {
         assert.equal(w.googlefc.callbackQueue.push({
             INITIAL_CCPA_DATA_READY: ( ) => {},
         }), 2);
+    });
+
+    it('denies all four consent mode purposes', ( ) => {
+        const w = boot({
+            before: parked([ cb('CONSENT_MODE_DATA_READY', 'mode') ]),
+        });
+        // 2 is DENIED in their own mapping, a === 3 ? 2, and the four keys
+        // are the ones their getter answers with.
+        assert.deepEqual({ ...w.googlefc.getGoogleConsentModeValues() }, {
+            adStoragePurposeConsentStatus: 2,
+            adUserDataPurposeConsentStatus: 2,
+            adPersonalizationPurposeConsentStatus: 2,
+            analyticsStoragePurposeConsentStatus: 2,
+        });
+        const denied = w.googlefc.ConsentModePurposeStatusEnum
+            .CONSENT_MODE_PURPOSE_STATUS_DENIED;
+        assert.equal(
+            w.googlefc.getGoogleConsentModeValues().adStoragePurposeConsentStatus,
+            denied, 'by the enum a page compares against');
+        // The key its getter comes with is released, so a wrapper waiting on
+        // it proceeds.
+        assert.deepEqual([ ...w.ranKeys ], [ 'mode' ]);
+        // Theirs hands back one object rather than a fresh one per call.
+        assert.equal(w.googlefc.getGoogleConsentModeValues(),
+            w.googlefc.getGoogleConsentModeValues());
     });
 
     it('reports a key it does not know, as theirs does', ( ) => {
@@ -996,6 +1021,7 @@ describe('fundingchoices-reject, the page api', ( ) => {
                 ww.eval('window.googlefc = {' +
                     ' getConsentStatus: function() { return 99; },' +
                     ' getAdBlockerStatus: function() { return 99; },' +
+                    ' getGoogleConsentModeValues: function() { return 99; },' +
                     ' ConsentStatusEnum: { MINE: 1 } };');
             },
         });
@@ -1003,8 +1029,10 @@ describe('fundingchoices-reject, the page api', ( ) => {
         // Their setter leaves a name the page owns alone.
         assert.equal(fc.getConsentStatus(), 99);
         assert.deepEqual({ ...fc.ConsentStatusEnum }, { MINE: 1 });
-        // The three status getters theirs installs with the overwrite flag.
+        // The ones theirs installs with the overwrite flag set.
         assert.equal(fc.getAdBlockerStatus(), 0);
+        assert.equal(fc.getGoogleConsentModeValues()
+            .adStoragePurposeConsentStatus, 2);
     });
 
     it('leaves a queue object already standing alone', ( ) => {

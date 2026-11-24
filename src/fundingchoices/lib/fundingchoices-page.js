@@ -50,6 +50,23 @@
     getGoogleConsentModeValues, and releasing a callback into a getter that is
     not there trades a wait for a TypeError.
 
+    CONSENT MODE v2 IS DENIED, over the four keys their own getter answers
+    with, which a publisher reads in a CONSENT_MODE_DATA_READY callback and
+    forwards to gtag:
+
+        Yu.prototype.getGoogleConsentModeValues = function(){
+          if (this.j !== 2 && this.j !== 3) return {
+              adStoragePurposeConsentStatus: 4, ... }      // NOT_CONFIGURED
+          return { adStoragePurposeConsentStatus: Xu(a.o()), ... } }
+        Xu = a => a === 2 ? 1 : a === 3 ? 2 : throw        // granted, denied
+        _.Zu = (a,b,c,d) => { _.go("getGoogleConsentModeValues", ..., !0);
+                              _.Qo(a.G, "consentModeData") }
+
+    So 2 is DENIED in their own mapping, and a refusal is four denials - a
+    statement about what happened rather than a claim. Theirs computes the
+    object once and hands the same one back on every call, so this does too,
+    and consentModeData is released because its getter is now here.
+
     THE STATUS GETTERS ANSWER UNKNOWN, which is their own value before
     detection. The gate a publisher writes is "if the status is
     EXTENSION_LEVEL_AD_BLOCKER, or NOT_WHITELISTED, or ADS_NOT_ALLOWED, put up
@@ -114,10 +131,21 @@ function consentRRFundingChoicesPage(whenBody) {
     const UNKNOWN = 0;
     const NO_CONSENT = ENUMS.ConsentStatusEnum.NO_CONSENT;
     // In their order: _.Qo(a.G, "consentData", "legacyNoData") from _.ep,
-    // then adBlockData from _.fp, then consentApi from lU.
+    // then adBlockData from _.fp, consentModeData from _.Zu, and consentApi
+    // from lU.
     const RELEASED = [
-        'consentData', 'legacyNoData', 'adBlockData', 'consentApi',
+        'consentData', 'legacyNoData', 'adBlockData', 'consentModeData',
+        'consentApi',
     ];
+
+    // Their four keys, each DENIED. One object, handed back on every call,
+    // which is what their own getter does.
+    const CONSENT_MODE = {
+        adStoragePurposeConsentStatus: 2,
+        adUserDataPurposeConsentStatus: 2,
+        adPersonalizationPurposeConsentStatus: 2,
+        analyticsStoragePurposeConsentStatus: 2,
+    };
 
     const noopfn = function() {
     }.bind();
@@ -152,6 +180,9 @@ function consentRRFundingChoicesPage(whenBody) {
         put('getWhitelistStatus', ( ) => UNKNOWN, true);
         put('getAllowAdsStatus', ( ) => UNKNOWN, true);
         put('showRevocationMessage', noopfn);
+        // _.Zu installs this one with the overwrite flag set, as it does the
+        // three status getters.
+        put('getGoogleConsentModeValues', ( ) => CONSENT_MODE, true);
 
         // A queue object already standing is one of theirs or one of these,
         // and theirs leaves it alone; an array is what a publisher's snippet

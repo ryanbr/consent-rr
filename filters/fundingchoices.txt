@@ -70,14 +70,20 @@
 ! THE PAGE SIDE IS ANSWERED, because that is what a site gates its content on.
 ! Everything a publisher's wrapper reads, it reads inside a googlefc callback,
 ! so a wrapper that puts up a loader and waits never proceeds while the queue
-! only collects. The queue here runs them, over the four keys theirs releases
+! only collects. The queue here runs them, over the five keys theirs releases
 ! with the getters this resource has - consentData and legacyNoData, then
-! adBlockData, then consentApi - and on a wait for the body, because a callback
-! released at document_start is one doing DOM work against nothing. The other
-! four stay parked: initialCcpaData, initialUsStatesData,
-! initialUsStatesOptOutData and consentModeData come with getters this resource
-! does not have, and releasing a callback into a getter that is not there
-! trades a wait for a TypeError.
+! adBlockData, consentModeData, consentApi - and on a wait for the body,
+! because a callback released at document_start is one doing DOM work against
+! nothing. The other three stay parked: initialCcpaData, initialUsStatesData
+! and initialUsStatesOptOutData come with US flow getters this resource does
+! not have, and releasing a callback into a getter that is not there trades a
+! wait for a TypeError.
+!
+! Consent Mode v2 is denied: getGoogleConsentModeValues answers their four
+! keys - adStorage, adUserData, adPersonalization and analyticsStorage - with
+! 2, which is DENIED in their own mapping, so a publisher forwarding the CMP's
+! decision to gtag forwards a refusal. Their getter hands back one object on
+! every call and so does this one.
 !
 ! getAdBlockerStatus, getWhitelistStatus and getAllowAdsStatus answer UNKNOWN,
 ! which is their own value before detection. A wall is written as "if the
@@ -117,7 +123,7 @@
 !
 ! To see it work:
 !
-!   [consent-rr] fundingchoices-reject 1.1.7 frames=2 answered=0 replied=0
+!   [consent-rr] fundingchoices-reject 1.1.8 frames=2 answered=0 replied=0
 !                cleared=1 tcf=refused usp=1--- queued=0
 !
 ! cleared=1 is a visitor who had consented before this was installed. usp is
