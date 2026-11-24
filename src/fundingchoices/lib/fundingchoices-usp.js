@@ -40,16 +40,29 @@
     So a version that is not exactly 1 is answered (null, false), getUSPData
     is answered ({version: 1, uspString}, true), and any other command gets
     silence - the same silence their __fci queue gives a command outside its
-    two.
+    two. The version test is the one place this does not follow theirs, and
+    the install below says why.
 
     __uspapiPostMessageReady IS SET, because gpt.js installs a bridge of its
     own where it is not: "a.__uspapiPostMessageReady || Yg(new Xg(a))". Two
     bridges answer one call twice, with the same callId. Theirs sets it for
     that reason and so does this.
 
-    NOT DONE HERE: window.__uspapiManager. The only thing that reads it is
-    their own loader, deciding whether an API already up is one it may
-    replace, and that loader is the thing being stood in for.
+    NOT SET HERE, BUT HONOURED: window.__uspapiManager. gpt.js writes it when
+    it puts up a US privacy API of its own:
+
+        jh = function(a){ !a.u || a.h.__uspapi || a.h.frames.__uspapiLocator ||
+            (a.h.__uspapiManager = "fc", gh(a.h, "__uspapiLocator"),
+             Aa("__uspapi", ...), Zg(a.h)) }
+
+    and a.u comes out of the FCCDCF proto, the same place its tcString does -
+    so where that stand-in got in first, a page is carrying a US privacy
+    string read from the cookie this refusal clears, and the marker is how its
+    own loader knows such an API is one it may replace. The install below
+    reads it for that reason. It is not written: the only reader is their
+    loader, and the one way that loader runs with this resource on the page is
+    a copy of it proxied past the filter - in which case a refusal already
+    standing should not invite itself to be replaced by a prompt.
 
 */
 
@@ -69,19 +82,29 @@ function consentRRFundingChoicesUsp(whenBody) {
     const install = ( ) => {
         const doc = w.document;
 
-        // Their own re-entry test, less the marker: an API or a locator
+        // Their own re-entry test, marker and all. An API or a locator frame
         // already standing is left alone, so a publisher running its own US
-        // flow alongside Funding Choices keeps it.
+        // flow alongside Funding Choices keeps it - unless it carries the
+        // marker, which only a Google stand-in sets, and whose string comes
+        // out of the cookie this refusal has just cleared.
         try {
-            if ( typeof w.__uspapi === 'function' ) { return false; }
-            if ( w.frames.__uspapiLocator !== undefined ) { return false; }
+            const standing = typeof w.__uspapi === 'function' ||
+                w.frames.__uspapiLocator !== undefined;
+            if ( standing && w.__uspapiManager !== 'fc' ) { return false; }
         } catch ( ex ) {
         }
 
         const api = (command, version, callback) => {
             if ( typeof callback !== 'function' ) { return; }
-            // Theirs compares the version strictly, so a string 1 is not 1.
-            if ( version !== 1 ) {
+            // One deliberate divergence from theirs, which compares the
+            // version strictly: a caller that sends none at all is answered
+            // anyway. gpt.js' own stand-in checks the version not at all and
+            // its bridge forwards whatever a caller sent, so refusing one
+            // delivers neither the refusal nor the end of the wait - and
+            // osano-usp.js reads it the same way. An explicit version that is
+            // not 1 is still refused.
+            if ( version !== undefined && version !== null &&
+                 Number(version) !== 1 ) {
                 callback(null, false);
                 return;
             }

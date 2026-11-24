@@ -58,8 +58,14 @@
 ! applies at all comes from a location lookup a page does not have, so the
 ! notice and LSPA characters stay dashes rather than claim something about
 ! the publisher, and the middle one is the visitor's own signal. Brave sends
-! it by default. Their one command is getUSPData, a version that is not
-! exactly 1 is answered (null, false), and anything else gets silence.
+! it by default. Their one command is getUSPData and anything else gets
+! silence; a version that is given and is not 1 is answered (null, false),
+! while a call that sends none is answered anyway - gpt.js' own stand-in
+! checks the version not at all, and refusing such a call would deliver
+! neither the refusal nor the end of the wait. Where that stand-in got in
+! first it is replaced, because it carries window.__uspapiManager set to
+! "fc" and serves a string read out of the cookie being cleared; a CMP of
+! the publisher's own keeps its API.
 !
 ! THE REFUSAL IS THEIR COOKIE'S ABSENCE. gpt.js and adsbygoogle.js each read
 ! exactly one Funding Choices thing, the FCCDCF cookie: URI-decoded if it
@@ -94,7 +100,7 @@
 !
 ! To see it work:
 !
-!   [consent-rr] fundingchoices-reject 1.1.4 frames=2 answered=0 replied=0
+!   [consent-rr] fundingchoices-reject 1.1.5 frames=2 answered=0 replied=0
 !                cleared=1 tcf=refused usp=1---
 !
 ! cleared=1 is a visitor who had consented before this was installed, and usp

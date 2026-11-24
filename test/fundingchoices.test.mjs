@@ -704,10 +704,51 @@ describe('fundingchoices-reject, the US privacy layer', ( ) => {
         assert.equal(ask(w, 'getUSPData')[0].uspString, '1-Y-');
     });
 
-    it('refuses a version that is not theirs', ( ) => {
-        // Theirs compares strictly, so a string 1 is not 1.
+    it('refuses a version that is not 1', ( ) => {
         assert.deepEqual(ask(boot(), 'getUSPData', 2), [ null, false ]);
-        assert.deepEqual(ask(boot(), 'getUSPData', '1'), [ null, false ]);
+        assert.deepEqual(ask(boot(), 'getUSPData', 0), [ null, false ]);
+    });
+
+    it('answers a caller that sends no version', ( ) => {
+        // gpt.js' own stand-in checks the version not at all, and its bridge
+        // forwards whatever a caller sent, so a call with none is a call this
+        // refusal should still reach.
+        assert.equal(ask(boot(), 'getUSPData', undefined)[0].uspString, '1---');
+        assert.equal(ask(boot(), 'getUSPData', null)[0].uspString, '1---');
+        assert.equal(ask(boot(), 'getUSPData', '1')[0].uspString, '1---');
+    });
+
+    it('replaces the stand-in gpt.js puts up from their cookie', ( ) => {
+        // It stamps window.__uspapiManager with "fc" and serves a string read
+        // out of the FCCDCF proto - the cookie this resource has just cleared
+        // - so that one is ours to replace. Their own loader reads the marker
+        // for the same reason.
+        let out;
+        const w = runDom(reject, URL, PAGE, ww => {
+            ww.eval(SNIPPET);
+            ww.eval('window.uspGoogle = 0;' +
+                'window.__uspapiManager = "fc";' +
+                'window.__uspapi = function() { window.uspGoogle += 1; };');
+            out = lines(ww);
+        }).window;
+        assert.equal(ask(w, 'getUSPData')[0].uspString, '1---');
+        assert.equal(w.uspGoogle, 0, 'the stand-in is not the one answering');
+        assert.ok(out[0].endsWith(' usp=1---'), out[0]);
+    });
+
+    it('leaves a locator frame alone where no marker claims it', ( ) => {
+        // A frame and no API is another CMP mid-install, not a Google
+        // stand-in, so the refusal stays out of it.
+        let out;
+        const w = runDom(reject, URL, PAGE, ww => {
+            ww.eval(SNIPPET);
+            const frame = ww.document.createElement('iframe');
+            frame.name = '__uspapiLocator';
+            ww.document.body.appendChild(frame);
+            out = lines(ww);
+        }).window;
+        assert.equal(typeof w.__uspapi, 'undefined');
+        assert.ok(out[0].endsWith(' usp=theirs'), out[0]);
     });
 
     it('answers a command outside theirs with silence', ( ) => {
