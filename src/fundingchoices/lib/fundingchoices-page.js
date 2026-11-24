@@ -67,6 +67,29 @@
     object once and hands the same one back on every call, so this does too,
     and consentModeData is released because its getter is now here.
 
+    TWO DIVERGENCES THERE, BOTH TOWARDS REFUSAL AND NEITHER DETECTABLE once
+    the response is blocked:
+
+      the getter is installed unconditionally. Theirs reaches _.Zu only
+      through a config this resource cannot see - "mU = function(a){ if
+      (_.y(a.j,9)) { ... b = _.E(b,5); ... || _.Zu(a.C,b,c,e) } }", field 9
+      being the publisher's Consent Mode configuration and field 5 the mode,
+      of which 2 and 3 are the configured ones. On a publisher who never set
+      it up, theirs installs no getter and leaves consentModeData parked for
+      good. Here the config arrived in the response that was blocked, so
+      there is nothing to condition on, and a page reading "typeof
+      googlefc.getGoogleConsentModeValues === 'function'" as "Consent Mode is
+      configured" is told yes where theirs would have said nothing. That is
+      the same trade as showRevocationMessage: a callback that fires instead
+      of hanging, at the cost of answering something theirs would not have
+      offered on that page.
+
+      analytics is denied rather than not configured. Theirs is
+      "b = this.j === 3 ? Xu(a.j()) : 4", so under mode 2 it answers
+      NOT_CONFIGURED for analyticsStoragePurposeConsentStatus while the three
+      ad keys carry a real value. Which mode a publisher chose is in the same
+      unreachable config, and denied is the safe direction of the two.
+
     THE STATUS GETTERS ANSWER UNKNOWN, which is their own value before
     detection. The gate a publisher writes is "if the status is
     EXTENSION_LEVEL_AD_BLOCKER, or NOT_WHITELISTED, or ADS_NOT_ALLOWED, put up

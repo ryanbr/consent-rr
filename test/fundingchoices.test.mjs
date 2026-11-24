@@ -867,11 +867,16 @@ describe('fundingchoices-reject, the page api', ( ) => {
             before: parked([
                 cb('CONSENT_DATA_READY', 'consent'),
                 cb('AD_BLOCK_DATA_READY', 'adblock'),
+                cb('CONSENT_MODE_DATA_READY', 'mode'),
+                cb('CONSENT_API_READY', 'api'),
                 'function() { window.ranKeys.push("legacy"); }',
             ]),
         });
-        // Their release order: consentData, legacyNoData, then adBlockData.
-        assert.deepEqual([ ...w.ranKeys ], [ 'consent', 'legacy', 'adblock' ]);
+        // Their release order: consentData and legacyNoData from _.ep, then
+        // adBlockData from _.fp, consentModeData from _.Zu, consentApi from
+        // lU - so a reorder here is a behaviour change, not a tidy-up.
+        assert.deepEqual([ ...w.ranKeys ],
+            [ 'consent', 'legacy', 'adblock', 'mode', 'api' ]);
     });
 
     it('leaves parked the keys whose getters are not here', ( ) => {
