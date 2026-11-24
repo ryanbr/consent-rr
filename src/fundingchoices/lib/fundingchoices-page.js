@@ -70,8 +70,6 @@
 */
 
 function consentRRFundingChoicesPage(whenBody) {
-    const w = window;
-
     // Their map, internal name to the key a page writes, in their order.
     const KEYS = [
         [ 'adBlockData', 'AD_BLOCK_DATA_READY' ],

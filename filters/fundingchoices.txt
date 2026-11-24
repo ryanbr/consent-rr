@@ -117,7 +117,7 @@
 !
 ! To see it work:
 !
-!   [consent-rr] fundingchoices-reject 1.1.6 frames=2 answered=0 replied=0
+!   [consent-rr] fundingchoices-reject 1.1.7 frames=2 answered=0 replied=0
 !                cleared=1 tcf=refused usp=1--- queued=0
 !
 ! cleared=1 is a visitor who had consented before this was installed. usp is
