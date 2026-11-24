@@ -184,6 +184,21 @@ describe('fundingchoices-reject', ( ) => {
         assert.equal(queue._push, undefined);
     });
 
+    it('replaces the pending array with something that is not one', ( ) => {
+        // Theirs installs an instance of its own queue class, and its loader
+        // tells a live queue from a pending array by Array.isArray. The two
+        // commands beside push are their prototype's, and answer with the
+        // count once there is nothing left to make executable.
+        const queue = boot().googlefc.__fci;
+        assert.equal(Array.isArray(queue), false);
+        assert.equal(typeof queue.executeCommandType, 'function');
+        assert.equal(typeof queue.executeAllRemainingCommands, 'function');
+        assert.equal(queue.executeAllRemainingCommands(), 0);
+        queue.push('loaded', ( ) => {});
+        assert.equal(queue.executeCommandType('loaded'), 1);
+        assert.equal(queue.executeAllRemainingCommands(), 1);
+    });
+
     it('answers an __fciCall over postMessage with the call id', async ( ) => {
         const w = boot();
         const replies = [];

@@ -231,11 +231,21 @@ function consentRRFundingChoices(installTcf) {
     // a command name then a callback, repeatedly, and left alone unless the
     // length is even, as theirs is.
     const standing = Array.isArray(googlefc.__fci) ? googlefc.__fci : [];
-    const queue = [];
+    // Not an array: theirs replaces the pending array with an instance of
+    // their own queue class, and their own loader tells one from the other by
+    // exactly that - "if (!Array.isArray(c)) return c;" is how it knows a
+    // live queue is already standing. The two commands beside push are their
+    // prototype's, and in the state this installs they have nothing left to
+    // do: every push is answered as it arrives, so no command is ever waiting
+    // to be made executable and no callback is ever held to be drained. They
+    // answer with the count, which is what theirs returns.
+    const queue = {};
     queue.push = (command, entry) => {
         answer(command, entry);
         return answered;
     };
+    queue.executeCommandType = ( ) => answered;
+    queue.executeAllRemainingCommands = ( ) => answered;
     if ( standing.length % 2 === 0 ) {
         for ( let at = 0; at < standing.length - 1; at += 2 ) {
             if ( typeof standing[at] !== 'string' ) { continue; }

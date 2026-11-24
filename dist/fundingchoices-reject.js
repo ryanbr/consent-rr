@@ -86,11 +86,13 @@ function consentRRFundingChoices(installTcf) {
         }
     };
     const standing = Array.isArray(googlefc.__fci) ? googlefc.__fci : [];
-    const queue = [];
+    const queue = {};
     queue.push = (command, entry) => {
         answer(command, entry);
         return answered;
     };
+    queue.executeCommandType = ( ) => answered;
+    queue.executeAllRemainingCommands = ( ) => answered;
     if ( standing.length % 2 === 0 ) {
         for ( let at = 0; at < standing.length - 1; at += 2 ) {
             if ( typeof standing[at] !== 'string' ) { continue; }

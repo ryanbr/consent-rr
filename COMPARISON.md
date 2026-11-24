@@ -152,7 +152,7 @@ the same fixture as its sibling.
 | `cookieyes-reject-unblock` | 20.1 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
 | `tarteaucitron-reject` | 20.6 KB | `uetq` |
 | `tarteaucitron-reject-unblock` | 20.6 KB | `uetq` |
-| `fundingchoices-reject` | 16.1 KB | `googlefc`, `__fcInternalApiManager`, `__fcInternalApiPostMessageReady`, `__tcfapi` |
+| `fundingchoices-reject` | 16.2 KB | `googlefc`, `__fcInternalApiManager`, `__fcInternalApiPostMessageReady`, `__tcfapi` |
 | `didomi-reject` | 13.8 KB | `Didomi`, `didomiState`, `didomiEventListeners`, `didomiOnReady` |
 | `didomi-accept` | 13.8 KB | `Didomi`, `didomiState`, `didomiEventListeners`, `didomiOnReady` |
 | `cookiescript-reject` | 19.1 KB | `CookieScriptData`, `CookieScript` |
