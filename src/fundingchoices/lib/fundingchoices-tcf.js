@@ -57,7 +57,7 @@
 
 */
 
-function consentRRFundingChoicesTcf() {
+function consentRRFundingChoicesTcf(whenBody) {
     const w = window;
     const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
@@ -262,11 +262,13 @@ function consentRRFundingChoicesTcf() {
         // The frame a cross-frame caller looks for, which the IAB stub adds.
         // There is no body yet where this runs at document_start, and a
         // vendor in a frame has nothing to find without it, so the append
-        // waits for one on the same 5ms timer the googlefc iframes take
-        // rather than dropping the frame.
+        // waits for one rather than dropping the frame - on the wait the core
+        // hands in, which is the one the googlefc iframes are already on.
         const addLocator = ( ) => {
             try {
                 if ( w.frames.__tcfapiLocator !== undefined ) { return; }
+                // Redundant where the wait handed one in, and the whole wait
+                // where this lib is used without a core to hand one in.
                 if ( doc.body === null ) {
                     w.setTimeout(addLocator, 5);
                     return;
@@ -278,12 +280,20 @@ function consentRRFundingChoicesTcf() {
             } catch ( ex ) {
             }
         };
-        addLocator();
+        if ( typeof whenBody === 'function' ) {
+            whenBody(addLocator);
+        } else {
+            addLocator();
+        }
 
         w.addEventListener('message', ev => {
             let payload = ev.data;
             let wasString = false;
             if ( typeof payload === 'string' ) {
+                // Ad frames chatter in string messages for the whole life of
+                // a page, and parsing each one is work for nothing: a call
+                // carries this key, so a string without it is not one.
+                if ( payload.indexOf('__tcfapiCall') === -1 ) { return; }
                 try {
                     payload = JSON.parse(payload);
                     wasString = true;

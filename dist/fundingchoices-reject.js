@@ -128,8 +128,34 @@ function consentRRFundingChoices(installTcf) {
         }
         return doc;
     };
+    const where = target();
+    const bodyWaiter = which => {
+        const pending = [];
+        const again = ( ) => {
+            if ( which.body === null ) {
+                w.setTimeout(again, 5);
+                return;
+            }
+            for ( const fn of pending.splice(0) ) {
+                try {
+                    fn();
+                } catch ( ex ) {
+                }
+            }
+        };
+        return fn => {
+            if ( which.body !== null ) {
+                fn();
+                return;
+            }
+            if ( pending.length === 0 ) { w.setTimeout(again, 5); }
+            pending.push(fn);
+        };
+    };
+    const waitForFrames = bodyWaiter(where);
+    const waitHere = where === doc ? waitForFrames : bodyWaiter(doc);
     let framed = 0;
-    const addFrame = (where, name) => {
+    const addFrame = name => {
         for ( const node of where.getElementsByTagName('IFRAME') ) {
             if ( node.name === name ) { return; }
         }
@@ -145,20 +171,12 @@ function consentRRFundingChoices(installTcf) {
         frame.style.zIndex = '-1000';
         frame.style.left = '-1000px';
         frame.style.top = '-1000px';
-        const append = ( ) => {
-            if ( where.body === null ) {
-                w.setTimeout(append, 5);
-                return;
-            }
-            where.body.appendChild(frame);
-        };
-        append();
+        waitForFrames(( ) => { where.body.appendChild(frame); });
         framed += 1;
     };
-    const where = target();
     for ( const name of FRAMES ) {
         try {
-            addFrame(where, name);
+            addFrame(name);
         } catch ( ex ) {
         }
     }
@@ -166,7 +184,7 @@ function consentRRFundingChoices(installTcf) {
     let tcf = 'absent';
     if ( typeof installTcf === 'function' ) {
         try {
-            tcf = installTcf().install() ? 'refused' : 'theirs';
+            tcf = installTcf(waitHere).install() ? 'refused' : 'theirs';
         } catch ( ex ) {
             tcf = 'failed';
         }
@@ -183,7 +201,7 @@ function consentRRFundingChoices(installTcf) {
         );
     }
 }
-function consentRRFundingChoicesTcf() {
+function consentRRFundingChoicesTcf(whenBody) {
     const w = window;
     const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
     const CMP_ID = 300;
@@ -376,11 +394,16 @@ function consentRRFundingChoicesTcf() {
             } catch ( ex ) {
             }
         };
-        addLocator();
+        if ( typeof whenBody === 'function' ) {
+            whenBody(addLocator);
+        } else {
+            addLocator();
+        }
         w.addEventListener('message', ev => {
             let payload = ev.data;
             let wasString = false;
             if ( typeof payload === 'string' ) {
+                if ( payload.indexOf('__tcfapiCall') === -1 ) { return; }
                 try {
                     payload = JSON.parse(payload);
                     wasString = true;
