@@ -86,7 +86,10 @@ function consentRRTranscend() {
     // whose request was answered with this body, and it is null again once
     // the page has moved on - so watch(), which runs a second after load,
     // cannot ask. A script with a src carries one; a scriptlet is inline and
-    // carries the empty string. withoutTheirs() is what reads it, and why.
+    // carries the empty string. Two things read it: withoutTheirs(), to
+    // tell their file being replaced from their engine still being on its
+    // way, and refuse(), because only the install that stood in for their
+    // banner may say a prompt was shown.
     let SERVED_AS_FILE = false;
     try {
         const current = doc.currentScript;
@@ -132,7 +135,12 @@ function consentRRTranscend() {
 
     const findCookieDomain = ( ) => {
         const host = String(w.location.hostname);
-        if ( host === '' || /^[[\d.]/.test(host) ) { return ''; }
+        if ( host === '' ) { return ''; }
+        // An address rather than a name: bracketed IPv6, or digits and dots
+        // all the way. "starts with a digit" is not the test - 3m.com and
+        // 1password.com are names, and would lose their domain cookie.
+        if ( host.charAt(0) === '[' ) { return ''; }
+        if ( /^[\d.]+$/.test(host) ) { return ''; }
         const labels = host.split('.');
         const probe = 'consentRRProbe';
         for ( let i = labels.length - 2; i >= 0; i-- ) {
@@ -363,11 +371,21 @@ function consentRRTranscend() {
             announce(names, 'nothing to refuse');
             return;
         }
-        const options = ( ) => ({
-            confirmed: true,
-            prompted: true,
-            timestamp: new Date().toISOString(),
-        });
+        // prompted is theirs to mean a prompt was shown, and this is the
+        // install that can claim it: served in place of their banner, the
+        // moment their loader asked for this is the moment it would have
+        // rendered. Injected as a scriptlet the refusal lands before their
+        // engine decides whether to prompt at all, so their banner is never
+        // asked for and nothing showed anybody anything - which is the same
+        // reason watch() leaves it out.
+        const options = ( ) => {
+            const held = {
+                confirmed: true,
+                timestamp: new Date().toISOString(),
+            };
+            if ( SERVED_AS_FILE ) { held.prompted = true; }
+            return held;
+        };
         const record = auth => {
             try {
                 return airgap.setConsent(auth, refused, options()) !== false;
@@ -397,14 +415,15 @@ function consentRRTranscend() {
                     announce(names, 'load');
                     return;
                 }
-                announce(names, store(refused, true) || 'refused');
+                announce(names,
+                    store(refused, SERVED_AS_FILE) || 'no store');
             }, { once: true });
             return;
         }
         // Loaded already, so that event has been and gone: their own stores
         // are what is left, and they are read on the next page rather than
         // this one.
-        announce(names, store(refused, true) || 'refused');
+        announce(names, store(refused, SERVED_AS_FILE) || 'no store');
     };
 
     // Their loader defines self.airgap before anything of theirs can be

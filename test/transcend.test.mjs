@@ -9,7 +9,7 @@
 import { strict as assert } from 'node:assert';
 import { before, describe, it } from 'node:test';
 import {
-    cookies, filtersText, loadResources, runDom, settle, versions,
+    cookies, cookiesInJar, filtersText, loadResources, runDom, settle, versions,
 } from './helpers.mjs';
 
 const URL = 'https://www.costco.ca/shop';
@@ -81,9 +81,24 @@ before(async ( ) => {
 const plain = value => JSON.parse(JSON.stringify(value));
 
 // As the ui.js replacement: airgap is there and ready before this runs.
+// What uBO leaves behind on a $redirect= install: the page's own tag, whose
+// request for their banner was answered with this resource. document
+// .currentScript is how the resource tells that install from a scriptlet,
+// which is injected inline and carries no src - and the two differ, because
+// only one of them stood in for the thing that would have prompted.
+const servedAsUi = w => {
+    const served = w.document.createElement('script');
+    served.src = 'https://transcend-cdn.com/cm/x/ui.js';
+    Object.defineProperty(w.document, 'currentScript', {
+        get: ( ) => served,
+        configurable: true,
+    });
+};
+
 const asUi = (options = {}) => runDom(
     reject, options.url || URL, '<html><body><p id="content">x</p></body></html>',
     w => {
+        servedAsUi(w);
         if ( typeof options.before === 'function' ) { options.before(w); }
         w.eval(AIRGAP + READY_NOW);
     }
@@ -128,6 +143,80 @@ describe('transcend-reject', ( ) => {
         assert.ok(/^\d{4}-\d{2}-\d{2}T/.test(options.timestamp));
     });
 
+    it('claims prompted only where it stood in for their banner', ( ) => {
+        // Served in place of ui.js, the moment their loader asked for this
+        // is the moment their banner would have rendered, so it is theirs to
+        // claim. Injected as a scriptlet the refusal lands before their
+        // engine decides whether to prompt, their banner is never asked for,
+        // and claiming it would tell their sync endpoint a prompt had been
+        // answered that nobody was ever shown.
+        const served = asUi().window;
+        assert.equal(served.__calls[0][2].prompted, true);
+
+        const scriptlet = runDom(reject, URL,
+            '<html><body><p>x</p></body></html>',
+            w_ => { w_.eval(AIRGAP + READY_NOW); }
+        ).window;
+        const options = scriptlet.__calls[0][2];
+        assert.equal(options.confirmed, true);
+        assert.equal('prompted' in options, false, JSON.stringify(options));
+    });
+
+    it('says so where neither of their stores would take it', ( ) => {
+        // via named where the record went, or the fault where it did not -
+        // and nothing written is a fault, not a refusal taken.
+        let out;
+        const w = asUi({
+            before: w_ => {
+                out = lines(w_);
+                w_.eval('window.__setConsentResult = false;');
+                Object.defineProperty(w_.document, 'readyState', {
+                    value: 'complete',
+                    configurable: true,
+                });
+                // On the prototype, because jsdom's Storage is a proxy and
+                // an own setItem does not take. getItem stays real, so the
+                // check below is on their store rather than on a stub.
+                w_.Storage.prototype.setItem = ( ) => {
+                    throw new Error('denied');
+                };
+                Object.defineProperty(w_.document, 'cookie', {
+                    configurable: true,
+                    get: ( ) => '',
+                    set: ( ) => { throw new Error('denied'); },
+                });
+            },
+        }).window;
+        assert.ok(out[0].endsWith(' via=no store'), out[0]);
+        assert.equal(w.localStorage.getItem('tcmConsent'), null);
+    });
+
+    it('keeps the domain cookie on a host whose name starts with a digit',
+        ( ) => {
+            // 3m.com is a name, not an address. Treating it as one dropped
+            // the domain cookie down to a host-only one, which their reader
+            // on another subdomain would never see.
+            const dom = asUi({
+                url: 'https://3m.com/',
+                before: w_ => {
+                    w_.eval('window.__setConsentResult = false;');
+                    Object.defineProperty(w_.document, 'readyState', {
+                        value: 'complete',
+                        configurable: true,
+                    });
+                },
+            });
+            const held = cookiesInJar(dom, 'https://3m.com/', 'tcm');
+            assert.equal(held.length, 1);
+            // hostOnly is the difference: a jar records the host as the
+            // domain either way, and only the flag says whether a Domain
+            // attribute was ever sent - so their reader on another subdomain
+            // sees it or does not.
+            assert.equal(held[0].hostOnly, false);
+            assert.equal(held[0].domain, '3m.com');
+        }
+    );
+
     it('refuses a tenant that shares none of those names', ( ) => {
         // Nothing here knows those names; they arrive from their own
         // getConsent, and this set shares only half of them with the other.
@@ -162,6 +251,7 @@ describe('transcend-reject', ( ) => {
         const w = runDom(reject, 'https://www.indiegogo.com/',
             '<html><body><p>x</p></body></html>',
             w_ => {
+                servedAsUi(w_);
                 w_.eval(airgap(undefined, IGG_PURPOSES) + READY_NOW);
                 // Their airgap refusing the decision, so the cookie is the
                 // only way left to record it.
@@ -298,7 +388,10 @@ describe('transcend-reject', ( ) => {
         assert.equal(w.__calls.length, 1);
         assert.equal(w.__calls[0][0].type, 'load');
         assert.ok(out[0].endsWith(' via=cookie+storage'), out[0]);
-        assert.deepEqual(JSON.parse(cookies(w).get('tcm')).purposes.Analytics, false);
+        const held = JSON.parse(cookies(w).get('tcm'));
+        assert.deepEqual(held.purposes.Analytics, false);
+        // Injected as a scriptlet, so no banner was ever asked for.
+        assert.equal('prompted' in held, false, JSON.stringify(held));
     });
 
     it('falls back to their cookie once that event has gone', ( ) => {
@@ -320,6 +413,7 @@ describe('transcend-reject', ( ) => {
         const record = JSON.parse(cookies(w).get('tcm'));
         assert.equal(record.confirmed, true);
         assert.deepEqual(record.purposes.Analytics, false);
+        assert.equal('prompted' in record, false, JSON.stringify(record));
     });
 
     it('writes their cookie where a tenant will not take it programmatically',
