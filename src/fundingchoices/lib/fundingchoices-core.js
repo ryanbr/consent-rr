@@ -126,10 +126,10 @@ function consentRRFundingChoices(installTcf) {
 
     /**************************************************************************/
 
-    // The registrable domain, so a cookie their script set one level up can be
-    // expired from here. Two labels, or three where the second to last is a
-    // two-letter country code behind a short suffix - the shape a page can
-    // work out without a public suffix list.
+    // Every domain a cookie their script set one level up could carry, from
+    // the full host down to two labels. Which of them is the registrable one
+    // takes a public suffix list, which a page does not have, so all of them
+    // are tried and the browser refuses the ones above it.
     const domains = ( ) => {
         const host = String(w.location.hostname || '');
         if ( /^[0-9.]+$/.test(host) || host.indexOf('.') === -1 ) { return []; }
@@ -146,7 +146,12 @@ function consentRRFundingChoices(installTcf) {
     // never there costs an assignment.
     let cleared = 0;
     const clearCookie = name => {
-        const had = String(doc.cookie || '').indexOf(name + '=') !== -1;
+        // By the name a record carries, not by a substring of the jar: an
+        // unrelated cookie whose own name ends with this one's would
+        // otherwise be counted as a consent that had been banked.
+        const had = String(doc.cookie || '').split(';').some(
+            part => part.trim().indexOf(name + '=') === 0
+        );
         // Nothing to clear, and nothing clearable: a cookie this document
         // cannot read is one set on a path it cannot write either, so the
         // sweep below would be fourteen assignments for nothing - and no

@@ -260,15 +260,25 @@ function consentRRFundingChoicesTcf() {
         }
 
         // The frame a cross-frame caller looks for, which the IAB stub adds.
-        try {
-            if ( w.frames.__tcfapiLocator === undefined && doc.body !== null ) {
+        // There is no body yet where this runs at document_start, and a
+        // vendor in a frame has nothing to find without it, so the append
+        // waits for one on the same 5ms timer the googlefc iframes take
+        // rather than dropping the frame.
+        const addLocator = ( ) => {
+            try {
+                if ( w.frames.__tcfapiLocator !== undefined ) { return; }
+                if ( doc.body === null ) {
+                    w.setTimeout(addLocator, 5);
+                    return;
+                }
                 const frame = doc.createElement('iframe');
                 frame.style.cssText = 'display:none';
                 frame.name = '__tcfapiLocator';
                 doc.body.appendChild(frame);
+            } catch ( ex ) {
             }
-        } catch ( ex ) {
-        }
+        };
+        addLocator();
 
         w.addEventListener('message', ev => {
             let payload = ev.data;

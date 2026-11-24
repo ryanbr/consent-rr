@@ -339,6 +339,19 @@ describe('fundingchoices-reject', ( ) => {
         assert.ok(none[0].endsWith(' tcf=refused'));
     });
 
+    it('counts by the name a record carries, not by a substring', ( ) => {
+        // A cookie whose own name ends with theirs is not theirs, and
+        // counting it would report a banked consent that was never there.
+        let line;
+        const w = runDom(reject, URL, PAGE, ww => {
+            ww.eval(SNIPPET);
+            line = lines(ww);
+            ww.document.cookie = 'myFCCDCF=zzz; path=/';
+        }).window;
+        assert.ok(line[0].includes(' cleared=0'), line[0]);
+        assert.equal(cookies(w).get('myFCCDCF'), 'zzz');
+    });
+
     it('leaves a publisher callbackQueue exactly as theirs leaves it', ( ) => {
         // Measured: pushing two callbacks before their own script runs leaves
         // both unrun and the queue two long. Running them would be inventing
@@ -504,6 +517,24 @@ describe('fundingchoices-reject, the IAB layer', ( ) => {
 
     it('adds the locator frame a cross-frame caller looks for', ( ) => {
         const w = boot();
+        assert.notEqual(w.frames.__tcfapiLocator, undefined);
+    });
+
+    it('waits for a body rather than dropping the locator frame', async ( ) => {
+        // The test above passes without any wait at all, because the harness
+        // evaluates into a document the parser has already finished. At
+        // document_start there is no body, and a vendor in a frame has
+        // nothing to find without this one - so take the body away first.
+        let dom;
+        const w = runDom(reject, URL, PAGE, ww => {
+            ww.eval(SNIPPET);
+            dom = ww.document;
+            dom.documentElement.removeChild(dom.body);
+        }).window;
+        assert.equal(w.document.body, null);
+        assert.equal(w.frames.__tcfapiLocator, undefined);
+        dom.documentElement.appendChild(dom.createElement('body'));
+        await settle(60);
         assert.notEqual(w.frames.__tcfapiLocator, undefined);
     });
 

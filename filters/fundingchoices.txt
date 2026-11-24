@@ -75,7 +75,7 @@
 !
 ! To see it work:
 !
-!   [consent-rr] fundingchoices-reject 1.1.0 frames=2 answered=0 replied=0
+!   [consent-rr] fundingchoices-reject 1.1.3 frames=2 answered=0 replied=0
 !                cleared=1 tcf=refused
 !
 ! cleared=1 is a visitor who had consented before this was installed.
