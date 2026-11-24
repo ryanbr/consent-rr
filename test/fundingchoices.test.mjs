@@ -175,6 +175,15 @@ describe('fundingchoices-reject', ( ) => {
         assert.equal(w.early, 0);
     });
 
+    it('carries no queue surface theirs does not have', ( ) => {
+        // Theirs is a class instance whose only own names are its own state.
+        // _push is real on zdconsent and tarteaucitron and was copied here
+        // from them; the live script has no such property anywhere in it.
+        const queue = boot().googlefc.__fci;
+        assert.equal(typeof queue.push, 'function');
+        assert.equal(queue._push, undefined);
+    });
+
     it('answers an __fciCall over postMessage with the call id', async ( ) => {
         const w = boot();
         const replies = [];
@@ -215,6 +224,28 @@ describe('fundingchoices-reject', ( ) => {
         w.dispatchEvent(new w.MessageEvent('message', { data: 'a string' }));
         await settle(20);
         assert.deepEqual(replies, []);
+    });
+
+    it('takes an spsp only as a string, as their own gate does', async ( ) => {
+        const w = boot();
+        const replies = [];
+        const source = { postMessage: message => { replies.push(message); } };
+        const send = call => {
+            const event = new w.MessageEvent('message',
+                { data: { __fciCall: call } });
+            Object.defineProperty(event, 'source', { value: source });
+            Object.defineProperty(event, 'origin', { value: 'https://x.example' });
+            w.dispatchEvent(event);
+        };
+        // Theirs reads an spsp alongside the command and refuses the call
+        // where it is there but is not a string.
+        send({ command: 'prov', callId: 1, spsp: 'a-string' });
+        send({ command: 'prov', callId: 2, spsp: 123 });
+        send({ command: 'prov', callId: 3, spsp: {} });
+        send({ command: 'prov', callId: 4, spsp: undefined });
+        await settle(20);
+        assert.deepEqual(replies.map(r => r.__fciReturn),
+            [ '[1,[4]]', '[4,[4]]' ]);
     });
 
     it('puts their internal manager up, by their own method names', ( ) => {

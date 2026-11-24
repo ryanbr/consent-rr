@@ -91,7 +91,6 @@ function consentRRFundingChoices(installTcf) {
         answer(command, entry);
         return answered;
     };
-    queue._push = Array.prototype.push;
     if ( standing.length % 2 === 0 ) {
         for ( let at = 0; at < standing.length - 1; at += 2 ) {
             if ( typeof standing[at] !== 'string' ) { continue; }
@@ -109,6 +108,8 @@ function consentRRFundingChoices(installTcf) {
                 if ( call === null || typeof call !== 'object' ) { return; }
                 if ( COMMANDS.includes(call.command) === false ) { return; }
                 if ( typeof call.callId !== 'number' ) { return; }
+                if ( call.spsp !== undefined &&
+                     typeof call.spsp !== 'string' ) { return; }
                 const source = event.source;
                 if ( source === null || source === undefined ) { return; }
                 if ( typeof source.postMessage !== 'function' ) { return; }

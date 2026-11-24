@@ -87,11 +87,18 @@
                           but the page it was minted for.
 
       the loader's markers
-                          Their script stamps two window properties named
-                          btoa(id + "loader_js") and btoa(id + "cached_js"),
-                          where the id is minted inside the script body rather
-                          than carried in the url, so it cannot be known from
-                          outside. Only their own loader reads them.
+                          Their script stamps two window properties, named
+                          btoa(id + "loader_js") and btoa(id + "cached_js")
+                          and each set to btoa(Date.now()). The id is the
+                          empty string on this path - the last line of the
+                          script calls its own entry point with '', and the
+                          random-looking token there is that function's name
+                          rather than the id - so the names are knowable, and
+                          they are bG9hZGVyX2pz and Y2FjaGVkX2pz. They stay
+                          unset for the other reason instead: the only thing
+                          that reads them is their own loader, which is served
+                          from the host this resource stands in for and so
+                          never runs either.
 
 */
 
@@ -229,7 +236,6 @@ function consentRRFundingChoices(installTcf) {
         answer(command, entry);
         return answered;
     };
-    queue._push = Array.prototype.push;
     if ( standing.length % 2 === 0 ) {
         for ( let at = 0; at < standing.length - 1; at += 2 ) {
             if ( typeof standing[at] !== 'string' ) { continue; }
@@ -241,9 +247,14 @@ function consentRRFundingChoices(installTcf) {
     /**************************************************************************/
 
     // Their postMessage side, which is how their own iframes call in. A
-    // command outside the two, or a call with no numeric callId, is answered
-    // with silence - measured, not assumed. The reply is the same message with
-    // the callId in field 1.
+    // command outside the two, a call with no numeric callId, or an spsp that
+    // is there but is not a string, is answered with silence - measured off
+    // their own gate, which is all three:
+    //
+    //   if (c && ua(c.command) && typeof c.callId === "number" &&
+    //       (typeof c.spsp === "undefined" || typeof c.spsp === "string"))
+    //
+    // The reply is the same message with the callId in field 1.
     let replied = 0;
     if ( w.__fcInternalApiPostMessageReady !== true ) {
         w.addEventListener('message', event => {
@@ -254,6 +265,8 @@ function consentRRFundingChoices(installTcf) {
                 if ( call === null || typeof call !== 'object' ) { return; }
                 if ( COMMANDS.includes(call.command) === false ) { return; }
                 if ( typeof call.callId !== 'number' ) { return; }
+                if ( call.spsp !== undefined &&
+                     typeof call.spsp !== 'string' ) { return; }
                 const source = event.source;
                 if ( source === null || source === undefined ) { return; }
                 if ( typeof source.postMessage !== 'function' ) { return; }
