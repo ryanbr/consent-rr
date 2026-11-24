@@ -619,7 +619,7 @@ describe('transcend-reject, where their engine never readies', ( ) => {
         assert.ok(
             out[0].endsWith(
                 ' refused=Advertising,Analytics,BrowserCookies,' +
-                'EnrichmentConsent,Functional,SaleOfInfo' +
+                'EnrichmentConsent,Functional,Marketing,SaleOfInfo,Sales' +
                 ' via=cookie+storage, no engine'
             ),
             out[0]
@@ -632,7 +632,12 @@ describe('transcend-reject, where their engine never readies', ( ) => {
             BrowserCookies: false,
             EnrichmentConsent: false,
             Functional: false,
+            // Marketing and Sales are the airtable tenant's, read off its
+            // own purposes table - refusable there, and missing here until
+            // a host-wide rule made this list the only purpose source.
+            Marketing: false,
             SaleOfInfo: false,
+            Sales: false,
         }, 'every one of them refused, none of them essential');
         assert.deepEqual(
             JSON.parse(w.localStorage.getItem('tcmConsent')).purposes,
@@ -677,7 +682,8 @@ describe('transcend-reject, where their engine never readies', ( ) => {
             assert.ok(
                 out[0].endsWith(
                     ' refused=Advertising,Analytics,BrowserCookies,' +
-                    'EnrichmentConsent,Functional,SaleOfInfo' +
+                    'EnrichmentConsent,Functional,Marketing,SaleOfInfo,' +
+                    'Sales' +
                     ' via=cookie+storage, no engine'
                 ),
                 out[0]
@@ -688,7 +694,9 @@ describe('transcend-reject, where their engine never readies', ( ) => {
                 BrowserCookies: false,
                 EnrichmentConsent: false,
                 Functional: false,
+                Marketing: false,
                 SaleOfInfo: false,
+                Sales: false,
             };
             assert.deepEqual(
                 plain(JSON.parse(

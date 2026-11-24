@@ -514,22 +514,55 @@ function consentRRTranscend() {
     // Where their file never arrives there is no airgap to read a purpose
     // list off, so preludeRefusal() has nothing to work with and a refusal
     // would go unwritten. These are the names seen set to false in real tcm
-    // records, which is the set that can be refused without their object. A
-    // tenant purpose absent from here keeps their own default, and a name
-    // here that a tenant does not have is ignored by their reader, so the
-    // list erring long is the safe direction.
+    // records, plus the ones live purpose tables declare refusable, which is
+    // the set that can be refused without their object. A tenant purpose
+    // absent from here keeps their own default, and a name here that a tenant
+    // does not have is ignored by their reader, so the list erring long is
+    // the safe direction.
+    //
+    // THIS IS THE ONLY PURPOSE SOURCE UNDER A HOST-WIDE RULE. A list that
+    // avoids domain-specific rules reaches this family with
+    //
+    //   ||transcend-cdn.com^$script,redirect=transcend-reject.js
+    //
+    // which answers the engine's own request as well as the banner's, so
+    // their object is never in the page and preludeRefusal() never has a
+    // table to read. The list below is then what every tenant gets, not a
+    // fallback for a broken rule - which is why it is kept against their
+    // live tables rather than against records alone.
+    //
+    // Read off three tenants' loadOptions.purposes.types, every entry
+    // essential:false and configurable:true unless said otherwise:
+    //
+    //   1c1f8e90  grammarly, superhuman, coda
+    //             Analytics Advertising Functional SaleOfInfo
+    //   31e97cbf  vimeo
+    //             SaleOfInfo Advertising Functional Analytics,
+    //             and AlwaysBlock at configurable:false
+    //   619e6e3b  airtable, transcend.io, skilljar
+    //             Functional SaleOfInfo Advertising Marketing Sales
+    //             Analytics, and EnrichmentConsent at configurable:false
+    //
+    // Marketing and Sales come from the third and were missing: on those
+    // sites the record written without their object left two refusable
+    // purposes at whatever their default resolved to.
     //
     // Essential and AlwaysBlock are left out because their own writer only
-    // takes configurable and non-essential purposes. GcmAdvanced is left out
-    // because every sampled record carrying it had it at "Auto" - it has
-    // never been observed refused.
+    // takes configurable and non-essential purposes, and AlwaysBlock is
+    // declared that way above. EnrichmentConsent is declared that way too
+    // and stays, because a genuine record carries it at false - their reader
+    // merges the names it finds either way. GcmAdvanced is left out because
+    // every sampled record carrying it had it at "Auto" - it has never been
+    // observed refused.
     const WITHOUT_THEIRS = [
         'Advertising',
         'Analytics',
         'BrowserCookies',
         'EnrichmentConsent',
         'Functional',
+        'Marketing',
         'SaleOfInfo',
+        'Sales',
     ];
 
     // What separates "replaced their file" and "their file was blocked" from

@@ -131,11 +131,14 @@
 ! the tenant configures one - their engine does not prompt, and so never
 ! fetches the banner at all. The tenants read here carry
 !
-!   consentExpiry: 525600     minutes, so a year
+!   consentExpiry: 525600     minutes, so a year - but not on all of them.
+!                             Of three tenants read off their own airgap.js,
+!                             two carry 525600 and one carries 131400, which
+!                             is 91 days.
 !   onConsentExpiry: Prompt
 !
-! so one run answers for a year, and the line wants leaving in place for the
-! next one - and for a visitor who clears their storage.
+! so one run answers for months at least, and the line wants leaving in
+! place for the next one - and for a visitor who clears their storage.
 !
 ! The sites below are the Transcend tenants this repo has evidence for. uBO
 ! matches subdomains too, so costco.ca covers www.costco.ca:
@@ -159,31 +162,52 @@ airtable.com,classy.org,costco.ca,costco.com,gofundme.com,indiegogo.com,mayoclin
 ! -----------------------------------------------------------------------------
 
 ! -----------------------------------------------------------------------------
-! WHAT NOT TO WRITE, both reported from the field as "nothing happens, and no
+! ONE HOST-WIDE RULE INSTEAD, for a list that does not want domain-specific
+! ones:
+!
+!   ||transcend-cdn.com^$script,redirect=transcend-reject.js
+!
+! This is a trade rather than a mistake, and it is worth knowing which way it
+! goes. $script on the host matches every script they serve, airgap.js
+! included, so the engine's own request is answered with this too and their
+! object is never in the page. What that costs:
+!
+!   their blocking goes with the engine. airgap is the half that blocks
+!   requests and cookies by consent, so with it replaced nothing of theirs is
+!   enforcing anything - the list doing the blocking is the one this resource
+!   ships with.
+!
+!   the purposes come from the resource, not the tenant. With no object to
+!   read a table off, the refusal is written against the names the resource
+!   carries. Those are kept against live tenant tables for that reason, but a
+!   tenant purpose outside them keeps whatever its default resolved to.
+!
+! What it still does, which is the point: no banner, because the half that
+! fetches one is gone, and a confirmed refusal in both of their stores for
+! the next page.
+!
+!   [consent-rr] transcend-reject 1.5.4 refused=Advertising,Analytics,
+!                BrowserCookies,EnrichmentConsent,Functional,Marketing,
+!                SaleOfInfo,Sales via=cookie+storage, no engine
+!
+! Naming the banner instead - the two rules at the top of this list - leaves
+! the engine in place to enforce the refusal and reads the tenant's own
+! purposes off it. Either is a defensible list; this is what each gives up.
+!
+! WHAT NOT TO WRITE, reported from the field as "nothing happens, and no
 ! cookie is set":
 !
 !   ||transcend-cdn.com^$script,redirect-rule=transcend-reject.js
 !
-! Two separate faults in one line.
+! redirect-rule= only fires where some other filter blocks the request. On its
+! own it does nothing at all, and their real ui.js loads as usual. Every rule
+! here uses redirect=, which blocks and serves in one.
 !
-!   1. ^$script matches every script on their CDN, airgap.js included - so the
-!      engine is the thing being redirected. On Chromium that request then
-!      fails with ERR_UNSAFE_REDIRECT and airgap.js does not load at all; on
-!      Firefox it loads the banner's stub in its place. Either way the engine
-!      is gone. Nothing then records a refusal,
-!      because this queues on airgap and airgap never arrives; and nothing
-!      enforces one either, because airgap is the half that does the blocking.
-!      Name the banner: the two rules at the top of this list do.
+! Where their engine is in the page and records nothing the console says so, a
+! second after load, and tells that apart from the engine never arriving:
 !
-!   2. redirect-rule= only fires where some other filter blocks the request. On
-!      its own it does nothing at all, and their real ui.js loads as usual. The
-!      rules here use redirect=, which blocks and serves in one.
-!
-! Either way the console says so now, a second after load, and it tells that
-! apart from their engine arriving and recording nothing:
-!
-!   [consent-rr] transcend-reject 1.3.1 refused=(none) via=no engine
-!   [consent-rr] transcend-reject 1.3.1 refused=(none) via=no record
+!   [consent-rr] transcend-reject 1.5.4 refused=(none) via=no engine
+!   [consent-rr] transcend-reject 1.5.4 refused=(none) via=no record
 !
 ! and where their engine is in the page but never becomes ready, the purposes
 ! their own prelude carries are enough to write the refusal to their cookie for
