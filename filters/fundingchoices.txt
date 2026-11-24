@@ -67,6 +67,31 @@
 ! "fc" and serves a string read out of the cookie being cleared; a CMP of
 ! the publisher's own keeps its API.
 !
+! THE PAGE SIDE IS ANSWERED, because that is what a site gates its content on.
+! Everything a publisher's wrapper reads, it reads inside a googlefc callback,
+! so a wrapper that puts up a loader and waits never proceeds while the queue
+! only collects. The queue here runs them, over the four keys theirs releases
+! with the getters this resource has - consentData and legacyNoData, then
+! adBlockData, then consentApi - and on a wait for the body, because a callback
+! released at document_start is one doing DOM work against nothing. The other
+! four stay parked: initialCcpaData, initialUsStatesData,
+! initialUsStatesOptOutData and consentModeData come with getters this resource
+! does not have, and releasing a callback into a getter that is not there
+! trades a wait for a TypeError.
+!
+! getAdBlockerStatus, getWhitelistStatus and getAllowAdsStatus answer UNKNOWN,
+! which is their own value before detection. A wall is written as "if the
+! status is EXTENSION_LEVEL_AD_BLOCKER, or NOT_WHITELISTED, or ADS_NOT_ALLOWED,
+! put it up", and UNKNOWN passes that without claiming anything about the
+! visitor. NO_AD_BLOCKER, WHITELISTED and ADS_ALLOWED are not on offer: that is
+! not privacy, it is defeating ad-block detection, which is a different job and
+! belongs in a list rather than in a consent resource. getConsentStatus is
+! NO_CONSENT, where theirs answers UNKNOWN always, because a refusal is what
+! happened and a page polling for a settled status would spin on UNKNOWN.
+! getConsentedProviderIds is empty, showRevocationMessage does nothing, and
+! their five enums go up by their own values. Nothing is detected and nothing
+! is stored.
+!
 ! THE REFUSAL IS THEIR COOKIE'S ABSENCE. gpt.js and adsbygoogle.js each read
 ! exactly one Funding Choices thing, the FCCDCF cookie: URI-decoded if it
 ! starts with %, parsed as JSPB, field 4, whose field 1 is the TC string. No
@@ -86,24 +111,18 @@
 !                            waiting on it. It goes in when something that
 !                            waits on it turns up.
 !
-!   googlefc.callbackQueue   their own inactive path does not run it - pushing
-!                            two callbacks before booting their script leaves
-!                            both unrun and the queue two long - so neither
-!                            does this. The script that drains them is the
-!                            messaging one, served from a token-bound url that
-!                            answers 403 to anything but the page it was minted
-!                            for, so its key names cannot be measured either.
-!
 !   anything on the host     that is not a script. The rule is $script, so a
 !                            beacon or a frame stays with whatever blocks it
 !                            today.
 !
 ! To see it work:
 !
-!   [consent-rr] fundingchoices-reject 1.1.5 frames=2 answered=0 replied=0
-!                cleared=1 tcf=refused usp=1---
+!   [consent-rr] fundingchoices-reject 1.1.6 frames=2 answered=0 replied=0
+!                cleared=1 tcf=refused usp=1--- queued=0
 !
-! cleared=1 is a visitor who had consented before this was installed, and usp
-! is the string that went up - 1-Y- on a browser sending Global Privacy
-! Control, or "theirs" where a publisher's own US flow was already standing.
+! cleared=1 is a visitor who had consented before this was installed. usp is
+! the string that went up - 1-Y- on a browser sending Global Privacy Control,
+! or "theirs" where a publisher's own US flow was already standing. queued is
+! how many callbacks a publisher had parked before the request was blocked,
+! and "theirs" where a queue of their own was already standing.
 ! -----------------------------------------------------------------------------

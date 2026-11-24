@@ -29,6 +29,13 @@
     Privacy Control and 1--- otherwise, which is the string their own US flow
     would have put up - and which gpt.js and adsbygoogle.js both ask for.
 
+    The page-facing side is answered as well, because that is what a site
+    gates its content on: googlefc's callback queue runs the callbacks a
+    publisher parked, over the four keys whose getters this resource has, and
+    those getters answer UNKNOWN - their own value before detection - rather
+    than claim a clean browser. getConsentStatus is NO_CONSENT, which is what
+    happened.
+
     No accept resource. There is nothing a page needs consent for here that
     blocking the request would not already have taken away.
 
@@ -39,6 +46,10 @@
     // @include lib/fundingchoices-core.js
     // @include lib/fundingchoices-tcf.js
     // @include lib/fundingchoices-usp.js
+    // @include lib/fundingchoices-page.js
     consentRRFundingChoices(
-        consentRRFundingChoicesTcf, consentRRFundingChoicesUsp);
+        consentRRFundingChoicesTcf,
+        consentRRFundingChoicesUsp,
+        consentRRFundingChoicesPage
+    );
 })();

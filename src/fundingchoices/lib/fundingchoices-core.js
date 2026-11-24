@@ -102,7 +102,7 @@
 
 */
 
-function consentRRFundingChoices(installTcf, installUsp) {
+function consentRRFundingChoices(installTcf, installUsp, installPage) {
     const w = window;
     const doc = w.document;
     // Substituted from package.json by tools/build.mjs.
@@ -398,6 +398,19 @@ function consentRRFundingChoices(installTcf, installUsp) {
         }
     }
 
+    // The page-facing side, last: a callback released under CONSENT_API_READY
+    // should find the APIs above it already standing. It is handed the same
+    // googlefc this file adopted, because a page's own properties on it are
+    // left alone rather than replaced.
+    let queued = 'absent';
+    if ( typeof installPage === 'function' ) {
+        try {
+            queued = installPage(waitHere).install(googlefc);
+        } catch ( ex ) {
+            queued = 'failed';
+        }
+    }
+
     googlefc.consentRR = { name: NAME, version: VERSION };
 
     // Said once, at the end, so it reports what actually went in. cleared=1
@@ -410,7 +423,8 @@ function consentRRFundingChoices(installTcf, installUsp) {
             ' replied=' + replied +
             ' cleared=' + cleared +
             ' tcf=' + tcf +
-            ' usp=' + usp
+            ' usp=' + usp +
+            ' queued=' + queued
         );
     }
 }

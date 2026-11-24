@@ -383,7 +383,8 @@ describe('fundingchoices-reject', ( ) => {
         assert.ok(none[0].includes(' cleared=0'), none[0]);
         assert.ok(none[0].includes(' frames=2 '), none[0]);
         assert.ok(none[0].includes(' tcf=refused'), none[0]);
-        assert.ok(none[0].endsWith(' usp=1---'), none[0]);
+        assert.ok(none[0].includes(' usp=1--- '), none[0]);
+        assert.ok(none[0].endsWith(' queued=0'), none[0]);
     });
 
     it('counts by the name a record carries, not by a substring', ( ) => {
@@ -399,10 +400,12 @@ describe('fundingchoices-reject', ( ) => {
         assert.equal(cookies(w).get('myFCCDCF'), 'zzz');
     });
 
-    it('leaves a publisher callbackQueue exactly as theirs leaves it', ( ) => {
-        // Measured: pushing two callbacks before their own script runs leaves
-        // both unrun and the queue two long. Running them would be inventing
-        // a behaviour this path does not have.
+    it('runs a publisher callbackQueue, as their active path does', ( ) => {
+        // This pinned the small script their loader serves when there is
+        // nothing to show, which never releases a key because there is
+        // nothing to release. A site that gates content is one where Funding
+        // Choices is active, and there the callbacks run - consentData first,
+        // then legacyNoData, which is the order of their own release call.
         const w = boot({
             before: ww => {
                 ww.eval('window.ranKeys = [];' +
@@ -414,8 +417,11 @@ describe('fundingchoices-reject', ( ) => {
                     ' function(){ window.ranKeys.push("bare"); });');
             },
         });
-        assert.deepEqual([ ...w.ranKeys ], []);
-        assert.equal(w.googlefc.callbackQueue.length, 2);
+        assert.deepEqual([ ...w.ranKeys ],
+            [ 'CONSENT_DATA_READY', 'bare' ]);
+        // Theirs replaces the array with its queue object, which is _.Po.
+        assert.equal(Array.isArray(w.googlefc.callbackQueue), false);
+        assert.equal(typeof w.googlefc.callbackQueue.push, 'function');
     });
 
     it('puts up no GPP api', ( ) => {
@@ -733,7 +739,7 @@ describe('fundingchoices-reject, the US privacy layer', ( ) => {
         }).window;
         assert.equal(ask(w, 'getUSPData')[0].uspString, '1---');
         assert.equal(w.uspGoogle, 0, 'the stand-in is not the one answering');
-        assert.ok(out[0].endsWith(' usp=1---'), out[0]);
+        assert.ok(out[0].includes(' usp=1--- '), out[0]);
     });
 
     it('leaves a locator frame alone where no marker claims it', ( ) => {
@@ -748,7 +754,7 @@ describe('fundingchoices-reject, the US privacy layer', ( ) => {
             out = lines(ww);
         }).window;
         assert.equal(typeof w.__uspapi, 'undefined');
-        assert.ok(out[0].endsWith(' usp=theirs'), out[0]);
+        assert.ok(out[0].includes(' usp=theirs '), out[0]);
     });
 
     it('answers a command outside theirs with silence', ( ) => {
@@ -816,7 +822,7 @@ describe('fundingchoices-reject, the US privacy layer', ( ) => {
         }).window;
         w.__uspapi('getUSPData', 1, ( ) => {});
         assert.equal(w.uspOwn, 1, 'theirs is the one that answered');
-        assert.ok(out[0].endsWith(' usp=theirs'), out[0]);
+        assert.ok(out[0].includes(' usp=theirs '), out[0]);
     });
 
     it('says which string went up in the console line', ( ) => {
@@ -828,7 +834,7 @@ describe('fundingchoices-reject, the US privacy layer', ( ) => {
             });
             out = lines(w);
         });
-        assert.ok(out[0].endsWith(' usp=1-Y-'), out[0]);
+        assert.ok(out[0].includes(' usp=1-Y- '), out[0]);
     });
 
     it('stores nothing of its own', ( ) => {
@@ -837,6 +843,225 @@ describe('fundingchoices-reject, the US privacy layer', ( ) => {
         assert.deepEqual(
             Object.keys(w.localStorage).filter(k => k.startsWith('IABUSP')), []);
         assert.equal(cookies(w).get('usprivacy'), undefined);
+    });
+});
+
+/******************************************************************************/
+
+describe('fundingchoices-reject, the page api', ( ) => {
+    const parked = entries => ww => {
+        ww.eval('window.ranKeys = [];' +
+            'window.googlefc = window.googlefc || {};' +
+            'window.googlefc.callbackQueue =' +
+            ' window.googlefc.callbackQueue || [];');
+        for ( const entry of entries ) {
+            ww.eval('window.googlefc.callbackQueue.push(' + entry + ');');
+        }
+    };
+
+    const cb = (key, label) => '{ ' + key + ': function() {' +
+        ' window.ranKeys.push("' + label + '"); } }';
+
+    it('runs what a publisher parked, over the keys theirs releases', ( ) => {
+        const w = boot({
+            before: parked([
+                cb('CONSENT_DATA_READY', 'consent'),
+                cb('AD_BLOCK_DATA_READY', 'adblock'),
+                'function() { window.ranKeys.push("legacy"); }',
+            ]),
+        });
+        // Their release order: consentData, legacyNoData, then adBlockData.
+        assert.deepEqual([ ...w.ranKeys ], [ 'consent', 'legacy', 'adblock' ]);
+    });
+
+    it('leaves parked the keys whose getters are not here', ( ) => {
+        // A callback released into a getter that is not there trades a wait
+        // for a TypeError, so these stay exactly as they are today.
+        const w = boot({
+            before: parked([
+                cb('INITIAL_CCPA_DATA_READY', 'ccpa'),
+                cb('CONSENT_MODE_DATA_READY', 'mode'),
+                cb('INITIAL_US_STATES_DATA_READY', 'states'),
+            ]),
+        });
+        assert.deepEqual([ ...w.ranKeys ], []);
+    });
+
+    it('waits for a body before releasing anything', async ( ) => {
+        // A callback released at document_start is one doing DOM work
+        // against a document that is not there yet.
+        let dom;
+        const w = runDom(reject, URL, PAGE, ww => {
+            ww.eval(SNIPPET);
+            parked([ cb('CONSENT_DATA_READY', 'consent') ])(ww);
+            dom = ww.document;
+            dom.documentElement.removeChild(dom.body);
+        }).window;
+        assert.deepEqual([ ...w.ranKeys ], []);
+        dom.documentElement.appendChild(dom.createElement('body'));
+        await settle(60);
+        assert.deepEqual([ ...w.ranKeys ], [ 'consent' ]);
+    });
+
+    it('calls one pushed after the release, and counts as theirs does', ( ) => {
+        const w = boot();
+        let ran = 0;
+        const first = w.googlefc.callbackQueue.push({
+            CONSENT_DATA_READY: ( ) => { ran += 1; },
+        });
+        const second = w.googlefc.callbackQueue.push(( ) => { ran += 1; });
+        assert.equal(ran, 2, 'a released key calls at once');
+        // Theirs answers with the number run once a key is released.
+        assert.equal(first, 1);
+        assert.equal(second, 2);
+        // A key it does not release parks, and theirs answers the length.
+        assert.equal(w.googlefc.callbackQueue.push({
+            INITIAL_CCPA_DATA_READY: ( ) => {},
+        }), 1);
+        assert.equal(w.googlefc.callbackQueue.push({
+            INITIAL_CCPA_DATA_READY: ( ) => {},
+        }), 2);
+    });
+
+    it('reports a key it does not know, as theirs does', ( ) => {
+        const w = boot();
+        let ran = 0;
+        const said = [];
+        w.console.error = (...args) => { said.push(args); };
+        w.googlefc.callbackQueue.push({ NOT_A_KEY: ( ) => { ran += 1; } });
+        assert.equal(ran, 0);
+        assert.equal(said.length, 1);
+        assert.match(said[0][0], /Unrecognized data availability type/);
+        assert.equal(said[0][1], 'NOT_A_KEY');
+    });
+
+    it('carries on when one of their callbacks throws', ( ) => {
+        const w = boot({
+            before: ww => {
+                parked([])(ww);
+                ww.eval('window.googlefc.callbackQueue.push(' +
+                    '{ CONSENT_DATA_READY: function() {' +
+                    ' throw new Error("theirs"); } });');
+                ww.eval('window.googlefc.callbackQueue.push(' +
+                    '{ CONSENT_DATA_READY: function() {' +
+                    ' window.ranKeys.push("second"); } });');
+            },
+        });
+        assert.deepEqual([ ...w.ranKeys ], [ 'second' ]);
+    });
+
+    it('answers the getters a released callback calls', ( ) => {
+        const fc = boot().googlefc;
+        // Their own value before detection: it passes a wall written as "if
+        // the status is EXTENSION_LEVEL_AD_BLOCKER, put the wall up" without
+        // claiming a browser with no blocker in it.
+        assert.equal(fc.getAdBlockerStatus(), 0);
+        assert.equal(fc.getWhitelistStatus(), 0);
+        assert.equal(fc.getAllowAdsStatus(), 0);
+        assert.notEqual(fc.getAdBlockerStatus(),
+            fc.AdBlockerStatusEnum.NO_AD_BLOCKER);
+        assert.notEqual(fc.getWhitelistStatus(),
+            fc.WhitelistStatusEnum.WHITELISTED);
+        assert.notEqual(fc.getAllowAdsStatus(),
+            fc.AllowAdsStatusEnum.ADS_ALLOWED);
+        // A refusal is what happened, where theirs answers UNKNOWN forever.
+        assert.equal(fc.getConsentStatus(), fc.ConsentStatusEnum.NO_CONSENT);
+        assert.deepEqual([ ...fc.getConsentedProviderIds() ], []);
+        assert.doesNotThrow(( ) => { fc.showRevocationMessage(); });
+        assert.equal(fc.showRevocationMessage(), undefined);
+    });
+
+    it('carries their enums, by their values', ( ) => {
+        const fc = boot().googlefc;
+        assert.deepEqual({ ...fc.ConsentStatusEnum }, {
+            UNKNOWN: 0, CONSENTED_TO_PERSONALIZED_ADS: 1,
+            CONSENTED_TO_NON_PERSONALIZED_ADS: 2, CONTRIBUTOR: 3,
+            NO_CONSENT: 4, CONSENT_NOT_REQUIRED: 5,
+        });
+        assert.deepEqual({ ...fc.AdBlockerStatusEnum }, {
+            UNKNOWN: 0, EXTENSION_LEVEL_AD_BLOCKER: 1,
+            NETWORK_LEVEL_AD_BLOCKER: 2, NO_AD_BLOCKER: 3,
+        });
+        assert.deepEqual({ ...fc.WhitelistStatusEnum },
+            { UNKNOWN: 0, NOT_WHITELISTED: 1, WHITELISTED: 2 });
+        assert.deepEqual({ ...fc.AllowAdsStatusEnum },
+            { UNKNOWN: 0, ADS_NOT_ALLOWED: 1, ADS_ALLOWED: 2 });
+        assert.equal(fc.ConsentModePurposeStatusEnum
+            .CONSENT_MODE_PURPOSE_STATUS_DENIED, 2);
+    });
+
+    it('leaves what the page owns, replaces what theirs replaces', ( ) => {
+        const w = boot({
+            before: ww => {
+                ww.eval('window.googlefc = {' +
+                    ' getConsentStatus: function() { return 99; },' +
+                    ' getAdBlockerStatus: function() { return 99; },' +
+                    ' ConsentStatusEnum: { MINE: 1 } };');
+            },
+        });
+        const fc = w.googlefc;
+        // Their setter leaves a name the page owns alone.
+        assert.equal(fc.getConsentStatus(), 99);
+        assert.deepEqual({ ...fc.ConsentStatusEnum }, { MINE: 1 });
+        // The three status getters theirs installs with the overwrite flag.
+        assert.equal(fc.getAdBlockerStatus(), 0);
+    });
+
+    it('leaves a queue object already standing alone', ( ) => {
+        let out;
+        const w = runDom(reject, URL, PAGE, ww => {
+            ww.eval(SNIPPET);
+            ww.eval('window.ownPushes = 0; window.googlefc = { callbackQueue:' +
+                ' { push: function() { window.ownPushes += 1; } } };');
+            out = lines(ww);
+        }).window;
+        w.googlefc.callbackQueue.push({ CONSENT_DATA_READY: ( ) => {} });
+        assert.equal(w.ownPushes, 1);
+        assert.ok(out[0].endsWith(' queued=theirs'), out[0]);
+    });
+
+    it('takes a callbackQueue of null for an absent one', ( ) => {
+        // Their own test is truthiness - "if (b && !Array.isArray(b))" - so
+        // null is absent to them and gets a queue rather than a shrug.
+        const w = boot({
+            before: ww => {
+                ww.eval('window.ranKeys = [];' +
+                    'window.googlefc = { callbackQueue: null };');
+            },
+        });
+        w.googlefc.callbackQueue.push({
+            CONSENT_DATA_READY: ( ) => { w.ranKeys.push('consent'); },
+        });
+        assert.deepEqual([ ...w.ranKeys ], [ 'consent' ]);
+    });
+
+    it('survives a callbackQueue the page made read-only', ( ) => {
+        // The assignment is the one write here that can throw, so it goes
+        // through the same guarded setter as the rest and the install says
+        // the queue is theirs rather than failing the whole page side.
+        let out;
+        const w = runDom(reject, URL, PAGE, ww => {
+            ww.eval(SNIPPET);
+            ww.eval('window.googlefc = {};' +
+                'Object.defineProperty(window.googlefc, "callbackQueue", {' +
+                ' get: function() { return []; } });');
+            out = lines(ww);
+        }).window;
+        assert.ok(out[0].endsWith(' queued=theirs'), out[0]);
+        // The getters still went in, which is the point of not failing.
+        assert.equal(typeof w.googlefc.getAdBlockerStatus, 'function');
+        assert.equal(w.googlefc.getConsentStatus(), 4);
+    });
+
+    it('says how many it adopted in the console line', ( ) => {
+        let out;
+        runDom(reject, URL, PAGE, w => {
+            w.eval(SNIPPET);
+            parked([ cb('CONSENT_DATA_READY', 'a'),
+                cb('AD_BLOCK_DATA_READY', 'b') ])(w);
+            out = lines(w);
+        });
+        assert.ok(out[0].endsWith(' queued=2'), out[0]);
     });
 });
 

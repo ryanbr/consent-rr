@@ -152,7 +152,7 @@ the same fixture as its sibling.
 | `cookieyes-reject-unblock` | 20.1 KB | `_ckyStore`, `_ckyGetFromStore`, `_ckySetInStore`, `_ckyGetCookieMap`, `_ckySetCookie`, `_ckyIsCategoryToBeBlocked` +17 more |
 | `tarteaucitron-reject` | 20.6 KB | `uetq` |
 | `tarteaucitron-reject-unblock` | 20.6 KB | `uetq` |
-| `fundingchoices-reject` | 19.8 KB | `googlefc`, `__fcInternalApiManager`, `__fcInternalApiPostMessageReady`, `__tcfapi`, `__uspapi`, `__uspapiPostMessageReady` |
+| `fundingchoices-reject` | 25.8 KB | `googlefc`, `__fcInternalApiManager`, `__fcInternalApiPostMessageReady`, `__tcfapi`, `__uspapi`, `__uspapiPostMessageReady` |
 | `didomi-reject` | 13.8 KB | `Didomi`, `didomiState`, `didomiEventListeners`, `didomiOnReady` |
 | `didomi-accept` | 13.8 KB | `Didomi`, `didomiState`, `didomiEventListeners`, `didomiOnReady` |
 | `cookiescript-reject` | 19.1 KB | `CookieScriptData`, `CookieScript` |
@@ -287,7 +287,7 @@ uBlock Origin does the blocking.
 [consent-rr] cookieyes-reject-unblock 1.1.0 categories=necessary+functional+analytics+performance+advertisement+other cookie=written consentid=none freed=1 events=2 tcf=refused gpc=unset banner=none log=none
 [consent-rr] tarteaucitron-reject 1.1.0 refused=2 allowed=0 launched=0 cookie=tarteaucitron entries=2 events=5 banner=none reload=no beacon=none
 [consent-rr] tarteaucitron-reject-unblock 1.1.0 refused=1 allowed=1 launched=1 types=video+social cookie=tarteaucitron entries=2 events=5 banner=none reload=no beacon=none
-[consent-rr] fundingchoices-reject 1.1.5 frames=2 answered=0 replied=0 cleared=0 tcf=refused usp=1---
+[consent-rr] fundingchoices-reject 1.1.6 frames=2 answered=0 replied=0 cleared=0 tcf=refused usp=1--- queued=0
 [consent-rr] didomi-reject 1.0.0 purposes=none token=written ready=0 listeners=0 tcf=absent
 [consent-rr] didomi-accept 1.0.0 purposes=all token=written ready=0 listeners=0 tcf=absent
 [consent-rr] cookiescript-reject 1.0.7 action=reject categories=strict cookie=written freed=1 removed=0 gcm=denied/default api=ready watch=watching reload=reloading
