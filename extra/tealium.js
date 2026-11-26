@@ -4,13 +4,15 @@
 // Not a cookie-consent resource, though it answers a consent api where a
 // tenant compiled one in: it lives outside src/ and is not built into
 // dist/ by tools/build.mjs. Hand-maintained, ship as-is.
-// Read off seventeen tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
+// Read off twenty-two tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
 // gendigital/ccleaner, foxcorp/fscom-main, tsb/tsb-uk-new, cdw/main,
 // epson/secglobal, hsbc/global-common-dotcom, ccl/main,
 // newbalance/nb-jnbo-new, barclaysuk/barclaycard-public,
 // academysports/main, hktdc/main, random/rhcorp-prh,
 // jysk-fynske-medier/partners, nordea/op-web and
-// newsinternational/dreamteam.2016, 32kB to 771kB - and four
+// newsinternational/dreamteam.2016, xe/xrates, williamhillgroup/es-web,
+// cbsi/webplex-marketing, newsltd/dt and virgin/main, 20kB to 771kB - and
+// four
 // tag files: lbg/code utag.2.js at 515 bytes, and tsb's
 // utag.419.js, utag.263.js and utag.272.js at 37kB, 27kB and 12.6kB, 77kB
 // of vendors on one page.
@@ -19,7 +21,7 @@
 // and ships pretty-printed over 4496 lines, which is worth knowing before
 // counting anything in it: a pattern written for the minified form, like
 // view:function, matches none of it.
-// Eight years and two generations, and all seventeen publish the same
+// Eight years and two generations, and all twenty-two publish the same
 // fifteen members in the same order. That is why this pins the contract and
 // nothing about a build.
 // Their environment is not always prod either - barclaysuk serves from
@@ -86,6 +88,11 @@
 // nothing on the other seven tenants either. Implementing a hash on
 // speculation looked worse than saying this: if a site turns out to call
 // it, it is a pure function and can be added.
+// Their consent config reads - cookieNS, domain, path, consentPeriod,
+// noqueue, noview, eventProfile, defaultConsentForDoNotSell and the dr
+// flag - are left off on purpose. They are a tenant's settings, every one
+// of them is read rather than called, and undefined is falsy, so a page
+// that looks at one gets an answer it can use instead of an exception.
 // WHAT IS DELIBERATELY NOT THERE, beyond the data-layer readers: utag.v_id,
 // because it is the identifier, and the loader internals it assigns to
 // itself as it runs - cl, cond, pre, runonce, initcatch, tagsettings and
@@ -110,8 +117,9 @@
 // a string, and none rather than opt-in: see the note at the member for
 // what that trades. The two prompts carry isEnabled false, since there is
 // no prompt to enable with no tag to run it.
-// Three of the eleven - hsbc, tsb and barclaysuk, with 223, 232 and 243
-// references to it where the other three with a manager have 41 - carry
+// Four of the twenty-two - hsbc, tsb, barclaysuk and williamhillgroup,
+// with 223, 232, 243 and 260 references to it where the others with a
+// manager have 41 - carry
 // the whole of it, setters and prompts included, and those are the
 // page-facing half: a cookie
 // preferences link calls showConsentPreferences(_lang) or
@@ -536,12 +544,28 @@
         setEventCookie: noopfn,
         setConsentValueOld: noopfn,
         setPreferencesValuesOld: noopfn,
-        // Three of their own helpers live on gdpr as well as on ut, and
-        // their enforcement calls utag.gdpr.typeOf itself, so these are
-        // the same implementations rather than second ones.
+        // Their own id setter, and the one place this surface could put
+        // one back: a no-op, because nothing here stores an identifier.
+        setVisitorId: noopfn,
+        // Their trace feature, which a page can ask for. No trace is
+        // running with no tag to trace, so the answer is the empty
+        // string rather than a missing member.
+        getTraceId: ( ) => '',
+        // Their own helpers live on gdpr as well as on ut, and their
+        // enforcement calls utag.gdpr.typeOf itself, so these are the same
+        // implementations rather than second ones.
         typeOf: e => ut.typeOf(e),
         isEmpty: o => ut.isEmpty(o),
         merge: (a, b, c) => ut.merge(a, b, c),
+        clone: o => ut.merge({}, o, 1),
+        keys: o => {
+            try { return Object.keys(o); } catch ( ex ) { }
+            return [];
+        },
+        values: o => {
+            try { return Object.values(o); } catch ( ex ) { }
+            return [];
+        },
         processQueue: noopfn,
         queue: [],
         omittedTags: {},

@@ -557,12 +557,33 @@ describe('extra/tealium.js, the consent api where a tenant has one', ( ) => {
         assert.equal(w.document.cookie, '');
     });
 
+    // williamhillgroup/es-web carries the largest consent manager read,
+    // 260 references, and reaches for these two.
+    it('drops a visitor id handed to it, and traces nothing', async ( ) => {
+        const { w } = boot({
+            before: '<script>document.cookie = "utag_main=v_id:a; path=/";' +
+                '</script>',
+            after: '<script>window.set = utag.gdpr.setVisitorId("abc123");' +
+                'window.trace = utag.gdpr.getTraceId();</script>',
+        });
+        await settle();
+        assert.equal(w.set, undefined);
+        assert.equal(w.trace, '');
+        // Nothing stored it, and their cookie did not come back.
+        assert.equal(w.utag.v_id, undefined);
+        assert.equal(w.document.cookie.includes('utag_main'), false);
+    });
+
     it('shares its helpers with ut rather than keeping a second set', ( ) => {
         const { w } = boot({});
         assert.equal(w.utag.gdpr.typeOf(new w.Date()), 'date');
         assert.equal(w.utag.gdpr.isEmpty(0), false);
         assert.deepEqual({ ...w.utag.gdpr.merge({ a: 1 }, { a: 2 }, 0) },
             { a: 1 });
+        assert.deepEqual({ ...w.utag.gdpr.clone({ a: 1 }) }, { a: 1 });
+        assert.deepEqual([ ...w.utag.gdpr.keys({ a: 1, b: 2 }) ],
+            [ 'a', 'b' ]);
+        assert.deepEqual([ ...w.utag.gdpr.values({ a: 1, b: 2 }) ], [ 1, 2 ]);
     });
 
     it('answers the rest in the shapes their enforcement reads', ( ) => {
