@@ -220,6 +220,18 @@ describe('extra/tealium.js, the tenant id', ( ) => {
         assert.equal(w.utag.id, 'lbg.code');
     });
 
+    // Their query strings vary: a cache buster, their own utv version, and
+    // a bare key with no value at all.
+    it('reads the url whatever the query carries', ( ) => {
+        const base = 'https://tags.tiqcdn.com/utag/newsinternational/' +
+            'thesun.irish.web.2/prod/utag.js';
+        const want = 'newsinternational.thesun.irish.web.2';
+        for ( const query of [ '', '?ver', '?utv=ut4.51&cb=1', '#x' ] ) {
+            const { w } = bootRedirected(base + query);
+            assert.equal(w.utag.id, want, query || '(none)');
+        }
+    });
+
     it('reads the sync url, if a list points it here', ( ) => {
         const { w } = bootRedirected(
             'https://tags.tiqcdn.com/utag/newbalance/nb-jnbo-new/prod/' +
@@ -271,6 +283,9 @@ describe('extra/tealium.js, the tenant id', ( ) => {
             [ 'nordea/op-web', 'nordea.op-web' ],
             [ 'newsinternational/dreamteam.2016',
                 'newsinternational.dreamteam.2016' ],
+            // Three dots, and the id their loader declares for it.
+            [ 'newsinternational/thesun.irish.web.2',
+                'newsinternational.thesun.irish.web.2' ],
         ];
         for ( const [ path, want ] of cases ) {
             const { w } = bootRedirected(
