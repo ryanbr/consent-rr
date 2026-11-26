@@ -342,6 +342,53 @@ describe('extra/tealium.js, the consent api where a tenant has one', ( ) => {
         assert.deepEqual([ ...picked ], []);
     });
 
+    // hsbc and tsb carry the whole manager, setters and prompts included,
+    // and those are the half a page calls itself.
+    it('takes the setters a tenant banner calls, and stores nothing',
+        async ( ) => {
+            const { w } = boot({
+                before: '<script>document.cookie = "utag_main=v_id:a;' +
+                    ' path=/";</script>',
+                after: '<script>window.ok = [' +
+                    'utag.gdpr.setConsentValue(1),' +
+                    'utag.gdpr.setAllCategories(true),' +
+                    'utag.gdpr.setPreferencesValues({ "1": "1" }, false),' +
+                    'utag.gdpr.setPreferencesFromList([ { id: 1 } ]),' +
+                    'utag.gdpr.setCookieValue("x"),' +
+                    'utag.gdpr.setCookie(),' +
+                    'utag.gdpr.refreshCookie() ];</script>',
+            });
+            await settle();
+            // Every one of them undefined, and nothing granted: the state
+            // still reads as a refusal and no cookie of theirs came back.
+            assert.deepEqual([ ...w.ok ],
+                [ undefined, undefined, undefined, undefined, undefined,
+                    undefined, undefined ]);
+            assert.equal(w.utag.gdpr.getConsentState(), 0);
+            assert.deepEqual([ ...w.utag.gdpr.getSelectedCategories() ], []);
+            assert.equal(w.document.cookie.includes('utag_main'), false);
+        });
+
+    it('takes a preferences link without throwing', ( ) => {
+        const { w } = boot({
+            after: '<script>window.shown = [' +
+                'utag.gdpr.showConsentPreferences("en"),' +
+                'utag.gdpr.showExplicitConsent("en") ];</script>',
+        });
+        assert.deepEqual([ ...w.shown ], [ undefined, undefined ]);
+    });
+
+    it('answers their categories and their tag filter', ( ) => {
+        const { w } = boot({});
+        const cats = w.utag.gdpr.getCategories();
+        assert.equal(Array.isArray(cats), true);
+        assert.deepEqual([ ...cats ], []);
+        // true is the refusal: theirs keeps a uid only when this is false.
+        assert.equal(w.utag.gdpr.shouldBlockTag('123'), true);
+        assert.equal(w.utag.gdpr.getLanguage({}), '');
+        assert.equal(Array.isArray(w.utag.gdpr.queue), true);
+    });
+
     it('answers the rest in the shapes their enforcement reads', ( ) => {
         const { w } = boot({});
         assert.equal(typeof w.utag.gdpr.getCookieValues(), 'object');

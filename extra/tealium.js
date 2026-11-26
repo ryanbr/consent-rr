@@ -86,6 +86,21 @@
 // unshifts always_on onto; getCookieValues() an object; getEnforcementMode
 // a string; the two prompts objects carrying isEnabled false, since there
 // is no prompt to enable with no tag to run it.
+// Two of the ten - hsbc and tsb, with 223 and 232 references to it where
+// the other three with a manager have 41 - carry the whole of it, setters
+// and prompts included, and those are the page-facing half: a cookie
+// preferences link calls showConsentPreferences(_lang) or
+// showExplicitConsent(_lang), and a tenant's own banner calls
+// setConsentValue(1), setAllCategories(false), setPreferencesValues(prefs,
+// noCollect) or setPreferencesFromList(list). All of them are here. The
+// setters take what they are given and drop it, because nothing stores and
+// no tag is waiting on a category, and the two show calls do nothing,
+// because no prompt arrives to be shown - a link that does nothing is
+// better than a link that throws, which is what a missing member gives.
+// getCategories() answers an array, empty, since the tenant's categories
+// arrive with the prompt this stops; shouldBlockTag() answers true, which
+// is the refusal their own
+// if (!utag.gdpr.shouldBlockTag(uid)) uids.push(uid) reads.
 // WHAT IT REFUSES, all of it read off their loader: every utag.N.js tag
 // file, which is where the vendors are and which the loader is the only
 // thing that requests; the senders, which are image and script beacons
@@ -349,10 +364,36 @@
     const gdpr = {
         getConsentState: ( ) => 0,
         getSelectedCategories: ( ) => [],
+        getCategories: ( ) => [],
         getCookieValues: ( ) => ({}),
         getEnforcementMode: ( ) => 'opt-in',
+        getLanguage: ( ) => '',
         applyConsentState: noopfn,
         promptEnabledSetting: noopfn,
+        // Their setters, taken and dropped. setConsentValue(1) is a page
+        // granting, and there is nothing to grant to and nothing here that
+        // stores: no tag is waiting on a category and no cookie is written
+        // either way.
+        setConsentValue: noopfn,
+        setAllCategories: noopfn,
+        setPreferencesValues: noopfn,
+        setPreferencesFromList: noopfn,
+        setCookieValue: noopfn,
+        setCookie: noopfn,
+        refreshCookie: noopfn,
+        // The two a preferences link calls, theirs taking a language. No
+        // prompt arrives to be shown, so a link that calls one of these
+        // does nothing - which is what a link whose script was replaced
+        // can do, and is better than the exception it would throw if the
+        // member were missing.
+        showConsentPreferences: noopfn,
+        showExplicitConsent: noopfn,
+        // if (!utag.gdpr.shouldBlockTag(uid)) uids.push(uid) is how theirs
+        // filters a track call's uids, so true is the refusal and leaves
+        // that list empty.
+        shouldBlockTag: ( ) => true,
+        processQueue: noopfn,
+        queue: [],
         omittedTags: {},
         doNotSell: {},
         consent_prompt: { isEnabled: false },
