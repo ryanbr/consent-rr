@@ -4,12 +4,16 @@
 // Not a cookie-consent resource, though it answers a consent api where a
 // tenant compiled one in: it lives outside src/ and is not built into
 // dist/ by tools/build.mjs. Hand-maintained, ship as-is.
-// Read off five tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
-// gendigital/ccleaner, foxcorp/fscom-main and tsb/tsb-uk-new, 32kB to
-// 771kB, carrying utag.loader versions ut4.0.202501242212 through
-// ut4.0.202611252057 - and four tag files: lbg/code utag.2.js at 515
+// Read off six tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
+// gendigital/ccleaner, foxcorp/fscom-main, tsb/tsb-uk-new and cdw/main,
+// 32kB to 771kB, carrying utag.loader versions ut4.0.202501242212 through
+// ut4.0.202611251444 - and four tag files: lbg/code utag.2.js at 515
 // bytes, and tsb's utag.419.js, utag.263.js and utag.272.js at 37kB, 27kB
 // and 12.6kB, 77kB of vendors on one page.
+// Count anything in these with a reader that does not care about line
+// length. Their longest lines run from 4.6k characters to 469k, and a
+// line-oriented search quietly answers zero on the big ones, which is how
+// three of the numbers here were wrong until they were counted again.
 // A page loads several of theirs at once, and only the first needs a rule.
 // A tag file's url is built by their own loader, in AS:
 //   a.src = utag.cfg.path + 'ut'+'ag.' + a.id + '.js'
@@ -19,10 +23,9 @@
 // utag/tiqapp/utag.v.js is the third kind of line on such a page, and it
 // is two bytes: a comment. Its payload is its query string,
 // a=<account>/<profile>/<version>, so it is a version ping wearing a
-// script's clothes. Three of the five loaders name it and two do not,
-// including the one on the page it was seen from, so something further
-// down asks for it. Nothing is lost by blocking it and nothing is gained
-// by replacing it.
+// script's clothes. None of the six loaders names it, so a tag file or
+// their companion asks for it rather than the loader. Nothing is lost by
+// blocking it and nothing is gained by replacing it.
 // All four publish the same fifteen members on window.utag, in the same
 // order: id o sender send rpt dbi db_log loader DB RP view link track
 // handler ut.
@@ -69,7 +72,9 @@
 // calling it directly rather than through utag.gdpr finds nothing, and
 // inventing a shape for it from four loaders that never build one would
 // be guessing.
-// WHERE A TENANT COMPILED IN THEIR CONSENT MANAGER, two of the four did,
+// WHERE A TENANT COMPILED IN THEIR CONSENT MANAGER, five of the six did,
+// foxcorp alone having none of it and tsb carrying 239 references where
+// the others carry 41,
 // utag.gdpr answers a refusal in the shapes their own enforcement reads:
 // getConsentState() a number, and 0 rather than 1, which is the value
 // their applyConsentState tests with parseInt(cs)!==1;
@@ -82,14 +87,17 @@
 // thing that requests; the senders, which are image and script beacons
 // built in their own send and sender; the utag_main cookie, which is where
 // their visitor id, session id and session number live as v_id, ses_id and
-// _sn; and the data layer itself, which is the collection worth naming -
-// RDlocalStorage walks Object.keys(window.localStorage) into o["ls."+key]
-// and RDsessionStorage does the same, RDcp reads every cookie into
-// o["cp."+name], and RDmeta, RDqp, RDdom and RDpv add the meta tags, the
-// query string, the document and the page variables, unless a tenant set
-// ignoreLocalStorage or ignoreSessionStorage. A tenant's tags see all of
-// it. None of those readers is on the object this installs, which is the
-// one place being less complete than theirs is the point.
+// _sn; and the data layer itself, which is the collection worth naming.
+// RDcp reads every cookie into o["cp."+name] and is in all six, as are
+// RDmeta, RDqp, RDdom and RDpv for the meta tags, the query string, the
+// document and the page variables. RDlocalStorage, which walks
+// Object.keys(window.localStorage) into o["ls."+key], and RDsessionStorage
+// beside it are in three of the six - cdw, gendigital and tsb - so
+// harvesting the stores is a build or a tenant setting rather than a
+// given, and ignoreLocalStorage turns it off where it is there. A tenant's
+// tags see all of it. None of those readers is on the object this
+// installs, which is the one place where being less complete than theirs
+// is the point.
 // WHAT IT CLEARS: utag_main, on the host and every parent suffix of two
 // labels or more, and only where it is in the jar - their visitor id is
 // inside it, and replacing the loader stops a new one being written
