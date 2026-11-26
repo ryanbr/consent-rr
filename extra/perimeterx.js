@@ -21,17 +21,23 @@
 //                          so the challenge renders and can be solved
 //   an in-page challenge   theirs renders the modal itself, from a
 //                          template inside the client, after it sees a
-//                          block response; setChallenge is how the captcha
-//                          script hands the solution back to the sensor
-//                          client, which posts it. Their setChallenge only
-//                          stores it - ms(e){ lW=1, lA(e) } onto lx - so
-//                          the posting is the client's. None of that
-//                          happens here: no modal, and a solution handed
-//                          to setChallenge is accepted and dropped. A site
-//                          that challenges in-page is not usable with this
-//                          resource, which is the same end state as
-//                          blocking the client, and the reason to lift the
-//                          rule per site rather than paper over it
+//                          block response. That does not happen here, so
+//                          no modal appears, and a site which challenges
+//                          that way is not usable with this resource - the
+//                          same end state as blocking the client, and the
+//                          reason to lift the rule per site rather than
+//                          paper over it
+// Reading captcha.js itself, 608kB behind atob and a cyclic xor over
+// "bAZChiM", settles what the challenge needs from this resource: nothing.
+// It carries its own https://collector- host, its own challengeDone,
+// challengeDoneSent and challengeDoneTime state, and it calls the page's
+// _pxOnCaptchaSuccess or _pxOnError - and no client build references any
+// of _pxOnCaptchaSuccess, _pxOnError, _pxSelectedLocale, _pxTranslation or
+// isPxCaptchaContext, so those belong to the block page and the challenge
+// between them, not here. Their setChallenge only stores what it is handed
+// - ms(e){ lW=1, lA(e) } onto lx - so it reads as a notification into the
+// sensor client rather than the route a solution travels, and the no-op
+// here drops a notification rather than a solution.
 // A first-party deployment serves the same client off the site's own host,
 // where no generic rule can find it; the app id is still recovered from
 // the script element, so a per-site rule works.

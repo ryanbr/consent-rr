@@ -594,6 +594,117 @@ describe('extra/perimeterx.js, the challenge path', ( ) => {
         });
 });
 
+// Every sensor their client reads, named from their own string tables,
+// wired to a counter. jsdom has few of them, so the ones it lacks are put
+// there first - without that the probe is undefined against undefined and
+// would pass against a resource that read them all.
+describe('extra/perimeterx.js, the sensors it never reads', ( ) => {
+    const sensorProbe = win => {
+        const touched = [];
+        const note = name => { touched.push(name); };
+        const getter = (host, label, names, value) => {
+            for ( const name of names ) {
+                try {
+                    Object.defineProperty(host, name, {
+                        configurable: true,
+                        get() { note(label + '.' + name); return value; },
+                    });
+                } catch ( ex ) {
+                }
+            }
+        };
+        getter(win.navigator, 'navigator', [
+            'userAgent', 'platform', 'language', 'languages', 'plugins',
+            'mimeTypes', 'hardwareConcurrency', 'deviceMemory',
+            'maxTouchPoints', 'userAgentData', 'doNotTrack', 'webdriver',
+            'vendor', 'appVersion', 'cookieEnabled',
+        ], 1);
+        getter(win.screen, 'screen', [
+            'width', 'height', 'availWidth', 'availHeight', 'colorDepth',
+            'pixelDepth',
+        ], 1);
+        for ( const name of [ 'getBattery', 'getGamepads', 'sendBeacon' ] ) {
+            win.navigator[name] = ( ) => {
+                note('navigator.' + name);
+                return { then: ( ) => {} };
+            };
+        }
+        // These two are objects with methods, not methods: a function here
+        // means a mutation that calls permissions.query throws before the
+        // counter is reached and the probe sees nothing.
+        win.navigator.permissions = {
+            query: ( ) => {
+                note('navigator.permissions.query');
+                return { then: ( ) => {} };
+            },
+        };
+        win.navigator.mediaDevices = {
+            enumerateDevices: ( ) => {
+                note('navigator.mediaDevices.enumerateDevices');
+                return { then: ( ) => {} };
+            },
+        };
+        for ( const name of [ 'AudioContext', 'OfflineAudioContext',
+            'RTCPeerConnection', 'webkitRTCPeerConnection', 'Worker' ] ) {
+            win[name] = function() { note(name); };
+        }
+        win.speechSynthesis = {
+            getVoices: ( ) => { note('speechSynthesis.getVoices'); return []; },
+        };
+        const canvas = win.HTMLCanvasElement.prototype;
+        canvas.getContext = ( ) => { note('canvas.getContext'); return null; };
+        canvas.toDataURL = ( ) => { note('canvas.toDataURL'); return ''; };
+        const offset = win.Date.prototype.getTimezoneOffset;
+        win.Date.prototype.getTimezoneOffset = function() {
+            note('Date.getTimezoneOffset');
+            return offset.call(this);
+        };
+        // window.localStorage is getter-only in jsdom, so the methods are
+        // wrapped on the prototype both storages share instead.
+        const storage = win.Storage.prototype;
+        for ( const name of [ 'getItem', 'setItem', 'removeItem', 'key' ] ) {
+            const real = storage[name];
+            storage[name] = function(...args) {
+                note('Storage.' + name);
+                return real.apply(this, args);
+            };
+        }
+        const cookie = Object.getOwnPropertyDescriptor(
+            Object.getPrototypeOf(win.document), 'cookie');
+        Object.defineProperty(win.document, 'cookie', {
+            configurable: true,
+            get() { note('document.cookie get'); return cookie.get.call(this); },
+            set(v) { note('document.cookie set'); cookie.set.call(this, v); },
+        });
+        return touched;
+    };
+
+    it('touches not one of them', async ( ) => {
+        let touched;
+        const w = boot({
+            before: '<script>window._pxAppId = "' + APP_ID + '";</script>',
+            beforeParse(win) { touched = sensorProbe(win); },
+        });
+        await settle(60);
+        // The resource ran: the probe is measuring a live boot, not a
+        // document that never reached it.
+        assert.equal(typeof w.PX, 'object');
+        assert.deepEqual([ ...touched ], []);
+    });
+
+    it('touches none of them on a block page either', async ( ) => {
+        let touched;
+        const w = boot({
+            before: '<script>window._pxModal = true; window._pxAppId = "' +
+                APP_ID + '";</script>',
+            beforeParse(win) { touched = sensorProbe(win); },
+        });
+        await settle(60);
+        assert.equal(typeof w.PX, 'object');
+        assert.deepEqual([ ...touched ], []);
+    });
+});
+
 describe('extra/perimeterx.js, what a page cannot make it do', ( ) => {
     it('pollutes no prototype through a channel name', ( ) => {
         const w = boot({
