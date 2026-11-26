@@ -431,6 +431,16 @@ describe('extra/tealium.js, the consent api where a tenant has one', ( ) => {
 
     // ut4.46 asks the tag question the other way round and adds a do not
     // sell surface. barclaysuk/barclaycard-public is the build read for it.
+    it('gives a prompt an empty category list to iterate', ( ) => {
+        const { w } = boot({});
+        for ( const prompt of [ 'consent_prompt', 'preferences_prompt' ] ) {
+            assert.equal(Array.isArray(w.utag.gdpr[prompt].categories), true,
+                prompt);
+            assert.deepEqual([ ...w.utag.gdpr[prompt].categories ], [],
+                prompt);
+        }
+    });
+
     it('answers both polarities of the tag question', ( ) => {
         const { w } = boot({});
         // shouldBlockTag true and shouldTagFire false say the same thing.

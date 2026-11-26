@@ -93,9 +93,10 @@
 // unshifts always_on onto; getCookieValues() an object; getEnforcementMode
 // a string; the two prompts objects carrying isEnabled false, since there
 // is no prompt to enable with no tag to run it.
-// Two of the ten - hsbc and tsb, with 223 and 232 references to it where
-// the other three with a manager have 41 - carry the whole of it, setters
-// and prompts included, and those are the page-facing half: a cookie
+// Three of the eleven - hsbc, tsb and barclaysuk, with 223, 232 and 243
+// references to it where the other three with a manager have 41 - carry
+// the whole of it, setters and prompts included, and those are the
+// page-facing half: a cookie
 // preferences link calls showConsentPreferences(_lang) or
 // showExplicitConsent(_lang), and a tenant's own banner calls
 // setConsentValue(1), setAllCategories(false), setPreferencesValues(prefs,
@@ -453,10 +454,15 @@
         // not sell link calls showDoNotSellBanner, and their own flow
         // reaches it through
         // if (!utag.gdpr.dns.getDnsState()) { showDoNotSellBanner() }.
-        // getDnsState answers true here, which says the visitor is already
-        // opted out of a sale - which they are, since nothing is collected
-        // to sell - and that is also what keeps their banner from being
-        // asked for.
+        // That call site is all their loader has - getDnsState itself is
+        // defined in the consent manager tag, which is one of the ones
+        // this stops arriving, so the answer below is read off the call
+        // and not off an implementation. true says the visitor is already
+        // opted out of a sale, which they are, since nothing is collected
+        // to sell, and it is also what keeps their banner from being asked
+        // for. Their own flow never reaches it in any case: doNotSell is
+        // {} here, so the isEnabled it tests first is undefined, and dns
+        // is here for a page that calls it rather than for them.
         showDoNotSellBanner: noopfn,
         dns: {
             getDnsState: ( ) => true,
@@ -483,8 +489,13 @@
         queue: [],
         omittedTags: {},
         doNotSell: {},
-        consent_prompt: { isEnabled: false },
-        preferences_prompt: { isEnabled: false },
+        // categories beside isEnabled, because a page that reads a
+        // prompt's categories to draw its own list would otherwise be
+        // iterating undefined. Theirs guards that with
+        // if (!Array.isArray(_prompt.categories)) return []; a page has no
+        // reason to.
+        consent_prompt: { isEnabled: false, categories: [] },
+        preferences_prompt: { isEnabled: false, categories: [] },
     };
     // Their cfg carries the tenant's build settings, and theirs merges
     // window.utag_cfg_ovrd over them - a page that sets noview or
