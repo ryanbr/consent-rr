@@ -31,6 +31,16 @@ pointed at it. The notes below are the things that have actually gone wrong.
 - `src/civic/lib/civic-core.js` - the CookieControl object and its cookie;
   `.../civic-tcf.js` is the IAB layer, which only installs where the page's own
   load() config asks for it.
+- `extra/` - hand-maintained resources that are not consent managers and are
+  not built: `tealium.js`, `perimeterx.js`, `optimizely.js`. They ship as they
+  are, so they are written as uBO will see them. Two rules of their own:
+  **uBO strips a comment only at column zero**, so an indented comment is
+  shipped to every user, and the long form of the notes lives in a sibling
+  `extra/<name>.md` rather than in the file. The header carries the filter
+  rules and the load-bearing decisions; the `.md` carries the evidence for
+  them, the builds that were read, and the member-by-member detail. Keep it
+  that way: `tealium.js` was once 75% header, and the notes are easier to
+  read - and to correct - as prose.
 - `tools/build.mjs` - bundles, substitutes, and refuses to ship what uBO cannot
   parse. `npm run build`.
 - `dist/` is committed, because that is what uBO fetches. CI fails when it does
