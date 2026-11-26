@@ -164,13 +164,23 @@ describe('extra/tealium.js, the object it publishes', ( ) => {
     });
 
     it('takes the entry points something might reach for', ( ) => {
+        // GET is in all thirty-three and is where theirs starts; the two
+        // removers have nothing left to remove.
         const { w } = boot({
             after: '<script>window.went = [ utag.loader.INIT(),' +
-                ' utag.loader.PINIT(), utag.loader.deleteCookie("x"),' +
+                ' utag.loader.PINIT(), utag.loader.GET(),' +
+                ' utag.loader.deleteCookie("x"),' +
+                ' utag.loader.deleteIndividualCookies(),' +
                 ' utag.handler.INIT() ];</script>',
         });
-        assert.deepEqual([ ...w.went ],
-            [ undefined, undefined, undefined, undefined ]);
+        assert.deepEqual([ ...w.went ], [
+            undefined, undefined, undefined, undefined, undefined,
+            undefined,
+        ]);
+        // And calling their entry point changed nothing: no tag, no
+        // request, no cookie.
+        assert.equal(w.document.cookie, '');
+        assert.deepEqual({ ...w.utag.loader.cfg }, {});
     });
 
     it('has none of their hashing, which an extension installs', ( ) => {

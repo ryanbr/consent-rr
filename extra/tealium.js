@@ -4,7 +4,7 @@
 // Not a cookie-consent resource, though it answers a consent api where a
 // tenant compiled one in: it lives outside src/ and is not built into
 // dist/ by tools/build.mjs. Hand-maintained, ship as-is.
-// Read off twenty-six tenant loaders - elsgroup/actuel-rh,
+// Read off thirty-three tenant loaders - elsgroup/actuel-rh,
 // cbsi/cbstve,
 // gendigital/ccleaner, foxcorp/fscom-main, tsb/tsb-uk-new, cdw/main,
 // epson/secglobal, hsbc/global-common-dotcom, ccl/main,
@@ -13,8 +13,11 @@
 // jysk-fynske-medier/partners, nordea/op-web and
 // newsinternational/dreamteam.2016, xe/xrates, williamhillgroup/es-web,
 // cbsi/webplex-marketing, newsltd/dt, virgin/main, prada/prada2019,
-// autodesk/global-sites from the .cn host, rasch/cash.ch and
-// vodafone/gr-universal, 20kB to 1.5MB - and five
+// autodesk/global-sites from the .cn host, rasch/cash.ch,
+// vodafone/gr-universal, sony-marketing/hk, fullsail/fsmktg, humana/main,
+// royalmail/parcelforce, hsbc/global-hsbcnet,
+// axelspringer/ac-wieistmeineip and consumentenbond/adv-cb-nl, 20kB to
+// 1.5MB - and five
 // tag files: lbg/code utag.2.js at 515 bytes, and tsb's
 // utag.419.js, utag.263.js and utag.272.js at 37kB, 27kB and 12.6kB, 77kB
 // of vendors on one page.
@@ -23,8 +26,11 @@
 // and ships pretty-printed over 4496 lines, which is worth knowing before
 // counting anything in it: a pattern written for the minified form, like
 // view:function, matches none of it.
-// Eight years, two generations and both hosts, and all twenty-six publish
-// the same fifteen members in the same order.
+// Eight years, two generations and both hosts, and all thirty-three
+// publish the same fifteen members in the same order. Two of them,
+// barclaysuk and consumentenbond, ship pretty-printed rather than
+// minified, which is the other thing to know before counting: a pattern
+// written for one form finds nothing in the other.
 // That is why this pins the contract and
 // nothing about a build.
 // Their environment is not always prod either - barclaysuk serves from
@@ -100,6 +106,16 @@
 // settings, every one
 // of them is read rather than called, and undefined is falsy, so a page
 // that looks at one gets an answer it can use instead of an exception.
+// Two classes of their names are left off wholesale, and knowing they are
+// classes saves enumerating them. Everything ending _old or Old -
+// initdata_old, END_old, RD_old, LR_old, trigger_old, RE_old,
+// setConsentValueOld - is how a newer build keeps the previous
+// implementation beside the current one. And the split-cookie helpers -
+// readIndividualCookies, prepareAndWriteCookies, convertCustomMultiCookies,
+// checkCookiesAgainstWhitelist, addExpFlag, containsExpFlag, writeCookie
+// and the rest - are a loader converting between the two cookie shapes,
+// which is work this resource has nothing to do: it expires both shapes
+// and writes neither.
 // WHAT IS DELIBERATELY NOT THERE, beyond the data-layer readers: utag.v_id,
 // because it is the identifier, and the loader internals it assigns to
 // itself as it runs - cl, cond, pre, runonce, initcatch, tagsettings and
@@ -124,9 +140,9 @@
 // a string, and none rather than opt-in: see the note at the member for
 // what that trades. The two prompts carry isEnabled false, since there is
 // no prompt to enable with no tag to run it.
-// Five of the twenty-three - hsbc, tsb, barclaysuk, williamhillgroup and
-// prada, with 223, 232, 243, 260 and 316 references to it where the
-// others with a manager have 41 - carry
+// Six of the thirty-three - hsbc on two profiles, tsb, barclaysuk,
+// williamhillgroup and prada, from 223 to 316 references where the others
+// with a manager have 41 to 105 - carry
 // the whole of it, setters and prompts included, and those are the
 // page-facing half: a cookie
 // preferences link calls showConsentPreferences(_lang) or
@@ -498,10 +514,13 @@
         WQ: noopfn, AS: noopfn, OU: noopfn, RC: noopfn, SC: noopfn,
         LOAD: noopfn, EV: noopfn, END: noopfn, RD: noopfn,
         run_ready_q: noopfn,
-        // The two entry points theirs calls on itself, in case something
-        // on the page reaches for one to re-run the loader, and their
-        // cookie remover, which has nothing left to remove.
-        INIT: noopfn, PINIT: noopfn, deleteCookie: noopfn,
+        // The entry points theirs calls on itself, in case something on
+        // the page reaches for one to re-run the loader, and their cookie
+        // removers, which have nothing left to remove. GET is in every
+        // loader read and is where theirs starts: it sets utag.cl, calls
+        // utag.pre() and installs the extension pass.
+        INIT: noopfn, PINIT: noopfn, GET: noopfn,
+        deleteCookie: noopfn, deleteIndividualCookies: noopfn,
     };
     // Where a tenant compiled in their consent manager, in the shapes
     // their own enforcement reads back.
