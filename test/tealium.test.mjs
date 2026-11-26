@@ -498,7 +498,10 @@ describe('extra/tealium.js, the consent api where a tenant has one', ( ) => {
     it('answers the rest in the shapes their enforcement reads', ( ) => {
         const { w } = boot({});
         assert.equal(typeof w.utag.gdpr.getCookieValues(), 'object');
-        assert.equal(typeof w.utag.gdpr.getEnforcementMode(), 'string');
+        // opt-in and not none: none reads as nothing being gated, which
+        // a page could take as permission to track without them.
+        assert.equal(w.utag.gdpr.getEnforcementMode(), 'opt-in');
+        assert.notEqual(w.utag.gdpr.getEnforcementMode(), 'none');
         assert.equal(w.utag.gdpr.consent_prompt.isEnabled, false);
         assert.equal(w.utag.gdpr.preferences_prompt.isEnabled, false);
         assert.equal(w.utag.gdpr.applyConsentState(), undefined);

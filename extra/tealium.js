@@ -421,6 +421,13 @@
         getSelectedCategories: ( ) => [],
         getCategories: ( ) => [],
         getCookieValues: ( ) => ({}),
+        // opt-in rather than none, and that is a decision. Their own
+        // enforcement returns early on none - if (enforcementMode ===
+        // 'none') return - so none reads as nothing being gated, and a
+        // page that asks in order to decide whether to run its own
+        // tracking would take that as permission to go ahead without
+        // them. opt-in says tags are gated, which here is true in the
+        // strongest sense: none of them is going to run at all.
         getEnforcementMode: ( ) => 'opt-in',
         getLanguage: ( ) => '',
         applyConsentState: noopfn,
