@@ -4,7 +4,7 @@
 // Not a cookie-consent resource, though it answers a consent api where a
 // tenant compiled one in: it lives outside src/ and is not built into
 // dist/ by tools/build.mjs. Hand-maintained, ship as-is.
-// Read off thirty-three tenant loaders - elsgroup/actuel-rh,
+// Read off forty-four tenant loaders - elsgroup/actuel-rh,
 // cbsi/cbstve,
 // gendigital/ccleaner, foxcorp/fscom-main, tsb/tsb-uk-new, cdw/main,
 // epson/secglobal, hsbc/global-common-dotcom, ccl/main,
@@ -16,8 +16,12 @@
 // autodesk/global-sites from the .cn host, rasch/cash.ch,
 // vodafone/gr-universal, sony-marketing/hk, fullsail/fsmktg, humana/main,
 // royalmail/parcelforce, hsbc/global-hsbcnet,
-// axelspringer/ac-wieistmeineip and consumentenbond/adv-cb-nl, 20kB to
-// 1.5MB - and five
+// axelspringer/ac-wieistmeineip, consumentenbond/adv-cb-nl,
+// newsinternational/thesun.irish.web.2, gendigital/avast,
+// sony-marketing/sid, canoneurope/mktg-nsos,
+// citi-popular-e/wizinkpublicweb, thehartford/hig-corporate,
+// nordea/com-web, drillisch/winsim.de, vodafone/ro-main-new, epson/india
+// and robert-bosch/global-pt-umbrella-web, 20kB to 1.5MB - and five
 // tag files: lbg/code utag.2.js at 515 bytes, and tsb's
 // utag.419.js, utag.263.js and utag.272.js at 37kB, 27kB and 12.6kB, 77kB
 // of vendors on one page.
@@ -26,8 +30,8 @@
 // and ships pretty-printed over 4496 lines, which is worth knowing before
 // counting anything in it: a pattern written for the minified form, like
 // view:function, matches none of it.
-// Eight years, two generations and both hosts, and all thirty-three
-// publish the same fifteen members in the same order. Two of them,
+// Eight years, two generations and both hosts, and all forty-four publish
+// the same fifteen members in the same order. Two of them,
 // barclaysuk and consumentenbond, ship pretty-printed rather than
 // minified, which is the other thing to know before counting: a pattern
 // written for one form finds nothing in the other.
@@ -87,7 +91,21 @@
 //                           nocookie there reads it back
 //   udoname                 utag_data, the global theirs merges into
 //                           utag.data as window[utag.udoname]
-// ONE MORE KNOWN GAP, found by union across the thirteen: utag.ut.sha256,
+// THE SHAPE OF EVERY REMAINING GAP, which is worth stating once instead of
+// chasing: a tenant's extensions run inside utag.handler.extend, and they
+// put their own members on these objects. Forty-four loaders read, and the
+// ones that showed up in exactly one tenant each include
+// utag.customContainers, a container registry drillisch builds with
+// if (!utag.customContainers) utag.customContainers = {}; utag.target,
+// which vodafone fills with handleTargetResponse for Adobe Target;
+// utag.loader.chkCanRunTime, which thehartford defines; and
+// utag.gdpr.consent_updated, which canoneurope sets. None of them is the
+// loader's own, none exists on another tenant, and none exists at all
+// until the extension pass runs - which is the pass this refuses, and the
+// pass that reads the data layer on its way to a tag. A page on such a
+// tenant that calls one finds nothing, and there is no list of them to
+// complete: they are the tenant's code, not Tealium's api.
+// ONE MORE KNOWN GAP OF THE SAME KIND: utag.ut.sha256,
 // and md5 with it. Neither is the loader's own - both are installed by a
 // tenant extension, inside one of the utag.handler.extend functions, as
 // utag.ut.sha256 = function(t, n) { ... } over a crypto-js derivative, in
