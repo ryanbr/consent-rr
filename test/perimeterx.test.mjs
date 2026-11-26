@@ -1053,6 +1053,28 @@ describe('extra/perimeterx.js, the identifiers it clears', ( ) => {
         assert.equal(w[APP_ID], w.PX);
     });
 
+    // A jar that reads but refuses writes is its own state - cookies
+    // blocked for the site with something already in the jar, or another
+    // extension holding the setter. The read then finds an id to clear and
+    // the write throws, which is the one path where the guard on the write
+    // is what keeps the object being published.
+    it('publishes where the jar reads but refuses a write', async ( ) => {
+        const w = boot({
+            before: snippet,
+            beforeParse(win) {
+                Object.defineProperty(win.document, 'cookie', {
+                    configurable: true,
+                    get() { return '_pxvid=v; pxvid=v'; },
+                    set() { throw new Error('SecurityError'); },
+                });
+            },
+        });
+        await settle();
+        assert.equal(typeof w.PX, 'object');
+        assert.equal(typeof w.PX.Events.on, 'function');
+        assert.equal(w[APP_ID], w.PX);
+    });
+
     it('publishes where storage is there but refuses removal', async ( ) => {
         const w = boot({
             before: snippet,
