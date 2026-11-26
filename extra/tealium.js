@@ -264,6 +264,36 @@
 // so replacing their loader leaves prices unconverted. The lever for that
 // is a per-site exception, not a change to this file, and it is the honest
 // cost of the rule.
+// WHY THAT IS NOT DETECTED HERE, asked and measured rather than assumed,
+// because the obvious answer is to work out which tags are worth keeping
+// and keep them. The key for it exists and is not per-tenant: every entry
+// in utag.loader.cfg carries tid, a template id global to Tealium, and the
+// forty-four use 124 distinct ones. tcat sits next to it and looks like a
+// category but is not one - tid 20010 appears under seven different tcat
+// values across these tenants, so it is the tenant's own labelling.
+// Two things kill it anyway.
+// The cfg lives inside the loader and nowhere else, so a detector has to
+// download the loader before it can decide anything: 21kB at the smallest,
+// a median of 323kB, 1.39MB at the largest. That is the whole of what
+// replacing it saves, spent before the first decision.
+// And it would buy almost nothing. Sampling one instance of each of the
+// top twenty-six templates, which cover 1227 of the 1420 tags, and reading
+// what each one contacts: twenty-five of the twenty-six send to a third
+// party - googletagmanager, connect.facebook.net, bat.bing.com,
+// analytics.tiktok.com, s.pinimg.com, snap.licdn.com, adsrvr.org,
+// c.amazon-adsystem.com, dpm.demdex.net, everestjs.net, arttrk.com,
+// cdn.brcdn.com. One contacts nobody. Exactly one entry of the 1420 has an
+// explicit src, and it is the currency table.
+// That table is also the answer to whether the rare one could be let
+// through: it is 3220 bytes of pure data, one tealiumiq_currency global of
+// timestamped rates and a single helper, no network and no behaviour of
+// its own. What converts a displayed price is the tenant's extension code,
+// which is the pass this refuses for the data-layer reads it makes - so
+// allowing the file would not put prada's prices back.
+// Which also answers the worry about a per-site list to maintain: there is
+// barely anything to put on one. Ninety-nine per cent of what rides on
+// this loader is tracking, and the breakage a visitor actually meets is
+// the page's own script throwing, which is handled above and tested.
 // A tag file is a separate request that nothing makes once the loader is
 // replaced, so no rule is needed for utag.N.js and blocking those buys
 // nothing. utag/tiqapp/utag.currency.js is the same thing wearing another
