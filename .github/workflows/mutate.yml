@@ -35,6 +35,14 @@ on:
     - cron: '17 5 * * 1'
   workflow_dispatch:
 
+# A sweep is minutes, so a second push should not leave two of them running
+# over the same lists - the older answer is about code nobody has any more. An
+# in-flight sweep on this ref is cancelled when a newer one starts; this had to
+# be done by hand once already.
+concurrency:
+  group: mutate-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

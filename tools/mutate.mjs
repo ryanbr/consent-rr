@@ -177,8 +177,10 @@ for ( const name of lists ) {
                 : (reason !== undefined ? 'EXPECTED' : 'SURVIVED');
             results.push({ list: name, ...mutation, verdict, fails, hung,
                 reason });
-            console.log('  ' + (verdict + (hung ? '+HUNG' : '')).padEnd(8) +
-                ' | ' + mutation.name + (fails !== 0 ? ' (' + fails + ')' : ''));
+            console.log('  ' + verdict.padEnd(8) + ' | ' + mutation.name +
+                (fails !== 0 ? ' (' + fails + ')' : '') +
+                (hung ? '  [the process needed killing; the verdict stands]'
+                      : ''));
         }
     } finally {
         writeFileSync(file, pristine);
@@ -195,13 +197,27 @@ const patterns = results.filter(r => r.verdict === 'PATTERN');
 const hung = killed.filter(r => r.hung);
 
 console.log('');
-console.log('  ' + killed.length + ' of ' +
-    (results.length - expected.length - patterns.length) + ' killed' +
-    (hung.length !== 0
-        ? ', ' + hung.length + ' of them by a suite that failed and then hung'
-        : ''));
+// One line that adds up, whatever the filter selected. "N of M killed" read
+// as "0 of 0 killed" when a filter picked a single expected survivor, which
+// looks exactly like a broken tool.
+const parts = [ killed.length + ' killed' ];
 if ( expected.length !== 0 ) {
-    console.log('  ' + expected.length + ' survive and cannot be killed:');
+    parts.push(expected.length + ' expected ' +
+        (expected.length === 1 ? 'survivor' : 'survivors'));
+}
+if ( survived.length !== 0 ) { parts.push(survived.length + ' SURVIVED'); }
+if ( patterns.length !== 0 ) { parts.push(patterns.length + ' PATTERN'); }
+console.log('  ' + results.length + ' mutation' +
+    (results.length === 1 ? '' : 's') + ': ' + parts.join(', '));
+if ( hung.length !== 0 ) {
+    // Not a failure, and it has been read as one. --test-force-exit should
+    // mean this never prints: if it does, a mutation is hanging a test
+    // rather than leaving a handle open after the suite has finished.
+    console.log('  ' + hung.length + ' of the kills came from a suite that ' +
+        'then had to be killed itself - check what the mutation hangs');
+}
+if ( expected.length !== 0 ) {
+    console.log('  the ones that cannot be killed, and why:');
     for ( const r of expected ) {
         console.log('    ' + r.name + ' - ' + r.reason);
     }
