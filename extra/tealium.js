@@ -400,12 +400,17 @@
 // element's onload fires where a blocked one fires onerror or nothing. An
 // app that waits on either before starting playback gets what it waited
 // for.
-// ONE OF THE FOUR THIS DOES NOT FIX, which is worth knowing before the
-// claim above is read too widely. AdguardFilters issue 219435 is the ml.com
-// one: "The website just hangs. I can't even click the login portion to
-// login." Their page bundle was read for this, and it makes no call into
-// the api at all - no view, no link, no track, nothing on utag.cfg or
-// utag.data - so the failure this closes is not the failure they have.
+// THE ML.COM ONE, which is the case for answering the request rather than
+// for answering the api, and which was predicted wrong here before it was
+// tested. AdguardFilters issue 219435: "The website just hangs. I can't
+// even click the login portion to login." Their page bundle makes no call
+// into the api at all - no view, no link, no track, nothing on utag.cfg or
+// utag.data - and the reading here was that this resource could not help
+// them. It does: the hang does not reproduce with it in place. So what
+// they were waiting on was the request, not the object, and a redirect
+// answers that at 200 where a block answers it with onerror or with
+// nothing. The api is the second route, not the only one, and on a page
+// that never calls it the first route is the whole fix.
 // What their page does have is a queue. It pushes customError,
 // manualLinkClick, rescanDOM, productview, impressions and the rest into
 // window.bactmQueue, and drains it on a bactm_libload event, gated on
@@ -416,15 +421,21 @@
 // and the loader dispatches bactm_libload from the same code - so it is
 // the extension pass that makes it, which is the pass this refuses. With
 // this resource that queue stays undrained and that handler stays
-// unattached, exactly as with a plain block.
-// So of those four entries, this plausibly replaces two: pluto.tv, whose
-// player waits on the request, and southparkstudios.com, whose click
-// handlers call utag.link. It does not replace ml.com, where nothing
-// touches the api and the page's wiring hangs off a facade their
-// extensions build. stepstone.de could not be read to say either way.
+// unattached, and the page works anyway: nothing of theirs waits on
+// either, so the queue simply sits there with the analytics calls it
+// collected going nowhere, which is the refusal doing its job.
+// That is also the reason this dispatches no events, ever. Firing a ready
+// event of theirs would make a page like that one drain its queue into a
+// facade that does not exist and throw on the first method it reached.
+// Staying silent is what keeps an undrained queue harmless, and a test
+// holds it.
+// So of those four entries, three are answered: pluto.tv, whose player
+// waits on the request; southparkstudios.com, whose click handlers call
+// utag.link; and ml.com, by field test rather than by reading. stepstone.de
+// answers 403 to a fetch and was not read either way.
 // Their login is not gated on bactm anywhere in that bundle, so what hung
-// it is not established here and is not claimed. The only honest statement
-// is that this does not address it.
+// it is still not established - only that it stops hanging once something
+// answers that url.
 // AND A WARNING THAT CAME OUT OF READING IT: do not widen the rule to the
 // host or to /utag/*. ml.com's config loads an Adobe Launch property from
 // tags.tiqcdn.com/utag/<hash>/<hash>/<hash>/hostedLibFiles/EP<hash>/,

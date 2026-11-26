@@ -832,6 +832,41 @@ describe('extra/tealium.js, what it refuses', ( ) => {
         assert.equal(w.utag.view({ a: 1 }), true);
     });
 
+    // ml.com's page keeps a queue of analytics calls in window.bactmQueue
+    // and drains it on a bactm_libload event, gated on a window.bactm that
+    // their extensions build - the pass this refuses. The queue therefore
+    // sits undrained, which is harmless only while nothing fires that
+    // event: a page draining into a facade that is not there throws on the
+    // first method it reaches. So this dispatches nothing, ever.
+    it('dispatches no event a page could mistake for a ready signal',
+        async ( ) => {
+            const fired = [];
+            const { w } = boot({
+                beforeParse(win) {
+                    const real = win.EventTarget.prototype.dispatchEvent;
+                    win.EventTarget.prototype.dispatchEvent = function(ev) {
+                        fired.push(ev && ev.type);
+                        return real.call(this, ev);
+                    };
+                },
+                before: '<script>window.bactmQueue = [];' +
+                    'window.drained = 0;' +
+                    'document.addEventListener("bactm_libload", function(){' +
+                    '    window.drained += 1;' +
+                    '    window.bactm.log({});' +
+                    '});</script>',
+                after: '<script>window.bactmQueue.push("productview");' +
+                    'window.after = true;</script>',
+            });
+            await settle();
+            assert.equal(w.after, true);
+            // Their queue is still theirs, and nobody told it to run.
+            assert.equal(w.drained, 0);
+            assert.equal(w.bactmQueue.length, 1);
+            assert.equal(w.bactm, undefined);
+            assert.deepEqual(fired, []);
+        });
+
     it('touches an empty store not at all', async ( ) => {
         const calls = [];
         boot({
