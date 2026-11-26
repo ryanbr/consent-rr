@@ -4,11 +4,25 @@
 // Not a cookie-consent resource, though it answers a consent api where a
 // tenant compiled one in: it lives outside src/ and is not built into
 // dist/ by tools/build.mjs. Hand-maintained, ship as-is.
-// Read off four tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
-// gendigital/ccleaner and foxcorp/fscom-main, 32kB to 771kB, carrying
-// utag.loader versions ut4.0.202501242212 through ut4.0.202611252057 - and
-// one tag file, lbg/code utag.2.js at 515 bytes, which is one vendor's tag
-// rather than the loader and is never requested once the loader is gone.
+// Read off five tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
+// gendigital/ccleaner, foxcorp/fscom-main and tsb/tsb-uk-new, 32kB to
+// 771kB, carrying utag.loader versions ut4.0.202501242212 through
+// ut4.0.202611252057 - and four tag files: lbg/code utag.2.js at 515
+// bytes, and tsb's utag.419.js, utag.263.js and utag.272.js at 37kB, 27kB
+// and 12.6kB, 77kB of vendors on one page.
+// A page loads several of theirs at once, and only the first needs a rule.
+// A tag file's url is built by their own loader, in AS:
+//   a.src = utag.cfg.path + 'ut'+'ag.' + a.id + '.js'
+// and that split string is why "utag." does not appear as a literal in any
+// of them. AS is a no-op on this object, so no utag.N.js is ever asked
+// for and no rule is needed for one.
+// utag/tiqapp/utag.v.js is the third kind of line on such a page, and it
+// is two bytes: a comment. Its payload is its query string,
+// a=<account>/<profile>/<version>, so it is a version ping wearing a
+// script's clothes. Three of the five loaders name it and two do not,
+// including the one on the page it was seen from, so something further
+// down asks for it. Nothing is lost by blocking it and nothing is gained
+// by replacing it.
 // All four publish the same fifteen members on window.utag, in the same
 // order: id o sender send rpt dbi db_log loader DB RP view link track
 // handler ut.
@@ -32,8 +46,11 @@
 //   ut.vi                   their visitor-id minter, which answers the
 //                           empty string here: the one member whose job is
 //                           to create an identifier, and which builds it
-//                           out of the screen - parseInt(screen.colorDepth
-//                           || screen.pixelDepth) goes into theirs
+//                           out of the browser - navigator.plugins, then
+//                           screen.width + screen.height + parseInt(
+//                           screen.colorDepth || screen.pixelDepth), go
+//                           into theirs, so the id it mints is a
+//                           fingerprint with a random prefix
 //   cfg                     with window.utag_cfg_ovrd copied over it, as
 //                           theirs does, so a page that set noview or
 //                           nocookie there reads it back
@@ -85,7 +102,10 @@
 //   ||tags.tiqcdn.com/utag/*/utag.js$script,redirect=tealium.js
 // A tag file is a separate request that nothing makes once the loader is
 // replaced, so no rule is needed for utag.N.js and blocking those buys
-// nothing. The account and profile come from the url, which is also where
+// nothing. The version ping can go in a list if a list wants it:
+//   ||tags.tiqcdn.com/utag/tiqapp/utag.v.js$script
+// which costs a page two bytes of comment it never reads.
+// The account and profile come from the url, which is also where
 // their own id comes from, so the resource needs nothing per tenant.
 // The "///" line above is the resource header uBO reads, and a comment to
 // JavaScript. uBO drops these "//" lines when it parses.
