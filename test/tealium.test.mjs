@@ -752,14 +752,55 @@ describe('extra/tealium.js, what it refuses', ( ) => {
             await settle();
             assert.equal(typeof w.utag, 'object');
             // Removing their visitor attributes is the only thing it does
-            // to a store. It reads nothing out of one, which is the whole
-            // point: RDlocalStorage walks every key into the data layer.
-            assert.deepEqual([ ...new Set(touched) ], [ 'removeItem' ]);
+            // to a store, and it reads no value out of one - which is the
+            // whole point, since RDlocalStorage walks every value into the
+            // data layer. Enumerating names with key() is how anything
+            // clears by prefix, and the cookie pass already reads the
+            // whole jar to do the same job, so the line is drawn at
+            // values rather than at names.
             assert.equal(touched.includes('getItem'), false);
             assert.equal(touched.includes('setItem'), false);
-            assert.equal(touched.includes('key'), false);
+            // Nothing of theirs is seeded here, so there is nothing to
+            // remove and removeItem is not reached at all: clearing by
+            // prefix only names a key it has just seen, where computing
+            // the names called removeItem whether or not they existed.
+            assert.deepEqual([ ...new Set(touched) ].sort(), [ 'key' ]);
             assert.equal(w.localStorage.getItem('mine'), 'kept');
             assert.equal(w.sessionStorage.getItem('also'), 'kept');
+        });
+
+    // AdGuard allowlists tags.stepstone.com/utag/de/prod/utag.js, and that
+    // loader declares id stepstone.stepstone-de with a cfg.path back on
+    // tiqcdn at utag/stepstone/stepstone-de/prod/. So on a first-party host
+    // the url says nothing about the account, the suffixed name cannot be
+    // computed from it, and clearing by prefix is the only thing that
+    // reaches their record.
+    it('clears their visitor attributes without knowing the account',
+        async ( ) => {
+            const seed = [
+                'localStorage.setItem("tealium_va", "{}");',
+                'localStorage.setItem(',
+                '    "tealium_va_stepstone_stepstone-de", "{}");',
+                'sessionStorage.setItem("tealium_va_other_profile", "{}");',
+                'localStorage.setItem("tealium_vault", "not theirs");',
+                'localStorage.setItem("keep", "mine");',
+            ].join('');
+            const { w } = bootRedirected(
+                'https://tags.stepstone.com/utag/de/prod/utag.js',
+                { before: '<script>' + seed + '</script>' });
+            await settle();
+            // Nothing in the url to derive it from, and it goes anyway.
+            assert.equal(w.utag.id, '');
+            assert.equal(w.localStorage.getItem('tealium_va'), null);
+            assert.equal(
+                w.localStorage.getItem('tealium_va_stepstone_stepstone-de'),
+                null);
+            assert.equal(
+                w.sessionStorage.getItem('tealium_va_other_profile'), null);
+            // The underscore is what keeps a neighbour out of it.
+            assert.equal(w.localStorage.getItem('tealium_vault'),
+                'not theirs');
+            assert.equal(w.localStorage.getItem('keep'), 'mine');
         });
 
     it('touches an empty store not at all', async ( ) => {

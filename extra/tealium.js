@@ -4,7 +4,7 @@
 // Not a cookie-consent resource, though it answers a consent api where a
 // tenant compiled one in: it lives outside src/ and is not built into
 // dist/ by tools/build.mjs. Hand-maintained, ship as-is.
-// Read off forty-four tenant loaders - elsgroup/actuel-rh,
+// Read off forty-eight tenant loaders - elsgroup/actuel-rh,
 // cbsi/cbstve,
 // gendigital/ccleaner, foxcorp/fscom-main, tsb/tsb-uk-new, cdw/main,
 // epson/secglobal, hsbc/global-common-dotcom, ccl/main,
@@ -246,6 +246,23 @@
 // The resource itself does not care which host it came from: the account
 // and profile come out of the path, and so does the environment, which is
 // not always prod - PROD-A and dev both turn up.
+// A FIRST-PARTY HOST NEEDS ITS OWN LINE, and the one in hand is
+//   ||tags.stepstone.com/utag/*/utag.js$script,redirect=tealium.js
+// Tealium will serve the same loader from a tenant's own name, so neither
+// tiqcdn line reaches it. tags.stepstone.com is the one AdGuard has had to
+// allowlist; autodesk's tag config names tms.wape.autodesk.com, so the
+// shape to look for is a host serving /utag/<something>/utag.js, whatever
+// it is called.
+// On such a host the path is a vanity one and says nothing true: that
+// loader is served from /utag/de/prod/utag.js and declares itself
+// id stepstone.stepstone-de, with cfg.path pointing back at
+// tiqcdn.com/utag/stepstone/stepstone-de/prod/. There are two segments
+// where this expects three, so no account and no profile come out of it
+// and utag.id is published empty. That is the honest answer rather than a
+// guess - de is not the account, prod is not the profile - and the only
+// thing it costs is their id string, which is theirs to read and not a
+// page's. What it must not cost is the clearing, which is why their
+// visitor attributes go by prefix: see the note at STORED.
 // WHAT THIS FIXES AND WHAT IT CANNOT, which are two different failures and
 // worth keeping apart. Blocking the loader outright breaks the page's own
 // code: the standard integration puts utag.view(utag_data) or utag.link in
@@ -325,6 +342,33 @@
 // standing and leaves it alone.
 // The account and profile come from the url, which is also where
 // their own id comes from, so the resource needs nothing per tenant.
+// WHY THIS EXISTS, in somebody else's words: AdGuard carries four
+// allowlist entries for these loaders, which is what a network block looks
+// like when it breaks a site badly enough to need undoing -
+//   @@||tags.tiqcdn.com/utag/cbsi/pluto-tv/prod/utag.js$domain=pluto.tv
+//   @@||tags.tiqcdn.com/utag/bofa/ml/prod/utag.js$domain=ml.com
+//   @@||tags.tiqcdn.com/utag/cbsi/webplex-intl/prod/utag.js$domain=
+//     southpark.de|southpark.lat|southparkstudios.com.br|
+//     southparkstudios.com
+//   @@||tags.stepstone.com/utag/de/prod/utag.js$domain=stepstone.de
+// All four were read for this file. All four publish the same fifteen
+// members and declare the id this derives from their path, bofa on a
+// ut4.48 loader, which is a generation newer than anything else here. An
+// allowlist entry hands the whole loader back, tags and all; a redirect
+// closes the same breakage without doing that, which is the case for
+// replacing rather than blocking.
+// STORED, their visitor attributes, cleared by prefix rather than by name.
+//     The record is tealium_va, and a tenant's is tealium_va_<account>_
+//     <profile> beside it. Computing that second name needs the account,
+//     which a first-party vanity path does not carry - stepstone's says
+//     de/prod and their account is stepstone/stepstone-de - so a computed
+//     name leaves the record sitting there. A prefix reaches it without
+//     knowing any of that, and it is what the cookie pass already does for
+//     utag_main and utag_main_*. The underscore is the whole guard: it
+//     keeps a page's own tealium_vault out of it. Names are enumerated
+//     with key(), values are never read, and removeItem is reached only
+//     for a key just seen - so an unrelated store is walked and left
+//     alone, where the old names were removed whether or not they existed.
 // NOTES ON THE MEMBERS, which used to sit beside them in the code and
 // shipped with them: uBO drops a comment only at column zero, so prose
 // indented into the body goes out to every user, and half of what this
@@ -559,13 +603,9 @@
     // See NOTES in the header.
     const COOKIE = 'utag_main';
     // See NOTES in the header.
-    const stored = ( ) => {
-        const out = [ 'tealium_va' ];
-        if ( account !== '' && profile !== '' ) {
-            out.push('tealium_va_' + account + '_' + profile);
-        }
-        return out;
-    };
+    const STORED = 'tealium_va';
+    const mine = name => name === STORED ||
+        name.indexOf(STORED + '_') === 0;
     const suffixes = ( ) => {
         const out = [ '' ];
         let host = '';
@@ -581,7 +621,6 @@
     // See NOTES in the header.
     const forget = ( ) => {
         const done = { cleared: 0, storage: 0 };
-        const names = stored();
         for ( const store of [ 'localStorage', 'sessionStorage' ] ) {
             let store_;
             try { store_ = w[store]; } catch ( ex ) { continue; }
@@ -591,6 +630,16 @@
             try { was = store_.length; } catch ( ex ) { }
             // See NOTES in the header.
             if ( was === 0 ) { continue; }
+            // See NOTES in the header.
+            const names = [];
+            try {
+                for ( let i = 0; i < store_.length; i++ ) {
+                    const name = store_.key(i);
+                    if ( typeof name === 'string' && mine(name) ) {
+                        names.push(name);
+                    }
+                }
+            } catch ( ex ) { }
             for ( const name of names ) {
                 try { store_.removeItem(name); } catch ( ex ) { }
             }
