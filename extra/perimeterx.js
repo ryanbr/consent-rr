@@ -105,6 +105,11 @@
 // Worker and Blob it builds, every cookie it writes - _px2, _px3, pxvid,
 // _pxmvid, pxjsc, px_hvd, _pxac, _px_acp, _px_pcdt, px_c_p_, _pxfc_ and
 // pxfc - and the POST to collector-a.px-cloud.net/api/v2/collector.
+// What it clears, rather than merely not writing: their visitor id, from
+// the cookie on the host and every parent suffix of two labels or more,
+// and from the localStorage and sessionStorage mirrors - _pxvid, pxvid and
+// _pxmvid - plus the legacy sessionStorage.pxsid. Their token is left
+// alone, as above.
 // What it will not do: no token is forged, no vid or uuid is minted, and
 // no sensor data is synthesised. PerimeterX enforces server side, and a
 // site whose enforcer wants a fresh client token will still challenge or
@@ -173,6 +178,55 @@
     };
     const id = identify();
     const noopfn = ( ) => { };
+    // Identifiers their client leaves behind, and their own reader is the
+    // evidence for the names: the visitor id is looked up as mL(ot) or
+    // mL("pxvid"), with mL reading document.cookie and ot being
+    // atob("X3B4dmlk"), then as mL("_pxmvid"), then from a ttl'd mirror of
+    // the same key in storage - a cookie with a resilient copy beside it.
+    // The legacy generation keeps a session id in sessionStorage.pxsid.
+    // Replacing the client stops new ones being written; it does not take
+    // away the ones already there, and the cookie carries a year, so they
+    // are cleared here. Their own deleter nn(name) writes a past expiry
+    // twice, once with the domain and once without, which is the shape
+    // followed below.
+    // NOT _px3, _px2 or the legacy _px: those are the server's own token,
+    // and deleting one invites a fresh challenge rather than preventing
+    // it. Nothing is read on the way - a cookie is expired by writing, and
+    // storage only has keys removed - so this adds no read of either.
+    const IDS = [ '_pxvid', 'pxvid', '_pxmvid' ];
+    const SESSION_IDS = [ 'pxsid' ];
+    const suffixes = ( ) => {
+        const out = [ '' ];
+        let host = '';
+        try { host = String(w.location.hostname || ''); } catch ( ex ) { }
+        if ( host === '' ) { return out; }
+        const parts = host.split('.');
+        while ( parts.length >= 2 ) {
+            out.push(parts.join('.'));
+            parts.shift();
+        }
+        return out;
+    };
+    const forget = ( ) => {
+        const where = suffixes();
+        for ( const name of IDS ) {
+            for ( const domain of where ) {
+                const parts = [ name + '=', 'path=/',
+                    'expires=Thu, 01 Jan 1970 00:00:01 GMT' ];
+                if ( domain !== '' ) { parts.push('domain=' + domain); }
+                try { doc.cookie = parts.join('; '); } catch ( ex ) { }
+            }
+        }
+        for ( const store of [ 'localStorage', 'sessionStorage' ] ) {
+            let held;
+            try { held = w[store]; } catch ( ex ) { continue; }
+            if ( held === null || held === undefined ) { continue; }
+            for ( const name of IDS.concat(SESSION_IDS) ) {
+                try { held.removeItem(name); } catch ( ex ) { }
+            }
+        }
+    };
+    forget();
     // Their emitter, from jH. channels is not a property until the first
     // subscribe, which is theirs as well.
     const events = {

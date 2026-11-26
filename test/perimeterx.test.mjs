@@ -694,20 +694,37 @@ describe('extra/perimeterx.js, the sensors it never reads', ( ) => {
         return touched;
     };
 
-    it('touches not one of them', async ( ) => {
-        let touched;
-        const w = boot({
-            before: '<script>window._pxAppId = "' + APP_ID + '";</script>',
-            beforeParse(win) { touched = sensorProbe(win); },
-        });
-        await settle(60);
-        // The resource ran: the probe is measuring a live boot, not a
-        // document that never reached it.
-        assert.equal(typeof w.PX, 'object');
-        assert.deepEqual([ ...touched ], []);
-    });
+    // Clearing their visitor id means writing an expiry and removing a
+    // storage key, so those two are the whole expected footprint. Reading
+    // either one is not: a cookie is expired by writing, never by reading,
+    // and storage is only ever removed from.
+    const EXPECTED = [ 'document.cookie set', 'Storage.removeItem' ];
 
-    it('touches none of them on a block page either', async ( ) => {
+    it('touches no sensor, and reads neither cookie nor storage',
+        async ( ) => {
+            let touched;
+            const w = boot({
+                before: '<script>window._pxAppId = "' + APP_ID +
+                    '";</script>',
+                beforeParse(win) { touched = sensorProbe(win); },
+            });
+            await settle(60);
+            // The resource ran: the probe is measuring a live boot, not a
+            // document that never reached it.
+            assert.equal(typeof w.PX, 'object');
+            const unexpected = [ ...touched ]
+                .filter(name => EXPECTED.includes(name) === false);
+            assert.deepEqual(unexpected, []);
+            assert.equal(touched.includes('document.cookie get'), false);
+            assert.equal(touched.includes('Storage.getItem'), false);
+            assert.equal(touched.includes('Storage.setItem'), false);
+            // And the expected two did happen, so this is not a probe
+            // measuring a resource that never ran.
+            assert.equal(touched.includes('document.cookie set'), true);
+            assert.equal(touched.includes('Storage.removeItem'), true);
+        });
+
+    it('touches no sensor on a block page either', async ( ) => {
         let touched;
         const w = boot({
             before: '<script>window._pxModal = true; window._pxAppId = "' +
@@ -716,7 +733,95 @@ describe('extra/perimeterx.js, the sensors it never reads', ( ) => {
         });
         await settle(60);
         assert.equal(typeof w.PX, 'object');
-        assert.deepEqual([ ...touched ], []);
+        const unexpected = [ ...touched ]
+            .filter(name => EXPECTED.includes(name) === false);
+        assert.deepEqual(unexpected, []);
+    });
+});
+
+describe('extra/perimeterx.js, the identifiers it clears', ( ) => {
+    const snippet = '<script>window._pxAppId = "' + APP_ID + '";</script>';
+
+    const bootWith = (cookies, options = {}) => boot({
+        url: options.url,
+        before: '<script>' + cookies.map(
+            c => 'document.cookie = ' + JSON.stringify(c + '; path=/') + ';'
+        ).join('') + '</script>' + snippet,
+        beforeParse: options.beforeParse,
+    });
+
+    it('clears their visitor id cookies', async ( ) => {
+        const w = bootWith([ '_pxvid=vid-1', 'pxvid=vid-2',
+            '_pxmvid=vid-3' ]);
+        await settle();
+        assert.equal(w.document.cookie.includes('_pxvid'), false);
+        assert.equal(w.document.cookie.includes('pxvid'), false);
+        assert.equal(w.document.cookie.includes('_pxmvid'), false);
+    });
+
+    it('leaves their token where it is', async ( ) => {
+        const w = bootWith([ '_px3=token-3', '_px2=token-2',
+            '_px=legacy', '_pxvid=vid-1' ]);
+        await settle();
+        const held = w.document.cookie;
+        assert.equal(held.includes('_px3=token-3'), true);
+        assert.equal(held.includes('_px2=token-2'), true);
+        assert.equal(held.includes('_px=legacy'), true);
+        assert.equal(held.includes('_pxvid'), false);
+    });
+
+    it('removes the storage mirrors beside them', async ( ) => {
+        const w = boot({
+            before: '<script>localStorage.setItem("_pxvid", "mirror");' +
+                'localStorage.setItem("_pxmvid", "mirror");' +
+                'sessionStorage.setItem("pxsid", "session");' +
+                'localStorage.setItem("keepme", "kept");</script>' + snippet,
+        });
+        await settle();
+        assert.equal(w.localStorage.getItem('_pxvid'), null);
+        assert.equal(w.localStorage.getItem('_pxmvid'), null);
+        assert.equal(w.sessionStorage.getItem('pxsid'), null);
+        // Nothing else in storage is its business.
+        assert.equal(w.localStorage.getItem('keepme'), 'kept');
+    });
+
+    it('expires on every parent suffix and with no domain', async ( ) => {
+        const written = [];
+        boot({
+            url: 'https://shop.a.example.co.uk/page',
+            before: snippet,
+            beforeParse(win) {
+                const held = Object.getOwnPropertyDescriptor(
+                    Object.getPrototypeOf(win.document), 'cookie');
+                Object.defineProperty(win.document, 'cookie', {
+                    configurable: true,
+                    get() { return held.get.call(this); },
+                    set(v) { written.push(v); held.set.call(this, v); },
+                });
+            },
+        });
+        await settle();
+        const domains = written
+            .filter(line => line.startsWith('_pxvid='))
+            .map(line => {
+                const found = /domain=([^;]+)/.exec(line);
+                return found !== null ? found[1] : '(none)';
+            });
+        assert.deepEqual(domains, [
+            '(none)', 'shop.a.example.co.uk', 'a.example.co.uk',
+            'example.co.uk', 'co.uk',
+        ]);
+        // Every one of them an expiry, never a value.
+        for ( const line of written ) {
+            assert.equal(line.includes('expires=Thu, 01 Jan 1970'), true);
+        }
+    });
+
+    it('leaves a page cookie of its own alone', async ( ) => {
+        const w = bootWith([ 'session=abc', '_pxvid=vid-1' ]);
+        await settle();
+        assert.equal(w.document.cookie.includes('session=abc'), true);
+        assert.equal(w.document.cookie.includes('_pxvid'), false);
     });
 });
 
