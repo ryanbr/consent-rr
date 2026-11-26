@@ -35,6 +35,20 @@
 //                                   name rather than running it directly
 // js.px-cloud.net is in every build as the head of a url list a tenant's
 // configuration extends, so it belongs in the same group.
+// One of their payload fields is set from !!navigator.brave, so on a site
+// where this resource is not the one answering - a tenant whose
+// first-party path no rule covers - the browser choice is still recorded.
+// uBO can take that bit away on its own:
+//   example.com##+js(set-constant, navigator.brave, undefined)
+// undefined is the value to use, not false and not noopFunc: theirs is an
+// object with isBrave() on it and Chrome has no such property at all, so
+// undefined is a browser that exists while false is one that never has.
+// It is worth scoping per site rather than everywhere. Brave exposes that
+// property deliberately and some pages read it for their own reasons, and
+// taking one bit away while canvas and audio still farble leaves a profile
+// that is rarer than either answer on its own - both of those are read by
+// thirteen of the fourteen builds. Where this resource did answer, nothing
+// reads the property anyway.
 // That deployment proxies their collector as well, which the same build
 // names: [ "/jAYekY18/xhr", "https://collector-PXjAYekY18.px-cloud.net" ].
 // Leave both alone. The first is on the site's own host and blocking a
