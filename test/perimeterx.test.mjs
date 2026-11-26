@@ -153,6 +153,14 @@ describe('extra/perimeterx.js, the app id', ( ) => {
         assert.equal(w[APP_ID], w.PX);
     });
 
+    it('recovers it from a captcha tag, the same tenant', ( ) => {
+        const w = boot({
+            before: '<script src="https://captcha.px-cloud.net/' + APP_ID +
+                '/captcha.js"></script>',
+        });
+        assert.equal(w[APP_ID], w.PX);
+    });
+
     it('still publishes PX with no app id anywhere', ( ) => {
         const w = boot({});
         assert.equal(typeof w.PX, 'object');
@@ -432,15 +440,21 @@ describe('extra/perimeterx.js, what it refuses', ( ) => {
     });
 
     it('leaves fetch and XMLHttpRequest unwrapped', async ( ) => {
-        let realFetch;
+        // jsdom has no fetch of its own, so one is put there to be wrapped:
+        // without it the assertion below is undefined against undefined.
+        const realFetch = function fetch() { };
+        let realOpen;
         const w = boot({
             before: '<script>window._pxAppId = "' + APP_ID + '";</script>',
             beforeParse(win) {
-                realFetch = win.fetch;
+                win.fetch = realFetch;
+                realOpen = win.XMLHttpRequest.prototype.open;
             },
         });
         await settle();
+        assert.equal(typeof w.fetch, 'function');
         assert.equal(w.fetch, realFetch);
+        assert.equal(w.XMLHttpRequest.prototype.open, realOpen);
         assert.equal(w._pxFetch, undefined);
     });
 
@@ -537,12 +551,14 @@ describe('extra/perimeterx.js, the challenge path', ( ) => {
         });
 
     it('leaves sendBeacon as the browser left it', async ( ) => {
-        let real;
+        // jsdom has none, so the one being left alone is put there first.
+        const real = function sendBeacon() { return true; };
         const w = boot({
             before: '<script>window._pxAppId = "' + APP_ID + '";</script>',
-            beforeParse(win) { real = win.navigator.sendBeacon; },
+            beforeParse(win) { win.navigator.sendBeacon = real; },
         });
         await settle();
+        assert.equal(typeof w.navigator.sendBeacon, 'function');
         assert.equal(w.navigator.sendBeacon, real);
     });
 
