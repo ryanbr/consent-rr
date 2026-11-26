@@ -234,17 +234,27 @@ this.
 
 ### Reading a consent manager is not deploying one
 
-The worst case above
-needs a sharper test than "is OneTrust mentioned". One property's
-components include a 251KB MetaRouter bundle, a customer data platform,
-whose settings are privacy: { consentProvider: "OneTrust", cookieName:
-"OptanonConsent", impliedConsent: true, defaultGroupsValue: true } That is
-MetaRouter *reading* OneTrust's state to decide what it may send. It does
-not load OneTrust, and no `otSDKStub`, `cdn.cookielaw` or `OptanonWrapper`
-appears anywhere in it. Replacing the runtime there removes MetaRouter and
-leaves the banner, which is the right way round. A property that injects
-the banner itself would carry the loader - the stub url or the host - and
-that is the string to search for, not the cookie name.
+The worst case above needs a sharper test than "is OneTrust mentioned".
+One property's components include a 251KB MetaRouter bundle, a customer
+data platform, whose settings are
+
+```
+privacy: {
+    consentProvider: "OneTrust",
+    cookieName: "OptanonConsent",
+    impliedConsent: true,
+    defaultGroupsValue: true
+}
+```
+
+That is MetaRouter *reading* OneTrust's state to decide what it may send.
+It does not load OneTrust, and no `otSDKStub`, `cdn.cookielaw` or
+`OptanonWrapper` appears anywhere in it. Replacing the runtime there
+removes MetaRouter and leaves the banner, which is the right way round.
+
+A property that injects the banner itself would carry the loader - the
+stub url or the host - and that is the string to search for, not the
+cookie name.
 
 ### The check
 
