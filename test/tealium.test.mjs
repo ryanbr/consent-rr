@@ -182,6 +182,23 @@ describe('extra/tealium.js, the tenant id', ( ) => {
         assert.equal(w.utag.id, 'newbalance.nb-jnbo-new');
     });
 
+    it('reads the version ping url from either path', ( ) => {
+        // Both forms carry the tenant: one in the path, one only in the
+        // query. A list blocks these rather than pointing them here, but
+        // the id still has to come out if one does.
+        const fromPath = bootRedirected(
+            'https://tags.tiqcdn.com/utag/academysports/main/prod/' +
+            'utag.v.js?a=academysports/main/202611121225&cb=1');
+        assert.equal(fromPath.w.utag.id, 'academysports.main');
+        const fromTiqapp = bootRedirected(
+            'https://tags.tiqcdn.com/utag/tiqapp/utag.v.js' +
+            '?a=hktdc/main/202611050940&cb=1');
+        // tiqapp carries no account and profile of its own in the path,
+        // so there is no id to take from it, and utag is still published.
+        assert.equal(fromTiqapp.w.utag.id, '');
+        assert.equal(typeof fromTiqapp.w.utag.track, 'function');
+    });
+
     it('stands aside for its own earlier copy', ( ) => {
         // Both the sync url and the loader url pointed here means this
         // runs twice on one page.

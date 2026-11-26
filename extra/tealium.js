@@ -4,11 +4,12 @@
 // Not a cookie-consent resource, though it answers a consent api where a
 // tenant compiled one in: it lives outside src/ and is not built into
 // dist/ by tools/build.mjs. Hand-maintained, ship as-is.
-// Read off eleven tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
+// Read off thirteen tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
 // gendigital/ccleaner, foxcorp/fscom-main, tsb/tsb-uk-new, cdw/main,
 // epson/secglobal, hsbc/global-common-dotcom, ccl/main,
-// newbalance/nb-jnbo-new and barclaysuk/barclaycard-public, 32kB to
-// 771kB - and four tag files: lbg/code utag.2.js at 515 bytes, and tsb's
+// newbalance/nb-jnbo-new, barclaysuk/barclaycard-public,
+// academysports/main and hktdc/main, 32kB to 771kB - and four
+// tag files: lbg/code utag.2.js at 515 bytes, and tsb's
 // utag.419.js, utag.263.js and utag.272.js at 37kB, 27kB and 12.6kB, 77kB
 // of vendors on one page.
 // Two generations are in there. Ten are utag.loader ut4.0, from
@@ -16,8 +17,8 @@
 // and ships pretty-printed over 4496 lines, which is worth knowing before
 // counting anything in it: a pattern written for the minified form, like
 // view:function, matches none of it.
-// Eight years and two generations, and all eleven publish the same fifteen
-// members in the same order. That is why this pins the contract and
+// Eight years and two generations, and all thirteen publish the same
+// fifteen members in the same order. That is why this pins the contract and
 // nothing about a build.
 // Their environment is not always prod either - barclaysuk serves from
 // PROD-A - so the path pattern takes a hyphen and a capital there.
@@ -31,12 +32,14 @@
 // and that split string is why "utag." does not appear as a literal in any
 // of them. AS is a no-op on this object, so no utag.N.js is ever asked
 // for and no rule is needed for one.
-// utag/tiqapp/utag.v.js is the third kind of line on such a page, and it
-// is two bytes: a comment. Its payload is its query string,
-// a=<account>/<profile>/<version>, so it is a version ping wearing a
-// script's clothes. None of the six loaders names it, so a tag file or
-// their companion asks for it rather than the loader. Nothing is lost by
-// blocking it and nothing is gained by replacing it.
+// utag.v.js is the third kind of line on such a page, and it comes from
+// two paths: utag/tiqapp/utag.v.js, and the tenant's own
+// utag/<account>/<profile>/<env>/utag.v.js. All three read were two bytes
+// and a comment. The payload is the query string either way,
+// a=<account>/<profile>/<version> with a cache buster, so it is a version
+// ping wearing a script's clothes. None of the loaders names it, so a tag
+// file or their companion asks for it rather than the loader. Nothing is
+// lost by blocking it and nothing is gained by replacing it.
 // All four publish the same fifteen members on window.utag, in the same
 // order: id o sender send rpt dbi db_log loader DB RP view link track
 // handler ut.
@@ -138,9 +141,13 @@
 //   ||tags.tiqcdn.com/utag/*/utag.js$script,redirect=tealium.js
 // A tag file is a separate request that nothing makes once the loader is
 // replaced, so no rule is needed for utag.N.js and blocking those buys
-// nothing. The version ping can go in a list if a list wants it:
-//   ||tags.tiqcdn.com/utag/tiqapp/utag.v.js$script
-// which costs a page two bytes of comment it never reads.
+// nothing. The version ping can go in a list if a list wants it, and one
+// line reaches both of its paths:
+//   ||tags.tiqcdn.com/utag/*/utag.v.js$script
+// which costs a page two bytes of comment it never reads. That pattern
+// cannot take the loader with it, since the loader's name is utag.js and
+// this one asks for utag.v.js; and the redirect rule above cannot take
+// the ping, for the same reason in reverse.
 // utag.sync.js is the one line the rule above does not reach, because
 // utag.sync.js does not contain the string utag.js. It is theirs for sync
 // tags, the vendor snippets a tenant wants running before the page draws,
