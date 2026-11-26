@@ -4,12 +4,16 @@
 // Not a cookie-consent resource, though it answers a consent api where a
 // tenant compiled one in: it lives outside src/ and is not built into
 // dist/ by tools/build.mjs. Hand-maintained, ship as-is.
-// Read off six tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
-// gendigital/ccleaner, foxcorp/fscom-main, tsb/tsb-uk-new and cdw/main,
-// 32kB to 771kB, carrying utag.loader versions ut4.0.202501242212 through
-// ut4.0.202611251444 - and four tag files: lbg/code utag.2.js at 515
-// bytes, and tsb's utag.419.js, utag.263.js and utag.272.js at 37kB, 27kB
-// and 12.6kB, 77kB of vendors on one page.
+// Read off ten tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
+// gendigital/ccleaner, foxcorp/fscom-main, tsb/tsb-uk-new, cdw/main,
+// epson/secglobal, hsbc/global-common-dotcom, ccl/main and
+// newbalance/nb-jnbo-new, 32kB to 771kB, carrying utag.loader versions
+// ut4.0.201812202215 through ut4.0.202611251444 - and four tag files:
+// lbg/code utag.2.js at 515 bytes, and tsb's utag.419.js, utag.263.js and
+// utag.272.js at 37kB, 27kB and 12.6kB, 77kB of vendors on one page.
+// Eight years separate the oldest of those loaders from the newest and all
+// ten publish the same fifteen members in the same order, which is why
+// this pins the contract and nothing about a build.
 // Count anything in these with a reader that does not care about line
 // length. Their longest lines run from 4.6k characters to 469k, and a
 // line-oriented search quietly answers zero on the big ones, which is how
@@ -113,6 +117,19 @@
 // nothing. The version ping can go in a list if a list wants it:
 //   ||tags.tiqcdn.com/utag/tiqapp/utag.v.js$script
 // which costs a page two bytes of comment it never reads.
+// utag.sync.js is the one line the rule above does not reach, because
+// utag.sync.js does not contain the string utag.js. It is theirs for sync
+// tags, the vendor snippets a tenant wants running before the page draws,
+// and the page carries that script tag itself rather than the loader
+// fetching it - no loader read here references it. The one read was 109
+// bytes and nothing but its own copyright line, a tenant with no sync tags
+// configured, so what a populated one carries is the tags themselves
+// rather than any of the api. That makes it a block rather than a
+// replacement:
+//   ||tags.tiqcdn.com/utag/*/utag.sync.js$script
+// If a list points it here instead, nothing breaks: the id comes out of
+// that url too, and whichever copy runs second finds a loader already
+// standing and leaves it alone.
 // The account and profile come from the url, which is also where
 // their own id comes from, so the resource needs nothing per tenant.
 // The "///" line above is the resource header uBO reads, and a comment to

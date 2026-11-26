@@ -175,6 +175,30 @@ describe('extra/tealium.js, the tenant id', ( ) => {
         assert.equal(w.utag.id, 'lbg.code');
     });
 
+    it('reads the sync url, if a list points it here', ( ) => {
+        const { w } = bootRedirected(
+            'https://tags.tiqcdn.com/utag/newbalance/nb-jnbo-new/prod/' +
+            'utag.sync.js');
+        assert.equal(w.utag.id, 'newbalance.nb-jnbo-new');
+    });
+
+    it('stands aside for its own earlier copy', ( ) => {
+        // Both the sync url and the loader url pointed here means this
+        // runs twice on one page.
+        const lines = [];
+        const vc = new VirtualConsole();
+        vc.on('info', message => lines.push(String(message)));
+        const dom = new JSDOM(
+            '<!DOCTYPE html><html><head><script>' + code + '</script>' +
+            '<script>' + code + '</script></head><body></body></html>',
+            { runScripts: 'dangerously', url: 'https://example.com/page',
+              virtualConsole: vc }
+        );
+        void dom.window.document.title;
+        assert.equal(lines.length, 2);
+        assert.match(lines[1], / took=theirs /);
+    });
+
     it('still publishes with no id anywhere', ( ) => {
         const { w } = boot({});
         assert.equal(w.utag.id, '');
