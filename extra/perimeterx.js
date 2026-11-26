@@ -9,14 +9,25 @@
 //
 // THE RULES
 //   ||client.px-cloud.net/*/main.min.js$script,redirect=perimeterx.js
-//   ||client.px-cloud.net/*/main.js$script,redirect=perimeterx.js
-//   ||client.px-cloud.net/*/init.js$script,redirect=perimeterx.js
+// and the same client from a site's own host, where the path is the app id
+// with the PX taken off and the file is init.js:
+//   ||www.dormtherapy.com/jAYekY18/init.js$script,redirect=perimeterx.js
+// One line per host, and no generic form of that second one: an
+// /<eight characters>/init.js pattern would match a great deal that is not
+// theirs, and a redirect that misfires replaces somebody's real script.
+// Only those two filenames are served, which was tested: main.js,
+// client.js, px.js, sensor.js, bundle.js and index.js all answer 404 on
+// client.px-cloud.net, and only init.js answers on a first-party host. The
+// app id is read from any filename after the id segment, so a rename costs
+// a filter line and nothing in here.
+// Three more of theirs are blocks rather than redirects, and captcha.js
+// reaches none of them, so blocking them cannot touch a challenge:
 //   ||ic.px-cloud.net/bd/auditor.js$script
 //   ||crcldu.com/bd/auditor.js$script
 //   ||ri.px-cloud.net/index.js$script
-// and a first-party path, which is their app id minus the PX, so it has to
-// be read off the page:
-//   ||www.dormtherapy.com/jAYekY18/init.js$script,redirect=perimeterx.js
+// One scriptlet line belongs with them, for a page that reads
+// navigator.brave to decide whether to collect:
+//   example.com##+js(set-constant, navigator.brave, undefined)
 //
 // NEVER BLOCK THE CHALLENGE. captcha.px-cloud.net and captcha.px-cdn.net
 // serve the page a visitor needs to get past a block, and blocking either

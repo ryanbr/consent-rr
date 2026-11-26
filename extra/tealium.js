@@ -12,19 +12,28 @@
 // publishes the same fifteen members in the same order. That list is
 // theirs: do not add to it, and do not reorder it.
 //
-// THE RULES
+// THE RULES. Both of their hosts in one line, .com and the .cn that serves
+// the same loaders:
+//   ||tags.tiqcdn.*/utag/*/utag.js$script,redirect=tealium.js
+// or as two, where a list would rather not wildcard a tld:
 //   ||tags.tiqcdn.com/utag/*/utag.js$script,redirect=tealium.js
 //   ||tags.tiqcdn.cn/utag/*/utag.js$script,redirect=tealium.js
+// and a line per first-party host, of which two are known:
 //   ||tags.stepstone.com/utag/*/utag.js$script,redirect=tealium.js
 //   ||tm.pluto.tv/*/prod/utag.js$script,redirect=tealium.js
-// and two that stay blocks rather than redirects, a sync loader and a
-// version ping:
-//   ||tags.tiqcdn.com/utag/*/utag.sync.js$script
-// That one is a block and must stay a block: it is not always a tag
-// loader. Two of five sampled are Adobe Alloy's pre-hiding snippet, which
-// sets body opacity to zero and takes it off again on a timeout, so
-// blocking it means the page is never hidden in the first place.
-//   ||tags.tiqcdn.*/utag/tiqapp/utag.v.js$script
+// Two more files need their own lines, because neither name contains the
+// string utag.js and the rule above cannot reach either. The version ping,
+// two bytes of comment, on both of its paths - tiqapp's and the tenant's
+// own:
+//   ||tags.tiqcdn.*/utag/*/utag.v.js$script
+// And their sync file, on both hosts:
+//   ||tags.tiqcdn.*/utag/*/utag.sync.js$script
+// Block that one or point it here, either is fine - whichever copy runs
+// second finds a loader already standing and leaves it alone. What must
+// not happen is letting it through, because it is not only a tag loader:
+// three of six sampled carry Adobe Alloy's pre-hiding snippet, which sets
+// body opacity to zero and takes it off again on a timeout, and a
+// populated one calls utag.link and reads utag.data.
 // Never widen one of these to the host or to /utag/*. That prefix also
 // carries an Adobe Launch property on ml.com, which has nothing to do
 // with the loader. Naming the file is the point.

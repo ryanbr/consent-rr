@@ -381,7 +381,8 @@ rate table, 3kB of it, declaring a tealiumiq_currency global for that
 tag's own use, and AS is what asks for it - so it goes the way the
 numbered ones go.
 The version ping can go in a list if a list wants it, and one
-line reaches both of its paths:
+line reaches both of its paths - tiqapp's and the tenant's own, and a
+header that names only tiqapp is wrong, which is how it was written once:
 
     ||tags.tiqcdn.*/utag/*/utag.v.js$script
 which costs a page two bytes of comment it never reads. That pattern
@@ -392,13 +393,26 @@ utag.sync.js is the one line the rule above does not reach, because
 utag.sync.js does not contain the string utag.js. It is theirs for sync
 tags, the vendor snippets a tenant wants running before the page draws,
 and the page carries that script tag itself rather than the loader
-fetching it - no loader read here references it. The one read was 109
-bytes and nothing but its own copyright line, a tenant with no sync tags
-configured, so what a populated one carries is the tags themselves
-rather than any of the api. That makes it a block rather than a
-replacement:
+fetching it - no loader read here references it.
 
-    ||tags.tiqcdn.com/utag/*/utag.sync.js$script
+Six have now been read and the first guess about them was wrong. They are
+not all empty and they do touch the api: pluto's and prada's are 109 bytes
+of copyright line, bofa's is 606 and tsb's 843, hsbc's is 3.4kB, and
+autodesk's on the .cn host is 166kB which calls utag.link, reads utag.data,
+and fires Adobe Target and Audience Manager at cdn.tt.omtrdc.net,
+dpm.demdex.net and their own personalize.ml.dhx.autodesk.com. Three of the
+six also carry Adobe Alloy's pre-hiding snippet - body opacity to zero,
+removed on a three-second timeout.
+
+The .cn host serves it as well, so the rule takes the same wildcard the
+redirect does:
+
+    ||tags.tiqcdn.*/utag/*/utag.sync.js$script
+
+Block it or point it here, either works. What must not happen is letting it
+through while the loader is replaced: the pre-hiding would run with nothing
+of theirs left to take the style off early, and a populated one would be
+calling utag.link on a page whose loader is gone.
 If a list points it here instead, nothing breaks: the id comes out of
 that url too, and whichever copy runs second finds a loader already
 standing and leaves it alone.
