@@ -4,16 +4,23 @@
 // Not a cookie-consent resource, though it answers a consent api where a
 // tenant compiled one in: it lives outside src/ and is not built into
 // dist/ by tools/build.mjs. Hand-maintained, ship as-is.
-// Read off ten tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
+// Read off eleven tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
 // gendigital/ccleaner, foxcorp/fscom-main, tsb/tsb-uk-new, cdw/main,
-// epson/secglobal, hsbc/global-common-dotcom, ccl/main and
-// newbalance/nb-jnbo-new, 32kB to 771kB, carrying utag.loader versions
-// ut4.0.201812202215 through ut4.0.202611251444 - and four tag files:
-// lbg/code utag.2.js at 515 bytes, and tsb's utag.419.js, utag.263.js and
-// utag.272.js at 37kB, 27kB and 12.6kB, 77kB of vendors on one page.
-// Eight years separate the oldest of those loaders from the newest and all
-// ten publish the same fifteen members in the same order, which is why
-// this pins the contract and nothing about a build.
+// epson/secglobal, hsbc/global-common-dotcom, ccl/main,
+// newbalance/nb-jnbo-new and barclaysuk/barclaycard-public, 32kB to
+// 771kB - and four tag files: lbg/code utag.2.js at 515 bytes, and tsb's
+// utag.419.js, utag.263.js and utag.272.js at 37kB, 27kB and 12.6kB, 77kB
+// of vendors on one page.
+// Two generations are in there. Ten are utag.loader ut4.0, from
+// 201812202215 to 202611251444, minified. barclaysuk is ut4.46.202609221137
+// and ships pretty-printed over 4496 lines, which is worth knowing before
+// counting anything in it: a pattern written for the minified form, like
+// view:function, matches none of it.
+// Eight years and two generations, and all eleven publish the same fifteen
+// members in the same order. That is why this pins the contract and
+// nothing about a build.
+// Their environment is not always prod either - barclaysuk serves from
+// PROD-A - so the path pattern takes a hyphen and a capital there.
 // Count anything in these with a reader that does not care about line
 // length. Their longest lines run from 4.6k characters to 469k, and a
 // line-oriented search quietly answers zero on the big ones, which is how
@@ -435,10 +442,43 @@
         // member were missing.
         showConsentPreferences: noopfn,
         showExplicitConsent: noopfn,
-        // if (!utag.gdpr.shouldBlockTag(uid)) uids.push(uid) is how theirs
-        // filters a track call's uids, so true is the refusal and leaves
-        // that list empty.
+        // if (!utag.gdpr.shouldBlockTag(uid)) uids.push(uid) is how the
+        // ut4.0 builds filter a track call's uids, so true is the refusal
+        // and leaves that list empty. ut4.46 asks the question the other
+        // way round, as shouldTagFire, so that one answers false. Both are
+        // here because a page on either generation may ask either.
         shouldBlockTag: ( ) => true,
+        shouldTagFire: ( ) => false,
+        // What ut4.46 added, and the page-facing half of it first: a do
+        // not sell link calls showDoNotSellBanner, and their own flow
+        // reaches it through
+        // if (!utag.gdpr.dns.getDnsState()) { showDoNotSellBanner() }.
+        // getDnsState answers true here, which says the visitor is already
+        // opted out of a sale - which they are, since nothing is collected
+        // to sell - and that is also what keeps their banner from being
+        // asked for.
+        showDoNotSellBanner: noopfn,
+        dns: {
+            getDnsState: ( ) => true,
+            getBlockedDnsTagLookup: ( ) => ({}),
+        },
+        // The cookie writers ut4.46 exposes, taken and dropped like the
+        // rest. updateConsentCookie is also reachable without touching
+        // gdpr at all - their track handles an update_consent_cookie
+        // event with a consent_categories payload - and that path lands on
+        // the same refusal, since this track stores nothing whatever the
+        // event says.
+        updateConsentCookie: noopfn,
+        setCCPCookie: noopfn,
+        setEventCookie: noopfn,
+        setConsentValueOld: noopfn,
+        setPreferencesValuesOld: noopfn,
+        // Three of their own helpers live on gdpr as well as on ut, and
+        // their enforcement calls utag.gdpr.typeOf itself, so these are
+        // the same implementations rather than second ones.
+        typeOf: e => ut.typeOf(e),
+        isEmpty: o => ut.isEmpty(o),
+        merge: (a, b, c) => ut.merge(a, b, c),
         processQueue: noopfn,
         queue: [],
         omittedTags: {},

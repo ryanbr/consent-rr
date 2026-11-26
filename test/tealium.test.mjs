@@ -429,6 +429,62 @@ describe('extra/tealium.js, the consent api where a tenant has one', ( ) => {
         assert.equal(Array.isArray(w.utag.gdpr.queue), true);
     });
 
+    // ut4.46 asks the tag question the other way round and adds a do not
+    // sell surface. barclaysuk/barclaycard-public is the build read for it.
+    it('answers both polarities of the tag question', ( ) => {
+        const { w } = boot({});
+        // shouldBlockTag true and shouldTagFire false say the same thing.
+        assert.equal(w.utag.gdpr.shouldBlockTag('29'), true);
+        assert.equal(w.utag.gdpr.shouldTagFire('29'), false);
+    });
+
+    it('says the visitor is already opted out of a sale', ( ) => {
+        const { w } = boot({});
+        assert.equal(w.utag.gdpr.dns.getDnsState(), true);
+        assert.deepEqual({ ...w.utag.gdpr.dns.getBlockedDnsTagLookup() }, {});
+        assert.equal(w.utag.gdpr.showDoNotSellBanner(), undefined);
+    });
+
+    it('takes the cookie writers ut4.46 exposes, and writes none',
+        async ( ) => {
+            const { w } = boot({
+                after: '<script>window.wrote = [' +
+                    'utag.gdpr.updateConsentCookie([ "analytics" ]),' +
+                    'utag.gdpr.setCCPCookie(),' +
+                    'utag.gdpr.setEventCookie(),' +
+                    'utag.gdpr.setConsentValueOld(1),' +
+                    'utag.gdpr.setPreferencesValuesOld({}) ];</script>',
+            });
+            await settle();
+            assert.deepEqual([ ...w.wrote ],
+                [ undefined, undefined, undefined, undefined, undefined ]);
+            assert.equal(w.document.cookie, '');
+        });
+
+    it('refuses their consent event through track as well', ( ) => {
+        // update_consent_cookie is reachable without touching gdpr: their
+        // track reads the event and the payload.
+        const { w } = boot({
+            after: '<script>window.ran = false;' +
+                'window.out = utag.track({ event: "update_consent_cookie",' +
+                ' data: { consent_categories: [ "analytics" ] },' +
+                ' cfg: { cb: function() { window.ran = true; } } });' +
+                '</script>',
+        });
+        assert.equal(w.ran, true);
+        assert.equal(w.out, true);
+        assert.equal(w.utag.gdpr.getConsentState(), 0);
+        assert.equal(w.document.cookie, '');
+    });
+
+    it('shares its helpers with ut rather than keeping a second set', ( ) => {
+        const { w } = boot({});
+        assert.equal(w.utag.gdpr.typeOf(new w.Date()), 'date');
+        assert.equal(w.utag.gdpr.isEmpty(0), false);
+        assert.deepEqual({ ...w.utag.gdpr.merge({ a: 1 }, { a: 2 }, 0) },
+            { a: 1 });
+    });
+
     it('answers the rest in the shapes their enforcement reads', ( ) => {
         const { w } = boot({});
         assert.equal(typeof w.utag.gdpr.getCookieValues(), 'object');
