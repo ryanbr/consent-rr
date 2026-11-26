@@ -4,11 +4,13 @@
 // Not a cookie-consent resource, though it answers a consent api where a
 // tenant compiled one in: it lives outside src/ and is not built into
 // dist/ by tools/build.mjs. Hand-maintained, ship as-is.
-// Read off thirteen tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
+// Read off seventeen tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
 // gendigital/ccleaner, foxcorp/fscom-main, tsb/tsb-uk-new, cdw/main,
 // epson/secglobal, hsbc/global-common-dotcom, ccl/main,
 // newbalance/nb-jnbo-new, barclaysuk/barclaycard-public,
-// academysports/main and hktdc/main, 32kB to 771kB - and four
+// academysports/main, hktdc/main, random/rhcorp-prh,
+// jysk-fynske-medier/partners, nordea/op-web and
+// newsinternational/dreamteam.2016, 32kB to 771kB - and four
 // tag files: lbg/code utag.2.js at 515 bytes, and tsb's
 // utag.419.js, utag.263.js and utag.272.js at 37kB, 27kB and 12.6kB, 77kB
 // of vendors on one page.
@@ -17,7 +19,7 @@
 // and ships pretty-printed over 4496 lines, which is worth knowing before
 // counting anything in it: a pattern written for the minified form, like
 // view:function, matches none of it.
-// Eight years and two generations, and all thirteen publish the same
+// Eight years and two generations, and all seventeen publish the same
 // fifteen members in the same order. That is why this pins the contract and
 // nothing about a build.
 // Their environment is not always prod either - barclaysuk serves from
@@ -184,7 +186,11 @@
     const VERSION = '1.0.0';
     // Their own id is account.profile - id:"elsgroup.actuel-rh" in the
     // loader for /utag/elsgroup/actuel-rh/prod/utag.js - so the url the
-    // redirected element still carries is where both halves are.
+    // redirected element still carries is where both halves are. Checked
+    // against the id each loader declares for itself on seventeen
+    // tenants, hyphens and dots included: jysk-fynske-medier.partners and
+    // newsinternational.dreamteam.2016 are both theirs, which is why the
+    // two halves take a dot and a hyphen and not just word characters.
     const IN_URL =
         /\/utag\/([\w.-]{1,40})\/([\w.-]{1,40})\/[\w.-]{1,24}\/utag[\w.]*\.js/;
     const noopfn = ( ) => { };

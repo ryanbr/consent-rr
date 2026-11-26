@@ -251,6 +251,24 @@ describe('extra/tealium.js, the tenant id', ( ) => {
         assert.match(lines[1], / took=theirs /);
     });
 
+    // Their account and profile are not always two plain words, and each
+    // of these was checked against the id:"..." the loader itself
+    // declares.
+    it('takes an account with hyphens and a profile with a dot', ( ) => {
+        const cases = [
+            [ 'random/rhcorp-prh', 'random.rhcorp-prh' ],
+            [ 'jysk-fynske-medier/partners', 'jysk-fynske-medier.partners' ],
+            [ 'nordea/op-web', 'nordea.op-web' ],
+            [ 'newsinternational/dreamteam.2016',
+                'newsinternational.dreamteam.2016' ],
+        ];
+        for ( const [ path, want ] of cases ) {
+            const { w } = bootRedirected(
+                'https://tags.tiqcdn.com/utag/' + path + '/prod/utag.js');
+            assert.equal(w.utag.id, want, path);
+        }
+    });
+
     it('still publishes with no id anywhere', ( ) => {
         const { w } = boot({});
         assert.equal(w.utag.id, '');
