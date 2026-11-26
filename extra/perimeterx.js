@@ -58,8 +58,17 @@
 // block - that is not something this resource tries to defeat. It also
 // leaves existing cookies alone: _px3 is the server's own token, and
 // deleting it would invite a fresh challenge rather than prevent one.
-// One deliberate divergence: their off() reads this.channels[name] with no
-// guard, so an off() before any on() throws there. Here it is a no-op.
+// Three deliberate divergences, all of them in the page's favour:
+//   off()        theirs reads this.channels[name] with no guard, so an
+//                off() before any on() throws there. Here it is a no-op.
+//   trigger()    theirs calls a handler with no catch, so one handler that
+//                throws abandons the drain and strands the rest. Here each
+//                handler is called inside a catch, so the channel is drained
+//                and the order is kept whatever a handler does.
+//   window.PX    theirs sets it only where the page's declared app id is the
+//                one the script was built for. Here it is set whenever no
+//                client holds the name, because a page reading window.PX is
+//                better served by an object than by undefined.
 // The "///" line above is the resource header uBO reads, and a comment to
 // JavaScript. uBO drops these "//" lines when it parses.
 (function() {
@@ -75,20 +84,24 @@
         const match = IN_URL.exec(text);
         return match !== null ? match[1] : '';
     };
-    // The snippet sets window._pxAppId before the tag, so that is first.
-    // Where it does not, the request was redirected and not the element, so
-    // the script still carries the url it was going to fetch.
+    // Theirs carries its own app id as a build constant and compares that
+    // with the page's window._pxAppId. The request was redirected and not
+    // the element, so the element still carries the url it was going to
+    // fetch, and that url is the nearest thing to their constant: it is
+    // this script's own identity rather than the page's declaration about
+    // it. The page scan is last because it cannot tell one tenant's tag
+    // from another's.
     const identify = ( ) => {
-        try {
-            if ( typeof w._pxAppId === 'string' && SHAPE.test(w._pxAppId) ) {
-                return w._pxAppId;
-            }
-        } catch ( ex ) {
-        }
         try {
             const mine = doc.currentScript;
             const found = inUrl(mine !== null ? mine.src : '');
             if ( found !== '' ) { return found; }
+        } catch ( ex ) {
+        }
+        try {
+            if ( typeof w._pxAppId === 'string' && SHAPE.test(w._pxAppId) ) {
+                return w._pxAppId;
+            }
         } catch ( ex ) {
         }
         try {
@@ -160,20 +173,28 @@
         ClientUuid: '',
         setChallenge: noopfn,
     };
-    // A page element with id="PX..." is a named property of the window, so
-    // what is standing there may be a script tag rather than a client. Only
-    // a real one - an object carrying their Events - is left alone.
-    const standing = id !== '' ? w[id] : undefined;
-    const running = standing !== null && typeof standing === 'object' &&
-        standing !== undefined && standing.Events !== undefined &&
-        typeof standing.Events.on === 'function';
-    if ( running ) { return; }
+    // A page element with id="PX" or id="PX..." is a named property of the
+    // window, so what is standing on either name may be a tag rather than a
+    // client. Only a client - an object carrying their Events - is left
+    // alone, and the same test decides both names.
+    const claimed = value => {
+        if ( value === null || value === undefined ) { return false; }
+        if ( typeof value !== 'object' ) { return false; }
+        try {
+            return value.Events !== undefined &&
+                typeof value.Events.on === 'function';
+        } catch ( ex ) {
+        }
+        return false;
+    };
+    if ( id !== '' && claimed(w[id]) ) { return; }
+    if ( claimed(w.PX) ) { return; }
     try {
         if ( id !== '' ) { w[id] = px; }
     } catch ( ex ) {
     }
     try {
-        if ( w.PX === undefined || w.PX === null ) { w.PX = px; }
+        if ( claimed(w.PX) === false ) { w.PX = px; }
     } catch ( ex ) {
     }
     try {

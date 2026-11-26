@@ -159,6 +159,14 @@ describe('extra/perimeterx.js, the app id', ( ) => {
         assert.equal(w._pxAppId, undefined);
     });
 
+    it('takes the element url over a mismatched declaration', ( ) => {
+        const w = bootRedirected(CLIENT_URL, {
+            before: '<script>window._pxAppId = "PXZLuyHD0K";</script>',
+        });
+        assert.equal(typeof w[APP_ID], 'object');
+        assert.equal(w.PXZLuyHD0K, undefined);
+    });
+
     it('refuses a value that is not their shape', ( ) => {
         const w = boot({
             before: '<script>window._pxAppId = "not-an-app-id";</script>',
@@ -328,6 +336,20 @@ describe('extra/perimeterx.js, the emitter', ( ) => {
             [ 'first', 'once', 'last', 'first', 'last' ]);
     });
 
+    it('drains the channel when a handler throws', ( ) => {
+        const w = withEvents();
+        const order = [];
+        w.PX.Events.on('risk', ( ) => {
+            order.push('first');
+            throw new Error('handler');
+        });
+        w.PX.Events.on('risk', ( ) => { order.push('second'); });
+        w.PX.Events.trigger('risk');
+        w.PX.Events.trigger('risk');
+        assert.deepEqual([ ...order ],
+            [ 'first', 'second', 'first', 'second' ]);
+    });
+
     it('removes the handler off is given', ( ) => {
         const w = withEvents();
         let count = 0;
@@ -449,21 +471,46 @@ describe('extra/perimeterx.js, what is already there', ( ) => {
         assert.equal(w.PX, undefined);
     });
 
-    it('replaces a page element that took the name', ( ) => {
+    // The element has to exist before the resource runs, or the name is
+    // free when the resource looks and the guard is never reached.
+    const withElement = id => '<script>var el =' +
+        ' document.createElement("div"); el.id = "' + id + '";' +
+        ' document.documentElement.appendChild(el);</script>';
+
+    it('replaces a page element that took the app id', ( ) => {
         const w = boot({
-            before: '<script>window._pxAppId = "' + APP_ID + '";</script>',
-            body: '<div id="' + APP_ID + '">x</div>',
+            before: withElement(APP_ID) +
+                '<script>window._pxAppId = "' + APP_ID + '";</script>',
         });
-        assert.equal(typeof w[APP_ID], 'object');
+        assert.equal(typeof w[APP_ID].Events, 'object');
         assert.equal(w[APP_ID], w.PX);
     });
 
-    it('leaves a PX that is already an object alone', ( ) => {
+    it('replaces a page element that took the PX name', ( ) => {
+        const w = boot({
+            before: withElement('PX') +
+                '<script>window._pxAppId = "' + APP_ID + '";</script>',
+        });
+        assert.equal(typeof w.PX.Events, 'object');
+        assert.equal(w.PX, w[APP_ID]);
+    });
+
+    it('replaces a PX that is not a client, as theirs does', ( ) => {
         const w = boot({
             before: '<script>window._pxAppId = "' + APP_ID + '";' +
                 'window.PX = { mine: true };</script>',
         });
-        assert.equal(w.PX.mine, true);
-        assert.equal(w[APP_ID].mine, undefined);
+        assert.equal(w.PX.mine, undefined);
+        assert.equal(typeof w.PX.Events, 'object');
+    });
+
+    it('leaves a client standing on PX alone', ( ) => {
+        const w = boot({
+            before: '<script>window._pxAppId = "' + APP_ID + '";' +
+                'window.PX = { Events: { on: function() {} },' +
+                ' ClientUuid: "theirs" };</script>',
+        });
+        assert.equal(w.PX.ClientUuid, 'theirs');
+        assert.equal(w[APP_ID], undefined);
     });
 });
