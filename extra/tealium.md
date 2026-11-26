@@ -822,3 +822,35 @@ ml.com's own bundle builds that url and appends it, so this file arrives on
 some pages whether or not the loader does, which is the one route by which
 a tag-side file runs against this object at all. It touches nothing on
 `utag`.
+
+## What the clearing costs, and the one read that was free to lose
+
+Measured per boot, on a page with a store of its own:
+
+    page keys     key()   length   removeItem
+    0                 2        3            2
+    500             502        3            2
+    2000           2002        3            2
+
+`key()` is one call per key and that is what enumeration costs - the price
+of reaching a record whose name cannot be computed on a vanity path. The
+page's own keys are read by name only, never by value: `getItem` is never
+called, which is the line that matters, since reading values out of a store
+is what RDlocalStorage does on its way to a tag. Nothing of the page's is
+removed - 500 keys in, 500 keys out.
+
+`length` used to be 2006 of those reads at 2000 keys, because the walk
+asked the store for its length on every turn: `i < store_.length`. That
+length was already in hand as `was`, read once before the walk to count the
+delta afterwards, and nothing is removed until the walk finishes, so it
+cannot go stale. Using it drops the reads to three regardless of how big
+the store is - three rather than four because an empty sessionStorage
+short-circuits before the delta read.
+
+A mutation that truncates the walk to one key is killed, so the bound is
+under test rather than merely correct today.
+
+The rest of the per-boot cost is inherent and already documented: one
+cookie read, and names times domain forms writes to expire what is there,
+because an expiry has to name both and the jar does not say which domain
+form a cookie was set with.

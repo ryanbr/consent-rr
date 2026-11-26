@@ -137,7 +137,9 @@
             if ( was === 0 ) { continue; }
             const names = [];
             try {
-                for ( let i = 0; i < store_.length; i++ ) {
+                // was is that length, read once, and nothing is removed
+                // until this walk is done. See the .md.
+                for ( let i = 0; i < was; i++ ) {
                     const name = store_.key(i);
                     if ( typeof name === 'string' && mine(name) ) {
                         names.push(name);
