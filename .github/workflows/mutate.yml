@@ -55,7 +55,7 @@ jobs:
       # whether optimizely is still clean.
       fail-fast: false
       matrix:
-        resource: [ optimizely, perimeterx, tealium ]
+        resource: [ adobe-launch, optimizely, perimeterx, tealium ]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
