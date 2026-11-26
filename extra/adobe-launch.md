@@ -232,6 +232,20 @@ shape as the Alloy pre-hiding in tealium's `utag.sync.js`, described in
 `tealium.md`, and like that one it needs its own rule or scriptlet, not
 this.
 
+### Reading a consent manager is not deploying one
+
+The worst case above
+needs a sharper test than "is OneTrust mentioned". One property's
+components include a 251KB MetaRouter bundle, a customer data platform,
+whose settings are privacy: { consentProvider: "OneTrust", cookieName:
+"OptanonConsent", impliedConsent: true, defaultGroupsValue: true } That is
+MetaRouter *reading* OneTrust's state to decide what it may send. It does
+not load OneTrust, and no `otSDKStub`, `cdn.cookielaw` or `OptanonWrapper`
+appears anywhere in it. Replacing the runtime there removes MetaRouter and
+leaves the banner, which is the right way round. A property that injects
+the banner itself would carry the loader - the stub url or the host - and
+that is the string to search for, not the cookie name.
+
 ### The check
 
 The container is inside the `launch-*.min.js` file, so what a property
@@ -367,7 +381,7 @@ is the one the runtime that was read reports, 29.1.0.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the four runtimes and the eleven rule
+Every `_satellite` reference in the five runtimes and the eighteen rule
 components was counted and diffed against what this publishes. The union
 is exactly the 22 members here, plus one outlier: `_satellite.geVar`, a
 typo in one property's own custom code, which is undefined against their
@@ -475,13 +489,13 @@ at once.
 
 ## What is not done here
 
-**A thin corpus.** Four runtimes were read in full and eleven rule
-components across three properties - not the dozens of builds tealium and
-perimeterx were written against. All four runtimes are turbine 29.1.0 and
+**A thin corpus.** Five runtimes were read in full and eighteen rule
+components across five properties - not the dozens of builds tealium and
+perimeterx were written against. All five runtimes are turbine 29.1.0 and
 carry the same `_satellite` surface, checked by their own string literals
 rather than by minified variable names, so the api here is not guesswork;
 what a thin corpus cannot tell is how a property that looks unlike these
-four behaves.
+five behaves.
 
 **No `s_code` or `AppMeasurement`.** This replaces the tag manager, not
 the Analytics library it loads. A page that embeds AppMeasurement
