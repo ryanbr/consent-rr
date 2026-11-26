@@ -400,6 +400,37 @@
 // element's onload fires where a blocked one fires onerror or nothing. An
 // app that waits on either before starting playback gets what it waited
 // for.
+// ONE OF THE FOUR THIS DOES NOT FIX, which is worth knowing before the
+// claim above is read too widely. AdguardFilters issue 219435 is the ml.com
+// one: "The website just hangs. I can't even click the login portion to
+// login." Their page bundle was read for this, and it makes no call into
+// the api at all - no view, no link, no track, nothing on utag.cfg or
+// utag.data - so the failure this closes is not the failure they have.
+// What their page does have is a queue. It pushes customError,
+// manualLinkClick, rescanDOM, productview, impressions and the rest into
+// window.bactmQueue, and drains it on a bactm_libload event, gated on
+// window.bactm existing; one more handler, the footer feedback click, is
+// attached only if window.bactm.plugins.feedback.launch is a function.
+// window.bactm is built inside bofa's own extensions - it sits in their
+// loader at offset 264466 wrapped in the usual if(!utag_condload) guard,
+// and the loader dispatches bactm_libload from the same code - so it is
+// the extension pass that makes it, which is the pass this refuses. With
+// this resource that queue stays undrained and that handler stays
+// unattached, exactly as with a plain block.
+// So of those four entries, this plausibly replaces two: pluto.tv, whose
+// player waits on the request, and southparkstudios.com, whose click
+// handlers call utag.link. It does not replace ml.com, where nothing
+// touches the api and the page's wiring hangs off a facade their
+// extensions build. stepstone.de could not be read to say either way.
+// Their login is not gated on bactm anywhere in that bundle, so what hung
+// it is not established here and is not claimed. The only honest statement
+// is that this does not address it.
+// AND A WARNING THAT CAME OUT OF READING IT: do not widen the rule to the
+// host or to /utag/*. ml.com's config loads an Adobe Launch property from
+// tags.tiqcdn.com/utag/<hash>/<hash>/<hash>/hostedLibFiles/EP<hash>/,
+// which is the same path prefix and nothing to do with the loader. The
+// rule above names /utag/*/utag.js and leaves that alone, which is the
+// point of naming the file.
 // STORED, their visitor attributes, cleared by prefix rather than by name.
 //     The record is tealium_va, and a tenant's is tealium_va_<account>_
 //     <profile> beside it. Computing that second name needs the account,
