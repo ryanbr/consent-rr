@@ -60,10 +60,12 @@ jobs:
       - name: the suite passes unmutated
         run: node --test --test-timeout=30000 test/${{ matrix.resource }}.test.mjs
       # A hosted runner is slower than a laptop, and cutting a run short that
-      # was going to fail reads as a survivor. Both timeouts are raised well
-      # past what the sweep needs locally.
+      # was going to fail reads as a survivor, so both are well past what the
+      # sweep needs locally. The run timeout should never be reached now that
+      # the tool passes --test-force-exit: it is the net under a mutation that
+      # hangs a test rather than the process.
       - name: ${{ matrix.resource }}
         env:
           MUTATE_TEST_TIMEOUT: 30000
-          MUTATE_RUN_TIMEOUT: 180000
+          MUTATE_RUN_TIMEOUT: 120000
         run: npm run mutate -- ${{ matrix.resource }}

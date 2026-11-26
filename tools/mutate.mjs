@@ -26,10 +26,12 @@
 
     Two things to know about reading the suite's answer:
 
-      - A mutation that leaks a timer leaves node alive after the tests have
-        finished, so no summary tally is ever printed. The partial output still
-        carries the spec reporter's own mark for each test, so that is counted
-        when the tally is missing. A hang is not a survivor.
+      - A mutation that leaks a timer would leave node alive after the tests
+        have finished, so --test-force-exit is passed and the suite's own
+        tally is always printed. The reading of a partial output is kept as a
+        safety net, because it is the thing that was wrong first: it counted
+        TAP's `not ok` while the spec reporter writes its own mark, and
+        reported four kills as gaps. A hang is not a survivor.
 
       - The resource is edited in place and restored afterwards, including on
         ctrl-c and on an exception. Nothing else should be writing to it while
@@ -103,7 +105,13 @@ const failuresIn = (stdout, hung) => {
 
 const runSuite = test => new Promise(resolve => {
     const child = spawn(process.execPath, [
-        '--test', '--test-timeout=' + TEST_TIMEOUT, test,
+        // --test-force-exit is what keeps a sweep to its arithmetic. Several
+        // mutations leak an interval, and without it node stays alive after
+        // the suite has finished and the run is only ended by the timeout
+        // below - eight of optimizely's 144 did that, which cost more wall
+        // clock than the other 136 together.
+        '--test', '--test-force-exit',
+        '--test-timeout=' + TEST_TIMEOUT, test,
     ], { cwd: root, stdio: [ 'ignore', 'pipe', 'pipe' ] });
     let stdout = '';
     let hung = false;
