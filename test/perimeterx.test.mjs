@@ -594,6 +594,52 @@ describe('extra/perimeterx.js, the challenge path', ( ) => {
         });
 });
 
+describe('extra/perimeterx.js, what a page cannot make it do', ( ) => {
+    it('pollutes no prototype through a channel name', ( ) => {
+        const w = boot({
+            before: '<script>window._pxAppId = "' + APP_ID + '";</script>',
+        });
+        const before = Object.getOwnPropertyNames(w.Object.prototype).sort();
+        // Their subscribe reads channels[name] before assigning, so a
+        // prototype name throws there as it does here. What matters is that
+        // nothing reaches Object.prototype on the way.
+        for ( const name of [ '__proto__', 'constructor', 'toString' ] ) {
+            try { w.PX.Events.on(name, ( ) => {}); } catch ( ex ) { }
+            try { w.PX.Events.trigger(name); } catch ( ex ) { }
+            try { w.PX.Events.off(name, ( ) => {}); } catch ( ex ) { }
+        }
+        assert.deepEqual(
+            Object.getOwnPropertyNames(w.Object.prototype).sort(), before);
+        assert.equal(typeof w.Object.prototype.push, 'undefined');
+        assert.equal(w.Object.prototype.polluted, undefined);
+    });
+
+    it('publishes no name a url segment is not their shape for', ( ) => {
+        const w = bootRedirected(
+            'https://client.px-cloud.net/PXnot_valid__/main.min.js');
+        assert.equal(w.PXnot_valid__, undefined);
+        assert.equal(w._pxAppId, undefined);
+        // The name is refused, not the object: a page reading PX still
+        // finds one.
+        assert.equal(typeof w.PX, 'object');
+    });
+
+    it('writes nothing but PX and the app id onto the window', async ( ) => {
+        const before = [];
+        const w = boot({
+            before: '<script>window._pxAppId = "' + APP_ID + '";' +
+                'window.__names = Object.getOwnPropertyNames(window);' +
+                '</script>',
+        });
+        await settle(60);
+        for ( const name of w.__names ) { before.push(name); }
+        const added = Object.getOwnPropertyNames(w)
+            .filter(name => before.includes(name) === false)
+            .filter(name => name !== '__names');
+        assert.deepEqual(added.sort(), [ 'PX', APP_ID ]);
+    });
+});
+
 describe('extra/perimeterx.js, what is already there', ( ) => {
     it('leaves a running client alone', ( ) => {
         const w = boot({
