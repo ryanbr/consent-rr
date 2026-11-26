@@ -6,13 +6,23 @@
 // The rule it answers:
 //   ||client.px-cloud.net/*/main.min.js$script,redirect=perimeterx.js
 // And the same client from a site's own host, which is how a first-party
-// deployment serves it. The path is the app id with the PX taken off, and
-// the file is init.js, so a tenant on PXZLuyHD0K reads:
-//   ||example.com/ZLuyHD0K/init.js$script,redirect=perimeterx.js
+// deployment serves it. The path is the app id with the PX taken off and
+// the file is init.js, confirmed in the field on
+// www.dormtherapy.com/jAYekY18/init.js - 242kB, answered with an x-px-hash
+// header, and carrying PXjAYekY18 as its own app id, which is jAYekY18
+// with the PX put back:
+//   ||www.dormtherapy.com/jAYekY18/init.js$script,redirect=perimeterx.js
 // There is no generic form of that rule worth writing - /<eight
-// characters>/init.js would match a great deal that is not theirs - so it
-// is one line per host. The app id is recovered from either shape, so the
-// resource needs nothing else to work there.
+// characters>/init.js would match a great deal that is not theirs, and a
+// redirect that misfires replaces somebody's real script - so it is one
+// line per host. The app id is recovered from either shape, so the
+// resource itself needs nothing per host.
+// That deployment proxies their collector as well, which the same build
+// names: [ "/jAYekY18/xhr", "https://collector-PXjAYekY18.px-cloud.net" ].
+// Leave both alone. The first is on the site's own host and blocking a
+// path there is a good way to break something else, the second is per
+// tenant rather than the collector-a seen in error reporting, and with the
+// client replaced nothing on the page calls either one.
 // Do not block their collector or challenge hosts alongside it. With the
 // client replaced nothing on the page calls collector-a.px-cloud.net, so
 // blocking it buys nothing, and captcha.px-cloud.net - with

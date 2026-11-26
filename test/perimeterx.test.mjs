@@ -246,6 +246,33 @@ describe('extra/perimeterx.js, a first-party deployment', ( ) => {
         return win;
     };
 
+    // A real deployment, checked against the file it serves: 242kB of
+    // their client, carrying PXjAYekY18 as its own app id, which is the
+    // path segment with the PX put back.
+    it('recovers the id a real first-party host serves', ( ) => {
+        const dom = new JSDOM(
+            '<!DOCTYPE html><html><head><script src=' +
+            '"https://www.dormtherapy.com/jAYekY18/init.js"></script>' +
+            '</head><body></body></html>',
+            {
+                runScripts: 'dangerously',
+                url: 'https://www.dormtherapy.com/',
+                virtualConsole: new VirtualConsole(),
+            }
+        );
+        const win = dom.window;
+        const el = win.document.querySelector('script[src]');
+        new win.Function('el', [
+            "Object.defineProperty(document, 'currentScript',",
+            '{ value: el, configurable: true });',
+            code,
+        ].join(''))(el);
+        assert.equal(win._pxAppId, 'PXjAYekY18');
+        assert.equal(win.PXjAYekY18, win.PX);
+        assert.deepEqual(Object.keys(win.PX).sort(),
+            [ 'ClientUuid', 'Events', 'setChallenge' ]);
+    });
+
     it('puts the PX back on a stripped first-party path', ( ) => {
         const w = bootPath('/ZLuyHD0K/init.js');
         assert.equal(typeof w.PXZLuyHD0K, 'object');
