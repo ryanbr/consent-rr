@@ -19,6 +19,7 @@ strings and function bodies in this document are theirs.
 - [What this is, and the rule](#what-this-is-and-the-rule)
 - [Why the runtime and not the RC files](#why-the-runtime-and-not-the-rc-files)
 - [What a page keeps, and what it loses](#what-a-page-keeps-and-what-it-loses)
+- [The hosted library files stop too](#the-hosted-library-files-stop-too)
 - [What it breaks, and the check before shipping a rule](#what-it-breaks-and-the-check-before-shipping-a-rule)
 - [What it publishes, and where each member came from](#what-it-publishes-and-where-each-member-came-from)
 - [The census, which is how the list above was closed](#the-census-which-is-how-the-list-above-was-closed)
@@ -136,6 +137,40 @@ Two details worth keeping: `__registerScript` keys the registry by
 by its first argument - the argument is only a regex fallback for finding
 the element. And the registry is checked before loading, so an RC file
 already in the page is never fetched twice.
+
+### The hosted library files stop too
+
+Two more url shapes turn up on the
+same host and look like separate things to block:
+
+```
+assets.adobedtm.com/extensions/EP<id>/AppMeasurement.min.js
+assets.adobedtm.com/extensions/EP<id>/AppMeasurement_Module_ActivityMap.min.js
+```
+
+The first is stock Adobe Analytics 2.27.0, installing `AppMeasurement`,
+`s_gi`, `s_c_il`, `window.s` and `s_objectID`; the second is its
+ActivityMap click-tracking module. They are *managed library files*,
+fetched by the Analytics extension inside the runtime, and their own
+source names them:
+
+```
+adobe-analytics/src/lib/helpers/settingsHelper.js
+  LIB_TYPES: { MANAGED, PREINSTALLED, REMOTE, CUSTOM }
+  MANAGED_LIB_PATHS: {
+      APP_MEASUREMENT:     "AppMeasurement.js",
+      ACTIVITY_MAP:        "AppMeasurement_Module_ActivityMap.js",
+      AUDIENCE_MANAGEMENT: "AppMeasurement_Module_AudienceManagement.js" }
+
+extensions: { core: { hostedLibFilesBaseUrl:
+      "https://assets.adobedtm.com/extensions/EP<id>/" } }
+```
+
+So a replaced runtime asks for these as well, and they need no rule of
+their own - the same argument as the rule components. The exception is the
+`PREINSTALLED` type, where the property uses an AppMeasurement the page
+installed itself: that copy is embedded by the page, usually from its own
+host, and nothing here touches it.
 
 ## What a page keeps, and what it loses
 
@@ -391,7 +426,7 @@ is the one the runtime that was read reports, 29.1.0.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the five runtimes and the eighteen rule
+Every `_satellite` reference in the five runtimes and the twenty rule
 components was counted and diffed against what this publishes. The union
 is exactly the 22 members here, plus one outlier: `_satellite.geVar`, a
 typo in one property's own custom code, which is undefined against their
@@ -499,20 +534,24 @@ at once.
 
 ## What is not done here
 
-**A thin corpus.** Five runtimes were read in full and eighteen rule
-components across five properties - not the dozens of builds tealium and
+**A thin corpus.** Five runtimes were read in full and twenty rule
+components across six properties - not the dozens of builds tealium and
 perimeterx were written against. All five runtimes are turbine 29.1.0 and
 carry the same `_satellite` surface, checked by their own string literals
 rather than by minified variable names, so the api here is not guesswork;
 what a thin corpus cannot tell is how a property that looks unlike these
 five behaves.
 
-**No `s_code` or `AppMeasurement`.** This replaces the tag manager, not
-the Analytics library it loads. A page that embeds AppMeasurement
-directly, without Launch, is not touched by this rule.
+**No `s_code` or `AppMeasurement` stub.** This replaces the tag manager,
+not the Analytics library it fetches - and when the runtime is replaced
+that library is never fetched, so there is nothing to stub. What is not
+covered is a page that embeds AppMeasurement itself, their `PREINSTALLED`
+library type: those `window.s` calls would meet a blocked script rather
+than this. That is a second resource, not a rule here.
 
-**No first-party deployment.** Launch can be served from a site's own host
-("hosted library files"), as ally.com appears to do - the embed is not on
+**No first-party deployment.** Launch can be served from a site's own
+host - self-hosted, which is not what Adobe's own "hosted library files"
+means - as ally.com appears to do, where the embed is not on
 `assets.adobedtm.com` at all there. There is no generic rule for that, the
 same problem the perimeterx notes describe, and it needs a per-site rule
 written against a url somebody has seen.
