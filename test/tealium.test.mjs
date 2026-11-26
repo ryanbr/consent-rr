@@ -498,10 +498,15 @@ describe('extra/tealium.js, the consent api where a tenant has one', ( ) => {
     it('answers the rest in the shapes their enforcement reads', ( ) => {
         const { w } = boot({});
         assert.equal(typeof w.utag.gdpr.getCookieValues(), 'object');
-        // opt-in and not none: none reads as nothing being gated, which
-        // a page could take as permission to track without them.
-        assert.equal(w.utag.gdpr.getEnforcementMode(), 'opt-in');
-        assert.notEqual(w.utag.gdpr.getEnforcementMode(), 'none');
+        // none and not opt-in: opt-in with nothing consented is what
+        // keeps an embed hidden and a page's own banner coming back.
+        assert.equal(w.utag.gdpr.getEnforcementMode(), 'none');
+        // And none still does not claim a consent, which is the half that
+        // would have the page load a tracker itself.
+        assert.equal(w.utag.gdpr.getConsentState(), 0);
+        assert.deepEqual([ ...w.utag.gdpr.getSelectedCategories() ], []);
+        assert.equal(w.utag.gdpr.shouldTagFire(), false);
+        assert.equal(w.utag.gdpr.shouldBlockTag(), true);
         assert.equal(w.utag.gdpr.consent_prompt.isEnabled, false);
         assert.equal(w.utag.gdpr.preferences_prompt.isEnabled, false);
         assert.equal(w.utag.gdpr.applyConsentState(), undefined);

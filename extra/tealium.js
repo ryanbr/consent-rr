@@ -91,8 +91,9 @@
 // their applyConsentState tests with parseInt(cs)!==1;
 // getSelectedCategories() an array, and an empty one, which their code
 // unshifts always_on onto; getCookieValues() an object; getEnforcementMode
-// a string; the two prompts objects carrying isEnabled false, since there
-// is no prompt to enable with no tag to run it.
+// a string, and none rather than opt-in: see the note at the member for
+// what that trades. The two prompts carry isEnabled false, since there is
+// no prompt to enable with no tag to run it.
 // Three of the eleven - hsbc, tsb and barclaysuk, with 223, 232 and 243
 // references to it where the other three with a manager have 41 - carry
 // the whole of it, setters and prompts included, and those are the
@@ -421,27 +422,31 @@
         getSelectedCategories: ( ) => [],
         getCategories: ( ) => [],
         getCookieValues: ( ) => ({}),
-        // opt-in rather than none, and that is a decision. Their own
-        // enforcement returns early on none - if (enforcementMode ===
-        // 'none') return - so none reads as nothing being gated, and a
-        // page that asks in order to decide whether to run its own
-        // tracking would take that as permission to go ahead without
-        // them. opt-in says tags are gated, which here is true in the
-        // strongest sense: none of them is going to run at all.
-        // The downside is worth knowing. opt-in with nothing consented and
-        // setters that drop is a page's cue to ask, and on the three
-        // tenants read with the whole manager the record lives in a
-        // CONSENTMGR cookie that nothing here writes - barclaysuk refers
-        // to it nineteen times, tsb reads it back as cp.CONSENTMGR - so a
-        // tenant whose own page code draws the banner can draw it again on
-        // every load. Theirs cannot: their prompt arrives with the consent
-        // manager tag, which is one of the ones this stops. If a site does
-        // re-prompt, the answer is to record a refusal in CONSENTMGR
-        // rather than to answer none here, and that waits on reading their
-        // format properly - the value is a timestamped entry list, and a
-        // wrong one risks their enforcement reading it as consent given,
-        // which is worse than being asked twice.
-        getEnforcementMode: ( ) => 'opt-in',
+        // none, and that is a decision taken for the page rather than
+        // against it. Their own enforcement returns early on it -
+        // if (enforcementMode === 'none') return - so none reads as
+        // nothing being gated, which is what page logic usually treats as
+        // no consent being needed.
+        // opt-in was the other answer, and it says the stronger thing:
+        // tags are gated, which here is true in the strongest sense since
+        // none of them will run at all. It breaks two page shapes though,
+        // and both are common. A page that withholds an embed until
+        // marketing consent sees enforcement on with getConsentState() 0,
+        // reads it as a visitor who has not consented, and keeps the embed
+        // hidden. And a page that draws its own banner keeps drawing it,
+        // because the setters here drop and the record their manager keeps
+        // in a CONSENTMGR cookie - barclaysuk refers to it nineteen times,
+        // tsb reads it back as cp.CONSENTMGR - is never written. Theirs
+        // cannot re-prompt, since their prompt arrives with the consent
+        // manager tag this stops, but a tenant's own code can.
+        // What none does NOT do is claim a consent. getConsentState stays
+        // 0, the categories stay empty, and the tag filters still refuse,
+        // because the shape that actually costs a visitor something is
+        // if (getConsentState() === 1) { inject vendor } - a page told yes
+        // goes and loads the tracker itself, which is worse than an embed
+        // that stays hidden. If a site gates content on that value rather
+        // than on the mode, lift the rule for it.
+        getEnforcementMode: ( ) => 'none',
         getLanguage: ( ) => '',
         applyConsentState: noopfn,
         promptEnabledSetting: noopfn,
