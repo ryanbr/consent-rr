@@ -193,10 +193,12 @@ describe('extra/tealium.js, the callback a page waits on', ( ) => {
         assert.deepEqual([ ...w.order ], [ 'cb', 'after' ]);
     });
 
-    it('takes a call with no callback at all', ( ) => {
+    // Theirs ends on return true, and view and link return whatever
+    // track returned, so a page testing the return reads the same thing.
+    it('takes a call with no callback, and returns what theirs does', ( ) => {
         const { w } = boot({
-            after: '<script>window.fine = utag.link({ a: 1 }) === false &&' +
-                ' utag.view() === false && utag.track("link") === false;' +
+            after: '<script>window.fine = utag.link({ a: 1 }) === true &&' +
+                ' utag.view() === true && utag.track("link") === true;' +
                 '</script>',
         });
         assert.equal(w.fine, true);
@@ -342,10 +344,35 @@ describe('extra/tealium.js, what it refuses', ( ) => {
             });
             await settle();
             assert.equal(typeof w.utag, 'object');
-            assert.deepEqual([ ...touched ], []);
+            // Removing their visitor attributes is the only thing it does
+            // to a store. It reads nothing out of one, which is the whole
+            // point: RDlocalStorage walks every key into the data layer.
+            assert.deepEqual([ ...new Set(touched) ], [ 'removeItem' ]);
+            assert.equal(touched.includes('getItem'), false);
+            assert.equal(touched.includes('setItem'), false);
+            assert.equal(touched.includes('key'), false);
             assert.equal(w.localStorage.getItem('mine'), 'kept');
             assert.equal(w.sessionStorage.getItem('also'), 'kept');
         });
+
+    it('removes their visitor attributes, by both names', async ( ) => {
+        const { w, lines } = bootRedirected(LOADER_URL, {});
+        void lines;
+        assert.equal(w.utag.id, ID);
+        const seeded = boot({
+            before: '<script src="' + LOADER_URL + '"></script>' +
+                '<script>localStorage.setItem("tealium_va", "{}");' +
+                'localStorage.setItem("tealium_va_elsgroup_actuel-rh", "x");' +
+                'localStorage.setItem("mine", "kept");</script>',
+        });
+        await settle();
+        assert.equal(seeded.w.localStorage.getItem('tealium_va'), null);
+        assert.equal(
+            seeded.w.localStorage.getItem('tealium_va_elsgroup_actuel-rh'),
+            null);
+        assert.equal(seeded.w.localStorage.getItem('mine'), 'kept');
+        assert.match(seeded.lines[0], / storage=2 /);
+    });
 
     it('adds no listener of its own', async ( ) => {
         const seen = [];
@@ -430,7 +457,11 @@ describe('extra/tealium.js, the cookie it clears', ( ) => {
         ]);
     });
 
-    it('publishes even where the jar refuses', async ( ) => {
+    // An opaque origin - a sandboxed frame, a data: document - throws on
+    // the jar and on both stores. Clearing is a bonus there, not a
+    // precondition: the object still has to be published, or this is
+    // worse than the block it replaces.
+    it('publishes even where the jar and the stores refuse', async ( ) => {
         const { w } = boot({
             beforeParse(win) {
                 Object.defineProperty(win.document, 'cookie', {
@@ -438,11 +469,18 @@ describe('extra/tealium.js, the cookie it clears', ( ) => {
                     get() { throw new Error('SecurityError'); },
                     set() { throw new Error('SecurityError'); },
                 });
+                for ( const store of [ 'localStorage', 'sessionStorage' ] ) {
+                    Object.defineProperty(win, store, {
+                        configurable: true,
+                        get() { throw new Error('SecurityError'); },
+                    });
+                }
             },
         });
         await settle();
         assert.equal(typeof w.utag, 'object');
         assert.equal(typeof w.utag.track, 'function');
+        assert.equal(w.utag.ut.vi(), '');
     });
 });
 

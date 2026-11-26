@@ -56,7 +56,11 @@
 // WHAT IT CLEARS: utag_main, on the host and every parent suffix of two
 // labels or more, and only where it is in the jar - their visitor id is
 // inside it, and replacing the loader stops a new one being written
-// without taking away the one already there.
+// without taking away the one already there. With it, their visitor
+// attributes: RDva reads them back as readAttr(o, "tealium_va") and
+// readAttr(o, "tealium_va_" + account + "_" + profile), so both names go
+// from storage, which is why the url's two halves are kept apart and not
+// only joined into their id.
 // The rule it answers:
 //   ||tags.tiqcdn.com/utag/*/utag.js$script,redirect=tealium.js
 // A tag file is a separate request that nothing makes once the loader is
@@ -77,10 +81,17 @@
     const IN_URL =
         /\/utag\/([\w.-]{1,40})\/([\w.-]{1,40})\/[\w.-]{1,24}\/utag[\w.]*\.js/;
     const noopfn = ( ) => { };
+    // Both halves are kept, not only the dotted id: their own visitor
+    // attribute store is keyed tealium_va_<account>_<profile>.
+    let account = '';
+    let profile = '';
     const idFrom = text => {
         if ( typeof text !== 'string' ) { return ''; }
         const match = IN_URL.exec(text);
-        return match !== null ? match[1] + '.' + match[2] : '';
+        if ( match === null ) { return ''; }
+        account = match[1];
+        profile = match[2];
+        return account + '.' + profile;
     };
     let from = 'none';
     const identify = ( ) => {
@@ -105,6 +116,19 @@
     // back as o["cp.utag_main_v_id"] and handed to the data layer as
     // tealium_visitor_id. ses_id and _sn ride along in the same cookie.
     const COOKIE = 'utag_main';
+    // Their visitor attributes, read back by RDva as
+    // readAttr(o, "tealium_va") and
+    // readAttr(o, "tealium_va_" + o["ut.account"] + "_" + o["ut.profile"]).
+    // Replacing the loader stops new ones arriving and leaves whatever is
+    // already there, so both names go - localStorage is the one they read,
+    // and the other store costs a call to be sure.
+    const stored = ( ) => {
+        const out = [ 'tealium_va' ];
+        if ( account !== '' && profile !== '' ) {
+            out.push('tealium_va_' + account + '_' + profile);
+        }
+        return out;
+    };
     const suffixes = ( ) => {
         const out = [ '' ];
         let host = '';
@@ -122,7 +146,25 @@
     // expire at any suffix either, since a cookie set on a parent domain
     // is in document.cookie as well.
     const forget = ( ) => {
-        const done = { cleared: 0 };
+        const done = { cleared: 0, storage: 0 };
+        const names = stored();
+        for ( const store of [ 'localStorage', 'sessionStorage' ] ) {
+            let store_;
+            try { store_ = w[store]; } catch ( ex ) { continue; }
+            if ( store_ === null || store_ === undefined ) { continue; }
+            // Counted by what the store lost rather than by what was asked
+            // of it: removing a key that was never there is a no-op, and a
+            // count of the asking would say two on an untouched store. The
+            // length of a store is a count and not a read of anything in
+            // it.
+            let was = 0;
+            try { was = store_.length; } catch ( ex ) { }
+            for ( const name of names ) {
+                try { store_.removeItem(name); } catch ( ex ) { }
+            }
+            try { done.storage += Math.max(0, was - store_.length); }
+            catch ( ex ) { }
+        }
         let held = '';
         try { held = String(doc.cookie || ''); } catch ( ex ) { return done; }
         if ( held.indexOf(COOKIE + '=') !== 0 &&
@@ -166,7 +208,9 @@
             }
         } catch ( ex ) {
         }
-        return false;
+        // Theirs ends on return true, and a page that tests the return of
+        // a link call should read the same thing here.
+        return true;
     };
     // Their utilities, as far as they are pure. vi mints a visitor id, so
     // it answers the empty string; flatten and loader are theirs to use on
@@ -298,6 +342,7 @@
                 ' from=' + from +
                 ' took=' + took +
                 ' cleared=' + taken.cleared +
+                ' storage=' + taken.storage +
                 (where !== '' ? ' on ' + where : '')
             );
         } catch ( ex ) {
