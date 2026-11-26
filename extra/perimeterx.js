@@ -169,7 +169,11 @@
 // the cookie on the host and every parent suffix of two labels or more,
 // and from the localStorage and sessionStorage mirrors - _pxvid, pxvid and
 // _pxmvid - plus the legacy sessionStorage.pxsid. Their token is left
-// alone, as above.
+// alone, as above, and while one of _px3, _px2 or _px is still in the jar
+// the clearing waits: a visitor holding a token reads as a returning one,
+// and taking the id away underneath that leaves two halves disagreeing,
+// which earns a challenge rather than avoiding one. Nothing refreshes
+// their token once the client is replaced, so the wait ends by itself.
 // What it will not do: no token is forged, no vid or uuid is minted, and
 // no sensor data is synthesised. PerimeterX enforces server side, and a
 // site whose enforcer wants a fresh client token will still challenge or
@@ -278,6 +282,9 @@
     // storage only has keys removed - so this adds no read of either.
     const IDS = [ '_pxvid', 'pxvid', '_pxmvid' ];
     const SESSION_IDS = [ 'pxsid' ];
+    // Their token names, which are the server's own and are never
+    // cleared - and which also say whether a session is live.
+    const TOKENS = [ '_px3', '_px2', '_px' ];
     const suffixes = ( ) => {
         const out = [ '' ];
         let host = '';
@@ -290,7 +297,24 @@
         }
         return out;
     };
+    // A visitor holding one of their tokens reads as a returning one. Take
+    // the visitor id away underneath that and the two halves disagree,
+    // which is the shape that earns a challenge rather than avoids one, so
+    // the clearing waits for the session to lapse: no token, nothing to
+    // disagree with. Their token is not refreshed with the client replaced,
+    // so the wait ends on its own.
+    const live = ( ) => {
+        let held = '';
+        try { held = String(doc.cookie || ''); } catch ( ex ) { return false; }
+        if ( held === '' ) { return false; }
+        for ( const name of TOKENS ) {
+            if ( held.indexOf(name + '=') === 0 ) { return true; }
+            if ( held.indexOf('; ' + name + '=') !== -1 ) { return true; }
+        }
+        return false;
+    };
     const forget = ( ) => {
+        if ( live() ) { return; }
         const where = suffixes();
         for ( const name of IDS ) {
             for ( const domain of where ) {

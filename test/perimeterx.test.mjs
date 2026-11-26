@@ -825,7 +825,13 @@ describe('extra/perimeterx.js, the sensors it never reads', ( ) => {
     // storage key, so those two are the whole expected footprint. Reading
     // either one is not: a cookie is expired by writing, never by reading,
     // and storage is only ever removed from.
-    const EXPECTED = [ 'document.cookie set', 'Storage.removeItem' ];
+    // The clearing writes an expiry and removes a storage key, and reads
+    // the cookie once to see whether one of their tokens is still in the
+    // jar - it waits for the session to lapse rather than clearing
+    // underneath it. Those three are the whole expected footprint.
+    const EXPECTED = [
+        'document.cookie get', 'document.cookie set', 'Storage.removeItem',
+    ];
 
     it('touches no sensor, and reads neither cookie nor storage',
         async ( ) => {
@@ -842,7 +848,6 @@ describe('extra/perimeterx.js, the sensors it never reads', ( ) => {
             const unexpected = [ ...touched ]
                 .filter(name => EXPECTED.includes(name) === false);
             assert.deepEqual(unexpected, []);
-            assert.equal(touched.includes('document.cookie get'), false);
             assert.equal(touched.includes('Storage.getItem'), false);
             assert.equal(touched.includes('Storage.setItem'), false);
             // And the expected two did happen, so this is not a probe
@@ -888,16 +893,52 @@ describe('extra/perimeterx.js, the identifiers it clears', ( ) => {
 
     it('leaves their token where it is', async ( ) => {
         const w = bootWith([ '_px3=token-3', '_px2=token-2',
-            '_px=legacy', '_pxvid=vid-1' ]);
+            '_px=legacy' ]);
         await settle();
         const held = w.document.cookie;
         assert.equal(held.includes('_px3=token-3'), true);
         assert.equal(held.includes('_px2=token-2'), true);
         assert.equal(held.includes('_px=legacy'), true);
-        assert.equal(held.includes('_pxvid'), false);
     });
 
-    it('removes the storage mirrors beside them', async ( ) => {
+    // A token means the server already reads this visitor as a returning
+    // one. Taking the id away underneath that leaves the two halves
+    // disagreeing, which earns a challenge rather than avoiding one.
+    it('waits while one of their tokens is live', async ( ) => {
+        for ( const token of [ '_px3=t', '_px2=t', '_px=t' ] ) {
+            const w = bootWith([ token, '_pxvid=vid-1' ]);
+            await settle();
+            assert.equal(w.document.cookie.includes('_pxvid=vid-1'), true,
+                token);
+        }
+    });
+
+    // With the session guard in place, a token can no longer be cleared
+    // whatever the list says - forget() does not run while one is live, so
+    // adding a token name to IDS changes nothing observable. The list is
+    // pinned directly instead, so a later edit has to be deliberate.
+    it('clears exactly their three visitor ids and no token', ( ) => {
+        assert.match(code,
+            /const IDS = \[ '_pxvid', 'pxvid', '_pxmvid' \];/);
+        assert.match(code,
+            /const TOKENS = \[ '_px3', '_px2', '_px' \];/);
+    });
+
+    it('clears once their token has lapsed', async ( ) => {
+        const w = bootWith([ 'session=abc', '_pxvid=vid-1' ]);
+        await settle();
+        assert.equal(w.document.cookie.includes('_pxvid'), false);
+        assert.equal(w.document.cookie.includes('session=abc'), true);
+    });
+
+    it('is not fooled by a cookie that merely ends in their name',
+        async ( ) => {
+            const w = bootWith([ 'not_px3=t', '_pxvid=vid-1' ]);
+            await settle();
+            assert.equal(w.document.cookie.includes('_pxvid'), false);
+        });
+
+    it('removes the storage mirrors beside them, with no token', async ( ) => {
         const w = boot({
             before: '<script>localStorage.setItem("_pxvid", "mirror");' +
                 'localStorage.setItem("_pxmvid", "mirror");' +
