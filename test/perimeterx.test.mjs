@@ -165,6 +165,9 @@ describe('extra/perimeterx.js, the app id', ( ) => {
         });
         assert.equal(typeof w[APP_ID], 'object');
         assert.equal(w.PXZLuyHD0K, undefined);
+        // Theirs never writes _pxAppId at all, so the page's own value
+        // stands whether or not it is the one this script came from.
+        assert.equal(w._pxAppId, 'PXZLuyHD0K');
     });
 
     it('refuses a value that is not their shape', ( ) => {
@@ -458,6 +461,121 @@ describe('extra/perimeterx.js, what it refuses', ( ) => {
         // The one pass that waits for the document, and nothing sensory.
         assert.deepEqual([ ...seen ], [ 'DOMContentLoaded' ]);
     });
+});
+
+// Their enforcement is server side, and the challenge it serves has to
+// keep working: a block page is their own html, the captcha script is
+// fetched from their own host, and a genuine client may still arrive after
+// this resource has published. Each of these pins a way a later edit could
+// quietly stand in the way of that.
+describe('extra/perimeterx.js, the challenge path', ( ) => {
+    const CAPTCHA = 'https://captcha.px-cloud.net/' + APP_ID + '/captcha.js';
+    const ALT_CAPTCHA = 'https://captcha.px-cdn.net/' + APP_ID +
+        '/captcha.js';
+
+    it('leaves a captcha tag on the page untouched', async ( ) => {
+        // Both tags before the resource, so they are there to be touched
+        // at the moment it runs.
+        const w = boot({
+            before: '<script src="' + CAPTCHA + '"></script>' +
+                '<script src="' + ALT_CAPTCHA + '"></script>' +
+                '<script>window._pxAppId = "' + APP_ID + '";</script>',
+        });
+        await settle();
+        const tags = [ ...w.document.querySelectorAll('script[src]') ]
+            .map(tag => tag.getAttribute('src'))
+            .filter(src => src.includes('captcha'));
+        assert.deepEqual(tags, [ CAPTCHA, ALT_CAPTCHA ]);
+    });
+
+    // The shape their client writes into a block page, which is also the
+    // shape a block script reads back out of one.
+    const BLOCK = {
+        _pxModal: true,
+        _pxBlockedUrl: 'https://example.com/page',
+        _pxVid: '12345678-1234-1234-1234-123456789012',
+        _pxUuid: '87654321-4321-4321-4321-210987654321',
+        _pxAppId: APP_ID,
+        _pxHostUrl: 'https://collector-' + APP_ID + '.px-cloud.net',
+        _pxJsClientSrc: 'https://client.px-cloud.net/' + APP_ID +
+            '/main.min.js',
+        _pxFirstPartyEnabled: false,
+    };
+
+    const bootBlockPage = ( ) => {
+        const lines = Object.keys(BLOCK).map(
+            key => 'window.' + key + ' = ' + JSON.stringify(BLOCK[key]) + ';'
+        ).join('');
+        return boot({ before: '<script>' + lines + '</script>' });
+    };
+
+    it('leaves every global a block page set exactly as it was', async ( ) => {
+        const w = bootBlockPage();
+        await settle();
+        const seen = {};
+        for ( const key of Object.keys(BLOCK) ) { seen[key] = w[key]; }
+        assert.deepEqual(seen, BLOCK);
+    });
+
+    it('adds no message listener, so their postMessage is its own',
+        async ( ) => {
+            const seen = [];
+            const w = boot({
+                before: '<script>window._pxAppId = "' + APP_ID +
+                    '";</script>',
+                beforeParse(win) {
+                    const real = win.addEventListener.bind(win);
+                    win.addEventListener = (name, ...rest) => {
+                        seen.push(String(name));
+                        return real(name, ...rest);
+                    };
+                },
+            });
+            await settle();
+            assert.equal(typeof w.PX, 'object');
+            assert.equal(seen.includes('message'), false);
+        });
+
+    it('leaves sendBeacon as the browser left it', async ( ) => {
+        let real;
+        const w = boot({
+            before: '<script>window._pxAppId = "' + APP_ID + '";</script>',
+            beforeParse(win) { real = win.navigator.sendBeacon; },
+        });
+        await settle();
+        assert.equal(w.navigator.sendBeacon, real);
+    });
+
+    // Theirs publishes with a plain assignment and overwrites whatever is
+    // on the name. A client that arrives later - from a first-party path no
+    // rule covers, or a block script loading it - has to be able to do the
+    // same over this one.
+    it('lets a client that arrives later take the names', ( ) => {
+        const w = boot({
+            before: '<script>window._pxAppId = "' + APP_ID + '";</script>',
+        });
+        for ( const name of [ 'PX', APP_ID ] ) {
+            const held = Object.getOwnPropertyDescriptor(w, name);
+            assert.equal(held.writable, true, name + ' writable');
+            assert.equal(held.configurable, true, name + ' configurable');
+        }
+        const real = { Events: { on: ( ) => {} }, ClientUuid: 'real' };
+        w.PX = real;
+        w[APP_ID] = real;
+        assert.equal(w.PX, real);
+        assert.equal(w[APP_ID], real);
+    });
+
+    it('takes a challenge solution at any time without throwing',
+        async ( ) => {
+            const w = bootBlockPage();
+            assert.equal(w.PX.setChallenge('before'), undefined);
+            await settle();
+            assert.equal(w.PX.setChallenge({ token: 'solved' }), undefined);
+            assert.equal(w.PX.setChallenge(), undefined);
+            assert.equal(typeof w.PX.Events.on, 'function');
+            assert.equal(w.PX.ClientUuid, '');
+        });
 });
 
 describe('extra/perimeterx.js, what is already there', ( ) => {
