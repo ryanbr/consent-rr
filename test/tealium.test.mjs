@@ -383,6 +383,25 @@ describe('extra/tealium.js, the callback a page waits on', ( ) => {
         assert.equal(w.fine, true);
     });
 
+    // The failure a plain block causes and this exists to close: their
+    // integration sits in the page's own inline script, so an undefined
+    // utag throws there and takes every statement after it down - whatever
+    // those statements were for. Each call below is followed by work of
+    // the page's own, and that work has to happen.
+    it('lets the page script run on past every entry point', ( ) => {
+        const page = [ 'view', 'link', 'track' ].map((name, i) => {
+            const arg = name === 'track' ? '"view", { a: 1 }' : '{ a: 1 }';
+            return 'try { utag.' + name + '(' + arg + '); } ' +
+                'catch (ex) { window.threw' + i + ' = String(ex); } ' +
+                'window.after' + i + ' = true;';
+        }).join('');
+        const { w } = boot({ after: '<script>' + page + '</script>' });
+        for ( let i = 0; i < 3; i++ ) {
+            assert.equal(w['threw' + i], undefined, 'entry ' + i + ' threw');
+            assert.equal(w['after' + i], true, 'line after ' + i + ' lost');
+        }
+    });
+
     it('survives a callback that throws', ( ) => {
         const { w } = boot({
             after: '<script>window.after = false;' +

@@ -246,6 +246,24 @@
 // The resource itself does not care which host it came from: the account
 // and profile come out of the path, and so does the environment, which is
 // not always prod - PROD-A and dev both turn up.
+// WHAT THIS FIXES AND WHAT IT CANNOT, which are two different failures and
+// worth keeping apart. Blocking the loader outright breaks the page's own
+// code: the standard integration puts utag.view(utag_data) or utag.link in
+// an inline script, utag is then undefined, the call throws, and the rest
+// of that script block never runs - so whatever it was going to start
+// dies with it, whether or not it had anything to do with Tealium. That is
+// the failure publishing this object closes, and it is the whole argument
+// for a replacement over a rule that only blocks.
+// The other failure is not closed and cannot be from here: a tenant
+// deploys functionality through Tealium as well as tracking, and all of it
+// stops. Counted across the forty-four, their configs schedule 1420 tags,
+// a median of twenty per tenant and 254 at the most, each its own
+// utag.N.js. Which of them matter is not knowable here - the config
+// carries ids and flags, and the behaviour is in files this never fetches
+// - and prada's tag 14 below is exactly the case: a currency rate table,
+// so replacing their loader leaves prices unconverted. The lever for that
+// is a per-site exception, not a change to this file, and it is the honest
+// cost of the rule.
 // A tag file is a separate request that nothing makes once the loader is
 // replaced, so no rule is needed for utag.N.js and blocking those buys
 // nothing. utag/tiqapp/utag.currency.js is the same thing wearing another
