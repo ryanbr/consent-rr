@@ -382,6 +382,15 @@
     // whether a rule fired and how the tenant was recognised, cleared and
     // storage answer what was taken away, and token=live is the reason
     // both can be zero on a site where nothing is wrong.
+    // It names the tool, and a page that hooks console.info at
+    // document_start can read it - the app id and the fact that something
+    // cleared along with it. That is a decision rather than an oversight:
+    // the line is how a rule that did not fire gets found, and on a
+    // vendor whose client is gone the page has to collect and forward the
+    // signal itself to make anything of it. The alternatives are worse. A
+    // window flag to gate it is settable by the page, and a flag in
+    // storage would mean reading storage, which is the one thing this
+    // resource is careful never to do.
     const report = took => {
         let where = '';
         try { where = String(w.location.href || ''); } catch ( ex ) { }
