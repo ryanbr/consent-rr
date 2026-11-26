@@ -394,6 +394,24 @@ describe('extra/tealium.js, what it refuses', ( ) => {
             assert.equal(w.sessionStorage.getItem('also'), 'kept');
         });
 
+    it('touches an empty store not at all', async ( ) => {
+        const calls = [];
+        boot({
+            beforeParse(win) {
+                for ( const name of [ 'getItem', 'setItem', 'removeItem',
+                    'key' ] ) {
+                    const real = win.Storage.prototype[name];
+                    win.Storage.prototype[name] = function(...args) {
+                        calls.push(name);
+                        return real.apply(this, args);
+                    };
+                }
+            },
+        });
+        await settle();
+        assert.deepEqual([ ...calls ], []);
+    });
+
     it('removes their visitor attributes, by both names', async ( ) => {
         const { w, lines } = bootRedirected(LOADER_URL, {});
         void lines;

@@ -179,6 +179,10 @@
             // it.
             let was = 0;
             try { was = store_.length; } catch ( ex ) { }
+            // An empty store has nothing of theirs in it, so the removals
+            // and the second count are both waste - and an empty store is
+            // exactly what a first visit looks like.
+            if ( was === 0 ) { continue; }
             for ( const name of names ) {
                 try { store_.removeItem(name); } catch ( ex ) { }
             }
