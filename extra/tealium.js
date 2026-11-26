@@ -380,6 +380,26 @@
 // runtime. An allowlist entry fixes both by handing the whole loader back,
 // tags and all. A redirect fixes them by answering the call instead, which
 // is the case for replacing rather than blocking.
+// WHAT IT LOOKS LIKE TO SOMEBODY USING THE SITE, from the report those
+// entries came out of - AdguardFilters issue 219502, filed against
+// pluto.tv on an on-demand episode and labelled critical: "Il video non
+// parte (rimane in buffering) con adguard attivo", the video does not
+// start and sits buffering, and it plays as soon as the blocker is off.
+// Not a cosmetic break and not a missing pixel: the player never starts.
+// Two things in that thread are worth keeping.
+// The same block reached their console app through AdGuard's DNS list -
+// "Pluto tv app refuses to load. It says they're having issues" - and
+// another reader reported the same for paramount, which is another cbsi
+// tenant. What was done in the end was to stop blocking tags.tiqcdn.com
+// on that list at all.
+// A redirect cannot help that case, and it is worth being plain about it:
+// there is no scriptlet in a console app, and a DNS answer is given before
+// anything can be replaced. What this closes is the browser half, and it
+// closes it twice over - the page gets an object whose entry points answer
+// and whose callbacks run, and the request itself succeeds, so a script
+// element's onload fires where a blocked one fires onerror or nothing. An
+// app that waits on either before starting playback gets what it waited
+// for.
 // STORED, their visitor attributes, cleared by prefix rather than by name.
 //     The record is tealium_va, and a tenant's is tealium_va_<account>_
 //     <profile> beside it. Computing that second name needs the account,
