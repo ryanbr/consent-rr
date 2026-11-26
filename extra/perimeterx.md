@@ -5,15 +5,28 @@ how their object is shaped, how the app id is found, what is cleared
 and what is deliberately left alone. The resource keeps only what a
 maintainer needs at the point of use and points here for the rest.
 
+## Contents
+
+- [What this is, and the rules](#what-this-is-and-the-rules)
+- [Their other files, and the unbranded copy](#their-other-files-and-the-unbranded-copy)
+- [navigator.brave, and why it is a separate line](#navigatorbrave-and-why-it-is-a-separate-line)
+- [What must never be blocked: the challenge path](#what-must-never-be-blocked-the-challenge-path)
+- [The object it publishes](#the-object-it-publishes)
+- [The emitter, member by member](#the-emitter-member-by-member)
+- [Notes on the members](#notes-on-the-members)
+
 ## What this is, and the rules
 
 Resource replacement for the PerimeterX (HUMAN Security) client served
-from client.px-cloud.net/<appId>/main.min.js
+from client.px-cloud.net/`<appId>`/main.min.js
 Not a cookie-consent resource: it lives outside src/ and is not built
 into dist/ by tools/build.mjs. Hand-maintained, ship as-is.
 The rule it answers:
 
-    ||client.px-cloud.net/*/main.min.js$script,redirect=perimeterx.js
+```
+||client.px-cloud.net/*/main.min.js$script,redirect=perimeterx.js
+```
+
 And the same client from a site's own host, which is how a first-party
 deployment serves it. The path is the app id with the PX taken off and
 the file is init.js, confirmed in the field on
@@ -21,7 +34,10 @@ www.dormtherapy.com/jAYekY18/init.js - 242kB, answered with an x-px-hash
 header, and carrying PXjAYekY18 as its own app id, which is jAYekY18
 with the PX put back:
 
-    ||www.dormtherapy.com/jAYekY18/init.js$script,redirect=perimeterx.js
+```
+||www.dormtherapy.com/jAYekY18/init.js$script,redirect=perimeterx.js
+```
+
 There is no generic form of that rule worth writing - /<eight
 characters>/init.js would match a great deal that is not theirs, and a
 redirect that misfires replaces somebody's real script - so it is one
@@ -38,14 +54,17 @@ block them without touching a challenge:
 
 ## Their other files, and the unbranded copy
 
-    ic.px-cloud.net/bd/auditor.js   386kB, picked by their own
-    crcldu.com/bd/auditor.js        JR(t){return t?ic:crcldu} - the second
-    is byte-identical and carries no PX
-    branding, which is what makes it worth
-    naming in a list
-    ri.px-cloud.net/index.js        102kB, and it stores its payload as a
-    string on a global with a generated
-    name rather than running it directly
+```
+ic.px-cloud.net/bd/auditor.js   386kB, picked by their own
+crcldu.com/bd/auditor.js        JR(t){return t?ic:crcldu} - the second
+is byte-identical and carries no PX
+branding, which is what makes it worth
+naming in a list
+ri.px-cloud.net/index.js        102kB, and it stores its payload as a
+string on a global with a generated
+name rather than running it directly
+```
+
 js.px-cloud.net is in every build as the head of a url list a tenant's
 configuration extends, so it belongs in the same group.
 One of their payload fields is set from !!navigator.brave, so on a site
@@ -55,7 +74,10 @@ uBO can take that bit away on its own:
 
 ## navigator.brave, and why it is a separate line
 
-    example.com##+js(set-constant, navigator.brave, undefined)
+```
+example.com##+js(set-constant, navigator.brave, undefined)
+```
+
 undefined is the value to use, not false and not noopFunc: theirs is an
 object with isBrave() on it and Chrome has no such property at all, so
 undefined is a browser that exists while false is one that never has.
@@ -85,17 +107,20 @@ that nor worsens it.
 
 ## What must never be blocked: the challenge path
 
-    a served block page    their own html, loading captcha.js from the
-    hosts above. This resource is not on that page,
-    so the challenge renders and can be solved
-    an in-page challenge   theirs renders the modal itself, from a
-    template inside the client, after it sees a
-    block response. That does not happen here, so
-    no modal appears, and a site which challenges
-    that way is not usable with this resource - the
-    same end state as blocking the client, and the
-    reason to lift the rule per site rather than
-    paper over it
+```
+a served block page    their own html, loading captcha.js from the
+hosts above. This resource is not on that page,
+so the challenge renders and can be solved
+an in-page challenge   theirs renders the modal itself, from a
+template inside the client, after it sees a
+block response. That does not happen here, so
+no modal appears, and a site which challenges
+that way is not usable with this resource - the
+same end state as blocking the client, and the
+reason to lift the rule per site rather than
+paper over it
+```
+
 Reading captcha.js itself, 608kB behind atob and a cyclic xor over
 "bAZChiM", settles what the challenge needs from this resource: nothing.
 It carries its own https://collector- host, its own challengeDone,
@@ -152,22 +177,25 @@ where the app id is the one the script was built for:
 
 ## The object it publishes
 
-    window.PX and window.<appId>   the same object, so a page that reads
-    either one finds it
-    Events                         their emitter, with on, one, off,
-    subscribe and trigger, and their own
-    semantics: subscribe pushes
-    { fn, ctx, once }, and trigger drains a
-    channel with shift() and keeps what is
-    not once, so handler order survives
-    ClientUuid                     the empty string. This is the one place
-    theirs mints an identifier, so the
-    property answers and the id is not
-    created
-    setChallenge                   a no-op
-    window.pxInit(px), or window.<appId>_asyncInit(px)   their callback
-    into the page once init is done,
-    called asynchronously as theirs is
+```
+window.PX and window.<appId>   the same object, so a page that reads
+either one finds it
+Events                         their emitter, with on, one, off,
+subscribe and trigger, and their own
+semantics: subscribe pushes
+{ fn, ctx, once }, and trigger drains a
+channel with shift() and keeps what is
+not once, so handler order survives
+ClientUuid                     the empty string. This is the one place
+theirs mints an identifier, so the
+property answers and the id is not
+created
+setChallenge                   a no-op
+window.pxInit(px), or window.<appId>_asyncInit(px)   their callback
+into the page once init is done,
+called asynchronously as theirs is
+```
+
 What it refuses, all of it named in their own tables: the canvas and
 toDataURL read, WebGL including WEBGL_debug_renderer_info and the
 unmasked vendor and renderer, OfflineAudioContext with getChannelData,
@@ -191,8 +219,8 @@ What it clears, rather than merely not writing: their visitor id, from
 the cookie on the host and every parent suffix of two labels or more,
 and from the localStorage and sessionStorage mirrors - _pxvid, pxvid and
 _pxmvid - plus the legacy sessionStorage.pxsid, and the app-id-prefixed
-keys a modern build actually writes: <appId>__pxvid, the ttl'd mirror
-their own vid lookup falls back on, and <appId>_px-ff, the ttl'd store
+keys a modern build actually writes: `<appId>`__pxvid, the ttl'd mirror
+their own vid lookup falls back on, and `<appId>`_px-ff, the ttl'd store
 beside it. Their token is left
 alone, as above, and while one of _px3, _px2 or _px is still in the jar
 the clearing waits: a visitor holding a token reads as a returning one,
@@ -209,112 +237,134 @@ Three deliberate divergences, all of them in the page's favour:
 
 ## The emitter, member by member
 
-    off()        theirs reads this.channels[name] with no guard, so an
-    off() before any on() throws there. Here it is a no-op.
-    trigger()    theirs calls a handler with no catch, so one handler that
-    throws abandons the drain and strands the rest. Here each
-    handler is called inside a catch, so the channel is drained
-    and the order is kept whatever a handler does.
-    window.PX    theirs sets it only where the page's declared app id is the
-    one the script was built for. Here it is set whenever no
-    client holds the name, because a page reading window.PX is
-    better served by an object than by undefined.
+```
+off()        theirs reads this.channels[name] with no guard, so an
+off() before any on() throws there. Here it is a no-op.
+trigger()    theirs calls a handler with no catch, so one handler that
+throws abandons the drain and strands the rest. Here each
+handler is called inside a catch, so the channel is drained
+and the order is kept whatever a handler does.
+window.PX    theirs sets it only where the page's declared app id is the
+one the script was built for. Here it is set whenever no
+client holds the name, because a page reading window.PX is
+better served by an object than by undefined.
+```
 
 ## Notes on the members
-which used to sit beside them in the code and
+
+Notes on the members, which used to sit beside them in the code and
 shipped with them: uBO drops a comment only at column zero, so prose
 indented into the body goes out to every user. Same words, moved out of
 the way, each named by what it belongs to.
 
-    const
-    A first-party deployment serves the same client from the site's own
-    host, and their own watcher says where: eleven of the thirteen builds
-    read build the regex "/" + appId.replace("PX", "") + "/init.js" once
-    _pxFirstPartyEnabled is set, so the path segment is the app id with
-    the PX taken off, and init.js is the file.
-    init.js is the file in the field, and their own self-reference list
-    is [ "/init.js", "/main.min.js" ], so both count - and main.js with
-    it, since the only difference is whether a build was minified.
-    const
-    Every id ends up as a property name on the window, so each one is
-    held to their shape on the way out - the url branches included, not
-    only the page's own declaration. A path that yields PX on its own,
-    or PX and ten more characters, is not an app id and is refused.
-    let
-    Theirs carries its own app id as a build constant and compares that
-    with the page's window._pxAppId. The request was redirected and not
-    the element, so the element still carries the url it was going to
-    fetch, and that url is the nearest thing to their constant: it is
-    this script's own identity rather than the page's declaration about
-    it. The page scan is last because it cannot tell one tenant's tag
-    from another's.
-    const
-    Identifiers their client leaves behind, and their own reader is the
-    evidence for the names: the visitor id is looked up as mL(ot) or
-    mL("pxvid"), with mL reading document.cookie and ot being
-    atob("X3B4dmlk"), then as mL("_pxmvid"), then from a ttl'd mirror of
-    the same key in storage - a cookie with a resilient copy beside it.
-    The legacy generation keeps a session id in sessionStorage.pxsid.
-    Replacing the client stops new ones being written; it does not take
-    away the ones already there, and the cookie carries a year, so they
-    are cleared here. Their own deleter nn(name) writes a past expiry
-    twice, once with the domain and once without, which is the shape
-    followed below.
-    NOT _px3, _px2 or the legacy _px: those are the server's own token,
-    and deleting one invites a fresh challenge rather than preventing
-    it. Nothing is read on the way - a cookie is expired by writing, and
-    storage only has keys removed - so this adds no read of either.
-    const
-    Their storage goes through a facade - mn(t) hands back
-    { getItem, setItem, removeItem } whose every key runs through
-    mt(name, true), which is appId + "_" + name - so the mirror of the
-    visitor id sits at <appId>__pxvid rather than _pxvid, and their
-    ttl'd store at <appId>_px-ff. Both forms are removed here: the bare
-    one for the builds that do not prefix, and the prefixed one, which
-    is what a modern build actually writes.
-    const
-    A visitor holding one of their tokens reads as a returning one. Take
-    the visitor id away underneath that and the two halves disagree,
-    which is the shape that earns a challenge rather than avoids one, so
-    the clearing waits for the session to lapse: no token, nothing to
-    disagree with. Their token is not refreshed with the client replaced,
-    so the wait ends on its own.
-    One read of the jar answers both questions: whether a session is
-    live, and which of their ids are actually there. A name that is not
-    in document.cookie has nothing to expire at any suffix either, since
-    a cookie set on a parent domain is in document.cookie as well, so
-    the writes for an absent name are all waste.
-    let
-    Counted by what the store lost, not by what was asked of
-    it: removing a key that was never there is a no-op, and a
-    line saying twenty would be worse than saying nothing. The
-    length of a store is a count rather than a read of anything
-    in it, so this adds no read of a key or a value.
-    const
-    Said once, at the end, the way every resource in src/ says it: what
-    actually went in rather than what was meant to. id and from answer
-    whether a rule fired and how the tenant was recognised, cleared and
-    storage answer what was taken away, and token=live is the reason
-    both can be zero on a site where nothing is wrong.
-    It names the tool, and a page that hooks console.info at
-    document_start can read it - the app id and the fact that something
-    cleared along with it. That is a decision rather than an oversight:
-    the line is how a rule that did not fire gets found, and on a
-    vendor whose client is gone the page has to collect and forward the
-    signal itself to make anything of it. The alternatives are worse. A
-    window flag to gate it is settable by the page, and a flag in
-    storage would mean reading storage, which is the one thing this
-    resource is careful never to do.
-    const
-    A page element with id="PX" or id="PX..." is a named property of the
-    window, so what is standing on either name may be a tag rather than a
-    client. Only a client - an object carrying their Events - is left
-    alone, and the same test decides both names.
-    report
-    Theirs calls back into the page once init is done - window.pxInit
-    where the app id is its own, window.<appId>_asyncInit otherwise - and
-    init is a collector round trip, so the call is always asynchronous.
-    The snippet defines the callback before the tag, since the tag is
-    async, but a page that defines it later gets the two later passes.
+### `FIRST_PARTY`
+
+A first-party deployment serves the same client from the site's own
+host, and their own watcher says where: eleven of the thirteen builds
+read build the regex "/" + appId.replace("PX", "") + "/init.js" once
+_pxFirstPartyEnabled is set, so the path segment is the app id with
+the PX taken off, and init.js is the file.
+init.js is the file in the field, and their own self-reference list
+is [ "/init.js", "/main.min.js" ], so both count - and main.js with
+it, since the only difference is whether a build was minified.
+
+### `valid`
+
+Every id ends up as a property name on the window, so each one is
+held to their shape on the way out - the url branches included, not
+only the page's own declaration. A path that yields PX on its own,
+or PX and ten more characters, is not an app id and is refused.
+
+### `from`
+
+Theirs carries its own app id as a build constant and compares that
+with the page's window._pxAppId. The request was redirected and not
+the element, so the element still carries the url it was going to
+fetch, and that url is the nearest thing to their constant: it is
+this script's own identity rather than the page's declaration about
+it. The page scan is last because it cannot tell one tenant's tag
+from another's.
+
+### `IDS`
+
+Identifiers their client leaves behind, and their own reader is the
+evidence for the names: the visitor id is looked up as mL(ot) or
+mL("pxvid"), with mL reading document.cookie and ot being
+atob("X3B4dmlk"), then as mL("_pxmvid"), then from a ttl'd mirror of
+the same key in storage - a cookie with a resilient copy beside it.
+The legacy generation keeps a session id in sessionStorage.pxsid.
+Replacing the client stops new ones being written; it does not take
+away the ones already there, and the cookie carries a year, so they
+are cleared here. Their own deleter nn(name) writes a past expiry
+twice, once with the domain and once without, which is the shape
+followed below.
+NOT _px3, _px2 or the legacy _px: those are the server's own token,
+and deleting one invites a fresh challenge rather than preventing
+it. Nothing is read on the way - a cookie is expired by writing, and
+storage only has keys removed - so this adds no read of either.
+
+### `STORED`
+
+Their storage goes through a facade - mn(t) hands back
+{ getItem, setItem, removeItem } whose every key runs through
+mt(name, true), which is appId + "_" + name - so the mirror of the
+visitor id sits at `<appId>`__pxvid rather than _pxvid, and their
+ttl'd store at `<appId>`_px-ff. Both forms are removed here: the bare
+one for the builds that do not prefix, and the prefixed one, which
+is what a modern build actually writes.
+
+### `inJar`
+
+A visitor holding one of their tokens reads as a returning one. Take
+the visitor id away underneath that and the two halves disagree,
+which is the shape that earns a challenge rather than avoids one, so
+the clearing waits for the session to lapse: no token, nothing to
+disagree with. Their token is not refreshed with the client replaced,
+so the wait ends on its own.
+One read of the jar answers both questions: whether a session is
+live, and which of their ids are actually there. A name that is not
+in document.cookie has nothing to expire at any suffix either, since
+a cookie set on a parent domain is in document.cookie as well, so
+the writes for an absent name are all waste.
+
+### `was`
+
+Counted by what the store lost, not by what was asked of
+it: removing a key that was never there is a no-op, and a
+line saying twenty would be worse than saying nothing. The
+length of a store is a count rather than a read of anything
+in it, so this adds no read of a key or a value.
+
+### `report`
+
+Said once, at the end, the way every resource in src/ says it: what
+actually went in rather than what was meant to. id and from answer
+whether a rule fired and how the tenant was recognised, cleared and
+storage answer what was taken away, and token=live is the reason
+both can be zero on a site where nothing is wrong.
+It names the tool, and a page that hooks console.info at
+document_start can read it - the app id and the fact that something
+cleared along with it. That is a decision rather than an oversight:
+the line is how a rule that did not fire gets found, and on a
+vendor whose client is gone the page has to collect and forward the
+signal itself to make anything of it. The alternatives are worse. A
+window flag to gate it is settable by the page, and a flag in
+storage would mean reading storage, which is the one thing this
+resource is careful never to do.
+
+### `claimed`
+
+A page element with id="PX" or id="PX..." is a named property of the
+window, so what is standing on either name may be a tag rather than a
+client. Only a client - an object carrying their Events - is left
+alone, and the same test decides both names.
+
+### `report`
+
+Theirs calls back into the page once init is done - window.pxInit
+where the app id is its own, window.`<appId>`_asyncInit otherwise - and
+init is a collector round trip, so the call is always asynchronous.
+The snippet defines the callback before the tag, since the tag is
+async, but a page that defines it later gets the two later passes.
 The "///" line above is the resource header uBO reads, and a comment to
 JavaScript. uBO drops these "//" lines when it parses.
