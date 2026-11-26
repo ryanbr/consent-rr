@@ -140,8 +140,8 @@ already in the page is never fetched twice.
 
 ### The hosted library files stop too
 
-Two more url shapes turn up on the
-same host and look like separate things to block:
+Two more url shapes turn up on the same host and look like separate
+things to block:
 
 ```
 assets.adobedtm.com/extensions/EP<id>/AppMeasurement.min.js
