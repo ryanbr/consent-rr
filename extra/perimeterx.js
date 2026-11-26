@@ -91,10 +91,16 @@
 // A first-party deployment serves the same client off the site's own host,
 // where no generic rule can find it; the app id is still recovered from
 // the script element, so a per-site rule works.
-// Read off thirteen tenant builds - PXG2JgnYto, PXGWPp4wUS, PXNsLC0Hv5,
+// Read off fifteen tenant builds - PXG2JgnYto, PXGWPp4wUS, PXNsLC0Hv5,
 // PXZLuyHD0K, PXeBumDLwe, PXfoFgWNLE, PXmpzBoAGV, PXqFLuLdVQ, PXqLRSnBjb,
-// PX3c3eZ9Ug, PXUMwuT9do, PXvGqcQp2O and PXDr7Isq2U, 13kB to 957kB, served
-// with max-age=600. The big ones carry 18 to 24 base91 string tables
+// PX3c3eZ9Ug, PXUMwuT9do, PXvGqcQp2O, PXDr7Isq2U, PXtsv50IS4 and
+// PXjAYekY18 first party, 13kB to 957kB, served with max-age=600.
+// They rebuild often enough to watch it happen: PXeBumDLwe was fetched
+// twice in one day, 245593 bytes and then 244455, with its three member
+// names moving out of the string table into the clear between the two. The
+// contract did not move, which is why the tests here pin the contract
+// rather than anything about a build - no byte offsets, no identifiers, no
+// table indices. The big ones carry 18 to 24 base91 string tables
 // behind a per-table alphabet, so the names below come from decoding those
 // tables rather than from documentation. Twelve publish the same three
 // members, five of them with the member names themselves behind the
