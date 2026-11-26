@@ -428,6 +428,19 @@
         // tracking would take that as permission to go ahead without
         // them. opt-in says tags are gated, which here is true in the
         // strongest sense: none of them is going to run at all.
+        // The downside is worth knowing. opt-in with nothing consented and
+        // setters that drop is a page's cue to ask, and on the three
+        // tenants read with the whole manager the record lives in a
+        // CONSENTMGR cookie that nothing here writes - barclaysuk refers
+        // to it nineteen times, tsb reads it back as cp.CONSENTMGR - so a
+        // tenant whose own page code draws the banner can draw it again on
+        // every load. Theirs cannot: their prompt arrives with the consent
+        // manager tag, which is one of the ones this stops. If a site does
+        // re-prompt, the answer is to record a refusal in CONSENTMGR
+        // rather than to answer none here, and that waits on reading their
+        // format properly - the value is a timestamped entry list, and a
+        // wrong one risks their enforcement reading it as consent given,
+        // which is worse than being asked twice.
         getEnforcementMode: ( ) => 'opt-in',
         getLanguage: ( ) => '',
         applyConsentState: noopfn,
