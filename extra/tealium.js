@@ -253,6 +253,20 @@
 // allowlist; autodesk's tag config names tms.wape.autodesk.com, so the
 // shape to look for is a host serving /utag/<something>/utag.js, whatever
 // it is called.
+// pluto.tv is the same thing one step further. Their app config carries
+//   "tealiumEnv":"https://tm.pluto.tv/pluto-tv-web/prod/utag.js"
+// and that is a real loader, 875kB of it, declaring id cbsi.pluto-tv-web
+// with cfg.path //tm.pluto.tv/pluto-tv-web/prod/. There is no utag segment
+// in the path at all, so every rule above misses it and it needs
+//   ||tm.pluto.tv/*/prod/utag.js$script,redirect=tealium.js
+// AdGuard allowlists their tiqcdn url rather than this one, so a page can
+// reach the same loader by either name.
+// What that costs is only the id string. account and profile feed nothing
+// else now that their records are cleared by prefix, so an underivable
+// path leaves utag.id empty and everything else - the fifteen members, the
+// entry points, the clearing - stands up as usual. Deriving a partial id
+// from such a path would be a guess: pluto-tv-web is the profile, and cbsi
+// is nowhere in the url to be read.
 // On such a host the path is a vanity one and says nothing true: that
 // loader is served from /utag/de/prod/utag.js and declares itself
 // id stepstone.stepstone-de, with cfg.path pointing back at
@@ -353,10 +367,19 @@
 //   @@||tags.stepstone.com/utag/de/prod/utag.js$domain=stepstone.de
 // All four were read for this file. All four publish the same fifteen
 // members and declare the id this derives from their path, bofa on a
-// ut4.48 loader, which is a generation newer than anything else here. An
-// allowlist entry hands the whole loader back, tags and all; a redirect
-// closes the same breakage without doing that, which is the case for
-// replacing rather than blocking.
+// ut4.48 loader, which is a generation newer than anything else here.
+// Nothing in those entries asks for anything beyond letting the request
+// through - no $important, no $script, just a domain - so what a block
+// broke there was not a rule that needed tuning. It was the page. Two of
+// them show it in their own markup: southparkstudios.com embeds
+// "tealiumTagManagerConfig":{"settings":{"account":"cbsi",
+// "profile":"webplex-intl" and hangs a tealiumClickData field off every
+// nav entry, which is their click handler's argument to utag.link, so an
+// absent utag throws inside a handler and the link stops working; pluto.tv
+// carries "tealiumEnv" in __NEXT_DATA__ and loads the file from it at
+// runtime. An allowlist entry fixes both by handing the whole loader back,
+// tags and all. A redirect fixes them by answering the call instead, which
+// is the case for replacing rather than blocking.
 // STORED, their visitor attributes, cleared by prefix rather than by name.
 //     The record is tealium_va, and a tenant's is tealium_va_<account>_
 //     <profile> beside it. Computing that second name needs the account,

@@ -803,6 +803,35 @@ describe('extra/tealium.js, what it refuses', ( ) => {
             assert.equal(w.localStorage.getItem('keep'), 'mine');
         });
 
+    // pluto.tv's app config names
+    // tm.pluto.tv/pluto-tv-web/prod/utag.js, which is their own host with
+    // no utag segment in the path at all, two segments where this expects
+    // three, and the account - cbsi, per the id that loader declares -
+    // nowhere in it. Nothing is derivable, and after the prefix change
+    // account and profile feed only utag.id, so nothing but that string is
+    // lost: the object stands up and their records still go.
+    it('works from a first-party host with no utag segment', async ( ) => {
+        const seed = [
+            'localStorage.setItem("tealium_va", "{}");',
+            'localStorage.setItem("tealium_va_cbsi_pluto-tv-web", "{}");',
+            'document.cookie = "utag_main=v_id:abc; path=/";',
+        ].join('');
+        const { w } = bootRedirected(
+            'https://tm.pluto.tv/pluto-tv-web/prod/utag.js',
+            { before: '<script>' + seed + '</script>',
+              url: 'https://pluto.tv/' });
+        await settle();
+        for ( const name of THEIRS ) {
+            assert.equal(name in w.utag, true, name);
+        }
+        assert.equal(w.utag.id, '');
+        assert.equal(w.localStorage.getItem('tealium_va'), null);
+        assert.equal(
+            w.localStorage.getItem('tealium_va_cbsi_pluto-tv-web'), null);
+        assert.equal(w.document.cookie.includes('v_id:abc'), false);
+        assert.equal(w.utag.view({ a: 1 }), true);
+    });
+
     it('touches an empty store not at all', async ( ) => {
         const calls = [];
         boot({
