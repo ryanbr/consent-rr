@@ -17,6 +17,24 @@
 // redirect that misfires replaces somebody's real script - so it is one
 // line per host. The app id is recovered from either shape, so the
 // resource itself needs nothing per host.
+// Only main.min.js and init.js are served, one per host: main.js,
+// client.js, px.js, sensor.js, bundle.js and index.js all answer 404 on
+// client.px-cloud.net, and only init.js answers on a first-party host. The
+// app id is read from any filename after the id segment regardless, so a
+// rename costs a filter line and nothing here.
+// Three more of theirs, separate requests rather than this resource's
+// business, and none of them referenced by captcha.js - so a list may
+// block them without touching a challenge:
+//   ic.px-cloud.net/bd/auditor.js   386kB, picked by their own
+//   crcldu.com/bd/auditor.js        JR(t){return t?ic:crcldu} - the second
+//                                   is byte-identical and carries no PX
+//                                   branding, which is what makes it worth
+//                                   naming in a list
+//   ri.px-cloud.net/index.js        102kB, and it stores its payload as a
+//                                   string on a global with a generated
+//                                   name rather than running it directly
+// js.px-cloud.net is in every build as the head of a url list a tenant's
+// configuration extends, so it belongs in the same group.
 // That deployment proxies their collector as well, which the same build
 // names: [ "/jAYekY18/xhr", "https://collector-PXjAYekY18.px-cloud.net" ].
 // Leave both alone. The first is on the site's own host and blocking a
@@ -164,7 +182,16 @@
     // read build the regex "/" + appId.replace("PX", "") + "/init.js" once
     // _pxFirstPartyEnabled is set, so the path segment is the app id with
     // the PX taken off, and init.js is the file.
-    const FIRST_PARTY = /\/([A-Za-z0-9]{4,10})\/init\.js(?:[?#]|$)/;
+    // init.js is the file in the field, and their own self-reference list
+    // is [ "/init.js", "/main.min.js" ], so both count - and main.js with
+    // it, since the only difference is whether a build was minified.
+    const FIRST_PARTY =
+        /\/([A-Za-z0-9]{4,10})\/(?:init|main|main\.min)\.js(?:[?#]|$)/;
+    // Every id ends up as a property name on the window, so each one is
+    // held to their shape on the way out - the url branches included, not
+    // only the page's own declaration. A path that yields PX on its own,
+    // or PX and ten more characters, is not an app id and is refused.
+    const valid = found => SHAPE.test(found) ? found : '';
     const inUrl = text => {
         if ( typeof text !== 'string' ) { return ''; }
         const first = FIRST_PARTY.exec(text);
@@ -172,10 +199,10 @@
             // Their own form has the PX taken off, so it goes back on -
             // unless a deployment left it, which already reads as an id.
             const held = first[1];
-            return SHAPE.test(held) ? held : 'PX' + held;
+            return valid(SHAPE.test(held) ? held : 'PX' + held);
         }
         const match = IN_URL.exec(text);
-        return match !== null ? match[1] : '';
+        return match !== null ? valid(match[1]) : '';
     };
     // Theirs carries its own app id as a build constant and compares that
     // with the page's window._pxAppId. The request was redirected and not

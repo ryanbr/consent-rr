@@ -280,6 +280,16 @@ describe('extra/perimeterx.js, a first-party deployment', ( ) => {
         assert.equal(w._pxAppId, 'PXZLuyHD0K');
     });
 
+    // Their own self-reference list is [ "/init.js", "/main.min.js" ], so
+    // a first-party host serving either name is still theirs.
+    it('reads a first-party main.min.js and main.js too', ( ) => {
+        for ( const file of [ 'main.min.js', 'main.js' ] ) {
+            const w = bootPath('/jAYekY18/' + file);
+            assert.equal(w._pxAppId, 'PXjAYekY18', file);
+            assert.equal(w.PXjAYekY18, w.PX, file);
+        }
+    });
+
     it('leaves it alone where a deployment kept the PX', ( ) => {
         const w = bootPath('/PXZLuyHD0K/init.js');
         assert.equal(typeof w.PXZLuyHD0K, 'object');
@@ -295,6 +305,22 @@ describe('extra/perimeterx.js, a first-party deployment', ( ) => {
         const w = bootPath('/some-long-build-directory/init.js');
         assert.equal(typeof w.PX, 'object');
         assert.equal(w._pxAppId, undefined);
+    });
+
+    it('takes no id from a filename that is not one of theirs', ( ) => {
+        const w = bootPath('/jAYekY18/other.js');
+        assert.equal(typeof w.PX, 'object');
+        assert.equal(w._pxAppId, undefined);
+        assert.equal(w.PXjAYekY18, undefined);
+    });
+
+    it('takes no id from a segment their shape would reject', ( ) => {
+        // Ten characters stripped would mean PX and ten more, which is
+        // past the eight their own parser allows.
+        const w = bootPath('/abcdefghij/init.js');
+        assert.equal(typeof w.PX, 'object');
+        assert.equal(w._pxAppId, undefined);
+        assert.equal(w.PXabcdefghij, undefined);
     });
 
     it('takes no id from init.js at the root', ( ) => {
