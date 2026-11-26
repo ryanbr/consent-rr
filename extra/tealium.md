@@ -743,3 +743,68 @@ so. A fifth, which dropped the profile from the computed name
 name is not built any more, and the two mutations that replace it - going
 back to an exact name, and dropping the underscore so the prefix catches a
 neighbour - both die.
+
+## What their own tag files call, and why nothing was added for it
+
+Thirty tag files were read for this - one instance of each of the
+twenty-six most-used templates, plus four of prada's - and every `utag.*`
+reference in them was diffed against what this publishes. They are the best
+corpus for the question, because unlike the loaders they are written
+*against* the loader's api.
+
+Everything structural is already answered. They use `utag.loader.GV`,
+`LOAD`, `RC`, `SC`, `cfg` and `f`; `utag.handler.C`; `utag.ut.flatten`,
+`hasOwn`, `isEmpty`, `isEmptyObject`, `merge`, `typeOf`, `vi` and `loader`;
+`utag.DB` 460 times across all thirty; `utag.o`, `utag.sender`, `utag.view`,
+`utag.link`, `utag.data`, `utag.gdpr.getConsentState`,
+`getSelectedCategories` and `getCookieValues`. All present.
+
+What is left splits three ways, and none of it is reachable, because a tag
+file only runs if the loader loads it and this never does.
+
+    utag.mobile, utag.init_mobile, utag.target, utag.datacloud,
+    utag.enableRemap, utag.ut.adobeViewScriptRequested,
+    utag.ut.gtagScriptRequested, utag.data.targetdata_uid
+        Tag-side or extension-created. No loader of the forty-nine assigns
+        mobile or init_mobile at all; the rest are a tenant's own, which is
+        the class already described above.
+
+    utag.ut.md5
+        The documented hashing gap, alongside sha256.
+
+    utag.cfg.utagdb, utag.cfg.utid, utag.tagsettings, utag.globals
+        Loader-provided, and deliberately not published. utagdb is `false`
+        on all forty-nine. utid is `account/profile/buildstamp` - the stamp
+        is their build's and cannot be known here. tagsettings is assigned
+        by twenty of the forty-nine and globals by thirteen, both as
+        `window.utag.<name> || {}`, so theirs does preserve a value a page
+        set first.
+
+That last group was added and then reverted. Publishing it changes nothing
+a page can observe - an absent `cfg.utagdb` reads `undefined`, which is as
+false as `false` - and a test already pinned `tagsettings` as an omitted
+internal next to `cl`, `cond`, `pre`, `runonce` and `initcatch`. Reversing
+a decision a test is holding needs a reachable consumer, and there is none:
+the only code that reads these is a tag file or an extension.
+
+## A sync file can hide the page
+
+Worth knowing before anyone makes `utag.sync.js` a redirect instead of a
+block. It is not always a sync tag loader. bofa's is Adobe Alloy's
+pre-hiding snippet and nothing else:
+
+    element.innerText = "body { opacity: 0 !important }";
+    document.head.appendChild(element);
+    setTimeout(() => { element.parentNode.removeChild(element) }, 3000);
+
+tsb's does the same with the same three-second timeout. Of five sampled,
+two hide the page that way; pluto's and prada's are 109 bytes and hsbc's
+3.4kB without it. Blocking the file means the page is never hidden, which
+is the outcome to want. Allowing it while the loader is replaced means the
+page is hidden until whatever removes the style runs - here a timeout that
+self-heals, but that is theirs to change.
+
+ml.com's own bundle builds that url and appends it, so this file arrives on
+some pages whether or not the loader does, which is the one route by which
+a tag-side file runs against this object at all. It touches nothing on
+`utag`.

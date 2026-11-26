@@ -20,6 +20,10 @@
 // and two that stay blocks rather than redirects, a sync loader and a
 // version ping:
 //   ||tags.tiqcdn.com/utag/*/utag.sync.js$script
+// That one is a block and must stay a block: it is not always a tag
+// loader. Two of five sampled are Adobe Alloy's pre-hiding snippet, which
+// sets body opacity to zero and takes it off again on a timeout, so
+// blocking it means the page is never hidden in the first place.
 //   ||tags.tiqcdn.*/utag/tiqapp/utag.v.js$script
 // Never widen one of these to the host or to /utag/*. That prefix also
 // carries an Adobe Launch property on ml.com, which has nothing to do
