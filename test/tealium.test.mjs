@@ -306,23 +306,63 @@ describe('extra/tealium.js, their utilities', ( ) => {
         assert.equal(w.utag.ut.vi(), '');
     });
 
-    it('merges, pads, and names a type', ( ) => {
+    // pad is hex in theirs: a = "" + ((a-0).toString(16)), zero-filled.
+    // 007 reads the same either way, which is why it caught nothing.
+    it('pads in hex, as theirs does', ( ) => {
         const { w } = boot({});
-        const merged = w.utag.ut.merge({ a: 1 }, { b: 2 });
-        assert.deepEqual({ ...merged }, { a: 1, b: 2 });
         assert.equal(w.utag.ut.pad(7, 3), '007');
+        assert.equal(w.utag.ut.pad(255, 4), '00ff');
+        assert.equal(w.utag.ut.pad(16, 1), '10');
+    });
+
+    // merge(a, b, c): c truthy overwrites, falsy fills only what is
+    // undefined - and the falsy call is the one their own loader makes.
+    it('merges by their third argument', ( ) => {
+        const { w } = boot({});
+        assert.deepEqual({ ...w.utag.ut.merge({ a: 1 }, { a: 2, b: 3 }, 0) },
+            { a: 1, b: 3 });
+        assert.deepEqual({ ...w.utag.ut.merge({ a: 1 }, { a: 2, b: 3 }, 1) },
+            { a: 2, b: 3 });
+        assert.deepEqual({ ...w.utag.ut.merge({ a: 1 }, { b: 2 }) },
+            { a: 1, b: 2 });
+    });
+
+    it('names a type the way their line does', ( ) => {
+        const { w } = boot({});
         assert.equal(w.utag.ut.typeOf([]), 'array');
         assert.equal(w.utag.ut.typeOf(null), 'null');
         assert.equal(w.utag.ut.typeOf({}), 'object');
+        assert.equal(w.utag.ut.typeOf('x'), 'string');
+        assert.equal(w.utag.ut.typeOf(1), 'number');
+        // Where a typeof would answer object, theirs answers these.
+        assert.equal(w.utag.ut.typeOf(new w.Date()), 'date');
+        assert.equal(w.utag.ut.typeOf(/x/), 'regexp');
     });
 
-    it('answers the emptiness questions', ( ) => {
+    it('answers the emptiness questions by type, as theirs does', ( ) => {
         const { w } = boot({});
         assert.equal(w.utag.ut.isEmptyObject({}), true);
         assert.equal(w.utag.ut.isEmptyObject({ a: 1 }), false);
         assert.equal(w.utag.ut.isEmpty(''), true);
+        assert.equal(w.utag.ut.isEmpty('x'), false);
+        // A number is empty only when it is NaN, and a boolean never is.
+        assert.equal(w.utag.ut.isEmpty(0), false);
+        assert.equal(w.utag.ut.isEmpty(NaN), true);
+        assert.equal(w.utag.ut.isEmpty(false), false);
         assert.equal(w.utag.ut.hasOwn({ a: 1 }, 'a'), true);
         assert.equal(w.utag.ut.hasOwn({ a: 1 }, 'b'), false);
+        assert.equal(w.utag.ut.hasOwn(null, 'a'), false);
+    });
+
+    it('flattens to dotted keys, dropping an empty object', ( ) => {
+        const { w } = boot({});
+        const flat = w.utag.ut.flatten({
+            a: { b: 1 }, c: [ 1, 2 ], d: {}, e: 'x',
+        });
+        assert.deepEqual(Object.keys(flat).sort(), [ 'a.b', 'c', 'e' ]);
+        assert.equal(flat['a.b'], 1);
+        assert.equal(flat.e, 'x');
+        assert.deepEqual([ ...flat.c ], [ 1, 2 ]);
     });
 });
 
@@ -500,6 +540,16 @@ describe('extra/tealium.js, what it refuses', ( ) => {
             null);
         assert.equal(seeded.w.localStorage.getItem('mine'), 'kept');
         assert.match(seeded.lines[0], / storage=2 /);
+        // One of the two, so the count cannot be the number of names it
+        // asked about: that would say two here as well.
+        const one = boot({
+            before: '<script src="' + LOADER_URL + '"></script>' +
+                '<script>localStorage.setItem("tealium_va", "{}");' +
+                'localStorage.setItem("mine", "kept");</script>',
+        });
+        await settle();
+        assert.equal(one.w.localStorage.getItem('tealium_va'), null);
+        assert.match(one.lines[0], / storage=1 /);
     });
 
     it('adds no listener of its own', async ( ) => {

@@ -299,38 +299,85 @@
     // Their utilities, as far as they are pure. vi mints a visitor id, so
     // it answers the empty string; flatten and loader are theirs to use on
     // data this one does not gather.
+    // Their helpers, written to their own implementations rather than to
+    // what the names suggest - the ten loaders read carry the same bodies,
+    // from the 2018 build to this month's, and a page that calls one of
+    // these should get their answer and not a near miss.
     const ut = {
-        pad: (n, len) => {
-            let out = String(n === undefined ? '' : n);
-            while ( out.length < len ) { out = '0' + out; }
-            return out;
+        // pad(a, b) is hex, not decimal: a = "" + ((a-0).toString(16)),
+        // zero-filled up to b.
+        pad: (a, b) => {
+            let out = '';
+            try { out = '' + ((a - 0).toString(16)); } catch ( ex ) { }
+            let fill = '';
+            for ( let i = 0; i < (b - out.length); i++ ) { fill += '0'; }
+            return '' + fill + out;
         },
         vi: ( ) => '',
-        hasOwn: (o, p) => {
+        hasOwn: (o, a) => {
             try {
-                return Object.prototype.hasOwnProperty.call(o, p);
+                return o !== null &&
+                    Object.prototype.hasOwnProperty.call(o, a);
             } catch ( ex ) {
             }
             return false;
         },
         isEmptyObject: o => {
-            try { return Object.keys(o).length === 0; } catch ( ex ) { }
+            try {
+                for ( const key in o ) {
+                    if ( key !== undefined ) { return false; }
+                }
+            } catch ( ex ) {
+            }
             return true;
         },
+        // Theirs answers by type first: a number is empty when it is NaN, a
+        // boolean never is, a string is when it has no length.
         isEmpty: o => {
-            if ( o === undefined || o === null || o === '' ) { return true; }
-            try { return Object.keys(o).length === 0; } catch ( ex ) { }
-            return false;
+            const t = ut.typeOf(o);
+            if ( t === 'number' ) { return isNaN(o); }
+            if ( t === 'boolean' ) { return false; }
+            if ( t === 'string' ) { return o.length === 0; }
+            return ut.isEmptyObject(o);
         },
-        typeOf: o => {
-            if ( o === null ) { return 'null'; }
-            if ( Array.isArray(o) ) { return 'array'; }
-            return typeof o;
-        },
-        flatten: ( ) => ({}),
-        merge: (a, b) => {
+        // Their own line, which answers date and regexp where a typeof
+        // would answer object.
+        typeOf: e => {
             try {
-                for ( const key of Object.keys(b || {}) ) { a[key] = b[key]; }
+                return ({}).toString.call(e)
+                    .match(/\s([a-zA-Z]+)/)[1].toLowerCase();
+            } catch ( ex ) {
+            }
+            return 'undefined';
+        },
+        // Dotted keys, theirs: an array or a non-object lands as a value, an
+        // empty object is dropped, anything else recurses under its prefix.
+        flatten: o => {
+            const out = {};
+            const walk = (c, prefix) => {
+                if ( Object(c) !== c || ut.typeOf(c) === 'array' ) {
+                    out[prefix] = c;
+                    return;
+                }
+                if ( ut.isEmptyObject(c) ) { return; }
+                for ( const key in c ) {
+                    walk(c[key], prefix ? prefix + '.' + key : key);
+                }
+            };
+            try { walk(o, ''); } catch ( ex ) { }
+            return out;
+        },
+        // merge(a, b, c): c decides. Theirs overwrites when it is truthy
+        // and fills only what is undefined when it is not, and the second
+        // is the call their own loader makes.
+        merge: (a, b, c) => {
+            try {
+                for ( const key in b ) {
+                    if ( c ) { a[key] = b[key]; }
+                    else if ( typeof a[key] === 'undefined' ) {
+                        a[key] = b[key];
+                    }
+                }
             } catch ( ex ) {
             }
             return a;
