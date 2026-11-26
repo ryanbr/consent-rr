@@ -13,11 +13,21 @@
 // A first-party deployment serves the same client off the site's own host,
 // where no generic rule can find it; the app id is still recovered from
 // the script element, so a per-site rule works.
-// Read off four tenant builds - PXG2JgnYto, PXGWPp4wUS, PXNsLC0Hv5 and
-// PXZLuyHD0K, 237kB to 571kB each, served with max-age=600. Every build
+// Read off nine tenant builds - PXG2JgnYto, PXGWPp4wUS, PXNsLC0Hv5,
+// PXZLuyHD0K, PXeBumDLwe, PXfoFgWNLE, PXmpzBoAGV, PXqFLuLdVQ and
+// PXqLRSnBjb, 237kB to 957kB each, served with max-age=600. Every build
 // carries 18 to 24 base91 string tables behind a per-table alphabet, so
 // the names below come from decoding those tables rather than from
-// documentation.
+// documentation. All nine publish the same three members, four of them
+// with the member names themselves behind the tables.
+// What decided the surface: across all nine, the only name their client
+// writes to the window is PX, alongside the computed window[appId]. Every
+// other _px global is a read of something the page supplied - _pxRootUrl,
+// _pxFetch, _pxCustomAbrDomains, _pxPreventAnalyticsCookie, _pxAppId and
+// pxInit - and _pxVid and _pxUuid appear only inside the block page their
+// own server serves, never as a live write, which is why nothing here
+// mints one. pxParams is read off the public object and never assigned by
+// the client, so it is the page's own property there as it is here.
 // What the page keeps, from mb = { Events, ClientUuid, setChallenge } and
 // the two lines that publish it - window[appId] = mb, and window.PX = mb
 // where the app id is the one the script was built for:
