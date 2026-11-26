@@ -817,6 +817,47 @@ describe('extra/perimeterx.js, the identifiers it clears', ( ) => {
         }
     });
 
+    // An opaque origin - a sandboxed frame, a data: document - makes both
+    // of these throw on access. The clearing has to fail quietly there and
+    // the object still has to be published, or the resource is worse than
+    // the block it replaces.
+    it('publishes even where cookies and storage throw', async ( ) => {
+        const w = boot({
+            before: snippet,
+            beforeParse(win) {
+                Object.defineProperty(win.document, 'cookie', {
+                    configurable: true,
+                    get() { throw new Error('SecurityError'); },
+                    set() { throw new Error('SecurityError'); },
+                });
+                for ( const store of [ 'localStorage', 'sessionStorage' ] ) {
+                    Object.defineProperty(win, store, {
+                        configurable: true,
+                        get() { throw new Error('SecurityError'); },
+                    });
+                }
+            },
+        });
+        await settle();
+        assert.equal(typeof w.PX, 'object');
+        assert.equal(typeof w.PX.Events.on, 'function');
+        assert.equal(w[APP_ID], w.PX);
+    });
+
+    it('publishes where storage is there but refuses removal', async ( ) => {
+        const w = boot({
+            before: snippet,
+            beforeParse(win) {
+                win.Storage.prototype.removeItem = ( ) => {
+                    throw new Error('QuotaExceededError');
+                };
+            },
+        });
+        await settle();
+        assert.equal(typeof w.PX, 'object');
+        assert.equal(w[APP_ID], w.PX);
+    });
+
     it('leaves a page cookie of its own alone', async ( ) => {
         const w = bootWith([ 'session=abc', '_pxvid=vid-1' ]);
         await settle();
