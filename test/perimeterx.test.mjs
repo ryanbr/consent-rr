@@ -719,7 +719,22 @@ describe('extra/perimeterx.js, the sensors it never reads', ( ) => {
             'mimeTypes', 'hardwareConcurrency', 'deviceMemory',
             'maxTouchPoints', 'userAgentData', 'doNotTrack', 'webdriver',
             'vendor', 'appVersion', 'cookieEnabled',
+            // Their own payload has a field for each of these: a build
+            // sets it from !!navigator.brave and !!navigator.bluetooth, so
+            // the visitor's browser choice is one of the things recorded.
+            'brave', 'bluetooth',
         ], 1);
+        // The transcendental vector they fingerprint the FPU with, named
+        // in their own list: tan, sin, exp, atan, acosh, asinh, atanh,
+        // expm1, log1p, sinh.
+        for ( const name of [ 'tan', 'sin', 'exp', 'atan', 'acosh',
+            'asinh', 'atanh', 'expm1', 'log1p', 'sinh' ] ) {
+            const real = win.Math[name];
+            win.Math[name] = function(...args) {
+                note('Math.' + name);
+                return real.apply(this, args);
+            };
+        }
         getter(win.screen, 'screen', [
             'width', 'height', 'availWidth', 'availHeight', 'colorDepth',
             'pixelDepth',

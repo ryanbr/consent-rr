@@ -113,7 +113,11 @@
 // unmasked vendor and renderer, OfflineAudioContext with getChannelData,
 // navigator plugins, mimeTypes, languages, platform, hardwareConcurrency,
 // deviceMemory, maxTouchPoints, userAgentData, getBattery, permissions and
-// mediaDevices, screen availWidth, availHeight, colorDepth and pixelDepth,
+// mediaDevices, the booleans a build sets from navigator.brave and
+// navigator.bluetooth - so which browser the visitor chose is one of the
+// things recorded - the transcendental vector they fingerprint the FPU
+// with, tan through sinh, named in their own list beside a polyfill of
+// Math.atanh, screen availWidth, availHeight, colorDepth and pixelDepth,
 // getTimezoneOffset, speechSynthesis, RTCPeerConnection, the behavioural
 // listeners - mousemove, mousedown, mouseup, keydown, keyup, touchstart,
 // touchmove, scroll, wheel, pointerdown, pointermove, drag, paste,
