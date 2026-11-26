@@ -4,15 +4,16 @@
 // Not a cookie-consent resource, though it answers a consent api where a
 // tenant compiled one in: it lives outside src/ and is not built into
 // dist/ by tools/build.mjs. Hand-maintained, ship as-is.
-// Read off twenty-two tenant loaders - elsgroup/actuel-rh, cbsi/cbstve,
+// Read off twenty-three tenant loaders - elsgroup/actuel-rh,
+// cbsi/cbstve,
 // gendigital/ccleaner, foxcorp/fscom-main, tsb/tsb-uk-new, cdw/main,
 // epson/secglobal, hsbc/global-common-dotcom, ccl/main,
 // newbalance/nb-jnbo-new, barclaysuk/barclaycard-public,
 // academysports/main, hktdc/main, random/rhcorp-prh,
 // jysk-fynske-medier/partners, nordea/op-web and
 // newsinternational/dreamteam.2016, xe/xrates, williamhillgroup/es-web,
-// cbsi/webplex-marketing, newsltd/dt and virgin/main, 20kB to 771kB - and
-// four
+// cbsi/webplex-marketing, newsltd/dt, virgin/main and prada/prada2019,
+// 20kB to 1.5MB - and four
 // tag files: lbg/code utag.2.js at 515 bytes, and tsb's
 // utag.419.js, utag.263.js and utag.272.js at 37kB, 27kB and 12.6kB, 77kB
 // of vendors on one page.
@@ -21,7 +22,7 @@
 // and ships pretty-printed over 4496 lines, which is worth knowing before
 // counting anything in it: a pattern written for the minified form, like
 // view:function, matches none of it.
-// Eight years and two generations, and all twenty-two publish the same
+// Eight years and two generations, and all twenty-three publish the same
 // fifteen members in the same order. That is why this pins the contract and
 // nothing about a build.
 // Their environment is not always prod either - barclaysuk serves from
@@ -89,8 +90,11 @@
 // speculation looked worse than saying this: if a site turns out to call
 // it, it is a pure function and can be added.
 // Their consent config reads - cookieNS, domain, path, consentPeriod,
-// noqueue, noview, eventProfile, defaultConsentForDoNotSell and the dr
-// flag - are left off on purpose. They are a tenant's settings, every one
+// noqueue, noview, eventProfile, defaultConsentForDoNotSell and the dr and
+// track_sent flags - are left off on purpose, as are the two helpers whose
+// output shape would be a guess: getDeTokenizedContent, which belongs to
+// the prompt rendering this stops, and sortedObject. They are a tenant's
+// settings, every one
 // of them is read rather than called, and undefined is falsy, so a page
 // that looks at one gets an answer it can use instead of an exception.
 // WHAT IS DELIBERATELY NOT THERE, beyond the data-layer readers: utag.v_id,
@@ -117,9 +121,9 @@
 // a string, and none rather than opt-in: see the note at the member for
 // what that trades. The two prompts carry isEnabled false, since there is
 // no prompt to enable with no tag to run it.
-// Four of the twenty-two - hsbc, tsb, barclaysuk and williamhillgroup,
-// with 223, 232, 243 and 260 references to it where the others with a
-// manager have 41 - carry
+// Five of the twenty-three - hsbc, tsb, barclaysuk, williamhillgroup and
+// prada, with 223, 232, 243, 260 and 316 references to it where the
+// others with a manager have 41 - carry
 // the whole of it, setters and prompts included, and those are the
 // page-facing half: a cookie
 // preferences link calls showConsentPreferences(_lang) or
@@ -166,7 +170,14 @@
 //   ||tags.tiqcdn.com/utag/*/utag.js$script,redirect=tealium.js
 // A tag file is a separate request that nothing makes once the loader is
 // replaced, so no rule is needed for utag.N.js and blocking those buys
-// nothing. The version ping can go in a list if a list wants it, and one
+// nothing. utag/tiqapp/utag.currency.js is the same thing wearing another
+// name: prada's loader has it as tag 14 in utag.loader.cfg, with an
+// explicit src of //tags.tiqcdn.com/utag/tiqapp/utag.currency.js that one
+// of their extensions rewrites to the .cn host for prada.com/cn. It is a
+// rate table, 3kB of it, declaring a tealiumiq_currency global for that
+// tag's own use, and AS is what asks for it - so it goes the way the
+// numbered ones go.
+// The version ping can go in a list if a list wants it, and one
 // line reaches both of its paths:
 //   ||tags.tiqcdn.com/utag/*/utag.v.js$script
 // which costs a page two bytes of comment it never reads. That pattern
