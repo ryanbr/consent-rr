@@ -14,6 +14,16 @@
     somebody forgot to wire up or a file left behind after one was removed,
     and it ships in neither case.
 
+    extra/ is checked too, by the rules that apply to it rather than the ones
+    that apply to src/. Those files are not built: they ship as they are, so
+    what matters is what uBO's own parser does to them. A blank line ends a
+    resource there and takes the rest of the file with it, and a user
+    resource is base64'd with btoa(), which throws on anything outside
+    ASCII. Neither is checked for src/, where the build normalises both.
+    What is NOT checked there: a backtick, which only matters to the bundler
+    these files do not go through, and line length, which is style. One of
+    them carries both today and ships fine.
+
     NOTHING IS LISTED BY NAME IN HERE, which is the point. The script this
     replaced named three files by hand, two of which had moved; it had been
     failing for several families' worth of commits because nothing ran it.
@@ -28,6 +38,7 @@ import * as vm from 'node:vm';
 
 const root = path.join(import.meta.dirname, '..');
 const srcDir = path.join(root, 'src');
+const extraDir = path.join(root, 'extra');
 const reInclude = /^\s*\/\/\s*@include\s+(\S+)\s*$/;
 
 const named = file => path.relative(root, file);
@@ -102,6 +113,48 @@ for ( const lib of libs ) {
 
 /******************************************************************************/
 
+// Hand-maintained resources, shipped as they are, so uBO's parser is the
+// thing to satisfy.
+const extras = await walk(extraDir);
+assert.ok(extras.length !== 0, 'no resources found under extra/');
+
+for ( const file of extras ) {
+    const text = await fs.readFile(file, 'utf8');
+    const lines = text.split('\n');
+
+    try {
+        new vm.Script(text, { filename: named(file) });
+    } catch ( ex ) {
+        complain(file, 0, ex.message);
+    }
+
+    // The one that takes the rest of the file with it, with no error
+    // anywhere: uBO ends a resource at a blank line.
+    lines.forEach((line, at) => {
+        if ( at === lines.length - 1 ) { return; }
+        if ( line.trim() !== '' ) { return; }
+        complain(file, at + 1, 'a blank line - uBO ends the resource here');
+    });
+
+    // btoa() throws on anything outside ASCII, and uBO base64's a user
+    // resource to hand it over.
+    lines.forEach((line, at) => {
+        const found = /[^\x20-\x7e\t]/.exec(line);
+        if ( found === null ) { return; }
+        complain(file, at + 1,
+            'a byte outside ASCII (' +
+            JSON.stringify(found[0]) + ') - btoa() throws on it');
+    });
+
+    // The header uBO reads to name the resource, which has to be the file.
+    const want = '/// ' + path.basename(file);
+    if ( lines[0] !== want ) {
+        complain(file, 1, 'the first line is not ' + JSON.stringify(want));
+    }
+}
+
+/******************************************************************************/
+
 if ( problems.length !== 0 ) {
     for ( const problem of problems ) { console.error('  ' + problem); }
     console.error('\n  ' + problems.length + ' problem' +
@@ -109,4 +162,4 @@ if ( problems.length !== 0 ) {
     process.exit(1);
 }
 console.log('  ' + files.length + ' files, ' + entries.length + ' resources, ' +
-    libs.length + ' libs, nothing to say');
+    libs.length + ' libs, ' + extras.length + ' in extra/, nothing to say');

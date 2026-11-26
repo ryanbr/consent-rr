@@ -874,6 +874,183 @@ describe('extra/perimeterx.js, the sensors it never reads', ( ) => {
     });
 });
 
+// The line every resource in src/ prints, which this one was missing: on
+// a site where a rule looks like it did not fire, it is the difference
+// between reading a console and inspecting storage by hand.
+describe('extra/perimeterx.js, what it says', ( ) => {
+    const said = (options = {}) => {
+        const lines = [];
+        const vc = new VirtualConsole();
+        vc.on('info', message => lines.push(String(message)));
+        const dom = new JSDOM(
+            '<!DOCTYPE html><html><head>' + (options.before || '') +
+            '<script>' + code + '</script></head><body></body></html>',
+            {
+                runScripts: 'dangerously',
+                url: options.url || 'https://example.com/p',
+                virtualConsole: vc,
+                beforeParse: options.beforeParse,
+            }
+        );
+        return { lines, w: dom.window };
+    };
+    const snippet = '<script>window._pxAppId = "' + APP_ID + '";</script>';
+
+    it('says one line, once', ( ) => {
+        const { lines } = said({ before: snippet });
+        assert.equal(lines.length, 1);
+        assert.match(lines[0],
+            /^\[consent-rr\] perimeterx \d+\.\d+\.\d+ /);
+    });
+
+    it('names the id and where it came from', ( ) => {
+        const fromSnippet = said({ before: snippet });
+        assert.match(fromSnippet.lines[0],
+            new RegExp(' id=' + APP_ID + ' from=snippet '));
+        const none = said({});
+        assert.match(none.lines[0], / id=none from=none /);
+    });
+
+    it('names the element and the scan as sources', ( ) => {
+        // from= is the field that says how the tenant was recognised, so
+        // each route has to be able to appear in it.
+        // The redirected element, with the line captured: without this
+        // the element route could stop naming itself and nothing would
+        // notice.
+        const fromEl = [];
+        const elConsole = new VirtualConsole();
+        elConsole.on('info', message => fromEl.push(String(message)));
+        const elDom = new JSDOM(
+            '<!DOCTYPE html><html><head><script src="' + CLIENT_URL +
+            '"></script></head><body></body></html>',
+            { runScripts: 'dangerously', url: 'https://example.com/p',
+              virtualConsole: elConsole }
+        );
+        const elWin = elDom.window;
+        const el = elWin.document.querySelector('script[src]');
+        new elWin.Function('el', [
+            "Object.defineProperty(document, 'currentScript',",
+            '{ value: el, configurable: true });',
+            code,
+        ].join(''))(el);
+        assert.match(fromEl[0],
+            new RegExp(' id=' + APP_ID + ' from=element '));
+        const lines = [];
+        const vc = new VirtualConsole();
+        vc.on('info', message => lines.push(String(message)));
+        const dom = new JSDOM(
+            '<!DOCTYPE html><html><head><script src="' + CLIENT_URL +
+            '"></script><script>' + code + '</script></head>' +
+            '<body></body></html>',
+            { runScripts: 'dangerously', url: 'https://example.com/p',
+              virtualConsole: vc }
+        );
+        void dom.window.document.title;
+        assert.match(lines[0], new RegExp(' id=' + APP_ID + ' from=scan '));
+    });
+
+    // The fourth route, which nothing exercised: no currentScript, an
+    // app id the page declared in a shape that is not theirs, no tag to
+    // scan, and _pxJsClientSrc left by a block page.
+    it('names _pxJsClientSrc as a source', ( ) => {
+        const lines = [];
+        const vc = new VirtualConsole();
+        vc.on('info', message => lines.push(String(message)));
+        const dom = new JSDOM(
+            '<!DOCTYPE html><html><head><script>' +
+            'window._pxAppId = "not-their-shape";' +
+            'window._pxJsClientSrc = "' + CLIENT_URL + '";</script>' +
+            '<script>' + code + '</script></head><body></body></html>',
+            { runScripts: 'dangerously', url: 'https://example.com/p',
+              virtualConsole: vc }
+        );
+        const w = dom.window;
+        assert.equal(w[APP_ID], w.PX);
+        assert.match(lines[0],
+            new RegExp(' id=' + APP_ID + ' from=clientsrc '));
+    });
+
+    it('calls back even where the console refuses', async ( ) => {
+        // The line is said before the callback is wired, so an exception
+        // getting out of it would publish the object and then strand the
+        // page waiting - which is worse than saying nothing.
+        const lines = [];
+        const vc = new VirtualConsole();
+        vc.on('info', message => lines.push(String(message)));
+        const dom = new JSDOM(
+            '<!DOCTYPE html><html><head><script>window._pxAppId = "' +
+            APP_ID + '"; window.' + APP_ID + '_asyncInit = function(px) {' +
+            ' window.seen = px; };</script><script>' + code +
+            '</script></head><body></body></html>',
+            {
+                runScripts: 'dangerously',
+                url: 'https://example.com/p',
+                virtualConsole: vc,
+                beforeParse(win) {
+                    Object.defineProperty(win, 'console', {
+                        configurable: true,
+                        get() { throw new Error('no console'); },
+                    });
+                },
+            }
+        );
+        const w = dom.window;
+        await settle();
+        assert.equal(w.seen, w.PX);
+    });
+
+    it('counts what it took away', ( ) => {
+        const { lines } = said({
+            before: '<script>document.cookie = "_pxvid=v; path=/";' +
+                'localStorage.setItem("' + APP_ID + '_px-ff", "e30=");' +
+                'localStorage.setItem("' + APP_ID + '__pxvid", "m");' +
+                'localStorage.setItem("mine", "kept");</script>' + snippet,
+        });
+        assert.match(lines[0], / cleared=1 storage=2 token=none /);
+    });
+
+    it('counts nothing where there was nothing', ( ) => {
+        const { lines } = said({ before: snippet });
+        assert.match(lines[0], / cleared=0 storage=0 token=none /);
+    });
+
+    it('says why it cleared nothing while a token is live', ( ) => {
+        const { lines } = said({
+            before: '<script>document.cookie = "_px3=t; path=/";' +
+                'document.cookie = "_pxvid=v; path=/";</script>' + snippet,
+        });
+        assert.match(lines[0], / cleared=0 storage=0 token=live /);
+    });
+
+    it('says it stood aside for a client already there', ( ) => {
+        const { lines } = said({
+            before: snippet + '<script>window.PX = ' +
+                '{ Events: { on: function() {} } };</script>',
+        });
+        assert.match(lines[0], / took=theirs /);
+    });
+
+    it('says what it took, and carries the page url', ( ) => {
+        const { lines } = said({ before: snippet });
+        assert.match(lines[0], / took=alias\+px /);
+        assert.match(lines[0], / on https:\/\/example\.com\/p$/);
+    });
+
+    it('publishes even where the console refuses', ( ) => {
+        const { w } = said({
+            before: snippet,
+            beforeParse(win) {
+                Object.defineProperty(win, 'console', {
+                    configurable: true,
+                    get() { throw new Error('no console'); },
+                });
+            },
+        });
+        assert.equal(typeof w.PX, 'object');
+        assert.equal(w[APP_ID], w.PX);
+    });
+});
+
 describe('extra/perimeterx.js, the identifiers it clears', ( ) => {
     const snippet = '<script>window._pxAppId = "' + APP_ID + '";</script>';
 

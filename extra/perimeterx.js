@@ -202,6 +202,8 @@
     const doc = w.document;
     // Their own shape for an app id, from the block-page parser that reads
     // one back out of a document: PX[A-Za-z0-9]{4,8}
+    const NAME = 'perimeterx';
+    const VERSION = '1.0.0';
     const SHAPE = /^PX[A-Za-z0-9]{4,8}$/;
     const IN_URL = /\/(PX[A-Za-z0-9]{4,8})\/[^/]*$/;
     // A first-party deployment serves the same client from the site's own
@@ -238,15 +240,17 @@
     // this script's own identity rather than the page's declaration about
     // it. The page scan is last because it cannot tell one tenant's tag
     // from another's.
+    let from = 'none';
     const identify = ( ) => {
         try {
             const mine = doc.currentScript;
             const found = inUrl(mine !== null ? mine.src : '');
-            if ( found !== '' ) { return found; }
+            if ( found !== '' ) { from = 'element'; return found; }
         } catch ( ex ) {
         }
         try {
             if ( typeof w._pxAppId === 'string' && SHAPE.test(w._pxAppId) ) {
+                from = 'snippet';
                 return w._pxAppId;
             }
         } catch ( ex ) {
@@ -256,12 +260,13 @@
                 'script[src*="px-cloud.net"],script[src*="/init.js"]');
             for ( const tag of tags ) {
                 const found = inUrl(tag.src);
-                if ( found !== '' ) { return found; }
+                if ( found !== '' ) { from = 'scan'; return found; }
             }
         } catch ( ex ) {
         }
         try {
-            return inUrl(w._pxJsClientSrc);
+            const found = inUrl(w._pxJsClientSrc);
+            if ( found !== '' ) { from = 'clientsrc'; return found; }
         } catch ( ex ) {
         }
         return '';
@@ -331,13 +336,18 @@
         return out;
     };
     const forget = ( ) => {
+        const done = { cleared: 0, storage: 0, token: 'none' };
         const there = inJar();
         for ( const name of TOKENS ) {
-            if ( there.indexOf(name) !== -1 ) { return; }
+            if ( there.indexOf(name) !== -1 ) {
+                done.token = 'live';
+                return done;
+            }
         }
         const mine = IDS.filter(name => there.indexOf(name) !== -1);
         const where = mine.length !== 0 ? suffixes() : [];
         for ( const name of mine ) {
+            done.cleared += 1;
             for ( const domain of where ) {
                 const parts = [ name + '=', 'path=/',
                     'expires=Thu, 01 Jan 1970 00:00:01 GMT' ];
@@ -349,14 +359,48 @@
             let held;
             try { held = w[store]; } catch ( ex ) { continue; }
             if ( held === null || held === undefined ) { continue; }
+            // Counted by what the store lost, not by what was asked of
+            // it: removing a key that was never there is a no-op, and a
+            // line saying twenty would be worse than saying nothing. The
+            // length of a store is a count rather than a read of anything
+            // in it, so this adds no read of a key or a value.
+            let was = 0;
+            try { was = held.length; } catch ( ex ) { }
             for ( const name of STORED ) {
                 try { held.removeItem(name); } catch ( ex ) { }
                 if ( id === '' ) { continue; }
                 try { held.removeItem(id + '_' + name); } catch ( ex ) { }
             }
+            try { done.storage += Math.max(0, was - held.length); }
+            catch ( ex ) { }
+        }
+        return done;
+    };
+    const taken = forget();
+    // Said once, at the end, the way every resource in src/ says it: what
+    // actually went in rather than what was meant to. id and from answer
+    // whether a rule fired and how the tenant was recognised, cleared and
+    // storage answer what was taken away, and token=live is the reason
+    // both can be zero on a site where nothing is wrong.
+    const report = took => {
+        let where = '';
+        try { where = String(w.location.href || ''); } catch ( ex ) { }
+        try {
+            if ( typeof console !== 'object' ) { return; }
+            if ( typeof console.info !== 'function' ) { return; }
+            console.info(
+                '[consent-rr] ' + NAME + ' ' + VERSION +
+                ' id=' + (id !== '' ? id : 'none') +
+                ' from=' + from +
+                ' took=' + took +
+                ' cleared=' + taken.cleared +
+                ' storage=' + taken.storage +
+                ' token=' + taken.token +
+                (where !== '' ? ' on ' + where : '')
+            );
+        } catch ( ex ) {
         }
     };
-    forget();
     // Their emitter, from jH. channels is not a property until the first
     // subscribe, which is theirs as well.
     const events = {
@@ -424,8 +468,10 @@
         }
         return false;
     };
-    if ( id !== '' && claimed(w[id]) ) { return; }
-    if ( claimed(w.PX) ) { return; }
+    if ( ( id !== '' && claimed(w[id]) ) || claimed(w.PX) ) {
+        report('theirs');
+        return;
+    }
     try {
         if ( id !== '' ) { w[id] = px; }
     } catch ( ex ) {
@@ -445,6 +491,7 @@
     // init is a collector round trip, so the call is always asynchronous.
     // The snippet defines the callback before the tag, since the tag is
     // async, but a page that defines it later gets the two later passes.
+    report(id !== '' ? 'alias+px' : 'px');
     let called = false;
     const fire = ( ) => {
         if ( called ) { return; }
