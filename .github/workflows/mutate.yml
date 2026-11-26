@@ -1,0 +1,69 @@
+name: mutate
+
+# Mutation testing for the three hand-maintained resources under extra/. Each
+# mutation breaks the resource one substitution at a time and asks whether its
+# test file notices; a survivor means a test is not testing what it names.
+#
+# Only on a change that can move the answer - the resources, their tests, the
+# mutation lists or the tool - plus a weekly run, because the tests depend on
+# jsdom and node behaviour that npm ci can bring in under us. Not on every
+# push: a sweep is minutes, and src/ cannot change it.
+
+on:
+  pull_request:
+    paths:
+      - 'extra/**'
+      - 'test/optimizely.test.mjs'
+      - 'test/perimeterx.test.mjs'
+      - 'test/tealium.test.mjs'
+      - 'tools/mutate.mjs'
+      - 'tools/mutations/**'
+      - '.github/workflows/mutate.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'extra/**'
+      - 'test/optimizely.test.mjs'
+      - 'test/perimeterx.test.mjs'
+      - 'test/tealium.test.mjs'
+      - 'tools/mutate.mjs'
+      - 'tools/mutations/**'
+      - '.github/workflows/mutate.yml'
+  schedule:
+    # Mondays, 05:17 UTC. Off the hour, because every job scheduled on it
+    # queues together.
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      # One list is not the others: a survivor in tealium should not hide
+      # whether optimizely is still clean.
+      fail-fast: false
+      matrix:
+        resource: [ optimizely, perimeterx, tealium ]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # The suite has to pass before breaking it means anything: a sweep over
+      # a red suite kills every mutation and says nothing.
+      - name: the suite passes unmutated
+        run: node --test --test-timeout=30000 test/${{ matrix.resource }}.test.mjs
+      # A hosted runner is slower than a laptop, and cutting a run short that
+      # was going to fail reads as a survivor. Both timeouts are raised well
+      # past what the sweep needs locally.
+      - name: ${{ matrix.resource }}
+        env:
+          MUTATE_TEST_TIMEOUT: 30000
+          MUTATE_RUN_TIMEOUT: 180000
+        run: npm run mutate -- ${{ matrix.resource }}

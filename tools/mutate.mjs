@@ -41,6 +41,9 @@
       node tools/mutate.mjs optimizely       one of them
       node tools/mutate.mjs optimizely poll  only mutations whose name matches
 
+    MUTATE_TEST_TIMEOUT and MUTATE_RUN_TIMEOUT raise the two timeouts on a
+    slow machine, in milliseconds.
+
 */
 
 import { strict as assert } from 'node:assert';
@@ -56,8 +59,14 @@ const listDir = path.join(import.meta.dirname, 'mutations');
 
 // node --test gives up on a test after this; the process is given longer,
 // because a leaked interval keeps it alive after the suite has finished.
-const TEST_TIMEOUT = 5000;
-const RUN_TIMEOUT = 45000;
+//
+// Both are raised on a slow machine through the environment, and CI does.
+// Cutting a run short that was going to fail reads as a survivor, which is
+// the one way this tool can lie about the code rather than about itself.
+const TEST_TIMEOUT = Number(process.env.MUTATE_TEST_TIMEOUT || 5000);
+const RUN_TIMEOUT = Number(process.env.MUTATE_RUN_TIMEOUT || 45000);
+assert.ok(TEST_TIMEOUT > 0 && RUN_TIMEOUT > TEST_TIMEOUT,
+    'MUTATE_RUN_TIMEOUT must be larger than MUTATE_TEST_TIMEOUT');
 
 /******************************************************************************/
 

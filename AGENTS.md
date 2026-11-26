@@ -50,8 +50,14 @@ pointed at it. The notes below are the things that have actually gone wrong.
   is one substitution whose `from` must occur exactly once; `expected` names
   the mutations that cannot be killed, with the reason, and every other
   survivor exits 1. It edits the resource in place and puts it back, including
-  on ctrl-c. It is not in CI: a sweep is minutes, and it earns its keep when a
-  test is written, not on every push.
+  on ctrl-c. `MUTATE_TEST_TIMEOUT` and `MUTATE_RUN_TIMEOUT` raise its two
+  timeouts on a slow machine: cutting a run short that was going to fail
+  reads as a survivor, which is the one way it can lie about the code rather
+  than about itself. `.github/workflows/mutate.yml` runs the three as a
+  matrix, but only when `extra/`, one of their three tests, a list or the
+  tool itself changes - plus weekly, because the tests lean on jsdom and node
+  behaviour that `npm ci` can change under us. It is not on every push: a
+  sweep is minutes and `src/` cannot move the answer.
 - `dist/` is committed, because that is what uBO fetches. CI fails when it does
   not match `src/`.
 
