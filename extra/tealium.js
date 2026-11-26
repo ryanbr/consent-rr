@@ -228,6 +228,194 @@
 // standing and leaves it alone.
 // The account and profile come from the url, which is also where
 // their own id comes from, so the resource needs nothing per tenant.
+// NOTES ON THE MEMBERS, which used to sit beside them in the code and
+// shipped with them: uBO drops a comment only at column zero, so prose
+// indented into the body goes out to every user, and half of what this
+// resource shipped was these. Same words, moved out of the way. Each is
+// named by the member it belongs to.
+//   const
+//     Their own id is account.profile - id:"elsgroup.actuel-rh" in the
+//     loader for /utag/elsgroup/actuel-rh/prod/utag.js - so the url the
+//     redirected element still carries is where both halves are. Checked
+//     against the id each loader declares for itself on seventeen
+//     tenants, hyphens and dots included: jysk-fynske-medier.partners and
+//     newsinternational.dreamteam.2016 are both theirs, which is why the
+//     two halves take a dot and a hyphen and not just word characters.
+//   const
+//     Their cookie, and the one thing in it worth taking away: v_id, read
+//     back as o["cp.utag_main_v_id"] and handed to the data layer as
+//     tealium_visitor_id. ses_id and _sn ride along in the same cookie.
+//   const
+//     Their visitor attributes, read back by RDva as
+//     readAttr(o, "tealium_va") and
+//     readAttr(o, "tealium_va_" + o["ut.account"] + "_" + o["ut.profile"]).
+//     Replacing the loader stops new ones arriving and leaves whatever is
+//     already there, so both names go - localStorage is the one they read,
+//     and the other store costs a call to be sure.
+//   const
+//     One read of the jar, and only to find out whether there is anything
+//     to expire: a name that is not in document.cookie has nothing to
+//     expire at any suffix either, since a cookie set on a parent domain
+//     is in document.cookie as well.
+//   let
+//     Counted by what the store lost rather than by what was asked
+//     of it: removing a key that was never there is a no-op, and a
+//     count of the asking would say two on an untouched store. The
+//     length of a store is a count and not a read of anything in
+//     it.
+//   if
+//     An empty store has nothing of theirs in it, so the removals
+//     and the second count are both waste - and an empty store is
+//     exactly what a first visit looks like.
+//   let
+//     One read of the jar, and the names come out of it rather than
+//     out of a list, because theirs comes in two shapes. Packed is one
+//     utag_main carrying v_id, ses_id, _sn and _se as sub-values.
+//     Split is a cookie each, named utag_main_v_id and the rest, and
+//     their own test for it is
+//     document.cookie.includes("utag_main_") - fourteen of the
+//     twenty-two read carry that machinery, behind
+//     utag.cfg.split_cookie. The underscore is what keeps a page's own
+//     utag_mainly out of it.
+//   let
+//     The data layer is the page's own object. Theirs reads it and adds
+//     its own several hundred keys; this one hands back what the page put
+//     there and nothing else, by reference, so a page that keeps writing
+//     to window.utag_data keeps seeing it on utag.data as it would.
+//   const
+//     Their callback, called rather than dropped. A page that passes one
+//     is usually waiting to navigate.
+//     No catch of its own: track wraps every call to this, so one here
+//     would be unreachable - and a guard nothing can reach is a guard
+//     nothing can check.
+//   const
+//     Their utilities, as far as they are pure. vi mints a visitor id, so
+//     it answers the empty string; flatten and loader are theirs to use on
+//     data this one does not gather.
+//     Their helpers, written to their own implementations rather than to
+//     what the names suggest - the ten loaders read carry the same bodies,
+//     from the 2018 build to this month's, and a page that calls one of
+//     these should get their answer and not a near miss.
+//   merge
+//     merge(a, b, c): c decides. Theirs overwrites when it is truthy
+//     and fills only what is undefined when it is not, and the second
+//     is the call their own loader makes.
+//   const
+//     The queues a page or a tag pushes to, and the named calls theirs
+//     exposes. Not the RD readers - RDcp, RDlocalStorage, RDsessionStorage,
+//     RDmeta, RDqp, RDdom, RDpv, RDva, RDut, RDses - which are the data
+//     layer being gathered, and are the one part of their surface this is
+//     deliberately missing.
+//   cfg
+//     Their tag config map, keyed by tag id and read in all thirteen
+//     as utag.loader.cfg. Empty here, which is the truth: no tag is
+//     configured to run.
+//   INIT
+//     The entry points theirs calls on itself, in case something on
+//     the page reaches for one to re-run the loader, and their cookie
+//     removers, which have nothing left to remove. GET is in every
+//     loader read and is where theirs starts: it sets utag.cl, calls
+//     utag.pre() and installs the extension pass.
+//   getEnforcementMode
+//     none, and that is a decision taken for the page rather than
+//     against it. Their own enforcement returns early on it -
+//     if (enforcementMode === 'none') return - so none reads as
+//     nothing being gated, which is what page logic usually treats as
+//     no consent being needed.
+//     opt-in was the other answer, and it says the stronger thing:
+//     tags are gated, which here is true in the strongest sense since
+//     none of them will run at all. It breaks two page shapes though,
+//     and both are common. A page that withholds an embed until
+//     marketing consent sees enforcement on with getConsentState() 0,
+//     reads it as a visitor who has not consented, and keeps the embed
+//     hidden. And a page that draws its own banner keeps drawing it,
+//     because the setters here drop and the record their manager keeps
+//     in a CONSENTMGR cookie - barclaysuk refers to it nineteen times,
+//     tsb reads it back as cp.CONSENTMGR - is never written. Theirs
+//     cannot re-prompt, since their prompt arrives with the consent
+//     manager tag this stops, but a tenant's own code can.
+//     What none does NOT do is claim a consent. getConsentState stays
+//     0, the categories stay empty, and the tag filters still refuse,
+//     because the shape that actually costs a visitor something is
+//     if (getConsentState() === 1) { inject vendor } - a page told yes
+//     goes and loads the tracker itself, which is worse than an embed
+//     that stays hidden. If a site gates content on that value rather
+//     than on the mode, lift the rule for it.
+//   setConsentValue
+//     Their setters, taken and dropped. setConsentValue(1) is a page
+//     granting, and there is nothing to grant to and nothing here that
+//     stores: no tag is waiting on a category and no cookie is written
+//     either way.
+//   showConsentPreferences
+//     The two a preferences link calls, theirs taking a language. No
+//     prompt arrives to be shown, so a link that calls one of these
+//     does nothing - which is what a link whose script was replaced
+//     can do, and is better than the exception it would throw if the
+//     member were missing.
+//   shouldBlockTag
+//     if (!utag.gdpr.shouldBlockTag(uid)) uids.push(uid) is how the
+//     ut4.0 builds filter a track call's uids, so true is the refusal
+//     and leaves that list empty. ut4.46 asks the question the other
+//     way round, as shouldTagFire, so that one answers false. Both are
+//     here because a page on either generation may ask either.
+//   showDoNotSellBanner
+//     What ut4.46 added, and the page-facing half of it first: a do
+//     not sell link calls showDoNotSellBanner, and their own flow
+//     reaches it through
+//     if (!utag.gdpr.dns.getDnsState()) { showDoNotSellBanner() }.
+//     That call site is all their loader has - getDnsState itself is
+//     defined in the consent manager tag, which is one of the ones
+//     this stops arriving, so the answer below is read off the call
+//     and not off an implementation. true says the visitor is already
+//     opted out of a sale, which they are, since nothing is collected
+//     to sell, and it is also what keeps their banner from being asked
+//     for. Their own flow never reaches it in any case: doNotSell is
+//     {} here, so the isEnabled it tests first is undefined, and dns
+//     is here for a page that calls it rather than for them.
+//   updateConsentCookie
+//     The cookie writers ut4.46 exposes, taken and dropped like the
+//     rest. updateConsentCookie is also reachable without touching
+//     gdpr at all - their track handles an update_consent_cookie
+//     event with a consent_categories payload - and that path lands on
+//     the same refusal, since this track stores nothing whatever the
+//     event says.
+//   getTraceId
+//     Their trace feature, which a page can ask for. No trace is
+//     running with no tag to trace, so the answer is the empty
+//     string rather than a missing member.
+//   typeOf
+//     Their own helpers live on gdpr as well as on ut, and their
+//     enforcement calls utag.gdpr.typeOf itself, so these are the same
+//     implementations rather than second ones.
+//   consent_prompt
+//     categories beside isEnabled, because a page that reads a
+//     prompt's categories to draw its own list would otherwise be
+//     iterating undefined. Theirs guards that with
+//     if (!Array.isArray(_prompt.categories)) return []; a page has no
+//     reason to.
+//   const
+//     Their cfg carries the tenant's build settings, and theirs merges
+//     window.utag_cfg_ovrd over them - a page that sets noview or
+//     nocookie there reads it back on utag.cfg, so it is copied in. By
+//     value, since it is the page's own object and this one has no
+//     settings of its own to defend.
+//   extend
+//     Arrays in all thirteen, and the place a tenant's extensions
+//     live: utag.handler.extend = [ function(a, b){ ... } ] with
+//     utag.handler.cfg_extend = [ { id, blr, alr, ... } ] beside
+//     it. Empty here, and that is the extension pass this
+//     refuses rather than an oversight - those functions are
+//     where a tenant reads utag.data['customer_email'] and the
+//     rest of the data layer. A page that pushes to one of them
+//     finds an array to push to, and nothing that will run it.
+//   udoname
+//     The name of the global their loader merges into utag.data, which
+//     theirs reads as window[utag.udoname]. utag_data is the default
+//     and the one this resource took its data from.
+//   const
+//     A page element with id="utag" is a named property of the window, so
+//     what is standing there may be a tag rather than a loader. Only a
+//     loader - an object carrying their track - is left alone.
 // The "///" line above is the resource header uBO reads, and a comment to
 // JavaScript. uBO drops these "//" lines when it parses.
 (function() {
@@ -236,13 +424,7 @@
     const doc = w.document;
     const NAME = 'tealium';
     const VERSION = '1.0.0';
-    // Their own id is account.profile - id:"elsgroup.actuel-rh" in the
-    // loader for /utag/elsgroup/actuel-rh/prod/utag.js - so the url the
-    // redirected element still carries is where both halves are. Checked
-    // against the id each loader declares for itself on seventeen
-    // tenants, hyphens and dots included: jysk-fynske-medier.partners and
-    // newsinternational.dreamteam.2016 are both theirs, which is why the
-    // two halves take a dot and a hyphen and not just word characters.
+    // See NOTES in the header.
     const IN_URL =
         /\/utag\/([\w.-]{1,40})\/([\w.-]{1,40})\/[\w.-]{1,24}\/utag[\w.]*\.js/;
     const noopfn = ( ) => { };
@@ -277,16 +459,9 @@
         return '';
     };
     const id = identify();
-    // Their cookie, and the one thing in it worth taking away: v_id, read
-    // back as o["cp.utag_main_v_id"] and handed to the data layer as
-    // tealium_visitor_id. ses_id and _sn ride along in the same cookie.
+    // See NOTES in the header.
     const COOKIE = 'utag_main';
-    // Their visitor attributes, read back by RDva as
-    // readAttr(o, "tealium_va") and
-    // readAttr(o, "tealium_va_" + o["ut.account"] + "_" + o["ut.profile"]).
-    // Replacing the loader stops new ones arriving and leaves whatever is
-    // already there, so both names go - localStorage is the one they read,
-    // and the other store costs a call to be sure.
+    // See NOTES in the header.
     const stored = ( ) => {
         const out = [ 'tealium_va' ];
         if ( account !== '' && profile !== '' ) {
@@ -306,10 +481,7 @@
         }
         return out;
     };
-    // One read of the jar, and only to find out whether there is anything
-    // to expire: a name that is not in document.cookie has nothing to
-    // expire at any suffix either, since a cookie set on a parent domain
-    // is in document.cookie as well.
+    // See NOTES in the header.
     const forget = ( ) => {
         const done = { cleared: 0, storage: 0 };
         const names = stored();
@@ -317,16 +489,10 @@
             let store_;
             try { store_ = w[store]; } catch ( ex ) { continue; }
             if ( store_ === null || store_ === undefined ) { continue; }
-            // Counted by what the store lost rather than by what was asked
-            // of it: removing a key that was never there is a no-op, and a
-            // count of the asking would say two on an untouched store. The
-            // length of a store is a count and not a read of anything in
-            // it.
+            // See NOTES in the header.
             let was = 0;
             try { was = store_.length; } catch ( ex ) { }
-            // An empty store has nothing of theirs in it, so the removals
-            // and the second count are both waste - and an empty store is
-            // exactly what a first visit looks like.
+            // See NOTES in the header.
             if ( was === 0 ) { continue; }
             for ( const name of names ) {
                 try { store_.removeItem(name); } catch ( ex ) { }
@@ -334,15 +500,7 @@
             try { done.storage += Math.max(0, was - store_.length); }
             catch ( ex ) { }
         }
-        // One read of the jar, and the names come out of it rather than
-        // out of a list, because theirs comes in two shapes. Packed is one
-        // utag_main carrying v_id, ses_id, _sn and _se as sub-values.
-        // Split is a cookie each, named utag_main_v_id and the rest, and
-        // their own test for it is
-        // document.cookie.includes("utag_main_") - fourteen of the
-        // twenty-two read carry that machinery, behind
-        // utag.cfg.split_cookie. The underscore is what keeps a page's own
-        // utag_mainly out of it.
+        // See NOTES in the header.
         let held = '';
         try { held = String(doc.cookie || ''); } catch ( ex ) { return done; }
         if ( held === '' ) { return done; }
@@ -368,21 +526,14 @@
         return done;
     };
     const taken = forget();
-    // The data layer is the page's own object. Theirs reads it and adds
-    // its own several hundred keys; this one hands back what the page put
-    // there and nothing else, by reference, so a page that keeps writing
-    // to window.utag_data keeps seeing it on utag.data as it would.
+    // See NOTES in the header.
     let data = {};
     try {
         const held = w.utag_data;
         if ( held !== null && typeof held === 'object' ) { data = held; }
     } catch ( ex ) {
     }
-    // Their callback, called rather than dropped. A page that passes one
-    // is usually waiting to navigate.
-    // No catch of its own: track wraps every call to this, so one here
-    // would be unreachable - and a guard nothing can reach is a guard
-    // nothing can check.
+    // See NOTES in the header.
     const answer = entry => {
         if ( typeof entry !== 'function' ) { return; }
         entry();
@@ -401,13 +552,7 @@
         // a link call should read the same thing here.
         return true;
     };
-    // Their utilities, as far as they are pure. vi mints a visitor id, so
-    // it answers the empty string; flatten and loader are theirs to use on
-    // data this one does not gather.
-    // Their helpers, written to their own implementations rather than to
-    // what the names suggest - the ten loaders read carry the same bodies,
-    // from the 2018 build to this month's, and a page that calls one of
-    // these should get their answer and not a near miss.
+    // See NOTES in the header.
     const ut = {
         // pad(a, b) is hex, not decimal: a = "" + ((a-0).toString(16)),
         // zero-filled up to b.
@@ -472,9 +617,7 @@
             try { walk(o, ''); } catch ( ex ) { }
             return out;
         },
-        // merge(a, b, c): c decides. Theirs overwrites when it is truthy
-        // and fills only what is undefined when it is not, and the second
-        // is the call their own loader makes.
+        // See NOTES in the header.
         merge: (a, b, c) => {
             try {
                 for ( const key in b ) {
@@ -498,27 +641,17 @@
         error: noopfn,
         loader: noopfn,
     };
-    // The queues a page or a tag pushes to, and the named calls theirs
-    // exposes. Not the RD readers - RDcp, RDlocalStorage, RDsessionStorage,
-    // RDmeta, RDqp, RDdom, RDpv, RDva, RDut, RDses - which are the data
-    // layer being gathered, and are the one part of their surface this is
-    // deliberately missing.
+    // See NOTES in the header.
     const loader = {
         q: [], lq: [], wq: [], bq: [], rq: [], ready_q: [], sendq: [],
         lc: {}, f: {}, ol: {}, bk: {}, p: 0, rf: 0, ri: 0, rp: 0, lh: 0,
-        // Their tag config map, keyed by tag id and read in all thirteen
-        // as utag.loader.cfg. Empty here, which is the truth: no tag is
-        // configured to run.
+        // See NOTES in the header.
         cfg: {},
         GV: o => o || {},
         WQ: noopfn, AS: noopfn, OU: noopfn, RC: noopfn, SC: noopfn,
         LOAD: noopfn, EV: noopfn, END: noopfn, RD: noopfn,
         run_ready_q: noopfn,
-        // The entry points theirs calls on itself, in case something on
-        // the page reaches for one to re-run the loader, and their cookie
-        // removers, which have nothing left to remove. GET is in every
-        // loader read and is where theirs starts: it sets utag.cl, calls
-        // utag.pre() and installs the extension pass.
+        // See NOTES in the header.
         INIT: noopfn, PINIT: noopfn, GET: noopfn,
         deleteCookie: noopfn, deleteIndividualCookies: noopfn,
     };
@@ -529,38 +662,12 @@
         getSelectedCategories: ( ) => [],
         getCategories: ( ) => [],
         getCookieValues: ( ) => ({}),
-        // none, and that is a decision taken for the page rather than
-        // against it. Their own enforcement returns early on it -
-        // if (enforcementMode === 'none') return - so none reads as
-        // nothing being gated, which is what page logic usually treats as
-        // no consent being needed.
-        // opt-in was the other answer, and it says the stronger thing:
-        // tags are gated, which here is true in the strongest sense since
-        // none of them will run at all. It breaks two page shapes though,
-        // and both are common. A page that withholds an embed until
-        // marketing consent sees enforcement on with getConsentState() 0,
-        // reads it as a visitor who has not consented, and keeps the embed
-        // hidden. And a page that draws its own banner keeps drawing it,
-        // because the setters here drop and the record their manager keeps
-        // in a CONSENTMGR cookie - barclaysuk refers to it nineteen times,
-        // tsb reads it back as cp.CONSENTMGR - is never written. Theirs
-        // cannot re-prompt, since their prompt arrives with the consent
-        // manager tag this stops, but a tenant's own code can.
-        // What none does NOT do is claim a consent. getConsentState stays
-        // 0, the categories stay empty, and the tag filters still refuse,
-        // because the shape that actually costs a visitor something is
-        // if (getConsentState() === 1) { inject vendor } - a page told yes
-        // goes and loads the tracker itself, which is worse than an embed
-        // that stays hidden. If a site gates content on that value rather
-        // than on the mode, lift the rule for it.
+        // See NOTES in the header.
         getEnforcementMode: ( ) => 'none',
         getLanguage: ( ) => '',
         applyConsentState: noopfn,
         promptEnabledSetting: noopfn,
-        // Their setters, taken and dropped. setConsentValue(1) is a page
-        // granting, and there is nothing to grant to and nothing here that
-        // stores: no tag is waiting on a category and no cookie is written
-        // either way.
+        // See NOTES in the header.
         setConsentValue: noopfn,
         setAllCategories: noopfn,
         setPreferencesValues: noopfn,
@@ -568,44 +675,19 @@
         setCookieValue: noopfn,
         setCookie: noopfn,
         refreshCookie: noopfn,
-        // The two a preferences link calls, theirs taking a language. No
-        // prompt arrives to be shown, so a link that calls one of these
-        // does nothing - which is what a link whose script was replaced
-        // can do, and is better than the exception it would throw if the
-        // member were missing.
+        // See NOTES in the header.
         showConsentPreferences: noopfn,
         showExplicitConsent: noopfn,
-        // if (!utag.gdpr.shouldBlockTag(uid)) uids.push(uid) is how the
-        // ut4.0 builds filter a track call's uids, so true is the refusal
-        // and leaves that list empty. ut4.46 asks the question the other
-        // way round, as shouldTagFire, so that one answers false. Both are
-        // here because a page on either generation may ask either.
+        // See NOTES in the header.
         shouldBlockTag: ( ) => true,
         shouldTagFire: ( ) => false,
-        // What ut4.46 added, and the page-facing half of it first: a do
-        // not sell link calls showDoNotSellBanner, and their own flow
-        // reaches it through
-        // if (!utag.gdpr.dns.getDnsState()) { showDoNotSellBanner() }.
-        // That call site is all their loader has - getDnsState itself is
-        // defined in the consent manager tag, which is one of the ones
-        // this stops arriving, so the answer below is read off the call
-        // and not off an implementation. true says the visitor is already
-        // opted out of a sale, which they are, since nothing is collected
-        // to sell, and it is also what keeps their banner from being asked
-        // for. Their own flow never reaches it in any case: doNotSell is
-        // {} here, so the isEnabled it tests first is undefined, and dns
-        // is here for a page that calls it rather than for them.
+        // See NOTES in the header.
         showDoNotSellBanner: noopfn,
         dns: {
             getDnsState: ( ) => true,
             getBlockedDnsTagLookup: ( ) => ({}),
         },
-        // The cookie writers ut4.46 exposes, taken and dropped like the
-        // rest. updateConsentCookie is also reachable without touching
-        // gdpr at all - their track handles an update_consent_cookie
-        // event with a consent_categories payload - and that path lands on
-        // the same refusal, since this track stores nothing whatever the
-        // event says.
+        // See NOTES in the header.
         updateConsentCookie: noopfn,
         setCCPCookie: noopfn,
         setEventCookie: noopfn,
@@ -614,13 +696,9 @@
         // Their own id setter, and the one place this surface could put
         // one back: a no-op, because nothing here stores an identifier.
         setVisitorId: noopfn,
-        // Their trace feature, which a page can ask for. No trace is
-        // running with no tag to trace, so the answer is the empty
-        // string rather than a missing member.
+        // See NOTES in the header.
         getTraceId: ( ) => '',
-        // Their own helpers live on gdpr as well as on ut, and their
-        // enforcement calls utag.gdpr.typeOf itself, so these are the same
-        // implementations rather than second ones.
+        // See NOTES in the header.
         typeOf: e => ut.typeOf(e),
         isEmpty: o => ut.isEmpty(o),
         merge: (a, b, c) => ut.merge(a, b, c),
@@ -637,19 +715,11 @@
         queue: [],
         omittedTags: {},
         doNotSell: {},
-        // categories beside isEnabled, because a page that reads a
-        // prompt's categories to draw its own list would otherwise be
-        // iterating undefined. Theirs guards that with
-        // if (!Array.isArray(_prompt.categories)) return []; a page has no
-        // reason to.
+        // See NOTES in the header.
         consent_prompt: { isEnabled: false, categories: [] },
         preferences_prompt: { isEnabled: false, categories: [] },
     };
-    // Their cfg carries the tenant's build settings, and theirs merges
-    // window.utag_cfg_ovrd over them - a page that sets noview or
-    // nocookie there reads it back on utag.cfg, so it is copied in. By
-    // value, since it is the page's own object and this one has no
-    // settings of its own to defend.
+    // See NOTES in the header.
     const cfg = {};
     try {
         const over = w.utag_cfg_ovrd;
@@ -684,28 +754,17 @@
             base: noopfn, df: noopfn, o: {}, send: noopfn, iflag: 0,
             INIT: noopfn, test: noopfn, LR: noopfn, RE: noopfn,
             trigger: noopfn, C: noopfn,
-            // Arrays in all thirteen, and the place a tenant's extensions
-            // live: utag.handler.extend = [ function(a, b){ ... } ] with
-            // utag.handler.cfg_extend = [ { id, blr, alr, ... } ] beside
-            // it. Empty here, and that is the extension pass this
-            // refuses rather than an oversight - those functions are
-            // where a tenant reads utag.data['customer_email'] and the
-            // rest of the data layer. A page that pushes to one of them
-            // finds an array to push to, and nothing that will run it.
+            // See NOTES in the header.
             extend: [], cfg_extend: [],
         },
         ut: ut,
         cfg: cfg,
         data: data,
-        // The name of the global their loader merges into utag.data, which
-        // theirs reads as window[utag.udoname]. utag_data is the default
-        // and the one this resource took its data from.
+        // See NOTES in the header.
         udoname: 'utag_data',
         gdpr: gdpr,
     };
-    // A page element with id="utag" is a named property of the window, so
-    // what is standing there may be a tag rather than a loader. Only a
-    // loader - an object carrying their track - is left alone.
+    // See NOTES in the header.
     const claimed = value => {
         if ( value === null || value === undefined ) { return false; }
         if ( typeof value !== 'object' ) { return false; }

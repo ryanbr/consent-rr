@@ -611,7 +611,12 @@ describe('extra/tealium.js, the consent api where a tenant has one', ( ) => {
         assert.equal(w.utag.gdpr.isEmpty(0), false);
         assert.deepEqual({ ...w.utag.gdpr.merge({ a: 1 }, { a: 2 }, 0) },
             { a: 1 });
-        assert.deepEqual({ ...w.utag.gdpr.clone({ a: 1 }) }, { a: 1 });
+        // A clone, so a new object with the same contents - returning
+        // the same one deep-equals and would pass without cloning.
+        const source = { a: 1 };
+        const cloned = w.utag.gdpr.clone(source);
+        assert.deepEqual({ ...cloned }, { a: 1 });
+        assert.notEqual(cloned, source);
         assert.deepEqual([ ...w.utag.gdpr.keys({ a: 1, b: 2 }) ],
             [ 'a', 'b' ]);
         assert.deepEqual([ ...w.utag.gdpr.values({ a: 1, b: 2 }) ], [ 1, 2 ]);
