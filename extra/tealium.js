@@ -4,7 +4,7 @@
 // Not a cookie-consent resource, though it answers a consent api where a
 // tenant compiled one in: it lives outside src/ and is not built into
 // dist/ by tools/build.mjs. Hand-maintained, ship as-is.
-// Read off twenty-three tenant loaders - elsgroup/actuel-rh,
+// Read off twenty-six tenant loaders - elsgroup/actuel-rh,
 // cbsi/cbstve,
 // gendigital/ccleaner, foxcorp/fscom-main, tsb/tsb-uk-new, cdw/main,
 // epson/secglobal, hsbc/global-common-dotcom, ccl/main,
@@ -12,8 +12,9 @@
 // academysports/main, hktdc/main, random/rhcorp-prh,
 // jysk-fynske-medier/partners, nordea/op-web and
 // newsinternational/dreamteam.2016, xe/xrates, williamhillgroup/es-web,
-// cbsi/webplex-marketing, newsltd/dt, virgin/main and prada/prada2019,
-// 20kB to 1.5MB - and four
+// cbsi/webplex-marketing, newsltd/dt, virgin/main, prada/prada2019,
+// autodesk/global-sites from the .cn host, rasch/cash.ch and
+// vodafone/gr-universal, 20kB to 1.5MB - and five
 // tag files: lbg/code utag.2.js at 515 bytes, and tsb's
 // utag.419.js, utag.263.js and utag.272.js at 37kB, 27kB and 12.6kB, 77kB
 // of vendors on one page.
@@ -22,11 +23,13 @@
 // and ships pretty-printed over 4496 lines, which is worth knowing before
 // counting anything in it: a pattern written for the minified form, like
 // view:function, matches none of it.
-// Eight years and two generations, and all twenty-three publish the same
-// fifteen members in the same order. That is why this pins the contract and
+// Eight years, two generations and both hosts, and all twenty-six publish
+// the same fifteen members in the same order.
+// That is why this pins the contract and
 // nothing about a build.
 // Their environment is not always prod either - barclaysuk serves from
-// PROD-A - so the path pattern takes a hyphen and a capital there.
+// PROD-A and ods from dev - so the path pattern takes a hyphen and a
+// capital there.
 // Count anything in these with a reader that does not care about line
 // length. Their longest lines run from 4.6k characters to 469k, and a
 // line-oriented search quietly answers zero on the big ones, which is how
@@ -166,8 +169,18 @@
 // readAttr(o, "tealium_va_" + account + "_" + profile), so both names go
 // from storage, which is why the url's two halves are kept apart and not
 // only joined into their id.
-// The rule it answers:
+// The rule it answers, and it needs both of their hosts: tags.tiqcdn.com
+// is the usual one, and tags.tiqcdn.cn serves the same loaders -
+// autodesk/global-sites comes from there, 700kB of it, and one of prada's
+// extensions rewrites a tag's src to that host for visitors on
+// prada.com/cn. One line covers both:
+//   ||tags.tiqcdn.*/utag/*/utag.js$script,redirect=tealium.js
+// or two, where a list would rather be explicit than wildcard a tld:
 //   ||tags.tiqcdn.com/utag/*/utag.js$script,redirect=tealium.js
+//   ||tags.tiqcdn.cn/utag/*/utag.js$script,redirect=tealium.js
+// The resource itself does not care which host it came from: the account
+// and profile come out of the path, and so does the environment, which is
+// not always prod - PROD-A and dev both turn up.
 // A tag file is a separate request that nothing makes once the loader is
 // replaced, so no rule is needed for utag.N.js and blocking those buys
 // nothing. utag/tiqapp/utag.currency.js is the same thing wearing another
@@ -179,7 +192,7 @@
 // numbered ones go.
 // The version ping can go in a list if a list wants it, and one
 // line reaches both of its paths:
-//   ||tags.tiqcdn.com/utag/*/utag.v.js$script
+//   ||tags.tiqcdn.*/utag/*/utag.v.js$script
 // which costs a page two bytes of comment it never reads. That pattern
 // cannot take the loader with it, since the loader's name is utag.js and
 // this one asks for utag.v.js; and the redirect rule above cannot take

@@ -269,6 +269,27 @@ describe('extra/tealium.js, the tenant id', ( ) => {
         }
     });
 
+    // Both of their hosts, and an environment that is not prod. The
+    // resource takes the account and profile out of the path, so the host
+    // is the rule's problem rather than its own - but a rule written for
+    // one host is a gap, and these pin what the resource does either way.
+    it('reads either host and any environment', ( ) => {
+        const cases = [
+            [ 'https://tags.tiqcdn.cn/utag/autodesk/global-sites/prod/' +
+                'utag.js', 'autodesk.global-sites' ],
+            [ 'https://tags.tiqcdn.com/utag/rasch/cash.ch/prod/utag.js',
+                'rasch.cash.ch' ],
+            [ 'https://tags.tiqcdn.com/utag/ods/web-ok-es/dev/utag.85.js',
+                'ods.web-ok-es' ],
+            [ 'https://tags.tiqcdn.com/utag/barclaysuk/barclaycard-public/' +
+                'PROD-A/utag.js', 'barclaysuk.barclaycard-public' ],
+        ];
+        for ( const [ src, want ] of cases ) {
+            const { w } = bootRedirected(src);
+            assert.equal(w.utag.id, want, src);
+        }
+    });
+
     it('still publishes with no id anywhere', ( ) => {
         const { w } = boot({});
         assert.equal(w.utag.id, '');
