@@ -73,6 +73,17 @@
 //                           nocookie there reads it back
 //   udoname                 utag_data, the global theirs merges into
 //                           utag.data as window[utag.udoname]
+// ONE MORE KNOWN GAP, found by union across the thirteen: utag.ut.sha256,
+// and md5 with it. Neither is the loader's own - both are installed by a
+// tenant extension, inside one of the utag.handler.extend functions, as
+// utag.ut.sha256 = function(t, n) { ... } over a crypto-js derivative, in
+// six of the thirteen. The extension pass that installs them is part of
+// what this refuses, and the same extensions are the ones hashing
+// utag.data['customer_email'] on their way to a tag. A page that calls
+// utag.ut.sha256 itself therefore finds nothing, and would have found
+// nothing on the other seven tenants either. Implementing a hash on
+// speculation looked worse than saying this: if a site turns out to call
+// it, it is a pure function and can be added.
 // WHAT IS DELIBERATELY NOT THERE, beyond the data-layer readers: utag.v_id,
 // because it is the identifier, and the loader internals it assigns to
 // itself as it runs - cl, cond, pre, runonce, initcatch, tagsettings and
@@ -417,10 +428,18 @@
     const loader = {
         q: [], lq: [], wq: [], bq: [], rq: [], ready_q: [], sendq: [],
         lc: {}, f: {}, ol: {}, bk: {}, p: 0, rf: 0, ri: 0, rp: 0, lh: 0,
+        // Their tag config map, keyed by tag id and read in all thirteen
+        // as utag.loader.cfg. Empty here, which is the truth: no tag is
+        // configured to run.
+        cfg: {},
         GV: o => o || {},
         WQ: noopfn, AS: noopfn, OU: noopfn, RC: noopfn, SC: noopfn,
         LOAD: noopfn, EV: noopfn, END: noopfn, RD: noopfn,
         run_ready_q: noopfn,
+        // The two entry points theirs calls on itself, in case something
+        // on the page reaches for one to re-run the loader, and their
+        // cookie remover, which has nothing left to remove.
+        INIT: noopfn, PINIT: noopfn, deleteCookie: noopfn,
     };
     // Where a tenant compiled in their consent manager, in the shapes
     // their own enforcement reads back.
@@ -568,6 +587,15 @@
             base: noopfn, df: noopfn, o: {}, send: noopfn, iflag: 0,
             INIT: noopfn, test: noopfn, LR: noopfn, RE: noopfn,
             trigger: noopfn, C: noopfn,
+            // Arrays in all thirteen, and the place a tenant's extensions
+            // live: utag.handler.extend = [ function(a, b){ ... } ] with
+            // utag.handler.cfg_extend = [ { id, blr, alr, ... } ] beside
+            // it. Empty here, and that is the extension pass this
+            // refuses rather than an oversight - those functions are
+            // where a tenant reads utag.data['customer_email'] and the
+            // rest of the data layer. A page that pushes to one of them
+            // finds an array to push to, and nothing that will run it.
+            extend: [], cfg_extend: [],
         },
         ut: ut,
         cfg: cfg,

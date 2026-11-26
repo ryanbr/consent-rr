@@ -147,6 +147,41 @@ describe('extra/tealium.js, the object it publishes', ( ) => {
         }
     });
 
+    it('carries the tag config map and the extension arrays', ( ) => {
+        const { w } = boot({});
+        // utag.loader.cfg is read in all thirteen; empty is the truth,
+        // since no tag is configured to run. The typeof matters: spreading
+        // undefined also gives {}, so a deepEqual alone passes with the
+        // member gone.
+        assert.equal(typeof w.utag.loader.cfg, 'object');
+        assert.deepEqual({ ...w.utag.loader.cfg }, {});
+        // extend and cfg_extend are arrays in all thirteen, and a page or
+        // an extension pushes to them.
+        for ( const name of [ 'extend', 'cfg_extend' ] ) {
+            assert.equal(Array.isArray(w.utag.handler[name]), true, name);
+            assert.deepEqual([ ...w.utag.handler[name] ], [], name);
+        }
+    });
+
+    it('takes the entry points something might reach for', ( ) => {
+        const { w } = boot({
+            after: '<script>window.went = [ utag.loader.INIT(),' +
+                ' utag.loader.PINIT(), utag.loader.deleteCookie("x"),' +
+                ' utag.handler.INIT() ];</script>',
+        });
+        assert.deepEqual([ ...w.went ],
+            [ undefined, undefined, undefined, undefined ]);
+    });
+
+    it('has none of their hashing, which an extension installs', ( ) => {
+        const { w } = boot({});
+        // utag.ut.sha256 is set inside a utag.handler.extend function in
+        // six of the thirteen, so it arrives with the extension pass this
+        // refuses - and on the other seven it never existed at all.
+        assert.equal(w.utag.ut.sha256, undefined);
+        assert.equal(w.utag.ut.md5, undefined);
+    });
+
     it('carries the queues a page or a tag pushes to', ( ) => {
         const { w } = boot({});
         for ( const name of [ 'q', 'lq', 'wq', 'bq', 'rq', 'ready_q',
