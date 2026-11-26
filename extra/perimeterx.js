@@ -41,13 +41,28 @@
 // A first-party deployment serves the same client off the site's own host,
 // where no generic rule can find it; the app id is still recovered from
 // the script element, so a per-site rule works.
-// Read off nine tenant builds - PXG2JgnYto, PXGWPp4wUS, PXNsLC0Hv5,
-// PXZLuyHD0K, PXeBumDLwe, PXfoFgWNLE, PXmpzBoAGV, PXqFLuLdVQ and
-// PXqLRSnBjb, 237kB to 957kB each, served with max-age=600. Every build
-// carries 18 to 24 base91 string tables behind a per-table alphabet, so
-// the names below come from decoding those tables rather than from
-// documentation. All nine publish the same three members, four of them
-// with the member names themselves behind the tables.
+// Read off thirteen tenant builds - PXG2JgnYto, PXGWPp4wUS, PXNsLC0Hv5,
+// PXZLuyHD0K, PXeBumDLwe, PXfoFgWNLE, PXmpzBoAGV, PXqFLuLdVQ, PXqLRSnBjb,
+// PX3c3eZ9Ug, PXUMwuT9do, PXvGqcQp2O and PXDr7Isq2U, 13kB to 957kB, served
+// with max-age=600. The big ones carry 18 to 24 base91 string tables
+// behind a per-table alphabet, so the names below come from decoding those
+// tables rather than from documentation. Twelve publish the same three
+// members, five of them with the member names themselves behind the
+// tables.
+// The thirteenth is a different generation and worth knowing about:
+// PXDr7Isq2U is 13kB, posts to /api/v1/collector rather than v2, reads no
+// canvas, WebGL or audio at all, keeps its session id in
+// sessionStorage.pxsid, and publishes { Events } alone - no ClientUuid and
+// no setChallenge. What this resource puts up is a superset of that, which
+// is the safe direction: a page on such a tenant finds more than it would
+// have, never less.
+// Two event names travel on that emitter, and this resource fires
+// neither. risk is in twelve of the thirteen - the legacy build triggers
+// it in the clear, right after writing their cookie - and xhrResponse is
+// what the collector reply raises. A page waiting on risk waits forever
+// here, exactly as it would with the script blocked, because a score is
+// theirs to make and inventing one would tell the page's own logic
+// something this resource has no way to know.
 // What decided the surface: across all nine, the only name their client
 // writes to the window is PX, alongside the computed window[appId]. Every
 // other _px global is a read of something the page supplied - _pxRootUrl,

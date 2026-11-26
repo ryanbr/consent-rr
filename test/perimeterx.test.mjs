@@ -376,6 +376,21 @@ describe('extra/perimeterx.js, the emitter', ( ) => {
         assert.equal(w.PX.Events.off('risk', ( ) => {}), undefined);
     });
 
+    // Their client raises risk once it has an answer and xhrResponse on
+    // a collector reply. This one asks nothing, so it has nothing to say,
+    // and a score it made up would be a fabrication the page would act on.
+    it('never raises risk or xhrResponse of its own', async ( ) => {
+        const w = withEvents();
+        const heard = [];
+        for ( const name of [ 'risk', 'xhrResponse' ] ) {
+            w.PX.Events.on(name, (...args) => {
+                heard.push([ name, ...args ]);
+            });
+        }
+        await settle(60);
+        assert.deepEqual([ ...heard ], []);
+    });
+
     it('triggers a channel nothing subscribed to without throwing', ( ) => {
         const w = withEvents();
         // A channel has to exist for this to reach the guard: with none at
