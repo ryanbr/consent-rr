@@ -153,6 +153,106 @@ const bootLogged = ( ) => {
     return { win: dom.window, lines };
 };
 
+// Every way out of the page, recorded before any script runs. A replacement
+// that reads a cookie, asks for storage, puts a request on the wire, hangs a
+// listener the page did not ask for or touches a shared prototype shows up
+// here as a line - and the expected set is one entry long.
+const bootWatched = (options = {}) => {
+    const touched = [];
+    // Taken before the resource runs, because the script is inline in the
+    // head and has already executed by the time the fixture returns. A
+    // baseline read afterwards is a baseline of the damage.
+    const baseline = {};
+    const dom = new JSDOM(
+        `<!DOCTYPE html><html><head>${options.before || ''}` +
+        `<script>${code}</script></head>` +
+        '<body><p id="content">x</p></body></html>',
+        {
+            runScripts: 'dangerously',
+            url: 'https://example.com/page',
+            referrer: 'https://referrer.example/from',
+            virtualConsole: new VirtualConsole(),
+            beforeParse(win) {
+                const doc = win.document;
+                const note = what => { touched.push(what); };
+                const cookie = Object.getOwnPropertyDescriptor(
+                    win.Document.prototype, 'cookie'
+                );
+                Object.defineProperty(doc, 'cookie', {
+                    configurable: true,
+                    get() { note('cookie read'); return cookie.get.call(doc); },
+                    set(value) {
+                        note('cookie write');
+                        return cookie.set.call(doc, value);
+                    },
+                });
+                // On the prototype: jsdom serves each Storage through a
+                // proxy, and a method written onto the instance does not
+                // take, so wrapping there records nothing and looks like a
+                // resource that reads no storage.
+                for ( const name of [
+                    'getItem', 'setItem', 'removeItem', 'clear', 'key',
+                ] ) {
+                    const fn = win.Storage.prototype[name];
+                    win.Storage.prototype[name] = function(...args) {
+                        note('storage.' + name);
+                        return fn.apply(this, args);
+                    };
+                }
+                win.fetch = ( ) => {
+                    note('fetch');
+                    return win.Promise.resolve();
+                };
+                win.navigator.sendBeacon = ( ) => {
+                    note('sendBeacon');
+                    return true;
+                };
+                const open = win.XMLHttpRequest.prototype.open;
+                win.XMLHttpRequest.prototype.open = function(...args) {
+                    note('xhr');
+                    return open.apply(this, args);
+                };
+                const offset = win.Date.prototype.getTimezoneOffset;
+                win.Date.prototype.getTimezoneOffset = function() {
+                    note('timezone');
+                    return offset.call(this);
+                };
+                const agent = win.navigator.userAgent;
+                Object.defineProperty(win.navigator, 'userAgent', {
+                    configurable: true,
+                    get() { note('userAgent'); return agent; },
+                });
+                const append = win.Node.prototype.appendChild;
+                win.Node.prototype.appendChild = function(node) {
+                    if ( node && node.tagName === 'SCRIPT' ) {
+                        note('script appended');
+                    }
+                    return append.call(this, node);
+                };
+                for ( const target of [ win, doc ] ) {
+                    const label = target === win ? 'window' : 'document';
+                    const add = target.addEventListener.bind(target);
+                    target.addEventListener = (type, ...rest) => {
+                        note(label + ' listener ' + type);
+                        return add(type, ...rest);
+                    };
+                    const drop = target.removeEventListener.bind(target);
+                    target.removeEventListener = (type, ...rest) => {
+                        note(label + ' listener off ' + type);
+                        return drop(type, ...rest);
+                    };
+                }
+                baseline.fetch = win.fetch;
+                baseline.objectKeys =
+                    Object.getOwnPropertyNames(win.Object.prototype);
+                baseline.arrayKeys =
+                    Object.getOwnPropertyNames(win.Array.prototype);
+            },
+        }
+    );
+    return { win: dom.window, touched, baseline };
+};
+
 // cdn3/geo4.js verbatim in shape - the || [] idiom, the array-form push, and
 // the IIFE split across lines as they ship it - with a documentation address
 // in place of the real one. The probe after it records what push answered,
@@ -1057,6 +1157,408 @@ describe('optimizely', ( ) => {
         const installed = win.optimizely;
         new win.Function(code)();
         assert.equal(win.optimizely, installed);
+    });
+
+    // Everything below was written against a mutation sweep over the
+    // resource: each of these is the test that was missing when a mutation
+    // of the line it names survived the suite.
+
+    it('refuses an inherited name as a command', ( ) => {
+        // hasOwn, not a truthiness check: push(['toString']) finds
+        // Object.prototype.toString on the table and would run it.
+        const { win, lines } = bootLogged();
+        win.optimizely.push([ 'log' ]);
+        for ( const command of [
+            [ 'toString' ], [ 'constructor' ], [ 'hasOwnProperty' ],
+            [ 'valueOf' ], { type: 'toString' }, { type: 'constructor' },
+        ] ) {
+            assert.equal(
+                win.optimizely.push(command), false,
+                'inherited ' + JSON.stringify(command)
+            );
+        }
+        assert.equal(lines.warn.length, 6, 'each was warned about');
+    });
+
+    it('answers no module for an inherited name', ( ) => {
+        const win = boot();
+        for ( const name of [
+            'toString', 'constructor', 'hasOwnProperty', 'valueOf',
+            '__proto__',
+        ] ) {
+            assert.equal(win.optimizely.get(name), undefined, name);
+        }
+    });
+
+    it('fires the four lifecycle events once each, in their order', async ( ) => {
+        // A listener installed by a tag beside the resource, so it is there
+        // before the lifecycle runs: it must hear each event once, which is
+        // what a replay that does not check whether the event fired breaks.
+        const win = boot({
+            after: '<script>window.heardOrder = [];' +
+                "window.optimizely.push({ type: 'addListener'," +
+                " filter: { type: 'lifecycle' }," +
+                ' handler: function(ev) { window.heardOrder.push(ev.name); }' +
+                ' });</script>',
+        });
+        await settle(60);
+        assert.deepEqual(Array.from(win.heardOrder), [
+            'initialized', 'originsSynced', 'activate', 'activated',
+        ]);
+    });
+
+    it('replays a sticky state once, not once per event it names', async ( ) => {
+        const win = boot();
+        await settle(60);
+        let hits = 0;
+        win.optimizely.push({
+            type: 'addListener',
+            filter: { type: 'lifecycle', name: 'initialized' },
+            handler: ( ) => { hits += 1; },
+        });
+        assert.equal(hits, 1);
+        await settle(60);
+        assert.equal(hits, 1, 'the replay fired a second time');
+    });
+
+    it('does not replay a filter that is not a lifecycle one', async ( ) => {
+        // The sticky table is keyed by name alone, so a custom event named
+        // initialized would be replayed by a check that skips the type.
+        const win = boot();
+        await settle(60);
+        let custom = 0;
+        let bare = 0;
+        win.optimizely.get('event_emitter').on({
+            filter: { type: 'custom', name: 'initialized' },
+            handler: ( ) => { custom += 1; },
+        });
+        win.optimizely.get('event_emitter').on({
+            filter: { name: 'initialized' },
+            handler: ( ) => { bare += 1; },
+        });
+        assert.equal(custom, 0);
+        assert.equal(bare, 0);
+    });
+
+    it('filters a delivery by name as well as by type', ( ) => {
+        const win = boot();
+        const emitter = win.optimizely.get('event_emitter');
+        let named = 0;
+        emitter.on({
+            filter: { name: 'wanted' },
+            handler: ( ) => { named += 1; },
+        });
+        emitter.emit({ type: 'custom', name: 'wanted' });
+        emitter.emit({ type: 'custom', name: 'other' });
+        emitter.emit({ type: 'lifecycle', name: 'wanted' });
+        assert.equal(named, 2);
+    });
+
+    it('takes nothing from the emitter it cannot read', ( ) => {
+        const win = boot();
+        const emitter = win.optimizely.get('event_emitter');
+        let hits = 0;
+        emitter.on({ handler: ( ) => { hits += 1; } });
+        assert.equal(emitter.on(null), undefined);
+        assert.equal(emitter.on('string'), undefined);
+        emitter.emit(null);
+        emitter.emit('string');
+        emitter.emit(42);
+        assert.equal(hits, 0, 'a value that is not an event was delivered');
+        emitter.emit({ type: 'custom', name: 'x' });
+        assert.equal(hits, 1);
+    });
+
+    it('lets a tag beside it register before the lifecycle runs', async ( ) => {
+        // Installed into a document that has finished parsing - the shape a
+        // redirect lands in when the snippet sits at the end of the body -
+        // the lifecycle waits a turn. Firing it inside the install would put
+        // activate, which is not replayed, past a listener the page has not
+        // registered yet.
+        const win = bootRedirected();
+        let activate = 0;
+        win.optimizely.push({
+            type: 'addListener',
+            filter: { type: 'lifecycle', name: 'activate' },
+            handler: ( ) => { activate += 1; },
+        });
+        assert.equal(activate, 0, 'the lifecycle ran inside the install');
+        await settle(60);
+        assert.equal(activate, 1);
+    });
+
+    it('keeps delivering after a listener throws', async ( ) => {
+        const win = boot();
+        let reached = 0;
+        for ( let i = 0; i < 3; i += 1 ) {
+            win.optimizely.push({
+                type: 'addListener',
+                filter: { type: 'lifecycle', name: 'initialized' },
+                handler: ( ) => {
+                    reached += 1;
+                    throw new Error('from a page handler');
+                },
+            });
+        }
+        await settle(60);
+        assert.equal(reached, 3);
+    });
+
+    it('keeps scanning after an observer callback throws', async ( ) => {
+        // The nodes arrive in one batch, which is what distinguishes this:
+        // a throw that escapes the callback abandons the rest of that batch,
+        // and nothing arrives later to go back for them. One node per batch
+        // cannot tell, because the next batch starts the loop again.
+        const win = boot();
+        const utils = win.optimizely.get('utils');
+        const seen = [];
+        utils.observeSelector('.watched', node => {
+            seen.push(node.id);
+            throw new Error('from a page callback');
+        });
+        const batch = win.document.createDocumentFragment();
+        for ( const id of [ 'a', 'b', 'c' ] ) {
+            const node = win.document.createElement('div');
+            node.className = 'watched';
+            node.id = id;
+            batch.appendChild(node);
+        }
+        win.document.body.appendChild(batch);
+        await settle(40);
+        assert.deepEqual(seen, [ 'a', 'b', 'c' ]);
+        // And the same for the scan observeSelector runs itself, where the
+        // throw would come straight back out at the page.
+        const already = boot({
+            body: '<div class="there"></div><div class="there"></div>',
+        });
+        const hits = [];
+        already.optimizely.get('utils').observeSelector('.there', node => {
+            hits.push(node.className);
+            throw new Error('from a page callback');
+        });
+        assert.equal(hits.length, 2);
+    });
+
+    it('rejects an options argument their helper rejects', ( ) => {
+        const utils = boot().optimizely.get('utils');
+        for ( const options of [ 'once', 42, true, ( ) => {} ] ) {
+            assert.throws(
+                ( ) => utils.observeSelector('.ok', ( ) => {}, options),
+                /an object as its third argument/,
+                'options ' + String(options)
+            );
+        }
+        // Their check passes undefined and null through to the default.
+        assert.equal(typeof utils.observeSelector('.ok', ( ) => {}), 'function');
+        assert.equal(
+            typeof utils.observeSelector('.ok', ( ) => {}, null), 'function'
+        );
+    });
+
+    it('answers a different visitor_id on every load', async ( ) => {
+        const first = boot();
+        const second = boot();
+        await settle(60);
+        const a = first.optimizely.get('visitor_id').randomId;
+        const b = second.optimizely.get('visitor_id').randomId;
+        assert.notEqual(a, b, 'the id is shared between loads');
+        // And still nothing of it is kept anywhere a later load could read.
+        for ( const win of [ first, second ] ) {
+            assert.equal(win.document.cookie, '');
+            assert.deepEqual(Object.keys(win.localStorage), []);
+            assert.deepEqual(Object.keys(win.sessionStorage), []);
+        }
+    });
+
+    it('reads currentTimestamp at the time it is asked for', async ( ) => {
+        const win = boot();
+        const visitor = win.optimizely.get('visitor');
+        const descriptor = Object.getOwnPropertyDescriptor(
+            visitor, 'currentTimestamp'
+        );
+        assert.equal(typeof descriptor.get, 'function');
+        assert.equal(descriptor.value, undefined);
+        const first = visitor.currentTimestamp;
+        await settle(30);
+        assert.ok(
+            visitor.currentTimestamp > first,
+            'the timestamp was taken once and kept'
+        );
+    });
+
+    it('takes the edge path that carries no revision', ( ) => {
+        const win = bootRedirected(
+            'https://cdn.optimizely.com/public/275532918/20917322951/' +
+            'c2dd97f885d305fc03c78148ada49be2c09fac33ec4e25036c0f4cd7cbdd8a8c' +
+            '_edge_helper.js'
+        );
+        const data = win.optimizely.get('data');
+        assert.equal(data.accountId, '275532918');
+        assert.equal(data.projectId, '20917322951');
+        assert.equal(data.revision, null);
+    });
+
+    it('does not read a short number in the path as a project', ( ) => {
+        // Their project ids are long. A looser pattern would take the digits
+        // out of any path the rule happens to match and report them as the
+        // project, which is worse than reporting none.
+        const win = bootRedirected('https://cdn.optimizely.com/js/1234.js');
+        assert.equal(win.optimizely.get('data').projectId, null);
+        assert.equal(win.optimizely.getProjectId(), null);
+    });
+
+    it('touches nothing of the page it was not asked to', async ( ) => {
+        // Reads as well as writes: their client takes the cookie, the store,
+        // the user agent and the timezone offset into a visitor profile, and
+        // none of that is measured here. A mutation that adds any one of
+        // them has to fail something, or the absence is only an intention.
+        const { win, touched, baseline } = bootWatched();
+        await settle(80);
+        assert.deepEqual(touched, [ 'document listener DOMContentLoaded' ]);
+        assert.equal(win.fetch, baseline.fetch, 'fetch was wrapped');
+        assert.deepEqual(
+            Object.getOwnPropertyNames(win.Object.prototype),
+            baseline.objectKeys, 'Object.prototype was written to'
+        );
+        assert.deepEqual(
+            Object.getOwnPropertyNames(win.Array.prototype),
+            baseline.arrayKeys, 'Array.prototype was written to'
+        );
+        // One tag in the head is the resource's own. The baseline cannot be
+        // used here: at beforeParse the document has not been parsed, so it
+        // holds no tags at all.
+        assert.equal(
+            win.document.querySelectorAll('script').length, 1,
+            'a script tag was added'
+        );
+    });
+
+    it('takes the page through a url change without touching anything else', ( ) => {
+        // The same sweep around the one helper that does install listeners,
+        // so what it adds and takes away is the whole of what it adds.
+        const { win, touched } = bootWatched();
+        const utils = win.optimizely.get('utils');
+        touched.length = 0;
+        const stop = utils.onUrlChange(( ) => { });
+        assert.deepEqual(touched, [
+            'window listener popstate', 'window listener hashchange',
+        ]);
+        // A second subscriber registers nothing further. The DOM would
+        // discard a duplicate of the same function anyway, so the pair has
+        // to be counted where it is asked for rather than where it lands.
+        touched.length = 0;
+        const stopSecond = utils.onUrlChange(( ) => { });
+        assert.deepEqual(touched, []);
+        // And the first unsubscription takes nothing away while the second
+        // subscriber is still there.
+        stop();
+        assert.deepEqual(touched, []);
+        stopSecond();
+        assert.deepEqual(touched, [
+            'window listener off popstate', 'window listener off hashchange',
+        ]);
+    });
+
+    it('installs nothing for a url handler it cannot call', ( ) => {
+        const { win, touched } = bootWatched();
+        const native = win.history.pushState;
+        touched.length = 0;
+        for ( const handler of [ undefined, null, 'string', 42, {} ] ) {
+            assert.equal(
+                typeof win.optimizely.get('utils').onUrlChange(handler),
+                'function'
+            );
+        }
+        assert.deepEqual(touched, []);
+        assert.equal(win.history.pushState, native, 'history was wrapped');
+    });
+
+    it('keeps the other url subscriber when one of two unsubscribes', ( ) => {
+        const win = boot();
+        const utils = win.optimizely.get('utils');
+        const seen = { first: 0, second: 0 };
+        const stopFirst = utils.onUrlChange(( ) => { seen.first += 1; });
+        utils.onUrlChange(( ) => { seen.second += 1; });
+        win.history.pushState({}, '', '/one');
+        assert.deepEqual(seen, { first: 1, second: 1 });
+        stopFirst();
+        win.history.pushState({}, '', '/two');
+        assert.deepEqual(
+            seen, { first: 1, second: 2 },
+            'the teardown ran while a subscriber was still there'
+        );
+    });
+
+    it('notifies two url subscribers once each, not once per wrapper', ( ) => {
+        // Both guards at once: the first-subscription check and the
+        // already-patched check. Either one alone keeps the wrappers from
+        // nesting, so a mutation of one survives while the pair is what
+        // actually holds the invariant.
+        const win = boot();
+        const utils = win.optimizely.get('utils');
+        let hits = 0;
+        utils.onUrlChange(( ) => { hits += 1; });
+        utils.onUrlChange(( ) => { hits += 1; });
+        win.history.pushState({}, '', '/one');
+        assert.equal(hits, 2, 'each subscriber heard it more than once');
+        win.history.replaceState({}, '', '/two');
+        assert.equal(hits, 4);
+    });
+
+    it('keeps notifying after a url handler throws', ( ) => {
+        const win = boot();
+        const utils = win.optimizely.get('utils');
+        let reached = 0;
+        for ( let i = 0; i < 3; i += 1 ) {
+            utils.onUrlChange(( ) => {
+                reached += 1;
+                throw new Error('from a page handler');
+            });
+        }
+        win.history.pushState({}, '', '/one');
+        assert.equal(reached, 3);
+    });
+
+    it('keeps ticking after a waiter throws', async ( ) => {
+        const win = boot();
+        const utils = win.optimizely.get('utils');
+        let bad = 0;
+        let good = 0;
+        const stopBad = utils.poll(( ) => {
+            bad += 1;
+            throw new Error('from a page callback');
+        });
+        const stopGood = utils.poll(( ) => { good += 1; });
+        await settle(120);
+        stopBad();
+        stopGood();
+        assert.ok(bad > 1, 'the throwing waiter was dropped');
+        assert.ok(good > 1, 'the other waiter stopped with it');
+    });
+
+    it('takes a log level in the case a page writes it', ( ) => {
+        // Theirs upper-cases what it is handed, so every one of these is a
+        // level their client accepts.
+        for ( const level of [ 'warn', 'Warn', 'WARN' ] ) {
+            const { win, lines } = bootLogged();
+            win.optimizely.push({ type: 'log', level });
+            win.optimizely.push([ 'nosuchcommand' ]);
+            assert.equal(lines.warn.length, 1, 'level ' + level);
+            assert.equal(lines.error.length, 0, 'level ' + level);
+        }
+    });
+
+    it('keeps the high-priority pass to the six names their boot drains', ( ) => {
+        const win = boot();
+        for ( const name of [
+            'page', 'event', 'user', 'activate', 'addListener', 'tags',
+            'sendEvents', 'integrationSettings',
+        ] ) {
+            assert.equal(
+                win.optimizely.push({ type: name }, true), false,
+                'flagged ' + name
+            );
+        }
     });
 
 });

@@ -16,6 +16,7 @@ measured, and it says so where a claim has no evidence behind it yet.
 - [What it publishes, measured](#what-it-publishes-measured)
 - [What it costs per page](#what-it-costs-per-page)
 - [Notes on the members](#notes-on-the-members)
+- [The mutation sweep](#the-mutation-sweep)
 - [What is not done here](#what-is-not-done-here)
 
 ## What this is, and the rule
@@ -68,26 +69,40 @@ alone.
 ## What it costs per page
 
 ```
-file on disk      32486 bytes
-injected          31495 bytes
-compile           0.178 ms (median of 200)
-boot              1.12 ms
+file on disk      27356 bytes
+injected          25625 bytes   (31495 before the comments moved here)
+compile           0.185 ms (median of 200)
+boot              0.30 ms (median of 25, in jsdom)
 timers            0
 listeners         1 at boot, DOMContentLoaded once, for the lifecycle
 cookie reads      0
 cookie writes     0
 storage calls     0
+requests          0
 ```
 
 Two more listeners exist but are conditional: `popstate` and `hashchange`
 go on only when something subscribes to a url change.
 
+Compile and boot are the same before and after the trim, within the noise
+of the measurement - comments cost download, not time. What the trim bought
+is the 5870 bytes. An earlier version of this table recorded boot as 1.12ms
+from a different harness; the figure above is the one that can be compared
+with the line beside it, since both were taken the same way.
+
+Every zero in that table is pinned by a test that wraps the accessor rather
+than reading the result afterwards: `document.cookie` both ways, all five
+methods on `Storage.prototype`, `fetch`, `sendBeacon`, `XMLHttpRequest`,
+`getTimezoneOffset`, `navigator.userAgent`, script insertion, and
+`addEventListener` on window and document. The expected record is one line
+long.
+
 ## Notes on the members
 
-These sit beside the code in the resource rather than in its header, which
-is the opposite arrangement to tealium and perimeterx. Each is reproduced
-here with the declaration it belongs to, so the resource can be read
-without them if it ever needs slimming.
+These were comment blocks inside the resource, where every indented line
+ships to a user. Each is reproduced here with the declaration it belongs
+to, and the resource keeps a single line in its place. That is the same
+arrangement tealium and perimeterx use.
 
 ### `identityFromScript`
 
@@ -137,7 +152,7 @@ it, so ten waiters at the default period are ten calls a tick on one timer
 rather than ten timers. Keyed by token, not by the function, so the same
 callback can wait twice and cancel once.
 
-### `if`
+### the waitUntil guard
 
 ```
 if ( condition() ) {
@@ -147,7 +162,7 @@ No guard on condition: theirs calls it straight away, so a value that is not
 callable throws inside the executor and the promise rejects. Guarding here
 would leave it pending for ever instead.
 
-### the poll group condition
+### `historyPatch`
 
 ```
 let historyPatch = null;
@@ -240,7 +255,7 @@ to answer. Their three methods read the visitor event store, which here
 holds nothing, and the argument checks below are theirs: a page that passes
 a bad descriptor should still hear about it.
 
-### return spec.reduce ? undefined : [
+### the reduced query
 
 ```
 return spec.reduce ? undefined : [];
@@ -250,7 +265,7 @@ Theirs executes the spec then takes the first element when a reduce is asked
 for. Executed against no events that is an empty list, so a reduced query
 has nothing to hand back.
 
-### an unknown module
+### the jquery module
 
 ```
 if ( name === 'jquery' ) { return w.$; }
@@ -262,7 +277,7 @@ at window.jQuery. So a page that called noConflict - jQuery present, $ gone
 - gets undefined from theirs, and gets undefined here. A fallback to jQuery
 would be answering something they do not.
 
-### the jquery module
+### the event_emitter module
 
 ```
 if ( name === 'event_emitter' ) { return eventEmitter; }
@@ -270,7 +285,7 @@ if ( name === 'event_emitter' ) { return eventEmitter; }
 
 Declared below, and only ever reached once the api is installed.
 
-### the event_emitter module
+### `register`
 
 ```
 const register = spec => {
@@ -331,7 +346,7 @@ the empty ones a project with no running experiment has. referrer stays
 empty for the reason it is empty in get('visitor'): theirs reads
 document.referrer and this does not.
 
-### classic[name] = hasOwn(commandsV0,
+### the Classic method table
 
 ```
 classic[name] = hasOwn(commandsV0, name) ? commandsV0[name] 
@@ -343,7 +358,7 @@ whichever way it asks. log is the one that is not a no-op, and it was the
 one diverging: push(['log']) turned the console on while optimizely.log()
 did nothing.
 
-### the Classic flat api
+### publishing the Classic $
 
 ```
 try {
@@ -351,24 +366,86 @@ try {
 
 Their $ is the jQuery they bundled, read at the time it is asked for rather
 than captured, the same as get('jquery').
+## The mutation sweep
+
+The harness is not in the repository - it is a scratchpad script, the same
+as the ones for tealium and perimeterx. It holds 144 mutations, each a
+single substitution into a copy of the resource, and after each one it runs
+`test/optimizely.test.mjs` and asks whether the suite noticed. What it is
+for is the repo's own rule: a test that passes against broken code is
+pointed at the wrong thing.
+
+```
+138 of 138 killed
+6 survive and cannot be killed
+8 of the kills were reported by a suite that failed and then hung
+```
+
+Twenty-four of the tests in that file exist because of this sweep - the
+suite went from 52 to 76 while it ran. Each one is what was missing when a
+mutation survived: an inherited name accepted as a command or a module
+(`push(['toString'])`, `get('__proto__')`), a sticky state replayed without
+checking whether it had fired, a replay for a non-lifecycle filter that
+happens to be named `initialized`, the `name` filter on a delivery,
+`emit(null)`, a throwing listener taking the rest of the batch with it, the
+same for a throwing observer callback and for a throwing url handler and a
+throwing poll waiter, the options check on `observeSelector`, a
+`visitor_id` that does not change between loads, a `currentTimestamp` taken
+once and kept, an edge path with no revision, a short number in the path
+read as a project, a lowercase log level, the high-priority pass accepting
+a name their boot does not drain, a url teardown that runs while a second
+subscriber is still there, and twelve ways of reaching out of the page
+that nothing was watching for.
+
+### The six that cannot be killed
+
+- **history patched per subscription** - the guard is nested inside the first-subscription branch, which already implies no patch is installed, so forced true on its own it is never reached with a patch there. Forced true *together* with that branch the wrappers nest and every `pushState` notifies twice - and that pair is killed, by the test that subscribes twice.
+- **the legacy log means debug** - nothing in the file logs below `warn`, so INFO and DEBUG are the same level to every consumer of it.
+- **no handler check** - `addListener` is reachable only through `push`, which swallows what it throws. It is not on the published object: verified at runtime, not read off the source.
+- **no token check on removal** - `removeListener` the same way, and for the same reason.
+- **lifecycle fires every load event** - `DOMContentLoaded` fires once, so dropping `{ once: true }` changes nothing a page could see.
+- **lifecycle fires synchronously** - only the already-parsed branch is affected, and the sticky replay hides the difference for every event but `activate`. The test for that path pins the `setTimeout` from the other side: a tag beside the resource must still be able to register an `activate` listener.
+
+### Two things it taught about the harness itself
+
+**A bad mutation fakes a coverage gap.** Three of the first twenty-two
+survivors were mutations that changed nothing: `if ( false ) { } else if (
+false ) {` left the `setTimeout` branch live and the lifecycle still ran,
+`location: undefined || {...}` is the same object, and an inserted `void
+0;` is not a mutation at all. A fourth matched `referrer: ''`, which
+appears twice - in the modern visitor and in the Classic one - so it was
+never applied at all. Each looked exactly like a missing test.
+
+**A bad measurement does the same.** Four survivors were faults in the
+test that was meant to catch them, not in the resource. The storage wrapper
+was written onto the `localStorage` instance, and jsdom serves each Storage
+through a proxy, so it never took and recorded nothing. The `fetch` and
+`Object.prototype` baselines were read after the fixture returned, by which
+time the inline script had already run - a baseline of the damage. Both are
+taken in `beforeParse` now, on `Storage.prototype`.
+
+**A hang is not a survivor.** Eight mutations leak an interval, so node
+never exits after the suite has finished. The harness read the partial
+output, found no summary tally, and reported them as gaps - but the suite
+had already marked two tests failed. It was looking for TAP's `not ok`
+while the spec reporter had written its own mark. The tests were right and
+the reader was wrong, which is the same mistake in a different place. The
+same leak in a test of mine hung the whole suite once, which is the reason
+every `poll` in `test/optimizely.test.mjs` is cancelled.
+
 ## What is not done here
 
-Three things are true of this file and not of the other two, and they are
-worth stating rather than discovering:
+**Its one-line comments still ship.** The 23 blocks are a line each now,
+which is 1679 of the 25625 bytes that reach a user. That is the floor for
+this arrangement, not a thing left undone, but it is worth knowing the
+number before adding another line.
 
-**Its comments ship.** 104 of its comment lines are indented into the body,
-and uBO strips a comment only at column zero, so 7555 bytes of the 31495
-that reach a user are prose - just under a quarter of the resource. tealium
-and perimeterx had the same problem and had it taken out; this one has not.
-Moving those blocks to this document, leaving a line each, is the obvious
-next change, and the notes above are already the half of that work that
-cannot be done mechanically.
+**No corpus of their builds was read.** tealium and perimeterx were written
+against dozens of real loaders; this one was written against the resource
+and the snippet shapes above. Where a claim here has no evidence behind it,
+it says so.
 
-**It carries a backtick.** One indented comment quotes `active` in
-backticks, which the repo's own rules ban in a resource. The linter does
-not check for it, because `extra/` is not built and the rule is a build
-convention, so it has shipped.
-
-**It has no mutation sweep.** 52 tests pass against it, but unlike the
-other two there is no harness that deletes a line and checks the suite
-notices. Until there is, the tests are unproven rather than proven.
+**The linter does not see this file.** `extra/` is not built, so the build's
+checks - ASCII, no backtick, no blank line, no comment at column zero that
+uBO would drop - are not run over it. They were checked by hand for this
+change, and they have to be checked by hand for the next one.

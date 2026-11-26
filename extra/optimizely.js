@@ -1,8 +1,21 @@
 /// optimizely.js
 // Resource replacement for Optimizely Web Experimentation snippets served
-// from cdn.optimizely.com/js/<projectId>.js
+// from cdn.optimizely.com/js/<projectId>.js, and for the same client served
+// for Performance Edge from /public/<account>/<project>/*_edge_helper.js.
 // Not a cookie-consent resource: it lives outside src/ and is not built
 // into dist/ by tools/build.mjs. Hand-maintained, ship as-is.
+// THE NOTES ARE IN extra/optimizely.md - every member and what each
+// decision traded, what the file publishes, and what it costs a page.
+// The comments below are a line each; the reasoning for them is there.
+//
+// THE RULE
+//   ||cdn.optimizely.com/js/*.js$script,redirect=optimizely.js
+// A redirect leaves the script element carrying the url it was going to
+// fetch, which is the only place the project identity survives.
+//
+// A comment indented into the body ships to every user - uBO strips only
+// the ones at column zero - so keep those to one line and put the rest in
+// the .md. This file was once a quarter prose by weight.
 // The page keeps a working window.optimizely - push, get, initialized and
 // the lifecycle listeners, plus the flat Classic api for the projects whose
 // snippet predates the migration - so code that queues commands or waits on
@@ -25,13 +38,7 @@
     const CLIENT_VERSION = '0.261.0';
     const POLL_INTERVAL = 20;
     const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
-    // The request was redirected, not the element, so the script still
-    // carries the url it was going to fetch - the only place the identity of
-    // the project survives. Two shapes: /js/<project>.js, which is the
-    // snippet and holds the project id alone, and
-    // /public/<account>/<project>/<revision>_<hash>_edge_helper.js, which is
-    // the same client served for Performance Edge and is the only shape that
-    // carries the account and the revision as well.
+    // The redirected url is the only place the project identity survives.
     const identityFromScript = ( ) => {
         const blank = { accountId: null, projectId: null, revision: null };
         try {
@@ -78,20 +85,13 @@
     };
     const observers = [];
     let mutationObserver = null;
-    // Nothing left to watch means the records the engine builds for every
-    // childList change under the root are built for no one, so the observer
-    // goes rather than idling for the life of the page. The next register
-    // makes a new one.
+    // No entries left: the observer goes rather than idling for the page.
     const releaseObserver = ( ) => {
         if ( observers.length !== 0 || mutationObserver === null ) { return; }
         mutationObserver.disconnect();
         mutationObserver = null;
     };
-    // False means the entry is spent and should go. A callback can register
-    // another observer, which scans itself and may remove entries, so the
-    // index a loop is holding cannot be trusted afterwards - removal is by
-    // identity, and registering scans the new entry alone rather than all of
-    // them, which keeps a nested call from rescanning the document.
+    // Removal is by identity; a nested register invalidates a loop index.
     const drop = entry => {
         const at = observers.indexOf(entry);
         if ( at !== -1 ) { observers.splice(at, 1); }
@@ -165,10 +165,7 @@
             releaseObserver();
         };
     };
-    // Their poll keeps one interval per distinct period with a map of
-    // callbacks on it, so ten waiters at the default period are ten calls a
-    // tick on one timer rather than ten timers. Keyed by token, not by the
-    // function, so the same callback can wait twice and cancel once.
+    // One interval per period, keyed by token so one callback can wait twice.
     const pollGroups = new Map();
     const poll = (callback, interval) => {
         if ( typeof interval !== 'number' ) { interval = POLL_INTERVAL; }
@@ -195,9 +192,7 @@
         };
     };
     const waitUntil = condition => new Promise(resolve => {
-        // No guard on condition: theirs calls it straight away, so a value
-        // that is not callable throws inside the executor and the promise
-        // rejects. Guarding here would leave it pending for ever instead.
+        // No guard: theirs throws on a non-callable condition, as this does.
         if ( condition() ) {
             resolve();
             return;
@@ -213,9 +208,7 @@
         observeSelector(selector, resolve, { once: true });
     });
     const urlChangeHandlers = new Map();
-    // The wrappers installed for the current subscriptions; `active` is
-    // cleared on the last unsubscription, so a wrapper which stays wrapped
-    // by another script only calls the method and does not notify again.
+    // Cleared on the last unsubscribe, so a still-wrapped wrapper stays quiet.
     let historyPatch = null;
     let nativePushState = null;
     let nativeReplaceState = null;
@@ -239,9 +232,7 @@
             w.addEventListener('hashchange', notifyUrlChange);
             if ( historyPatch === null ) {
                 const patch = { active: true };
-                // Captured for these wrappers only: the shared variables are
-                // set again by the next subscription, possibly to a wrapper of
-                // another script which calls these wrappers.
+                // For these wrappers only; the shared variables move on.
                 const pushState = w.history.pushState;
                 const replaceState = w.history.replaceState;
                 nativePushState = pushState;
@@ -270,10 +261,7 @@
             w.removeEventListener('hashchange', notifyUrlChange);
             if ( historyPatch !== null ) {
                 historyPatch.active = false;
-                // Put the natives back only while ours are still the ones
-                // installed. Another script may have wrapped history after
-                // us, and restoring over that would unhook it - theirs
-                // checks the same identity before restoring.
+                // Restore only while ours are still installed, as theirs does.
                 if ( w.history.pushState === ourPushState ) {
                     w.history.pushState = nativePushState;
                 }
@@ -292,9 +280,7 @@
         first_child: 'afterbegin',
         last_child: 'beforeend',
     };
-    // Theirs re-inserts the markup if the page removes it, which is what the
-    // persist means. This inserts once: the re-insertion exists for variation
-    // code, and no variation runs here.
+    // Inserts once: the re-insertion exists for variation code.
     const persistHtml = (html, selector, placement) => {
         if ( typeof html !== 'string' || html === '' ) {
             throw new Error('persistHtml: html must be a non-empty string');
@@ -318,12 +304,7 @@
         }
         return ( ) => { };
     };
-    // Their logger buffers every line and prints nothing until a level is
-    // set - shouldLog is false while logLevel is null, which is how it
-    // starts - so a normal page sees a silent console. These lines appear
-    // the same way theirs do: push({type:'log', level:'WARN'}), or the
-    // legacy push(['log']), which means INFO. Levels, wording and the
-    // complaint about an unknown level are all theirs.
+    // Silent until a level is set, as theirs is. The wording is theirs.
     const LOG_LEVELS = { OFF: 0, ERROR: 1, WARN: 2, INFO: 3, DEBUG: 4 };
     let logLevel = null;
     const setLogLevel = level => {
@@ -381,20 +362,7 @@
         snippetId: identity.projectId,
         variations: {},
     };
-    // get('visitor') is assembled from their profile providers, one per key,
-    // each declaring what it provides. Fourteen appear in every snippet read;
-    // the eight marked below are bundled only when a project's audiences ask
-    // for them, and they are here anyway so a page reading one does not meet
-    // undefined. dcpData is the Dynamic Customer Profile key, registered with
-    // the dynamic_customer_profile audience matcher; theirs fetches it, so it
-    // is an empty object here for the same reason location is an object. Nothing about the visitor is measured: strings are empty,
-    // maps are empty, and location is an object rather than absent, because
-    // a property chain into it is exactly what their own geo.js walks.
-    // campaign is singular and holds their utm_campaign value; campaigns,
-    // with an s, is a key of data and not of this. first_session is true
-    // because theirs is true when the event history is empty, and this one
-    // always is. lineItems and dimensions were mine and are declared by no
-    // snippet: dimensions is project data, not a visitor key.
+    // Their profile providers, one key each. Nothing here is measured.
     const visitor = {
         browserId: '',
         browserVersion: '',
@@ -424,7 +392,7 @@
         url: '',
         visitorId: null,
     };
-    // Theirs marks this one lazy, so a read takes the time of the read.
+    // Lazy in theirs, so a read takes the time of the read.
     Object.defineProperty(visitor, 'currentTimestamp', {
         enumerable: true,
         get: ( ) => Date.now(),
@@ -438,10 +406,7 @@
         waitForElement,
         waitUntil,
     };
-    // get('behavior') is registered as a plugin by every snippet seen, so it
-    // has to answer. Their three methods read the visitor event store, which
-    // here holds nothing, and the argument checks below are theirs: a page
-    // that passes a bad descriptor should still hear about it.
+    // The argument checks are theirs; the event store here holds nothing.
     const RECENCY_FILTERS = [ 'most_recent', 'least_recent' ];
     const FREQUENCY_FILTERS = [ 'most_frequent', 'least_frequent' ];
     const descriptorProblems = (descriptor, allowed) => {
@@ -492,9 +457,7 @@
             const spec = descriptor !== undefined && descriptor !== null
                 ? descriptor
                 : {};
-            // Theirs executes the spec then takes the first element when a
-            // reduce is asked for. Executed against no events that is an
-            // empty list, so a reduced query has nothing to hand back.
+            // A reduce over no events has nothing to hand back.
             return spec.reduce ? undefined : [];
         },
     };
@@ -507,14 +470,9 @@
         visitor_id: { randomId: randomId() },
     };
     const get = name => {
-        // Theirs does not bundle jQuery, it borrows the page's: env/jquery
-        // reads a closure-scoped $ if there is one and otherwise window.$,
-        // and it never looks at window.jQuery. So a page that called
-        // noConflict - jQuery present, $ gone - gets undefined from theirs,
-        // and gets undefined here. A fallback to jQuery would be answering
-        // something they do not.
+        // Theirs borrows the page's $ and never looks at window.jQuery.
         if ( name === 'jquery' ) { return w.$; }
-        // Declared below, and only ever reached once the api is installed.
+        // Declared below, and reached only once the api is installed.
         if ( name === 'event_emitter' ) { return eventEmitter; }
         if ( hasOwn(modules, name) ) { return modules[name]; }
         warn('Module "' + name + '" not found.');
@@ -544,9 +502,7 @@
             if ( listeners[i].token === token ) { listeners.splice(i, 1); }
         }
     };
-    // Their emitter puts a token on the spec it was handed when it has none,
-    // and hands the same token back, which is the only way a page learns the
-    // one it must pass to removeListener.
+    // Theirs tokens the spec it was handed and hands the same token back.
     const register = spec => {
         if ( !spec.token ) { spec.token = randomId(); }
         listeners.push({
@@ -577,8 +533,7 @@
         }
         dropByToken(spec.token);
     };
-    // get('event_emitter') is in their module registry beside state and data.
-    // on takes the spec and returns its token, off takes the bare token.
+    // In their module registry: on takes the spec, off the bare token.
     const eventEmitter = {
         on: spec => {
             if ( spec === null || typeof spec !== 'object' ) { return undefined; }
@@ -593,12 +548,7 @@
         },
     };
     const noop = ( ) => { };
-    // Their push picks a table by version: the array and string forms are
-    // version 0, an object carries its own or defaults to 1, and the third
-    // table in their client is empty, so a version 2 call finds nothing.
-    // A name in the wrong table is refused there as well, which is why this
-    // is two lists and not one - push('activate') is a version 0 call for a
-    // version 1 name, and their answer to it is false.
+    // Two tables, because theirs refuses a name in the wrong version.
     const commandsV0 = {
         activateGeoDelayedExperiments: noop,
         activateSiteCatalyst: noop,
@@ -649,13 +599,7 @@
         waitForOriginSync: noop,
     };
     const commandTables = [ commandsV0, commandsV1, {} ];
-    // Their push takes a second argument, used once while the client boots:
-    // window.optimizely = window.optimizely.filter(c => !push(c, true)) runs
-    // the six names below out of the queue early, before the opt-out and
-    // disable checks, and leaves everything else in the array for the normal
-    // drain. With the flag set, any other name is ignored and reports false,
-    // and that happens before the table is consulted, so an unknown name is
-    // refused quietly rather than warned about.
+    // The six names their own boot drains early, before opt-out and disable.
     const HIGH_PRIORITY = [
         'clientMetadata', 'cookieDomain', 'disable', 'load', 'optOut', 'rum',
     ];
@@ -697,14 +641,7 @@
         }
         return true;
     };
-    // Optimizely Classic, the product before this one, is still served for
-    // projects last saved before the migration, from the same /js/<id>.js
-    // path. It puts its whole api straight on the object instead of behind
-    // push and get, and their own bundled mode ships both at once, so the
-    // two surfaces sit together here the way they do there. Every method is
-    // a no-op; the maps are the empty ones a project with no running
-    // experiment has. referrer stays empty for the reason it is empty in
-    // get('visitor'): theirs reads document.referrer and this does not.
+    // Classic, still served for projects saved before the migration.
     const classicData = {
         note: "Obsolete, use optimizely.get('data') instead",
         audiences: {},
@@ -771,11 +708,7 @@
         'setUserId', 'skipPageTracking', 'storeThirdPartyData', 'timeout',
         'trackEvent', 'verbose',
     ] ) {
-        // Eleven of these are also v0 push names, and in Classic the method
-        // and the pushed command are the same function, so a page gets the
-        // same behaviour whichever way it asks. log is the one that is not
-        // a no-op, and it was the one diverging: push(['log']) turned the
-        // console on while optimizely.log() did nothing.
+        // In Classic the method and the pushed command are one function.
         classic[name] = hasOwn(commandsV0, name) ? commandsV0[name] : noop;
     }
     const api = {
@@ -788,8 +721,7 @@
     for ( const name of Object.keys(classic) ) {
         api[name] = classic[name];
     }
-    // Their $ is the jQuery they bundled, read at the time it is asked for
-    // rather than captured, the same as get('jquery').
+    // Read at the time it is asked for, the same as get('jquery').
     try {
         Object.defineProperty(api, '$', {
             configurable: true, enumerable: true, get: ( ) => w.$,

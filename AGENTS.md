@@ -602,7 +602,20 @@ line rules and joined the way uBO joins several resource URLs.
   `pkill -f` pattern matches its own command line; kill by pid.)
 - A surviving mutation is not automatically a coverage gap - check the mutation
   actually disabled the behaviour. Zeroing `maxVendorId` changes nothing because
-  the decoder reads the range entries.
+  the decoder reads the range entries. Four more ways the same illusion appears,
+  all from one sweep over `extra/optimizely.js`: an anchor that occurs twice is
+  never applied at all (`referrer: ''` is in both the modern and the Classic
+  visitor, so the substitution was refused and reported as a survivor); the
+  wrapper that was meant to catch it was written onto a `localStorage`
+  **instance**, which jsdom serves through a proxy, so it recorded nothing - wrap
+  `Storage.prototype`; a baseline read after the fixture returns is a baseline of
+  the damage, because an inline script in the head has already run (take it in
+  `beforeParse`); and two guards that each hold the same invariant survive one at
+  a time and only fall when mutated **together**.
+- **A hang is not a survivor.** A mutation that leaks an interval leaves node
+  alive after the suite has finished, so the harness reads no summary tally. Read
+  the partial output before calling it a gap: the spec reporter has already
+  marked each test, and it writes its own mark, not TAP's `not ok`.
 - jsdom quirks that will waste your time: `deepStrictEqual` fails on objects from
   the page's realm (JSON round-trip instead); a `MessageEvent`'s `source` cannot
   be a stand-in window (define the property on the event); `document.cookie` does
