@@ -5,11 +5,33 @@
 // into dist/ by tools/build.mjs. Hand-maintained, ship as-is.
 // The rule it answers:
 //   ||client.px-cloud.net/*/main.min.js$script,redirect=perimeterx.js
-// Their collector and challenge hosts are separate requests and are not
-// this resource's job - with the client replaced nothing on the page calls
-// them, and a list may block them outright:
-//   ||collector-*.px-cloud.net^
-//   ||captcha.px-cloud.net^
+// Do not block their collector or challenge hosts alongside it. With the
+// client replaced nothing on the page calls collector-a.px-cloud.net, so
+// blocking it buys nothing, and captcha.px-cloud.net - with
+// captcha.px-cdn.net as the onerror fallback - is where a challenge page
+// fetches the captcha.js it needs. Blocking those leaves a challenged
+// visitor on a page they cannot solve.
+// What this does to enforcement, since that is the question it raises:
+// PerimeterX decides server side, off the _px3 cookie, and this forges
+// nothing. A site enforcing hard can still challenge or block, exactly as
+// it would with the script blocked outright - the resource neither defeats
+// that nor worsens it.
+//   a served block page    their own html, loading captcha.js from the
+//                          hosts above. This resource is not on that page,
+//                          so the challenge renders and can be solved
+//   an in-page challenge   theirs renders the modal itself, from a
+//                          template inside the client, after it sees a
+//                          block response; setChallenge is how the captcha
+//                          script hands the solution back to the sensor
+//                          client, which posts it. Their setChallenge only
+//                          stores it - ms(e){ lW=1, lA(e) } onto lx - so
+//                          the posting is the client's. None of that
+//                          happens here: no modal, and a solution handed
+//                          to setChallenge is accepted and dropped. A site
+//                          that challenges in-page is not usable with this
+//                          resource, which is the same end state as
+//                          blocking the client, and the reason to lift the
+//                          rule per site rather than paper over it
 // A first-party deployment serves the same client off the site's own host,
 // where no generic rule can find it; the app id is still recovered from
 // the script element, so a per-site rule works.
