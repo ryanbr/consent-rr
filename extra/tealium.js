@@ -147,6 +147,25 @@
 // calling it directly rather than through utag.gdpr finds nothing, and
 // inventing a shape for it from four loaders that never build one would
 // be guessing.
+// WHERE THE CONSENT WORK BELONGS, since this repo has a family per cmp and
+// none of them is Tealium: on a site whose cmp is OneTrust or Didomi or any
+// of the other twenty-nine, that family's resource owns the consent and
+// this one does not compete with it. This writes no consent record and
+// clears none - CONSENTMGR, which their own manager keeps, is named in this
+// file and never touched - and it claims no consent either, so there is
+// nothing here for another resource's state to disagree with.
+// The exception is the six of the forty-four that compiled Tealium's own
+// manager in. There is no family for that one, so on those tenants this is
+// the consent resource, and the refusal below is doing consent work rather
+// than webcompat.
+// One interaction is worth knowing rather than guarding against: gdpr is
+// published whatever the tenant, because with the loader gone there is no
+// way to tell which build it was. On the thirty-eight without a manager a
+// page that feature-tests utag.gdpr finds one. Nothing is granted by that
+// - every answer below refuses - but a page written to prefer Tealium's
+// manager over its own cmp would take the Tealium path and get a refusal
+// instead of its cmp's answer. Gating it would mean guessing at a build
+// that is not there, and a refusal is the safe side of that guess.
 // WHERE A TENANT COMPILED IN THEIR CONSENT MANAGER, five of the six did,
 // foxcorp alone having none of it and tsb carrying 239 references where
 // the others carry 41,

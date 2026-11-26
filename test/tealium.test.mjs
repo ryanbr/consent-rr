@@ -637,6 +637,28 @@ describe('extra/tealium.js, the consent api where a tenant has one', ( ) => {
         assert.deepEqual([ ...w.utag.gdpr.values({ a: 1, b: 2 }) ], [ 1, 2 ]);
     });
 
+    // This repo has a family per cmp and none of them is Tealium, so on a
+    // site whose cmp is one of those, that resource owns the consent. This
+    // one must not write a record of its own, and CONSENTMGR is where
+    // their manager keeps one.
+    it('writes no consent record of its own', async ( ) => {
+        const { w } = boot({
+            before: '<script>document.cookie = "CONSENTMGR=consent:true;' +
+                ' path=/";</script>',
+            after: '<script>utag.gdpr.setConsentValue(1);' +
+                'utag.gdpr.setAllCategories(true);' +
+                'utag.gdpr.updateConsentCookie([ "analytics" ]);' +
+                'utag.gdpr.setCookie();</script>',
+        });
+        await settle();
+        // Their record is left exactly as the page or another resource
+        // left it, and nothing new is written beside it.
+        assert.equal(w.document.cookie.includes('CONSENTMGR=consent:true'),
+            true);
+        assert.equal(w.document.cookie.includes('utag_main'), false);
+        assert.equal(w.utag.gdpr.getConsentState(), 0);
+    });
+
     it('answers the rest in the shapes their enforcement reads', ( ) => {
         const { w } = boot({});
         assert.equal(typeof w.utag.gdpr.getCookieValues(), 'object');
