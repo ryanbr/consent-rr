@@ -108,12 +108,14 @@
 // ONE MORE KNOWN GAP OF THE SAME KIND: utag.ut.sha256,
 // and md5 with it. Neither is the loader's own - both are installed by a
 // tenant extension, inside one of the utag.handler.extend functions, as
-// utag.ut.sha256 = function(t, n) { ... } over a crypto-js derivative, in
-// six of the thirteen. The extension pass that installs them is part of
-// what this refuses, and the same extensions are the ones hashing
+// utag.ut.sha256 = function(t, n) { ... } over a crypto-js derivative.
+// Fourteen of the forty-four define it that way and nine mention an
+// ut.md5. The extension pass that installs them is part of what this
+// refuses, and the same extensions are the ones hashing
 // utag.data['customer_email'] on their way to a tag. A page that calls
 // utag.ut.sha256 itself therefore finds nothing, and would have found
-// nothing on the other seven tenants either. Implementing a hash on
+// nothing on the thirty tenants that never define it either.
+// Implementing a hash on
 // speculation looked worse than saying this: if a site turns out to call
 // it, it is a pure function and can be added.
 // Their consent config reads - cookieNS, domain, path, consentPeriod,
@@ -154,10 +156,11 @@
 // clears none - CONSENTMGR, which their own manager keeps, is named in this
 // file and never touched - and it claims no consent either, so there is
 // nothing here for another resource's state to disagree with.
-// The exception is the six of the forty-four that compiled Tealium's own
-// manager in. There is no family for that one, so on those tenants this is
-// the consent resource, and the refusal below is doing consent work rather
-// than webcompat.
+// The exception is the forty of the forty-four that compiled a manager in
+// at all, and the fourteen carrying its whole surface in particular. There
+// is no family for that cmp, so on those tenants this is the consent
+// resource, and the refusal below is doing consent work rather than
+// webcompat.
 // One interaction is worth knowing rather than guarding against: gdpr is
 // published whatever the tenant, because with the loader gone there is no
 // way to tell which build it was. On the thirty-eight without a manager a
@@ -166,9 +169,16 @@
 // manager over its own cmp would take the Tealium path and get a refusal
 // instead of its cmp's answer. Gating it would mean guessing at a build
 // that is not there, and a refusal is the safe side of that guess.
-// WHERE A TENANT COMPILED IN THEIR CONSENT MANAGER, five of the six did,
-// foxcorp alone having none of it and tsb carrying 239 references where
-// the others carry 41,
+// Gating it on their CONSENTMGR cookie was the obvious idea and is the
+// wrong way round: that cookie exists only after their manager has
+// recorded a decision - their own code checks whether a visitor has
+// consented since a change and deletes it if not - and with the loader
+// replaced their manager never runs, so it never appears. The gate would
+// hold shut on the six tenants where this surface does real work, and a
+// first visit or a cleared jar would turn a preferences link from doing
+// nothing into throwing. Ungated errs towards more refusal; gated errs
+// towards an exception inside a consent ui.
+// WHERE A TENANT COMPILED IN THEIR CONSENT MANAGER, which most did,
 // utag.gdpr answers a refusal in the shapes their own enforcement reads:
 // getConsentState() a number, and 0 rather than 1, which is the value
 // their applyConsentState tests with parseInt(cs)!==1;
@@ -177,11 +187,13 @@
 // a string, and none rather than opt-in: see the note at the member for
 // what that trades. The two prompts carry isEnabled false, since there is
 // no prompt to enable with no tag to run it.
-// Six of the thirty-three - hsbc on two profiles, tsb, barclaysuk,
-// williamhillgroup and prada, from 223 to 316 references where the others
-// with a manager have 41 to 105 - carry
-// the whole of it, setters and prompts included, and those are the
-// page-facing half: a cookie
+// Counted across the forty-four by whether a build defines
+// setConsentValue, which is the functional line rather than a reference
+// count: fourteen carry the whole manager, twenty-six carry its
+// enforcement half alone, and four have none of it at all - axelspringer,
+// epson/secglobal, foxcorp and xe. The fourteen refer to utag.gdpr
+// between 105 and 285 times where the twenty-six refer to it 41 to 54,
+// and it is those fourteen that carry the page-facing half: a cookie
 // preferences link calls showConsentPreferences(_lang) or
 // showExplicitConsent(_lang), and a tenant's own banner calls
 // setConsentValue(1), setAllCategories(false), setPreferencesValues(prefs,
@@ -214,8 +226,8 @@
 // and every parent suffix of two labels or more, and only the ones in the
 // jar. Theirs comes packed or split: packed is one cookie carrying v_id,
 // ses_id, _sn and _se as sub-values, split is a cookie each, and their own
-// test for which is document.cookie.includes("utag_main_") - fourteen of
-// the twenty-two carry that machinery. Their visitor id is in one shape or
+// test for which is document.cookie.includes("utag_main_") - all
+// forty-four carry that machinery. Their visitor id is in one shape or
 // the other, and replacing the loader stops a new one being written
 // without taking away the one already there. With it, their visitor
 // attributes: RDva reads them back as readAttr(o, "tealium_va") and
@@ -310,8 +322,8 @@
 //     utag_main carrying v_id, ses_id, _sn and _se as sub-values.
 //     Split is a cookie each, named utag_main_v_id and the rest, and
 //     their own test for it is
-//     document.cookie.includes("utag_main_") - fourteen of the
-//     twenty-two read carry that machinery, behind
+//     document.cookie.includes("utag_main_") - all forty-four read
+//     carry that machinery, behind
 //     utag.cfg.split_cookie. The underscore is what keeps a page's own
 //     utag_mainly out of it.
 //   let
@@ -344,7 +356,7 @@
 //     layer being gathered, and are the one part of their surface this is
 //     deliberately missing.
 //   cfg
-//     Their tag config map, keyed by tag id and read in all thirteen
+//     Their tag config map, keyed by tag id and read in all forty-four
 //     as utag.loader.cfg. Empty here, which is the truth: no tag is
 //     configured to run.
 //   INIT
@@ -437,7 +449,7 @@
 //     value, since it is the page's own object and this one has no
 //     settings of its own to defend.
 //   extend
-//     Arrays in all thirteen, and the place a tenant's extensions
+//     Arrays in all forty-four, and the place a tenant's extensions
 //     live: utag.handler.extend = [ function(a, b){ ... } ] with
 //     utag.handler.cfg_extend = [ { id, blr, alr, ... } ] beside
 //     it. Empty here, and that is the extension pass this
