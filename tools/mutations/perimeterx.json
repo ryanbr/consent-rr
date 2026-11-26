@@ -1,0 +1,372 @@
+{
+ "resource": "extra/perimeterx.js",
+ "test": "test/perimeterx.test.mjs",
+ "expected": {},
+ "mutations": [
+  {
+   "name": "no window.PX",
+   "from": "if ( claimed(w.PX) === false ) { w.PX = px; }",
+   "to": "if ( false ) { w.PX = px; }"
+  },
+  {
+   "name": "no window[appId]",
+   "from": "if ( id !== '' ) { w[id] = px; }",
+   "to": "if ( false ) { w[id] = px; }"
+  },
+  {
+   "name": "mints a uuid",
+   "from": "ClientUuid: '',",
+   "to": "ClientUuid: 'cafebabe',"
+  },
+  {
+   "name": "setChallenge answers",
+   "from": "setChallenge: noopfn,",
+   "to": "setChallenge: ( ) => true,"
+  },
+  {
+   "name": "no shape check on the declaration",
+   "from": "if ( typeof w._pxAppId === 'string' && SHAPE.test(w._pxAppId) ) {",
+   "to": "if ( typeof w._pxAppId === 'string' ) {"
+  },
+  {
+   "name": "no shape gate on a url id",
+   "from": "    const valid = found => SHAPE.test(found) ? found : '';",
+   "to": "    const valid = found => found;"
+  },
+  {
+   "name": "no currentScript",
+   "from": "            const found = inUrl(mine !== null ? mine.src : '');",
+   "to": "            const found = '';"
+  },
+  {
+   "name": "no tag scan",
+   "from": "                const found = inUrl(tag.src);",
+   "to": "                const found = '';"
+  },
+  {
+   "name": "scan misses first-party tags",
+   "from": "'script[src*=\"px-cloud.net\"],script[src*=\"/init.js\"]');",
+   "to": "'script[src*=\"px-cloud.net\"]');"
+  },
+  {
+   "name": "no first-party branch",
+   "from": "        const first = FIRST_PARTY.exec(text);",
+   "to": "        const first = null && FIRST_PARTY.exec(text);"
+  },
+  {
+   "name": "does not put the PX back",
+   "from": "            return valid(SHAPE.test(held) ? held : 'PX' + held);",
+   "to": "            return valid(held);"
+  },
+  {
+   "name": "prefixes a kept PX too",
+   "from": "            return valid(SHAPE.test(held) ? held : 'PX' + held);",
+   "to": "            return valid('PX' + held);"
+  },
+  {
+   "name": "no _pxAppId write",
+   "from": "            w._pxAppId = id;",
+   "to": "            void id;"
+  },
+  {
+   "name": "overwrites a running client",
+   "from": "    if ( ( id !== '' && claimed(w[id]) ) || claimed(w.PX) ) {",
+   "to": "    if ( false ) {"
+  },
+  {
+   "name": "no PX client guard",
+   "from": "( id !== '' && claimed(w[id]) ) || claimed(w.PX) )",
+   "to": "( id !== '' && claimed(w[id]) ) )"
+  },
+  {
+   "name": "claimed takes any object",
+   "from": "            return value.Events !== undefined &&\n                typeof value.Events.on === 'function';",
+   "to": "            return true;"
+  },
+  {
+   "name": "one is not once",
+   "from": "            this.subscribe(name, fn, ctx, true);",
+   "to": "            this.subscribe(name, fn, ctx, false);"
+  },
+  {
+   "name": "trigger drops handlers",
+   "from": "                if ( entry.once !== true ) { kept.push(entry); }",
+   "to": "                if ( false ) { kept.push(entry); }"
+  },
+  {
+   "name": "off keeps the handler",
+   "from": "                channel.splice(i, 1);",
+   "to": "                channel.slice(i, 1);"
+  },
+  {
+   "name": "trigger has no guard",
+   "from": "            if ( held.call(this.channels, name) === false ) { return; }",
+   "to": "            if ( false ) { return; }"
+  },
+  {
+   "name": "channels up front",
+   "from": "    const events = {",
+   "to": "    const events = {\n        channels: {},"
+  },
+  {
+   "name": "handler throw abandons drain",
+   "from": "                    try {\n                        entry.fn.apply(entry.ctx, args);\n                    } catch ( ex ) {\n                    }",
+   "to": "                    entry.fn.apply(entry.ctx, args);"
+  },
+  {
+   "name": "fabricates risk",
+   "from": "    w.setTimeout(fire, 0);",
+   "to": "    w.setTimeout(( ) => { px.Events.trigger('risk', 0); }, 0);\n    w.setTimeout(fire, 0);"
+  },
+  {
+   "name": "fires synchronously",
+   "from": "    w.setTimeout(fire, 0);",
+   "to": "    fire();"
+  },
+  {
+   "name": "no DOMContentLoaded pass",
+   "from": "    doc.addEventListener('DOMContentLoaded', fire, { once: true });",
+   "to": "    void 0;"
+  },
+  {
+   "name": "fires every pass",
+   "from": "        called = true;",
+   "to": "        called = false;"
+  },
+  {
+   "name": "named before pxInit",
+   "from": "            if ( typeof w.pxInit === 'function' ) {",
+   "to": "            if ( false ) {"
+  },
+  {
+   "name": "callback throw escapes",
+   "from": "        try {\n            fn(px);\n        } catch ( ex ) {\n        }",
+   "to": "        fn(px);"
+  },
+  {
+   "name": "clears nothing",
+   "from": "    const taken = forget();",
+   "to": "    const taken = { cleared: 0, storage: 0, token: 'none' };"
+  },
+  {
+   "name": "token added to the clear list",
+   "from": "    const IDS = [ '_pxvid', 'pxvid', '_pxmvid' ];",
+   "to": "    const IDS = [ '_pxvid', 'pxvid', '_pxmvid', '_px3' ];"
+  },
+  {
+   "name": "a visitor id dropped",
+   "from": "    const IDS = [ '_pxvid', 'pxvid', '_pxmvid' ];",
+   "to": "    const IDS = [ '_pxvid', 'pxvid' ];"
+  },
+  {
+   "name": "px-ff left behind",
+   "from": "    const STORED = IDS.concat(SESSION_IDS, [ 'px-ff' ]);",
+   "to": "    const STORED = IDS.concat(SESSION_IDS);"
+  },
+  {
+   "name": "bare names only",
+   "from": "                try { held.removeItem(id + '_' + name); } catch ( ex ) { }",
+   "to": "                void name;"
+  },
+  {
+   "name": "says nothing at all",
+   "from": "    report(id !== '' ? 'alias+px' : 'px');",
+   "to": "    void report;"
+  },
+  {
+   "name": "line forgets the id",
+   "from": "                ' id=' + (id !== '' ? id : 'none') +",
+   "to": "                ' id=none' +"
+  },
+  {
+   "name": "line forgets where from",
+   "from": "                ' from=' + from +",
+   "to": "                ' from=snippet' +"
+  },
+  {
+   "name": "clientsrc not tracked",
+   "from": "            if ( found !== '' ) { from = 'clientsrc'; return found; }",
+   "to": "            if ( found !== '' ) { return found; }"
+  },
+  {
+   "name": "from never tracked",
+   "from": "            if ( found !== '' ) { from = 'element'; return found; }",
+   "to": "            if ( found !== '' ) { return found; }"
+  },
+  {
+   "name": "counts attempts, not losses",
+   "from": "            try { done.storage += Math.max(0, was - held.length); }",
+   "to": "            try { done.storage += STORED.length; }"
+  },
+  {
+   "name": "never counts what it cleared",
+   "from": "            done.cleared += 1;",
+   "to": "            void 0;"
+  },
+  {
+   "name": "no token in the line",
+   "from": "                ' token=' + taken.token +",
+   "to": "                ' token=none' +"
+  },
+  {
+   "name": "does not say it stood aside",
+   "from": "        report('theirs');\n        return;",
+   "to": "        return;"
+  },
+  {
+   "name": "console throw escapes",
+   "from": "        try {\n            if ( typeof console !== 'object' ) { return; }",
+   "to": "        {\n            if ( typeof console !== 'object' ) { return; }"
+  },
+  {
+   "name": "prefixed names only",
+   "from": "                try { held.removeItem(name); } catch ( ex ) { }\n                if ( id === '' ) { continue; }",
+   "to": "                if ( id === '' ) { continue; }"
+  },
+  {
+   "name": "wipes the whole store",
+   "from": "            for ( const name of STORED ) {",
+   "to": "            for ( const name of [] ) { held.clear();"
+  },
+  {
+   "name": "writes for absent ids too",
+   "from": "        const mine = IDS.filter(name => there.indexOf(name) !== -1);",
+   "to": "        const mine = IDS.slice();"
+  },
+  {
+   "name": "clears the host only",
+   "from": "        const where = mine.length !== 0 ? suffixes() : [];",
+   "to": "        const where = mine.length !== 0 ? [ '' ] : [];"
+  },
+  {
+   "name": "writes a value, not an expiry",
+   "from": "                    'expires=Thu, 01 Jan 1970 00:00:01 GMT' ];",
+   "to": "                    'expires=Fri, 01 Jan 2100 00:00:01 GMT' ];"
+  },
+  {
+   "name": "jar parse drops the trim",
+   "from": "            out.push((at === -1 ? part : part.slice(0, at)).trim());",
+   "to": "            out.push(at === -1 ? part : part.slice(0, at));"
+  },
+  {
+   "name": "token matched as a substring",
+   "from": "            if ( there.indexOf(name) !== -1 ) {\n                done.token = 'live';",
+   "to": "            if ( there.join(',').indexOf(name) !== -1 ) {\n                done.token = 'live';"
+  },
+  {
+   "name": "no session guard",
+   "from": "        for ( const name of TOKENS ) {\n            if ( there.indexOf(name) !== -1 ) {\n                done.token = 'live';\n                return done;\n            }\n        }",
+   "to": "        void TOKENS;"
+  },
+  {
+   "name": "cookie read unguarded",
+   "from": "        try { held = String(doc.cookie || ''); } catch ( ex ) { return []; }",
+   "to": "        held = String(doc.cookie || '');"
+  },
+  {
+   "name": "storage access unguarded",
+   "from": "            let held;\n            try { held = w[store]; } catch ( ex ) { continue; }",
+   "to": "            let held;\n            held = w[store];"
+  },
+  {
+   "name": "cookie write unguarded",
+   "from": "                try { doc.cookie = parts.join('; '); } catch ( ex ) { }",
+   "to": "                doc.cookie = parts.join('; ');"
+  },
+  {
+   "name": "reads navigator.userAgent",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    void w.navigator.userAgent;"
+  },
+  {
+   "name": "reads the canvas",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    try { w.document.createElement('canvas').getContext('2d'); } catch ( ex ) { }"
+  },
+  {
+   "name": "reads screen metrics",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    void w.screen.colorDepth;"
+  },
+  {
+   "name": "reads the timezone",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    void new Date().getTimezoneOffset();"
+  },
+  {
+   "name": "reads storage",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    try { w.localStorage.getItem('x'); } catch ( ex ) { }"
+  },
+  {
+   "name": "writes storage",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    try { w.localStorage.setItem('x', '1'); } catch ( ex ) { }"
+  },
+  {
+   "name": "builds an AudioContext",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    try { new w.OfflineAudioContext(1, 1, 8000); } catch ( ex ) { }"
+  },
+  {
+   "name": "asks for permissions",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    try { w.navigator.permissions.query({ name: 'x' }); } catch ( ex ) { }"
+  },
+  {
+   "name": "enumerates devices",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    try { w.navigator.mediaDevices.enumerateDevices(); } catch ( ex ) { }"
+  },
+  {
+   "name": "checks for brave",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    void w.navigator.brave;"
+  },
+  {
+   "name": "checks for bluetooth",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    void w.navigator.bluetooth;"
+  },
+  {
+   "name": "fingerprints the fpu",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    void Math.atanh(0.5) + Math.sinh(1);"
+  },
+  {
+   "name": "adds a message listener",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    w.addEventListener('message', ( ) => { });"
+  },
+  {
+   "name": "wraps fetch",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    const rf = w.fetch; w.fetch = (...a) => rf.apply(w, a);"
+  },
+  {
+   "name": "wraps sendBeacon",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    const sb = w.navigator.sendBeacon; w.navigator.sendBeacon = (...a) => sb.apply(w.navigator, a);"
+  },
+  {
+   "name": "removes captcha tags",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    for ( const t of document.querySelectorAll('script[src*=captcha]') ) { t.remove(); }"
+  },
+  {
+   "name": "publishes unwritable",
+   "from": "        if ( id !== '' ) { w[id] = px; }",
+   "to": "        if ( id !== '' ) { Object.defineProperty(w, id, { value: px }); }"
+  },
+  {
+   "name": "pollutes Object.prototype",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    Object.prototype.polluted = true;"
+  },
+  {
+   "name": "writes an extra global",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    w._pxStub = true;"
+  }
+ ]
+}

@@ -384,12 +384,14 @@ Their $ is the jQuery they bundled, read at the time it is asked for
 rather than captured, the same as get('jquery').
 ## The mutation sweep
 
-The harness is not in the repository - it is a scratchpad script, the same
-as the ones for tealium and perimeterx. It holds 144 mutations, each a
-single substitution into a copy of the resource, and after each one it
-runs `test/optimizely.test.mjs` and asks whether the suite noticed. What
-it is for is the repo's own rule: a test that passes against broken code
-is pointed at the wrong thing.
+The harness is `tools/mutate.mjs`, and the mutations are
+`tools/mutations/optimizely.json`: 144 of them, each a single substitution
+into the resource, and after each one it runs `test/optimizely.test.mjs`
+and asks whether the suite noticed. `npm run mutate -- optimizely` is the
+whole sweep. What it is for is the repo's own rule: a test that passes
+against broken code is pointed at the wrong thing. It lived as a scratch
+script on one machine first, which made the result quotable and not
+repeatable - the weaker half of a measurement.
 
 ```
 138 of 138 killed

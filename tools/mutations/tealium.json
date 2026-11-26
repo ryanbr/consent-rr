@@ -1,0 +1,462 @@
+{
+ "resource": "extra/tealium.js",
+ "test": "test/tealium.test.mjs",
+ "expected": {
+  "flatten keeps an empty object": "their flatten drops an empty object rather than recursing into it, and dropping nothing and recursing into nothing produce the same output",
+  "clears whether or not it is there": "expiring a cookie that is not in the jar writes an expiry for a name nobody holds, and the jar afterwards is identical",
+  "works an empty store anyway": "with keys enumerated rather than computed, an empty store yields no names, so the loop never runs and the count stays zero. The guard says do not touch an empty store and is kept for that, not because it is observable",
+  "counts asking, not losing": "clearing by prefix only names a key it has just seen, so what was asked for and what was lost are the same number. They differed before the prefix rewrite"
+ },
+ "mutations": [
+  {
+   "name": "ignores the cfg override",
+   "from": "            for ( const key of Object.keys(over) ) { cfg[key] = over[key]; }",
+   "to": "            void over;"
+  },
+  {
+   "name": "holds the page cfg object itself",
+   "from": "        cfg: cfg,",
+   "to": "        cfg: w.utag_cfg_ovrd || cfg,"
+  },
+  {
+   "name": "no udoname",
+   "from": "        udoname: 'utag_data',",
+   "to": "        udoname: undefined,"
+  },
+  {
+   "name": "publishes the identifier",
+   "from": "        udoname: 'utag_data',",
+   "to": "        udoname: 'utag_data', v_id: 'abc123',"
+  },
+  {
+   "name": "publishes a loader internal",
+   "from": "        udoname: 'utag_data',",
+   "to": "        udoname: 'utag_data', cond: {},"
+  },
+  {
+   "name": "works an empty store anyway",
+   "from": "            if ( was === 0 ) { continue; }",
+   "to": "            void was;"
+  },
+  {
+   "name": "skips a store that has something in it",
+   "from": "            if ( was === 0 ) { continue; }",
+   "to": "            if ( was >= 0 ) { continue; }"
+  },
+  {
+   "name": "overwrites its own earlier copy",
+   "from": "    if ( claimed(w.utag) ) {\n        report('theirs');",
+   "to": "    if ( false ) {\n        report('theirs');"
+  },
+  {
+   "name": "setConsentValue grants",
+   "from": "        setConsentValue: noopfn,",
+   "to": "        setConsentValue: ( ) => { gdpr.getConsentState = ( ) => 1; },"
+  },
+  {
+   "name": "setters missing",
+   "from": "        setPreferencesValues: noopfn,",
+   "to": "        setPreferencesValues: undefined,"
+  },
+  {
+   "name": "preferences link missing",
+   "from": "        showConsentPreferences: noopfn,",
+   "to": "        showConsentPreferences: undefined,"
+  },
+  {
+   "name": "shouldBlockTag allows",
+   "from": "        shouldBlockTag: ( ) => true,",
+   "to": "        shouldBlockTag: ( ) => false,"
+  },
+  {
+   "name": "getCategories not an array",
+   "from": "        getCategories: ( ) => [],",
+   "to": "        getCategories: ( ) => ({}),"
+  },
+  {
+   "name": "setCookie writes",
+   "from": "        setCookie: noopfn,",
+   "to": "        setCookie: ( ) => { doc.cookie = 'utag_main=v_id:new; path=/'; },"
+  },
+  {
+   "name": "pad is decimal",
+   "from": "            try { out = '' + ((a - 0).toString(16)); } catch ( ex ) { }",
+   "to": "            try { out = '' + a; } catch ( ex ) { }"
+  },
+  {
+   "name": "merge always overwrites",
+   "from": "                    if ( c ) { a[key] = b[key]; }",
+   "to": "                    if ( true ) { a[key] = b[key]; }"
+  },
+  {
+   "name": "merge never overwrites",
+   "from": "                    if ( c ) { a[key] = b[key]; }",
+   "to": "                    if ( false ) { a[key] = b[key]; }"
+  },
+  {
+   "name": "typeOf is typeof",
+   "from": "                return ({}).toString.call(e)\n                    .match(/\\s([a-zA-Z]+)/)[1].toLowerCase();",
+   "to": "                return typeof e;"
+  },
+  {
+   "name": "isEmpty ignores the type",
+   "from": "            const t = ut.typeOf(o);\n            if ( t === 'number' ) { return isNaN(o); }",
+   "to": "            const t = ut.typeOf(o);\n            if ( false ) { return isNaN(o); }"
+  },
+  {
+   "name": "isEmpty calls a boolean empty",
+   "from": "            if ( t === 'boolean' ) { return false; }",
+   "to": "            if ( t === 'boolean' ) { return true; }"
+  },
+  {
+   "name": "flatten returns nothing",
+   "from": "            try { walk(o, ''); } catch ( ex ) { }",
+   "to": "            void walk;"
+  },
+  {
+   "name": "flatten keeps an empty object",
+   "from": "                if ( ut.isEmptyObject(c) ) { return; }",
+   "to": "                if ( false ) { return; }"
+  },
+  {
+   "name": "shouldTagFire allows",
+   "from": "        shouldTagFire: ( ) => false,",
+   "to": "        shouldTagFire: ( ) => true,"
+  },
+  {
+   "name": "shouldTagFire missing",
+   "from": "        shouldTagFire: ( ) => false,",
+   "to": "        shouldTagFire: undefined,"
+  },
+  {
+   "name": "dns says not opted out",
+   "from": "            getDnsState: ( ) => true,",
+   "to": "            getDnsState: ( ) => false,"
+  },
+  {
+   "name": "dns missing",
+   "from": "        dns: {\n            getDnsState: ( ) => true,",
+   "to": "        dnsX: {\n            getDnsState: ( ) => true,"
+  },
+  {
+   "name": "updateConsentCookie writes",
+   "from": "        updateConsentCookie: noopfn,",
+   "to": "        updateConsentCookie: ( ) => { doc.cookie = 'utag_main=c; path=/'; },"
+  },
+  {
+   "name": "gdpr helpers diverge",
+   "from": "        typeOf: e => ut.typeOf(e),",
+   "to": "        typeOf: e => typeof e,"
+  },
+  {
+   "name": "enforcement says opt-in",
+   "from": "        getEnforcementMode: ( ) => 'none',",
+   "to": "        getEnforcementMode: ( ) => 'opt-in',"
+  },
+  {
+   "name": "consent claims granted",
+   "from": "        getConsentState: ( ) => 0,",
+   "to": "        getConsentState: ( ) => 1,"
+  },
+  {
+   "name": "loader cfg missing",
+   "from": "        cfg: {},\n        GV: o => o || {},",
+   "to": "        GV: o => o || {},"
+  },
+  {
+   "name": "extend arrays missing",
+   "from": "            extend: [], cfg_extend: [],",
+   "to": "            extend: undefined, cfg_extend: undefined,"
+  },
+  {
+   "name": "entry points missing",
+   "from": "        INIT: noopfn, PINIT: noopfn, GET: noopfn,",
+   "to": "        INIT: undefined, PINIT: undefined, GET: undefined,"
+  },
+  {
+   "name": "invents a hash",
+   "from": "        error: noopfn,",
+   "to": "        error: noopfn,\n        sha256: ( ) => '',"
+  },
+  {
+   "name": "name charset narrowed",
+   "from": "/\\/utag\\/([\\w.-]{1,40})\\/([\\w.-]{1,40})\\/[\\w.-]{1,24}\\/utag[\\w.]*\\.js/",
+   "to": "/\\/utag\\/([\\w]{1,40})\\/([\\w]{1,40})\\/[\\w.-]{1,24}\\/utag[\\w.]*\\.js/"
+  },
+  {
+   "name": "setVisitorId stores",
+   "from": "        setVisitorId: noopfn,",
+   "to": "        setVisitorId: v => { utag.v_id = v; },"
+  },
+  {
+   "name": "setVisitorId missing",
+   "from": "        setVisitorId: noopfn,",
+   "to": "        setVisitorId: undefined,"
+  },
+  {
+   "name": "getTraceId missing",
+   "from": "        getTraceId: ( ) => '',",
+   "to": "        getTraceId: undefined,"
+  },
+  {
+   "name": "gdpr clone shares the object",
+   "from": "        clone: o => ut.merge({}, o, 1),",
+   "to": "        clone: o => o,"
+  },
+  {
+   "name": "split form ignored",
+   "from": "            if ( name === COOKIE || name.indexOf(COOKIE + '_') === 0 ) {",
+   "to": "            if ( name === COOKIE ) {"
+  },
+  {
+   "name": "prefix without the underscore",
+   "from": "            if ( name === COOKIE || name.indexOf(COOKIE + '_') === 0 ) {",
+   "to": "            if ( name.indexOf(COOKIE) === 0 ) {"
+  },
+  {
+   "name": "packed form ignored",
+   "from": "            if ( name === COOKIE || name.indexOf(COOKIE + '_') === 0 ) {",
+   "to": "            if ( name.indexOf(COOKIE + '_') === 0 ) {"
+  },
+  {
+   "name": "count not per cookie",
+   "from": "            done.cleared += 1;",
+   "to": "            done.cleared = 1;"
+  },
+  {
+   "name": "GET missing",
+   "from": "        INIT: noopfn, PINIT: noopfn, GET: noopfn,",
+   "to": "        INIT: noopfn, PINIT: noopfn,"
+  },
+  {
+   "name": "split deleter missing",
+   "from": "        deleteCookie: noopfn, deleteIndividualCookies: noopfn,",
+   "to": "        deleteCookie: noopfn,"
+  },
+  {
+   "name": "filename anchored to the end",
+   "from": "utag[\\w.]*\\.js/",
+   "to": "utag[\\w.]*\\.js$/"
+  },
+  {
+   "name": "clears their consent record",
+   "from": "    const COOKIE = 'utag_main';",
+   "to": "    const COOKIE = 'CONSENTMGR';"
+  },
+  {
+   "name": "setCookie writes a record",
+   "from": "        setCookie: noopfn,",
+   "to": "        setCookie: ( ) => { doc.cookie = 'CONSENTMGR=consent:false; path=/'; },"
+  },
+  {
+   "name": "view throws at the page",
+   "from": "        view: function(a, c, d) {",
+   "to": "        view: function(a, c, d) { throw new Error('x');"
+  },
+  {
+   "name": "track throws at the page",
+   "from": "    const track = function(a, b, c) {",
+   "to": "    const track = function(a, b, c) { throw new Error('x');"
+  },
+  {
+   "name": "exact names again, not a prefix",
+   "from": "    const mine = name => name === STORED ||\n        name.indexOf(STORED + '_') === 0;",
+   "to": "    const mine = name => name === STORED;"
+  },
+  {
+   "name": "prefix matches a neighbour",
+   "from": "        name.indexOf(STORED + '_') === 0;",
+   "to": "        name.indexOf(STORED) === 0;"
+  },
+  {
+   "name": "fires a ready event",
+   "from": "    const utag = {",
+   "to": "    try { doc.dispatchEvent(new w.CustomEvent('bactm_libload')); } catch (ex) {}\n    const utag = {"
+  },
+  {
+   "name": "loop bound goes stale",
+   "from": "                for ( let i = 0; i < was; i++ ) {",
+   "to": "                for ( let i = 0; i < 1; i++ ) {"
+  },
+  {
+   "name": "no publish",
+   "from": "        w.utag = utag;",
+   "to": "        void utag;"
+  },
+  {
+   "name": "drops a member",
+   "from": "        ut: ut,",
+   "to": "        ut: undefined,"
+  },
+  {
+   "name": "adds a data-layer reader",
+   "from": "        run_ready_q: noopfn,",
+   "to": "        run_ready_q: noopfn, RDlocalStorage: noopfn,"
+  },
+  {
+   "name": "queues are not arrays",
+   "from": "        q: [], lq: [], wq: [], bq: [], rq: [], ready_q: [], sendq: [],",
+   "to": "        q: 0, lq: 0, wq: 0, bq: 0, rq: 0, ready_q: 0, sendq: 0,"
+  },
+  {
+   "name": "no element branch",
+   "from": "            const found = idFrom(mine !== null ? mine.src : '');",
+   "to": "            const found = '';"
+  },
+  {
+   "name": "no tag scan",
+   "from": "                const found = idFrom(tag.src);",
+   "to": "                const found = '';"
+  },
+  {
+   "name": "id is the account only",
+   "from": "        return account + '.' + profile;",
+   "to": "        return account;"
+  },
+  {
+   "name": "url shape unchecked",
+   "from": "    const IN_URL =\n        /\\/utag\\/([\\w.-]{1,40})\\/([\\w.-]{1,40})\\/[\\w.-]{1,24}\\/utag[\\w.]*\\.js/;",
+   "to": "    const IN_URL = /\\/([\\w.-]+)\\/([\\w.-]+)\\/[\\w.-]*\\/?utag[\\w.]*\\.js/;"
+  },
+  {
+   "name": "no callback from the object shape",
+   "from": "                answer(cfg !== null && cfg !== undefined ? cfg.cb : undefined);",
+   "to": "                void cfg;"
+  },
+  {
+   "name": "no callback from the string shape",
+   "from": "                answer(c);",
+   "to": "                void c;"
+  },
+  {
+   "name": "callback goes async",
+   "from": "        entry();\n    };",
+   "to": "        w.setTimeout(entry, 0);\n    };"
+  },
+  {
+   "name": "callback throw escapes",
+   "from": "        } catch ( ex ) {\n        }\n        // Theirs ends on return true",
+   "to": "        }\n        // Theirs ends on return true"
+  },
+  {
+   "name": "track returns false",
+   "from": "        return true;\n    };",
+   "to": "        return false;\n    };"
+  },
+  {
+   "name": "no visitor attributes cleared",
+   "from": "            for ( const name of names ) {\n                try { store_.removeItem(name); } catch ( ex ) { }\n            }",
+   "to": "            void names;"
+  },
+  {
+   "name": "counts asking, not losing",
+   "from": "            try { done.storage += Math.max(0, was - store_.length); }",
+   "to": "            try { done.storage += names.length; }"
+  },
+  {
+   "name": "storage access unguarded",
+   "from": "            let store_;\n            try { store_ = w[store]; } catch ( ex ) { continue; }",
+   "to": "            let store_;\n            store_ = w[store];"
+  },
+  {
+   "name": "line forgets the storage count",
+   "from": "                ' storage=' + taken.storage +",
+   "to": "                ' storage=0' +"
+  },
+  {
+   "name": "data layer copied, not handed over",
+   "from": "        if ( held !== null && typeof held === 'object' ) { data = held; }",
+   "to": "        if ( held !== null && typeof held === 'object' ) { data = { ...held }; }"
+  },
+  {
+   "name": "any utag_data accepted",
+   "from": "        if ( held !== null && typeof held === 'object' ) { data = held; }",
+   "to": "        if ( held !== null && held !== undefined ) { data = held; }"
+  },
+  {
+   "name": "vi mints an id",
+   "from": "        vi: ( ) => '',",
+   "to": "        vi: ( ) => 'v' + Date.now(),"
+  },
+  {
+   "name": "merge does not copy",
+   "from": "                    else if ( typeof a[key] === 'undefined' ) {\n                        a[key] = b[key];\n                    }",
+   "to": "                    else if ( false ) {\n                        a[key] = b[key];\n                    }"
+  },
+  {
+   "name": "consent says consented",
+   "from": "        getConsentState: ( ) => 0,",
+   "to": "        getConsentState: ( ) => 1,"
+  },
+  {
+   "name": "categories not empty",
+   "from": "        getSelectedCategories: ( ) => [],",
+   "to": "        getSelectedCategories: ( ) => [ 'analytics' ],"
+  },
+  {
+   "name": "prompts enabled",
+   "from": "        consent_prompt: { isEnabled: false, categories: [] },",
+   "to": "        consent_prompt: { isEnabled: true, categories: [] },"
+  },
+  {
+   "name": "prompt categories missing",
+   "from": "        consent_prompt: { isEnabled: false, categories: [] },",
+   "to": "        consent_prompt: { isEnabled: false },"
+  },
+  {
+   "name": "reads the storage theirs walks",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    try { void w.localStorage.getItem('x'); } catch ( ex ) { }"
+  },
+  {
+   "name": "makes a tag",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    try { doc.createElement('script'); } catch ( ex ) { }"
+  },
+  {
+   "name": "adds a listener",
+   "from": "    const id = identify();",
+   "to": "    const id = identify();\n    doc.addEventListener('DOMContentLoaded', noopfn);"
+  },
+  {
+   "name": "clears nothing",
+   "from": "    const taken = forget();",
+   "to": "    const taken = { cleared: 0 };"
+  },
+  {
+   "name": "clears whether or not it is there",
+   "from": "        if ( theirs.length === 0 ) { return done; }",
+   "to": "        if ( false ) { return done; }"
+  },
+  {
+   "name": "clears the host only",
+   "from": "        const where = suffixes();",
+   "to": "        const where = [ '' ];"
+  },
+  {
+   "name": "writes a value, not an expiry",
+   "from": "                'expires=Thu, 01 Jan 1970 00:00:01 GMT' ];",
+   "to": "                'expires=Fri, 01 Jan 2100 00:00:01 GMT' ];"
+  },
+  {
+   "name": "cookie read unguarded",
+   "from": "        try { held = String(doc.cookie || ''); } catch ( ex ) { return done; }",
+   "to": "        held = String(doc.cookie || '');"
+  },
+  {
+   "name": "overwrites a running loader",
+   "from": "    if ( claimed(w.utag) ) {",
+   "to": "    if ( false ) {"
+  },
+  {
+   "name": "says nothing",
+   "from": "    report('utag');",
+   "to": "    void report;"
+  },
+  {
+   "name": "line miscounts the cookie",
+   "from": "                ' cleared=' + taken.cleared +",
+   "to": "                ' cleared=0' +"
+  }
+ ]
+}

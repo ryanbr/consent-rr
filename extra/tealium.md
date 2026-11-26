@@ -842,10 +842,12 @@ JavaScript. uBO drops these "//" lines when it parses.
 
 ## Mutation testing, and the four that cannot be killed
 
-Eighty-one mutations run against this file, and seventy-seven die. The four
-that live are equivalent mutants - the mutated file behaves exactly as the
-original, so no test can tell them apart - and they are listed here so the
-next person does not go hunting for a test that cannot exist.
+Ninety mutations run against this file, and eighty-six die. They are
+`tools/mutations/tealium.json`, and `npm run mutate -- tealium` is the
+sweep. The four that live are equivalent mutants - the mutated file
+behaves exactly as the original, so no test can tell them apart - and they
+are listed here, and in that file's `expected` map with the same reasons,
+so the next person does not go hunting for a test that cannot exist.
 
 **flatten keeps an empty object**
 

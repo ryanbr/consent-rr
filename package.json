@@ -42,6 +42,7 @@
     "test": "node tools/build.mjs && node tools/comparison.mjs && node --test --test-timeout=15000 test/*.test.mjs",
     "build": "node tools/build.mjs",
     "lint": "node tools/lint.mjs",
+    "mutate": "node tools/mutate.mjs",
     "comparison": "node tools/comparison.mjs",
     "prepublishOnly": "npm run build && npm test",
     "ubo-war": "node tools/ubo-war.mjs"

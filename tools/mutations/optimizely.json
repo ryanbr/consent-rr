@@ -1,0 +1,734 @@
+{
+ "resource": "extra/optimizely.js",
+ "test": "test/optimizely.test.mjs",
+ "expected": {
+  "no handler check": "addListener is reachable only through push, which swallows what it throws",
+  "no token check on removal": "removeListener is reachable only through push, which swallows what it throws",
+  "history patched per subscription": "the guard is nested inside the first-subscription branch, which already implies no patch is installed - forced true on its own it can never be reached with one there. Forced true together with that branch it nests the wrappers, and that pair is killed",
+  "the legacy log means debug": "nothing in the file logs below warn, so INFO and DEBUG are the same level to every consumer of it",
+  "lifecycle fires every load event": "DOMContentLoaded fires once, so dropping { once: true } changes nothing",
+  "lifecycle fires synchronously": "only the already-parsed branch, where the sticky replay hides the difference for every event but activate"
+ },
+ "mutations": [
+  {
+   "name": "does not publish",
+   "from": "    w.optimizely = api;",
+   "to": "    void api;"
+  },
+  {
+   "name": "no stand-aside for a real client",
+   "from": "    if ( existing && Array.isArray(existing) === false && typeof existing.get === 'function' ) {",
+   "to": "    if ( false ) {"
+  },
+  {
+   "name": "stands aside for a queue array too",
+   "from": "Array.isArray(existing) === false && typeof existing.get === 'function' ) {",
+   "to": "typeof existing.get !== 'function' ) {"
+  },
+  {
+   "name": "drops the queue",
+   "from": "    for ( const command of queued ) {",
+   "to": "    for ( const command of [] ) {"
+  },
+  {
+   "name": "queue read after publish",
+   "from": "    const queued = Array.isArray(existing) ? existing.slice() : [];",
+   "to": "    const queued = [];"
+  },
+  {
+   "name": "not initialized",
+   "from": "        initialized: true,",
+   "to": "        initialized: false,"
+  },
+  {
+   "name": "no get",
+   "from": "        get,",
+   "to": "        get: undefined,"
+  },
+  {
+   "name": "no identity at all",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = { accountId: null, projectId: null, revision: null };"
+  },
+  {
+   "name": "no snippet shape",
+   "from": "            const direct = /\\/(\\d{6,})\\.js/.exec(src);",
+   "to": "            const direct = null;"
+  },
+  {
+   "name": "snippet shape takes any digits",
+   "from": "/\\/(\\d{6,})\\.js/",
+   "to": "/\\/(\\d+)\\.js/"
+  },
+  {
+   "name": "no edge shape",
+   "from": "            const nested = /\\/public\\/(\\d+)\\/(\\d+)\\/(?:(\\d+)_)?/.exec(src);",
+   "to": "            const nested = null;"
+  },
+  {
+   "name": "edge account and project swapped",
+   "from": "                    accountId: nested[1],\n                    projectId: nested[2],",
+   "to": "                    accountId: nested[2],\n                    projectId: nested[1],"
+  },
+  {
+   "name": "revision not optional",
+   "from": "(?:(\\d+)_)?/",
+   "to": "(\\d+)_/"
+  },
+  {
+   "name": "snippet path claims an account",
+   "from": "                    accountId: null, projectId: direct[1], revision: null,",
+   "to": "                    accountId: direct[1], projectId: direct[1], revision: null,"
+  },
+  {
+   "name": "no currentScript",
+   "from": "            const el = doc.currentScript;",
+   "to": "            const el = null;"
+  },
+  {
+   "name": "snippetId is not the project",
+   "from": "        snippetId: identity.projectId,",
+   "to": "        snippetId: null,"
+  },
+  {
+   "name": "classic getters lose the project",
+   "from": "        getProjectId: ( ) => identity.projectId,",
+   "to": "        getProjectId: ( ) => null,"
+  },
+  {
+   "name": "one table, not two",
+   "from": "    const commandTables = [ commandsV0, commandsV1, {} ];",
+   "to": "    const merged = Object.assign({}, commandsV0, commandsV1);\n    const commandTables = [ merged, merged, merged ];"
+  },
+  {
+   "name": "version 2 answers",
+   "from": "    const commandTables = [ commandsV0, commandsV1, {} ];",
+   "to": "    const commandTables = [ commandsV0, commandsV1, commandsV1 ];"
+  },
+  {
+   "name": "object form defaults to v0",
+   "from": "            version = command.version !== undefined ? command.version : 1;",
+   "to": "            version = command.version !== undefined ? command.version : 0;"
+  },
+  {
+   "name": "string form is v1",
+   "from": "        } else if ( typeof command === 'string' ) {\n            version = 0;",
+   "to": "        } else if ( typeof command === 'string' ) {\n            version = 1;"
+  },
+  {
+   "name": "array form drops its arguments",
+   "from": "            args = command.slice(1);",
+   "to": "            args = [];"
+  },
+  {
+   "name": "object form is not passed on",
+   "from": "            args = [ command ];",
+   "to": "            args = [];"
+  },
+  {
+   "name": "takes a number",
+   "from": "            warn('API / Ignoring non-array/object/string argument:', command);\n            return false;",
+   "to": "            return true;"
+  },
+  {
+   "name": "unknown name reports true",
+   "from": "        if ( table === undefined || hasOwn(table, name) === false ) {",
+   "to": "        if ( false ) {"
+  },
+  {
+   "name": "inherited name accepted",
+   "from": "hasOwn(table, name) === false ) {",
+   "to": "table[name] === undefined ) {"
+  },
+  {
+   "name": "a throwing command reports false",
+   "from": "        try {\n            table[name].apply(null, args);\n        } catch ( ex ) {\n        }\n        return true;",
+   "to": "        table[name].apply(null, args);\n        return true;"
+  },
+  {
+   "name": "high-priority flag ignored",
+   "from": "        if ( highPriorityOnly && HIGH_PRIORITY.indexOf(name) === -1 ) {\n            return false;\n        }",
+   "to": "        void highPriorityOnly;"
+  },
+  {
+   "name": "high-priority runs the command",
+   "from": "        if ( highPriorityOnly && HIGH_PRIORITY.indexOf(name) === -1 ) {\n            return false;\n        }",
+   "to": "        if ( highPriorityOnly ) { return HIGH_PRIORITY.indexOf(name) !== -1; }"
+  },
+  {
+   "name": "high-priority list too long",
+   "from": "        'clientMetadata', 'cookieDomain', 'disable', 'load', 'optOut', 'rum',",
+   "to": "        'clientMetadata', 'cookieDomain', 'disable', 'load', 'optOut', 'rum',\n        'page',"
+  },
+  {
+   "name": "high-priority checked after the table",
+   "from": "        if ( highPriorityOnly && HIGH_PRIORITY.indexOf(name) === -1 ) {\n            return false;\n        }\n        const table = commandTables[version];",
+   "to": "        const table = commandTables[version];\n        if ( highPriorityOnly && HIGH_PRIORITY.indexOf(name) === -1 ) {\n            warn('x');\n            return false;\n        }"
+  },
+  {
+   "name": "no lifecycle at all",
+   "from": "    if ( doc.readyState === 'loading' ) {\n        doc.addEventListener('DOMContentLoaded', fireLifecycle, { once: true });\n    } else {\n        w.setTimeout(fireLifecycle, 0);\n    }",
+   "to": "    void fireLifecycle;"
+  },
+  {
+   "name": "no DOMContentLoaded pass",
+   "from": "        doc.addEventListener('DOMContentLoaded', fireLifecycle, { once: true });",
+   "to": "        void fireLifecycle;"
+  },
+  {
+   "name": "lifecycle fires every load event",
+   "from": "        doc.addEventListener('DOMContentLoaded', fireLifecycle, { once: true });",
+   "to": "        doc.addEventListener('DOMContentLoaded', fireLifecycle);"
+  },
+  {
+   "name": "lifecycle fires synchronously",
+   "from": "        w.setTimeout(fireLifecycle, 0);",
+   "to": "        fireLifecycle();"
+  },
+  {
+   "name": "no activated event",
+   "from": "        emit({ type: 'lifecycle', name: 'activated' });",
+   "to": "        void 0;"
+  },
+  {
+   "name": "nothing is sticky",
+   "from": "    const STICKY = { activated: true, initialized: true, originsSynced: true };",
+   "to": "    const STICKY = {};"
+  },
+  {
+   "name": "activate is sticky too",
+   "from": "    const STICKY = { activated: true, initialized: true, originsSynced: true };",
+   "to": "    const STICKY = { activate: true, activated: true, initialized: true, originsSynced: true };"
+  },
+  {
+   "name": "no replay for a late listener",
+   "from": "        const token = register(spec);\n        replaySticky(spec);\n        return token;\n    };\n    const removeListener",
+   "to": "        const token = register(spec);\n        return token;\n    };\n    const removeListener"
+  },
+  {
+   "name": "replays whether it fired or not",
+   "from": "        if ( STICKY[filter.name] !== true || fired[filter.name] !== true ) { return; }",
+   "to": "        if ( STICKY[filter.name] !== true ) { return; }"
+  },
+  {
+   "name": "nothing is recorded as fired",
+   "from": "        if ( ev.type === 'lifecycle' ) { fired[ev.name] = true; }",
+   "to": "        void 0;"
+  },
+  {
+   "name": "replays a custom filter",
+   "from": "        if ( !filter || filter.type !== 'lifecycle' ) { return; }",
+   "to": "        if ( !filter ) { return; }"
+  },
+  {
+   "name": "no handler check",
+   "from": "        if ( spec === null || typeof spec !== 'object' || typeof spec.handler !== 'function' ) {\n            throw new Error('A handler function must be supplied');\n        }",
+   "to": "        if ( spec === null ) { throw new Error('A handler function must be supplied'); }"
+  },
+  {
+   "name": "no token check on removal",
+   "from": "        if ( spec === null || typeof spec !== 'object' || !spec.token ) {\n            throw new Error('Must supply a token to removeListener');\n        }",
+   "to": "        if ( spec === null ) { throw new Error('Must supply a token to removeListener'); }"
+  },
+  {
+   "name": "removeListener drops nothing",
+   "from": "        dropByToken(spec.token);",
+   "to": "        void spec;"
+  },
+  {
+   "name": "no token handed back",
+   "from": "        if ( !spec.token ) { spec.token = randomId(); }",
+   "to": "        void spec;"
+  },
+  {
+   "name": "token not put on the spec",
+   "from": "        if ( !spec.token ) { spec.token = randomId(); }",
+   "to": "        const assigned = spec.token || randomId();\n        spec = Object.assign({}, spec, { token: assigned });"
+  },
+  {
+   "name": "filter ignored on delivery",
+   "from": "            if ( eventMatches(entry.filter, ev) === false ) { continue; }",
+   "to": "            void 0;"
+  },
+  {
+   "name": "name not matched",
+   "from": "        if ( filter.name !== undefined && filter.name !== ev.name ) { return false; }",
+   "to": "        void 0;"
+  },
+  {
+   "name": "a throwing handler stops the rest",
+   "from": "            try {\n                entry.handler(ev);\n            } catch ( ex ) {\n            }",
+   "to": "            entry.handler(ev);"
+  },
+  {
+   "name": "emitter off takes a spec",
+   "from": "        off: token => { dropByToken(token); },",
+   "to": "        off: spec => { dropByToken(spec.token); },"
+  },
+  {
+   "name": "emitter emit takes anything",
+   "from": "        emit: ev => {\n            if ( ev === null || typeof ev !== 'object' ) { return; }\n            emit(ev);",
+   "to": "        emit: ev => {\n            emit(ev);"
+  },
+  {
+   "name": "no event_emitter module",
+   "from": "        if ( name === 'event_emitter' ) { return eventEmitter; }",
+   "to": "        void 0;"
+  },
+  {
+   "name": "unknown module answers an object",
+   "from": "        warn('Module \"' + name + '\" not found.');\n        return undefined;",
+   "to": "        return {};"
+  },
+  {
+   "name": "inherited module names answer",
+   "from": "        if ( hasOwn(modules, name) ) { return modules[name]; }",
+   "to": "        if ( modules[name] !== undefined ) { return modules[name]; }"
+  },
+  {
+   "name": "jquery falls back to jQuery",
+   "from": "        if ( name === 'jquery' ) { return w.$; }",
+   "to": "        if ( name === 'jquery' ) { return w.$ || w.jQuery; }"
+  },
+  {
+   "name": "jquery captured, not read",
+   "from": "        if ( name === 'jquery' ) { return w.$; }",
+   "to": "        if ( name === 'jquery' ) { return captured$; }"
+  },
+  {
+   "name": "classic $ captured, not read",
+   "from": "            configurable: true, enumerable: true, get: ( ) => w.$,",
+   "to": "            configurable: true, enumerable: true, value: w.$,"
+  },
+  {
+   "name": "visitor_id is stable across loads",
+   "from": "        visitor_id: { randomId: randomId() },",
+   "to": "        visitor_id: { randomId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' },"
+  },
+  {
+   "name": "visitor_id is stored",
+   "from": "        visitor_id: { randomId: randomId() },",
+   "to": "        visitor_id: { randomId: (( ) => { const id = randomId(); try { w.localStorage.setItem('optimizelyEndUserId', id); } catch ( ex ) { } return id; })() },"
+  },
+  {
+   "name": "a visitor key goes missing",
+   "from": "        first_session: true,",
+   "to": "        /* first_session dropped */"
+  },
+  {
+   "name": "the referrer is read",
+   "from": "        referrer: '',\n        source_type: 'direct',",
+   "to": "        referrer: doc.referrer,\n        source_type: 'direct',"
+  },
+  {
+   "name": "the Classic referrer is read",
+   "from": "            referrer: '',\n            segments: {},",
+   "to": "            referrer: doc.referrer,\n            segments: {},"
+  },
+  {
+   "name": "both url guards forced",
+   "from": "        if ( first ) {\n            w.addEventListener('popstate', notifyUrlChange);\n            w.addEventListener('hashchange', notifyUrlChange);\n            if ( historyPatch === null ) {",
+   "to": "        if ( true ) {\n            w.addEventListener('popstate', notifyUrlChange);\n            w.addEventListener('hashchange', notifyUrlChange);\n            if ( true ) {"
+  },
+  {
+   "name": "location is absent",
+   "from": "        location: {\n            city: '',\n            continent: '',\n            country: '',\n            dma: '',\n            region: '',\n        },",
+   "to": "        location: undefined,"
+  },
+  {
+   "name": "currentTimestamp is fixed",
+   "from": "        get: ( ) => Date.now(),",
+   "to": "        value: Date.now(),"
+  },
+  {
+   "name": "state reports an experiment",
+   "from": "        getActiveExperimentIds: ( ) => [],",
+   "to": "        getActiveExperimentIds: ( ) => [ '1234567' ],"
+  },
+  {
+   "name": "data carries the client name",
+   "from": "        clientName: CLIENT_NAME,",
+   "to": "        clientName: null,"
+  },
+  {
+   "name": "no descriptor checks",
+   "from": "            const problems = descriptorProblems(descriptor, RECENCY_FILTERS);\n            if ( problems !== undefined ) { throw new Error(problems.join('\\n')); }",
+   "to": "            void descriptor;"
+  },
+  {
+   "name": "a count clause is allowed",
+   "from": "        if ( descriptor.count ) {\n            problems.push('Unexpected \"count\" clause specified');\n        }",
+   "to": "        void 0;"
+  },
+  {
+   "name": "any pick modifier is allowed",
+   "from": "        if ( pick && pick.modifier && allowed.indexOf(pick.modifier) === -1 ) {",
+   "to": "        if ( false ) {"
+  },
+  {
+   "name": "frequency takes the recency list",
+   "from": "            const problems = descriptorProblems(spec, FREQUENCY_FILTERS);",
+   "to": "            const problems = descriptorProblems(spec, RECENCY_FILTERS);"
+  },
+  {
+   "name": "no pick clause needed",
+   "from": "            if ( !spec.pick ) {\n                throw new Error('No \"pick\" clause provided in query descriptor');\n            }",
+   "to": "        void 0;"
+  },
+  {
+   "name": "a zero count is accepted",
+   "from": "                if ( descriptor <= 0 ) {",
+   "to": "                if ( descriptor < 0 ) {"
+  },
+  {
+   "name": "a reduced query answers a list",
+   "from": "            return spec.reduce ? undefined : [];",
+   "to": "            return [];"
+  },
+  {
+   "name": "no observer is ever made",
+   "from": "            mutationObserver = new w.MutationObserver(scanObservers);",
+   "to": "            mutationObserver = { observe: ( ) => { }, disconnect: ( ) => { } };"
+  },
+  {
+   "name": "an observer is made up front",
+   "from": "    const observers = [];",
+   "to": "    const observers = [];\n    let eager = null;\n    try { eager = new w.MutationObserver(( ) => { }); eager.observe(w.document.documentElement || w.document, { childList: true, subtree: true }); } catch ( ex ) { }"
+  },
+  {
+   "name": "the observer is never released",
+   "from": "    const releaseObserver = ( ) => {\n        if ( observers.length !== 0 || mutationObserver === null ) { return; }",
+   "to": "    const releaseObserver = ( ) => {\n        if ( true ) { return; }"
+  },
+  {
+   "name": "released while entries remain",
+   "from": "        if ( observers.length !== 0 || mutationObserver === null ) { return; }",
+   "to": "        if ( mutationObserver === null ) { return; }"
+  },
+  {
+   "name": "once entries are kept",
+   "from": "            if ( entry.once ) { return false; }",
+   "to": "            void 0;"
+  },
+  {
+   "name": "seen is not recorded",
+   "from": "            entry.seen.add(node);",
+   "to": "            void node;"
+  },
+  {
+   "name": "scans per node, not per batch",
+   "from": "            mutationObserver = new w.MutationObserver(scanObservers);",
+   "to": "            mutationObserver = new w.MutationObserver(records => {\n                for ( const rec of records ) { void rec; scanObservers(); }\n            });"
+  },
+  {
+   "name": "unsubscribe drops the last entry",
+   "from": "        return ( ) => {\n            drop(entry);\n            releaseObserver();\n        };\n    };",
+   "to": "        return ( ) => {\n            if ( observers.length !== 0 ) { observers.pop(); }\n            releaseObserver();\n        };\n    };"
+  },
+  {
+   "name": "the loop is not copied",
+   "from": "        for ( const entry of observers.slice() ) {",
+   "to": "        for ( const entry of observers ) {"
+  },
+  {
+   "name": "a throwing callback stops the scan",
+   "from": "            try {\n                entry.callback(node);\n            } catch ( ex ) {\n            }",
+   "to": "            entry.callback(node);"
+  },
+  {
+   "name": "no selector check",
+   "from": "            throw new Error('observeSelector expects a valid css selector as its first argument');",
+   "to": "            valid = true;"
+  },
+  {
+   "name": "no callback check",
+   "from": "        if ( typeof callback !== 'function' ) {\n            throw new Error('observeSelector expects a function as its second argument');\n        }",
+   "to": "        void 0;"
+  },
+  {
+   "name": "no options check",
+   "from": "            if ( typeof options !== 'object' || typeof options === 'function' ) {\n                throw new Error('observeSelector expects an object as its third argument');\n            }",
+   "to": "        void 0;"
+  },
+  {
+   "name": "a timer per waiter",
+   "from": "        let group = pollGroups.get(interval);",
+   "to": "        let group = undefined;"
+  },
+  {
+   "name": "one timer for every period",
+   "from": "        let group = pollGroups.get(interval);",
+   "to": "        let group = pollGroups.get('any');"
+  },
+  {
+   "name": "keyed by the function",
+   "from": "        const token = {};",
+   "to": "        const token = callback;"
+  },
+  {
+   "name": "the timer is never cleared",
+   "from": "            w.clearInterval(group.id);",
+   "to": "            void group;"
+  },
+  {
+   "name": "cleared on the first cancel",
+   "from": "            if ( group.callbacks.size !== 0 ) { return; }",
+   "to": "            void 0;"
+  },
+  {
+   "name": "a timer runs before a waiter asks",
+   "from": "    const pollGroups = new Map();",
+   "to": "    const pollGroups = new Map();\n    w.setInterval(( ) => { }, 20);"
+  },
+  {
+   "name": "the default period is ignored",
+   "from": "        if ( typeof interval !== 'number' ) { interval = POLL_INTERVAL; }",
+   "to": "        if ( typeof interval !== 'number' ) { interval = 1000; }"
+  },
+  {
+   "name": "a throwing waiter stops the tick",
+   "from": "                    try {\n                        fn();\n                    } catch ( ex ) {\n                    }",
+   "to": "                    fn();"
+  },
+  {
+   "name": "waitUntil does not check at once",
+   "from": "        if ( condition() ) {\n            resolve();\n            return;\n        }",
+   "to": "        void 0;"
+  },
+  {
+   "name": "waitUntil guards the condition",
+   "from": "        if ( condition() ) {\n            resolve();\n            return;\n        }",
+   "to": "        if ( typeof condition !== 'function' ) { return; }\n        if ( condition() ) {\n            resolve();\n            return;\n        }"
+  },
+  {
+   "name": "waitUntil never stops polling",
+   "from": "            if ( condition() ) {\n                cancel();\n                resolve();",
+   "to": "            if ( condition() ) {\n                resolve();"
+  },
+  {
+   "name": "waitForElement is not once",
+   "from": "        observeSelector(selector, resolve, { once: true });",
+   "to": "        observeSelector(selector, resolve);"
+  },
+  {
+   "name": "no url change notice",
+   "from": "    const onUrlChange = handler => {",
+   "to": "    const onUrlChange = handler => {\n        return ( ) => { };"
+  },
+  {
+   "name": "no handler check on subscribe",
+   "from": "        if ( typeof handler !== 'function' ) { return ( ) => { }; }",
+   "to": "        void 0;"
+  },
+  {
+   "name": "listeners added per subscription",
+   "from": "        if ( first ) {\n            w.addEventListener('popstate', notifyUrlChange);",
+   "to": "        if ( true ) {\n            w.addEventListener('popstate', notifyUrlChange);"
+  },
+  {
+   "name": "history patched per subscription",
+   "from": "            if ( historyPatch === null ) {",
+   "to": "            if ( true ) {"
+  },
+  {
+   "name": "no patch at all",
+   "from": "            if ( historyPatch === null ) {",
+   "to": "            if ( false ) {"
+  },
+  {
+   "name": "the wrapper notifies after unhooking",
+   "from": "                    if ( patch.active ) {\n                        notifyUrlChange();\n                    }\n                };\n                w.history.replaceState",
+   "to": "                    notifyUrlChange();\n                };\n                w.history.replaceState"
+  },
+  {
+   "name": "restores over another wrapper",
+   "from": "                if ( w.history.pushState === ourPushState ) {\n                    w.history.pushState = nativePushState;\n                }",
+   "to": "                w.history.pushState = nativePushState;"
+  },
+  {
+   "name": "never restores",
+   "from": "                if ( w.history.pushState === ourPushState ) {\n                    w.history.pushState = nativePushState;\n                }",
+   "to": "                void nativePushState;"
+  },
+  {
+   "name": "listeners never removed",
+   "from": "            w.removeEventListener('popstate', notifyUrlChange);",
+   "to": "            void 0;"
+  },
+  {
+   "name": "removed on the first unsubscribe",
+   "from": "            if ( urlChangeHandlers.size !== 0 ) { return; }",
+   "to": "            void 0;"
+  },
+  {
+   "name": "the native is not called",
+   "from": "                    pushState.apply(w.history, arguments);",
+   "to": "                    void pushState;"
+  },
+  {
+   "name": "a throwing handler stops the notice",
+   "from": "            try {\n                handler(w.location.href);\n            } catch ( ex ) {\n            }",
+   "to": "            handler(w.location.href);"
+  },
+  {
+   "name": "notified without the url",
+   "from": "                handler(w.location.href);",
+   "to": "                handler();"
+  },
+  {
+   "name": "console on by default",
+   "from": "    let logLevel = null;",
+   "to": "    let logLevel = LOG_LEVELS.DEBUG;"
+  },
+  {
+   "name": "no level gate on warn",
+   "from": "        if ( logLevel === null || logLevel < LOG_LEVELS.WARN ) { return; }",
+   "to": "        void 0;"
+  },
+  {
+   "name": "a bad level is taken",
+   "from": "        if ( typeof resolved !== 'number' ) {",
+   "to": "        if ( false ) {"
+  },
+  {
+   "name": "a bad level is silent",
+   "from": "                w.console.error('Unknown log level: ' + level);",
+   "to": "                void level;"
+  },
+  {
+   "name": "a bad level still sets one",
+   "from": "            return;\n        }\n        logLevel = resolved;",
+   "to": "        }\n        logLevel = resolved;"
+  },
+  {
+   "name": "the level is case-sensitive",
+   "from": "            ? LOG_LEVELS[level.toUpperCase()]",
+   "to": "            ? LOG_LEVELS[level]"
+  },
+  {
+   "name": "the legacy log means debug",
+   "from": "            setLogLevel(enabled === undefined || enabled ? 'INFO' : 'OFF');",
+   "to": "            setLogLevel(enabled === undefined || enabled ? 'DEBUG' : 'OFF');"
+  },
+  {
+   "name": "the legacy log has no off",
+   "from": "            setLogLevel(enabled === undefined || enabled ? 'INFO' : 'OFF');",
+   "to": "            setLogLevel('INFO');"
+  },
+  {
+   "name": "the v1 log ignores its level",
+   "from": "        log: spec => { setLogLevel(spec.level); },",
+   "to": "        log: spec => { void spec; setLogLevel('INFO'); },"
+  },
+  {
+   "name": "no Classic surface",
+   "from": "    for ( const name of Object.keys(classic) ) {\n        api[name] = classic[name];\n    }",
+   "to": "    void classic;"
+  },
+  {
+   "name": "Classic methods are their own",
+   "from": "        classic[name] = hasOwn(commandsV0, name) ? commandsV0[name] : noop;",
+   "to": "        classic[name] = noop;"
+  },
+  {
+   "name": "Classic log does nothing",
+   "from": "        classic[name] = hasOwn(commandsV0, name) ? commandsV0[name] : noop;",
+   "to": "        classic[name] = name === 'log' ? noop : (hasOwn(commandsV0, name) ? commandsV0[name] : noop);"
+  },
+  {
+   "name": "no Classic data",
+   "from": "        data: classicData,",
+   "to": "        data: {},"
+  },
+  {
+   "name": "Classic reports an experiment",
+   "from": "        activeExperiments: [],\n        allExperiments: {},",
+   "to": "        activeExperiments: [ '1234' ],\n        allExperiments: {},"
+  },
+  {
+   "name": "Classic state is enabled false",
+   "from": "            enabled: true,",
+   "to": "            enabled: false,"
+  },
+  {
+   "name": "no Classic $",
+   "from": "        Object.defineProperty(api, '$', {",
+   "to": "        Object.defineProperty(api, 'notdollar', {"
+  },
+  {
+   "name": "writes a cookie",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = identityFromScript();\n    try { doc.cookie = 'optimizelyEndUserId=oeu1; path=/'; } catch ( ex ) { }"
+  },
+  {
+   "name": "reads cookies",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = identityFromScript();\n    void doc.cookie;"
+  },
+  {
+   "name": "writes storage",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = identityFromScript();\n    try { w.localStorage.setItem('optimizelyBuckets', '{}'); } catch ( ex ) { }"
+  },
+  {
+   "name": "reads storage",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = identityFromScript();\n    try { w.localStorage.getItem('optimizelyBuckets'); } catch ( ex ) { }"
+  },
+  {
+   "name": "reads session storage",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = identityFromScript();\n    try { w.sessionStorage.getItem('x'); } catch ( ex ) { }"
+  },
+  {
+   "name": "beacons out",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = identityFromScript();\n    try { w.navigator.sendBeacon('https://logx.optimizely.com/v1/events', '{}'); } catch ( ex ) { }"
+  },
+  {
+   "name": "fetches their client",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = identityFromScript();\n    try { w.fetch('https://cdn.optimizely.com/js/1.js'); } catch ( ex ) { }"
+  },
+  {
+   "name": "appends a script",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = identityFromScript();\n    try { const t = doc.createElement('script'); t.src = 'https://cdn.optimizely.com/js/1.js'; (doc.head || doc.documentElement).appendChild(t); } catch ( ex ) { }"
+  },
+  {
+   "name": "reads the timezone",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = identityFromScript();\n    void new Date().getTimezoneOffset();"
+  },
+  {
+   "name": "reads the user agent",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = identityFromScript();\n    void w.navigator.userAgent;"
+  },
+  {
+   "name": "adds a message listener",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = identityFromScript();\n    w.addEventListener('message', ( ) => { });"
+  },
+  {
+   "name": "pollutes Object.prototype",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = identityFromScript();\n    Object.prototype.polluted = true;"
+  },
+  {
+   "name": "writes an extra global",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = identityFromScript();\n    w.optimizelyEdge = {};"
+  },
+  {
+   "name": "wraps fetch",
+   "from": "    const identity = identityFromScript();",
+   "to": "    const identity = identityFromScript();\n    const of_ = w.fetch; w.fetch = (...a) => of_.apply(w, a);"
+  },
+  {
+   "name": "publishes unwritable",
+   "from": "    w.optimizely = api;",
+   "to": "    Object.defineProperty(w, 'optimizely', { value: api, configurable: false, writable: false });"
+  }
+ ]
+}

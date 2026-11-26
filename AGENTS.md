@@ -44,6 +44,14 @@ pointed at it. The notes below are the things that have actually gone wrong.
   read - and to correct - as prose.
 - `tools/build.mjs` - bundles, substitutes, and refuses to ship what uBO cannot
   parse. `npm run build`.
+- `tools/mutate.mjs` + `tools/mutations/*.json` - mutation testing for the
+  three in `extra/`. `npm run mutate` sweeps all of them, `npm run mutate --
+  optimizely` one, and a second argument filters by mutation name. Each entry
+  is one substitution whose `from` must occur exactly once; `expected` names
+  the mutations that cannot be killed, with the reason, and every other
+  survivor exits 1. It edits the resource in place and puts it back, including
+  on ctrl-c. It is not in CI: a sweep is minutes, and it earns its keep when a
+  test is written, not on every push.
 - `dist/` is committed, because that is what uBO fetches. CI fails when it does
   not match `src/`.
 
