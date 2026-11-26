@@ -31,7 +31,27 @@
 //   and ut, so a page or a tag reading any of the fifteen finds it
 //   ut.vi                   their visitor-id minter, which answers the
 //                           empty string here: the one member whose job is
-//                           to create an identifier
+//                           to create an identifier, and which builds it
+//                           out of the screen - parseInt(screen.colorDepth
+//                           || screen.pixelDepth) goes into theirs
+//   cfg                     with window.utag_cfg_ovrd copied over it, as
+//                           theirs does, so a page that set noview or
+//                           nocookie there reads it back
+//   udoname                 utag_data, the global theirs merges into
+//                           utag.data as window[utag.udoname]
+// WHAT IS DELIBERATELY NOT THERE, beyond the data-layer readers: utag.v_id,
+// because it is the identifier, and the loader internals it assigns to
+// itself as it runs - cl, cond, pre, runonce, initcatch, tagsettings and
+// the jdh trio - which no page reads and which only mean anything to a
+// loader that is loading tags. utag.pagevars is the page's own to assign,
+// and assigning it onto this object works as it would; nothing calls it,
+// because the pass that would is the one gathering the data layer.
+// ONE KNOWN GAP: window.tealiumConsentRegister. Their loader only reads
+// it - no build assigns it - so it is their consent manager tag that
+// creates it, and that tag is one of the ones this stops arriving. A page
+// calling it directly rather than through utag.gdpr finds nothing, and
+// inventing a shape for it from four loaders that never build one would
+// be guessing.
 // WHERE A TENANT COMPILED IN THEIR CONSENT MANAGER, two of the four did,
 // utag.gdpr answers a refusal in the shapes their own enforcement reads:
 // getConsentState() a number, and 0 rather than 1, which is the value
@@ -289,6 +309,19 @@
         consent_prompt: { isEnabled: false },
         preferences_prompt: { isEnabled: false },
     };
+    // Their cfg carries the tenant's build settings, and theirs merges
+    // window.utag_cfg_ovrd over them - a page that sets noview or
+    // nocookie there reads it back on utag.cfg, so it is copied in. By
+    // value, since it is the page's own object and this one has no
+    // settings of its own to defend.
+    const cfg = {};
+    try {
+        const over = w.utag_cfg_ovrd;
+        if ( over !== null && typeof over === 'object' ) {
+            for ( const key of Object.keys(over) ) { cfg[key] = over[key]; }
+        }
+    } catch ( ex ) {
+    }
     const utag = {
         id: id,
         o: {},
@@ -317,8 +350,12 @@
             trigger: noopfn, C: noopfn,
         },
         ut: ut,
-        cfg: {},
+        cfg: cfg,
         data: data,
+        // The name of the global their loader merges into utag.data, which
+        // theirs reads as window[utag.udoname]. utag_data is the default
+        // and the one this resource took its data from.
+        udoname: 'utag_data',
         gdpr: gdpr,
     };
     // A page element with id="utag" is a named property of the window, so

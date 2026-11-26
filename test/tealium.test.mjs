@@ -100,6 +100,45 @@ describe('extra/tealium.js, the object it publishes', ( ) => {
         assert.equal(typeof w.utag.gdpr, 'object');
     });
 
+    it('copies the page cfg override, as theirs does', ( ) => {
+        const { w } = boot({
+            before: '<script>window.utag_cfg_ovrd = { noview: true,' +
+                ' nocookie: 1 };</script>',
+        });
+        assert.equal(w.utag.cfg.noview, true);
+        assert.equal(w.utag.cfg.nocookie, 1);
+        // By value: their object is the page's, not this one's to hold.
+        assert.notEqual(w.utag.cfg, w.utag_cfg_ovrd);
+    });
+
+    it('has an empty cfg where the page set no override', ( ) => {
+        const { w } = boot({});
+        assert.deepEqual(Object.keys(w.utag.cfg), []);
+    });
+
+    it('names the data object their loader would merge', ( ) => {
+        const { w } = boot({});
+        assert.equal(w.utag.udoname, 'utag_data');
+    });
+
+    it('leaves out the identifier and the loader internals', ( ) => {
+        const { w } = boot({});
+        // v_id is the identifier, built from the screen in theirs.
+        assert.equal(w.utag.v_id, undefined);
+        for ( const name of [ 'cl', 'cond', 'pre', 'runonce', 'initcatch',
+            'tagsettings' ] ) {
+            assert.equal(w.utag[name], undefined, name);
+        }
+    });
+
+    it('takes a pagevars the page assigns, as a plain object would', ( ) => {
+        const { w } = boot({
+            after: '<script>utag.pagevars = function() { return 1; };' +
+                '</script>',
+        });
+        assert.equal(typeof w.utag.pagevars, 'function');
+    });
+
     it('leaves out the readers that gather the data layer', ( ) => {
         const { w } = boot({});
         for ( const name of [ 'RDcp', 'RDlocalStorage', 'RDsessionStorage',
