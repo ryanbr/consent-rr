@@ -216,6 +216,65 @@ describe('extra/perimeterx.js, a first-party deployment', ( ) => {
         assert.equal(w[APP_ID], w.PX);
         assert.equal(w._pxAppId, APP_ID);
     });
+
+    // Their own watcher builds "/" + appId.replace("PX", "") + "/init.js"
+    // once _pxFirstPartyEnabled is set, so this is the shape in the field.
+    const bootPath = (path, options = {}) => {
+        const src = 'https://example.com' + path;
+        const dom = new JSDOM(
+            '<!DOCTYPE html><html><head><script src="' + src + '"></script>' +
+            '</head><body></body></html>',
+            {
+                runScripts: 'dangerously',
+                url: 'https://example.com/page',
+                virtualConsole: new VirtualConsole(),
+            }
+        );
+        const win = dom.window;
+        if ( options.scanOnly === true ) {
+            // No currentScript, as a scriptlet injection has none: the tag
+            // on the page is all there is to go on.
+            new win.Function(code)();
+            return win;
+        }
+        const el = win.document.querySelector('script[src]');
+        new win.Function('el', [
+            "Object.defineProperty(document, 'currentScript',",
+            '{ value: el, configurable: true });',
+            code,
+        ].join(''))(el);
+        return win;
+    };
+
+    it('puts the PX back on a stripped first-party path', ( ) => {
+        const w = bootPath('/ZLuyHD0K/init.js');
+        assert.equal(typeof w.PXZLuyHD0K, 'object');
+        assert.equal(w.PXZLuyHD0K, w.PX);
+        assert.equal(w._pxAppId, 'PXZLuyHD0K');
+    });
+
+    it('leaves it alone where a deployment kept the PX', ( ) => {
+        const w = bootPath('/PXZLuyHD0K/init.js');
+        assert.equal(typeof w.PXZLuyHD0K, 'object');
+        assert.equal(w.PXPXZLuyHD0K, undefined);
+    });
+
+    it('finds a first-party tag by scanning, with no currentScript', ( ) => {
+        const w = bootPath('/ZLuyHD0K/init.js', { scanOnly: true });
+        assert.equal(w.PXZLuyHD0K, w.PX);
+    });
+
+    it('takes no id from a segment too long to be one', ( ) => {
+        const w = bootPath('/some-long-build-directory/init.js');
+        assert.equal(typeof w.PX, 'object');
+        assert.equal(w._pxAppId, undefined);
+    });
+
+    it('takes no id from init.js at the root', ( ) => {
+        const w = bootPath('/init.js');
+        assert.equal(typeof w.PX, 'object');
+        assert.equal(w._pxAppId, undefined);
+    });
 });
 
 describe('extra/perimeterx.js, the callback into the page', ( ) => {

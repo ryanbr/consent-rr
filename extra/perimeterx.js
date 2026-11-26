@@ -5,6 +5,14 @@
 // into dist/ by tools/build.mjs. Hand-maintained, ship as-is.
 // The rule it answers:
 //   ||client.px-cloud.net/*/main.min.js$script,redirect=perimeterx.js
+// And the same client from a site's own host, which is how a first-party
+// deployment serves it. The path is the app id with the PX taken off, and
+// the file is init.js, so a tenant on PXZLuyHD0K reads:
+//   ||example.com/ZLuyHD0K/init.js$script,redirect=perimeterx.js
+// There is no generic form of that rule worth writing - /<eight
+// characters>/init.js would match a great deal that is not theirs - so it
+// is one line per host. The app id is recovered from either shape, so the
+// resource needs nothing else to work there.
 // Do not block their collector or challenge hosts alongside it. With the
 // client replaced nothing on the page calls collector-a.px-cloud.net, so
 // blocking it buys nothing, and captcha.px-cloud.net - with
@@ -137,8 +145,21 @@
     // one back out of a document: PX[A-Za-z0-9]{4,8}
     const SHAPE = /^PX[A-Za-z0-9]{4,8}$/;
     const IN_URL = /\/(PX[A-Za-z0-9]{4,8})\/[^/]*$/;
+    // A first-party deployment serves the same client from the site's own
+    // host, and their own watcher says where: eleven of the thirteen builds
+    // read build the regex "/" + appId.replace("PX", "") + "/init.js" once
+    // _pxFirstPartyEnabled is set, so the path segment is the app id with
+    // the PX taken off, and init.js is the file.
+    const FIRST_PARTY = /\/([A-Za-z0-9]{4,10})\/init\.js(?:[?#]|$)/;
     const inUrl = text => {
         if ( typeof text !== 'string' ) { return ''; }
+        const first = FIRST_PARTY.exec(text);
+        if ( first !== null ) {
+            // Their own form has the PX taken off, so it goes back on -
+            // unless a deployment left it, which already reads as an id.
+            const held = first[1];
+            return SHAPE.test(held) ? held : 'PX' + held;
+        }
         const match = IN_URL.exec(text);
         return match !== null ? match[1] : '';
     };
@@ -163,7 +184,8 @@
         } catch ( ex ) {
         }
         try {
-            const tags = doc.querySelectorAll('script[src*="px-cloud.net"]');
+            const tags = doc.querySelectorAll(
+                'script[src*="px-cloud.net"],script[src*="/init.js"]');
             for ( const tag of tags ) {
                 const found = inUrl(tag.src);
                 if ( found !== '' ) { return found; }
