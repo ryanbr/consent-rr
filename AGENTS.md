@@ -36,7 +36,8 @@ pointed at it. The notes below are the things that have actually gone wrong.
   are, so they are written as uBO will see them. Two rules of their own:
   **uBO strips a comment only at column zero**, so an indented comment is
   shipped to every user, and the long form of the notes lives in a sibling
-  `extra/<name>.md` rather than in the file. The header carries the filter
+  `extra/<name>.md` rather than in the file - `tealium.md`, `perimeterx.md`
+  and `optimizely.md`, one per resource. The header carries the filter
   rules and the load-bearing decisions; the `.md` carries the evidence for
   them, the builds that were read, and the member-by-member detail. Keep it
   that way: `tealium.js` was once 75% header, and the notes are easier to
