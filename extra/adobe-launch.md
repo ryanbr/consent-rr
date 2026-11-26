@@ -179,11 +179,35 @@ that property. If a property *injects* its banner from a Launch rule, a
 redirect takes the banner with it - and AGENTS.md is explicit that a
 resource which cannot store the refusal must not remove the UI that could.
 
-**Against a block, though, this is strictly better.** Blocked,
-`_satellite` is undefined and a page's own inline `_satellite.getVar(...)`
-or `track(...)` throws, taking out the rest of that script. Everything
-listed above is lost under a block as well; the block just breaks the
-page's code too.
+**Against a block this is better or equal, and on the sample read so far
+it is equal.** Blocked, `_satellite` is undefined, so an unguarded caller
+throws and takes out the rest of its script; redirected, it answers. But
+the page-level calls that were actually found do not need it. Of the four
+sites behind the sample urls, two call `_satellite` from their own html
+and both guard it:
+
+```
+nvidia       //if(typeof _satellite !== "undefined"){
+             //    _satellite.pageBottom();
+             //}                                     (commented out entirely)
+
+canadapost   typeof(_satellite) !== "undefined" ? _satellite.pageBottom() : null;
+```
+
+`pageBottom` is the only member either page calls, and Adobe's own
+documented snippet is guarded, which is presumably why. The other two
+sites load the library from script rather than markup, and their
+first-party bundles - 225KB and 96KB, both read - reference `_satellite`
+not once.
+
+So the honest position: this does not repair a breakage that was
+demonstrated on these urls, the way the tealium replacement repairs an
+inline `utag.view(...)` that a block takes out. What it does buy is that
+the request succeeds rather than failing, that an unguarded caller - page
+code, or a first-party wrapper that is not public - finds an object
+instead of `undefined`, and that none of the rule components is ever
+requested. A sample of four is also not a licence to assume every page
+guards its calls.
 
 ### Body hiding, which is the one that would be a blank page
 
