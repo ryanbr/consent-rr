@@ -21,8 +21,9 @@
     resource is base64'd with btoa(), which throws on anything outside
     ASCII. Neither is checked for src/, where the build normalises both.
     What is NOT checked there: a backtick, which only matters to the bundler
-    these files do not go through, and line length, which is style. One of
-    them carries both today and ships fine.
+    these files do not go through, and line length, which is style. None of
+    them carries a backtick today; optimizely.js carries the long lines and
+    ships fine.
 
     NOTHING IS LISTED BY NAME IN HERE, which is the point. The script this
     replaced named three files by hand, two of which had moved; it had been

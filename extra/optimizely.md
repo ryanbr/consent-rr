@@ -29,7 +29,8 @@ from `cdn.optimizely.com/js/<projectId>.js`:
 ```
 
 The same client is also served for Performance Edge, at a different shape
-that the resource reads as well:
+that the resource reads as well - though no rule here points at that path,
+because no file served from it has been checked:
 
 ```
 /public/<account>/<project>/<revision>_<hash>_edge_helper.js
@@ -69,7 +70,7 @@ alone.
 ## What it costs per page
 
 ```
-file on disk      27356 bytes
+file on disk      27693 bytes
 injected          25625 bytes   (31495 before the comments moved here)
 compile           0.185 ms (median of 200)
 boot              0.30 ms (median of 25, in jsdom)
@@ -445,7 +446,12 @@ against dozens of real loaders; this one was written against the resource
 and the snippet shapes above. Where a claim here has no evidence behind it,
 it says so.
 
-**The linter does not see this file.** `extra/` is not built, so the build's
-checks - ASCII, no backtick, no blank line, no comment at column zero that
-uBO would drop - are not run over it. They were checked by hand for this
-change, and they have to be checked by hand for the next one.
+**The linter sees less of this file than of a built one.** `tools/lint.mjs`
+does walk `extra/`, and for these three files it checks what uBO's own
+parser cares about: that each one parses, that no blank line ends the
+resource early, that every byte is ASCII because `btoa()` throws otherwise,
+and that the first line is the `///` header naming the file. What it
+deliberately does not check there is a backtick, which only matters to the
+bundler these files do not go through, and line length, which is style.
+This file still carries 22 lines over 79 columns; the backtick it used to
+carry went with the comment block that quoted it.

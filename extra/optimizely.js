@@ -1,7 +1,8 @@
 /// optimizely.js
 // Resource replacement for Optimizely Web Experimentation snippets served
-// from cdn.optimizely.com/js/<projectId>.js, and for the same client served
-// for Performance Edge from /public/<account>/<project>/*_edge_helper.js.
+// from cdn.optimizely.com/js/<projectId>.js. It reads the Performance Edge
+// shape, /public/<account>/<project>/<revision>_<hash>_edge_helper.js, as
+// well, which the rule below does not cover.
 // Not a cookie-consent resource: it lives outside src/ and is not built
 // into dist/ by tools/build.mjs. Hand-maintained, ship as-is.
 // THE NOTES ARE IN extra/optimizely.md - every member and what each
@@ -11,7 +12,11 @@
 // THE RULE
 //   ||cdn.optimizely.com/js/*.js$script,redirect=optimizely.js
 // A redirect leaves the script element carrying the url it was going to
-// fetch, which is the only place the project identity survives.
+// fetch, which is the only place the project identity survives. That is
+// the snippet path only. No rule for the Performance Edge path is written
+// here: the resource handles one if a rule is pointed at it, but no file
+// served from that path has been checked, and an operational line written
+// from memory is how the perimeterx rules went wrong once.
 //
 // A comment indented into the body ships to every user - uBO strips only
 // the ones at column zero - so keep those to one line and put the rest in
