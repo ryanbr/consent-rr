@@ -744,6 +744,48 @@ describe('extra/tealium.js, the cookie it clears', ( ) => {
         assert.equal(w.document.cookie.includes('utag_main'), false);
     });
 
+    // Fourteen of the twenty-two carry their split-cookie machinery,
+    // where v_id, ses_id, _sn and _se are a cookie each rather than
+    // sub-values of one. Their own test for it is
+    // document.cookie.includes("utag_main_").
+    it('expires the split form as well as the packed one', async ( ) => {
+        const { w, lines } = boot({
+            before: '<script>' +
+                'document.cookie = "utag_main_v_id=abc; path=/";' +
+                'document.cookie = "utag_main_ses_id=def; path=/";' +
+                'document.cookie = "utag_main__sn=2; path=/";' +
+                'document.cookie = "session=mine; path=/";</script>',
+        });
+        await settle();
+        assert.equal(w.document.cookie.includes('utag_main'), false);
+        assert.equal(w.document.cookie.includes('session=mine'), true);
+        assert.match(lines[0], / cleared=3 /);
+    });
+
+    it('expires both shapes when a visitor has both', async ( ) => {
+        const { w, lines } = boot({
+            before: '<script>document.cookie = "utag_main=v_id:a; path=/";' +
+                'document.cookie = "utag_main_v_id=b; path=/";</script>',
+        });
+        await settle();
+        assert.equal(w.document.cookie.includes('utag_main'), false);
+        assert.match(lines[0], / cleared=2 /);
+    });
+
+    // The underscore is the boundary: a page cookie that merely starts the
+    // same way is not theirs.
+    it('leaves a page cookie that only looks like theirs', async ( ) => {
+        const { w, lines } = boot({
+            before: '<script>document.cookie = "utag_mainly=mine; path=/";' +
+                'document.cookie = "utag_maintenance=mine; path=/";</script>',
+        });
+        await settle();
+        assert.equal(w.document.cookie.includes('utag_mainly=mine'), true);
+        assert.equal(w.document.cookie.includes('utag_maintenance=mine'),
+            true);
+        assert.match(lines[0], / cleared=0 /);
+    });
+
     it('leaves the page its own cookies', async ( ) => {
         const { w } = boot({
             before: '<script>document.cookie = "session=mine; path=/";' +

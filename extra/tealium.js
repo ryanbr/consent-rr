@@ -150,9 +150,13 @@
 // tags see all of it. None of those readers is on the object this
 // installs, which is the one place where being less complete than theirs
 // is the point.
-// WHAT IT CLEARS: utag_main, on the host and every parent suffix of two
-// labels or more, and only where it is in the jar - their visitor id is
-// inside it, and replacing the loader stops a new one being written
+// WHAT IT CLEARS: utag_main and every utag_main_* beside it, on the host
+// and every parent suffix of two labels or more, and only the ones in the
+// jar. Theirs comes packed or split: packed is one cookie carrying v_id,
+// ses_id, _sn and _se as sub-values, split is a cookie each, and their own
+// test for which is document.cookie.includes("utag_main_") - fourteen of
+// the twenty-two carry that machinery. Their visitor id is in one shape or
+// the other, and replacing the loader stops a new one being written
 // without taking away the one already there. With it, their visitor
 // attributes: RDva reads them back as readAttr(o, "tealium_va") and
 // readAttr(o, "tealium_va_" + account + "_" + profile), so both names go
@@ -290,16 +294,36 @@
             try { done.storage += Math.max(0, was - store_.length); }
             catch ( ex ) { }
         }
+        // One read of the jar, and the names come out of it rather than
+        // out of a list, because theirs comes in two shapes. Packed is one
+        // utag_main carrying v_id, ses_id, _sn and _se as sub-values.
+        // Split is a cookie each, named utag_main_v_id and the rest, and
+        // their own test for it is
+        // document.cookie.includes("utag_main_") - fourteen of the
+        // twenty-two read carry that machinery, behind
+        // utag.cfg.split_cookie. The underscore is what keeps a page's own
+        // utag_mainly out of it.
         let held = '';
         try { held = String(doc.cookie || ''); } catch ( ex ) { return done; }
-        if ( held.indexOf(COOKIE + '=') !== 0 &&
-             held.indexOf('; ' + COOKIE + '=') === -1 ) { return done; }
-        done.cleared = 1;
-        for ( const domain of suffixes() ) {
-            const parts = [ COOKIE + '=', 'path=/',
-                'expires=Thu, 01 Jan 1970 00:00:01 GMT' ];
-            if ( domain !== '' ) { parts.push('domain=' + domain); }
-            try { doc.cookie = parts.join('; '); } catch ( ex ) { }
+        if ( held === '' ) { return done; }
+        const theirs = [];
+        for ( const part of held.split(';') ) {
+            const at = part.indexOf('=');
+            const name = (at === -1 ? part : part.slice(0, at)).trim();
+            if ( name === COOKIE || name.indexOf(COOKIE + '_') === 0 ) {
+                theirs.push(name);
+            }
+        }
+        if ( theirs.length === 0 ) { return done; }
+        const where = suffixes();
+        for ( const name of theirs ) {
+            done.cleared += 1;
+            for ( const domain of where ) {
+                const parts = [ name + '=', 'path=/',
+                    'expires=Thu, 01 Jan 1970 00:00:01 GMT' ];
+                if ( domain !== '' ) { parts.push('domain=' + domain); }
+                try { doc.cookie = parts.join('; '); } catch ( ex ) { }
+            }
         }
         return done;
     };
