@@ -836,9 +836,12 @@ describe('extra/perimeterx.js, the sensors it never reads', ( ) => {
     it('touches no sensor, and reads neither cookie nor storage',
         async ( ) => {
             let touched;
+            // With one of their ids in the jar, so the expiry write and
+            // the key removal both happen and the assertions below are
+            // measuring the whole footprint rather than a quiet path.
             const w = boot({
-                before: '<script>window._pxAppId = "' + APP_ID +
-                    '";</script>',
+                before: '<script>document.cookie = "_pxvid=v; path=/";' +
+                    'window._pxAppId = "' + APP_ID + '";</script>',
                 beforeParse(win) { touched = sensorProbe(win); },
             });
             await settle(60);
@@ -953,11 +956,46 @@ describe('extra/perimeterx.js, the identifiers it clears', ( ) => {
         assert.equal(w.localStorage.getItem('keepme'), 'kept');
     });
 
+    // Field-observed: PXtsv50IS4_px-ff holding e30=, which is {} - their
+    // storage facade puts the app id in front of every key, so the bare
+    // names alone would have missed the ones a modern build writes.
+    it('removes the app-id-prefixed keys a modern build writes',
+        async ( ) => {
+            const w = boot({
+                before: '<script>' +
+                    'localStorage.setItem("' + APP_ID + '__pxvid", "mirror");' +
+                    'localStorage.setItem("' + APP_ID + '_px-ff", "e30=");' +
+                    'sessionStorage.setItem("' + APP_ID + '_pxsid", "s");' +
+                    'localStorage.setItem("' + APP_ID + '_mine", "theirs");' +
+                    '</script>' + snippet,
+            });
+            await settle();
+            assert.equal(w.localStorage.getItem(APP_ID + '__pxvid'), null);
+            assert.equal(w.localStorage.getItem(APP_ID + '_px-ff'), null);
+            assert.equal(w.sessionStorage.getItem(APP_ID + '_pxsid'), null);
+            // Only the names read off their code, not everything wearing
+            // the prefix.
+            assert.equal(w.localStorage.getItem(APP_ID + '_mine'), 'theirs');
+        });
+
+    it('leaves the prefixed keys while a token is live', async ( ) => {
+        const w = boot({
+            before: '<script>document.cookie = "_px3=t; path=/";' +
+                'localStorage.setItem("' + APP_ID + '_px-ff", "e30=");' +
+                '</script>' + snippet,
+        });
+        await settle();
+        assert.equal(w.localStorage.getItem(APP_ID + '_px-ff'), 'e30=');
+    });
+
     it('expires on every parent suffix and with no domain', async ( ) => {
         const written = [];
         boot({
             url: 'https://shop.a.example.co.uk/page',
-            before: snippet,
+            // The id has to be in the jar: a name that is not there has
+            // nothing to expire at any suffix, and nothing is written.
+            before: '<script>document.cookie = "_pxvid=vid-1; path=/";' +
+                '</script>' + snippet,
             beforeParse(win) {
                 const held = Object.getOwnPropertyDescriptor(
                     Object.getPrototypeOf(win.document), 'cookie');
@@ -970,7 +1008,7 @@ describe('extra/perimeterx.js, the identifiers it clears', ( ) => {
         });
         await settle();
         const domains = written
-            .filter(line => line.startsWith('_pxvid='))
+            .filter(line => line.startsWith('_pxvid=;'))
             .map(line => {
                 const found = /domain=([^;]+)/.exec(line);
                 return found !== null ? found[1] : '(none)';
@@ -979,10 +1017,13 @@ describe('extra/perimeterx.js, the identifiers it clears', ( ) => {
             '(none)', 'shop.a.example.co.uk', 'a.example.co.uk',
             'example.co.uk', 'co.uk',
         ]);
-        // Every one of them an expiry, never a value.
-        for ( const line of written ) {
+        // Every one of ours an expiry, never a value.
+        for ( const line of written.filter(l => l.startsWith('_pxvid=;')) ) {
             assert.equal(line.includes('expires=Thu, 01 Jan 1970'), true);
         }
+        // And nothing written for the two ids that were never there.
+        assert.equal(written.some(l => l.startsWith('pxvid=;')), false);
+        assert.equal(written.some(l => l.startsWith('_pxmvid=;')), false);
     });
 
     // An opaque origin - a sandboxed frame, a data: document - makes both

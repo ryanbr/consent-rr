@@ -168,7 +168,10 @@
 // What it clears, rather than merely not writing: their visitor id, from
 // the cookie on the host and every parent suffix of two labels or more,
 // and from the localStorage and sessionStorage mirrors - _pxvid, pxvid and
-// _pxmvid - plus the legacy sessionStorage.pxsid. Their token is left
+// _pxmvid - plus the legacy sessionStorage.pxsid, and the app-id-prefixed
+// keys a modern build actually writes: <appId>__pxvid, the ttl'd mirror
+// their own vid lookup falls back on, and <appId>_px-ff, the ttl'd store
+// beside it. Their token is left
 // alone, as above, and while one of _px3, _px2 or _px is still in the jar
 // the clearing waits: a visitor holding a token reads as a returning one,
 // and taking the id away underneath that leaves two halves disagreeing,
@@ -282,6 +285,14 @@
     // storage only has keys removed - so this adds no read of either.
     const IDS = [ '_pxvid', 'pxvid', '_pxmvid' ];
     const SESSION_IDS = [ 'pxsid' ];
+    // Their storage goes through a facade - mn(t) hands back
+    // { getItem, setItem, removeItem } whose every key runs through
+    // mt(name, true), which is appId + "_" + name - so the mirror of the
+    // visitor id sits at <appId>__pxvid rather than _pxvid, and their
+    // ttl'd store at <appId>_px-ff. Both forms are removed here: the bare
+    // one for the builds that do not prefix, and the prefixed one, which
+    // is what a modern build actually writes.
+    const STORED = IDS.concat(SESSION_IDS, [ 'px-ff' ]);
     // Their token names, which are the server's own and are never
     // cleared - and which also say whether a session is live.
     const TOKENS = [ '_px3', '_px2', '_px' ];
@@ -303,20 +314,30 @@
     // the clearing waits for the session to lapse: no token, nothing to
     // disagree with. Their token is not refreshed with the client replaced,
     // so the wait ends on its own.
-    const live = ( ) => {
+    // One read of the jar answers both questions: whether a session is
+    // live, and which of their ids are actually there. A name that is not
+    // in document.cookie has nothing to expire at any suffix either, since
+    // a cookie set on a parent domain is in document.cookie as well, so
+    // the writes for an absent name are all waste.
+    const inJar = ( ) => {
         let held = '';
-        try { held = String(doc.cookie || ''); } catch ( ex ) { return false; }
-        if ( held === '' ) { return false; }
-        for ( const name of TOKENS ) {
-            if ( held.indexOf(name + '=') === 0 ) { return true; }
-            if ( held.indexOf('; ' + name + '=') !== -1 ) { return true; }
+        try { held = String(doc.cookie || ''); } catch ( ex ) { return []; }
+        if ( held === '' ) { return []; }
+        const out = [];
+        for ( const part of held.split(';') ) {
+            const at = part.indexOf('=');
+            out.push((at === -1 ? part : part.slice(0, at)).trim());
         }
-        return false;
+        return out;
     };
     const forget = ( ) => {
-        if ( live() ) { return; }
-        const where = suffixes();
-        for ( const name of IDS ) {
+        const there = inJar();
+        for ( const name of TOKENS ) {
+            if ( there.indexOf(name) !== -1 ) { return; }
+        }
+        const mine = IDS.filter(name => there.indexOf(name) !== -1);
+        const where = mine.length !== 0 ? suffixes() : [];
+        for ( const name of mine ) {
             for ( const domain of where ) {
                 const parts = [ name + '=', 'path=/',
                     'expires=Thu, 01 Jan 1970 00:00:01 GMT' ];
@@ -328,8 +349,10 @@
             let held;
             try { held = w[store]; } catch ( ex ) { continue; }
             if ( held === null || held === undefined ) { continue; }
-            for ( const name of IDS.concat(SESSION_IDS) ) {
+            for ( const name of STORED ) {
                 try { held.removeItem(name); } catch ( ex ) { }
+                if ( id === '' ) { continue; }
+                try { held.removeItem(id + '_' + name); } catch ( ex ) { }
             }
         }
     };
