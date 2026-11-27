@@ -243,6 +243,9 @@
     }
     satellite.container = container;
     w._satellite = satellite;
+    // Their own double-init guard, set where theirs sets it: a second copy
+    // of the real library checks this and stands down. See the .md.
+    try { w.__satelliteLoaded = true; } catch ( ex ) { }
     // Their own embed code calls this when the library has loaded, and some
     // pages define it expecting the call.
     if ( typeof w.__satelliteLoadedCallback === 'function' ) {

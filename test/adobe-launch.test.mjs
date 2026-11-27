@@ -466,6 +466,25 @@ describe('extra/adobe-launch.js, cookies and callbacks', ( ) => {
         assert.match(notices[0], /_satellite\.cookie\.get\("legacy"\)/);
     });
 
+    it('sets the loaded flag their own library sets', ( ) => {
+        // Every runtime read does
+        //   if (container && !window.__satelliteLoaded) {
+        //       window.__satelliteLoaded = true; ...
+        // at the point it hydrates the satellite object, and a second copy
+        // of the real library reads it and stands down. A page polling it
+        // for readiness gets the same answer it would from theirs.
+        const win = boot();
+        assert.equal(win.__satelliteLoaded, true);
+    });
+
+    it('does not set the loaded flag when it stands aside', ( ) => {
+        const win = boot({
+            before: '<script>window._satellite = { getVar: function() {' +
+                " return 'theirs'; } };</script>",
+        });
+        assert.equal(win.__satelliteLoaded, undefined);
+    });
+
     it('calls the loaded callback a page defined for their embed', ( ) => {
         const win = boot({
             before: '<script>window.__satelliteLoadedCallback = ' +

@@ -291,6 +291,24 @@ A property that injects the banner itself would carry the loader - the
 stub url or the host - and that is the string to search for, not the
 cookie name.
 
+A second property shows the same thing more plainly. One of its components
+is
+
+```
+"object" == typeof OneTrust &&
+"function" == typeof OneTrust.OnConsentChanged &&
+OneTrust.OnConsentChanged(function (e) {
+    ... alloy("setConsent", { consent: [ r ] }) ...
+})
+```
+
+It subscribes to OneTrust and forwards the answer to the Web SDK, gating
+what may be sent. No `otSDKStub`, no `cdn.cookielaw`, no `OptanonWrapper`,
+no `createElement` anywhere in it. Replacing the runtime removes the
+consumer and the Web SDK it gates, and leaves the banner - the direction
+every property read so far points in. It also guards every `_satellite`
+access with a `typeof` check, the same way the pages do.
+
 ### The check
 
 The container is inside the `launch-*.min.js` file, so what a property
@@ -411,6 +429,29 @@ container shaped like theirs: `buildInfo`, `environment`, `property`,
 `company`, `dataElements`, `rules`, `extensions`, with the collections
 empty.
 
+### `window.__satelliteLoaded`
+
+Not on the object, and the only global besides `_satellite` that this
+sets. Every runtime read does, at the point
+it hydrates the satellite object:
+
+```
+if ( container && !window.__satelliteLoaded ) {
+    window.__satelliteLoaded = true;
+    ...
+```
+
+It is their guard against a second copy of the library initialising over
+the first, so a page polling it for readiness gets the same answer it
+would from theirs. It is set here for the same reason and in the same
+place - after the object is published, and not at all when this stands
+aside for a real runtime.
+
+The consequence is worth stating: a real library arriving later, from a
+path no rule covers, reads the flag and stands down. That is what theirs
+does to any second copy, so it is faithful rather than a trick, but it
+does mean this neutralises a copy it did not block.
+
 ### `_monitors`
 
 A page or a debugger can set `window._satellite = { _monitors: [ ... ] }`
@@ -426,11 +467,12 @@ is the one the runtime that was read reports, 29.1.0.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the five runtimes and the twenty rule
-components was counted and diffed against what this publishes. The union
-is exactly the 22 members here, plus one outlier: `_satellite.geVar`, a
-typo in one property's own custom code, which is undefined against their
-library too - so matching theirs means not adding it.
+Every `_satellite` reference in the seven runtimes and the twenty-three
+rule components was counted and diffed against what this publishes. The
+union is exactly the 22 members here, plus one outlier:
+`_satellite.geVar`, a typo in one property's own custom code, which is
+undefined against their library too - so matching theirs means not adding
+it.
 
 The sub-objects were counted the same way: `cookie.get` 53 times,
 `cookie.set` 20, `cookie.remove` 4, `logger.log` 14, `logger.info` 4,
@@ -534,13 +576,14 @@ at once.
 
 ## What is not done here
 
-**A thin corpus.** Five runtimes were read in full and twenty rule
-components across six properties - not the dozens of builds tealium and
-perimeterx were written against. All five runtimes are turbine 29.1.0 and
-carry the same `_satellite` surface, checked by their own string literals
-rather than by minified variable names, so the api here is not guesswork;
-what a thin corpus cannot tell is how a property that looks unlike these
-five behaves.
+**A thin corpus.** Seven runtimes were read in full and twenty-three rule
+components across eight properties - not the dozens of builds tealium and
+perimeterx were written against. All seven are turbine 29.1.0 and carry the
+same `_satellite` surface, checked by their own string literals rather than
+by minified variable names, so the api here is not guesswork; what a thin
+corpus cannot tell is how a property that looks unlike these seven behaves.
+The sixth was worth reading anyway - it is where `window.__satelliteLoaded`
+was found.
 
 **No `s_code` or `AppMeasurement` stub.** This replaces the tag manager,
 not the Analytics library it fetches - and when the runtime is replaced
@@ -555,6 +598,12 @@ means - as ally.com appears to do, where the embed is not on
 `assets.adobedtm.com` at all there. There is no generic rule for that, the
 same problem the perimeterx notes describe, and it needs a per-site rule
 written against a url somebody has seen.
+
+**Nothing for a property's private namespace.** One container's
+scroll-depth trigger keeps its state on `_satellite._ags055`, created by
+the extension that reads it. Per-property members like that are made by
+code which no longer runs, and there is no list of them to publish - the
+same boundary tealium's notes draw around per-tenant extension members.
 
 **Nothing for the RC files, by choice.** See above: their loader resolves
 a failed one to `undefined` and the rule carries on.
