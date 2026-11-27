@@ -287,6 +287,32 @@ instead of `undefined`, and that none of the rule components is ever
 requested. A sample of four is also not a licence to assume every page
 guards its calls.
 
+### The signals a container makes, which are the real loss
+
+The api survives a redirect; a signal the container invented does not. Two
+from the corpus, both of them things a page can be waiting for:
+
+```
+ally       document.dispatchEvent(new CustomEvent("guidSet", { ... }))
+           plus the AllyLoginLOB and _dtm_cid_guid cookies it writes first
+
+another    let e = new Event("pmSegmentsUpdated");
+           window.pmSegmentsUpdated = false;
+           alloy("getIdentity").then(function (t) { ecid = t.identity.ECID; ... })
+```
+
+The second is the sharper case, because it sets a flag on `window` as well
+as dispatching at `window`: a page can poll `window.pmSegmentsUpdated` or
+listen for the event, and with the runtime replaced it gets neither.
+Nothing in the resource can help - the signal is the container's, not
+Adobe's, and there is no list of them.
+
+Which makes the pre-flight grep worth running on a property's components
+before shipping a rule for its site: `dispatchEvent`, `new CustomEvent`,
+and `window.<name> =`. What turns up is either telemetry, which is the
+point of replacing the runtime, or a page signal, which is a reason to
+leave that site alone.
+
 ### Body hiding, which is the one that would be a blank page
 
 The other property read here, a satelliteLib one, runs `adobe-target-v2`
@@ -510,7 +536,7 @@ is the one the runtime that was read reports, 29.1.0.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the twelve runtimes and the thirty-four
+Every `_satellite` reference in the thirteen runtimes and the thirty-eight
 rule components was counted and diffed against what this publishes. The
 union is exactly the 22 members here, plus one outlier:
 `_satellite.geVar`, a typo in one property's own custom code, which is
@@ -641,16 +667,16 @@ at once.
 
 ## What is not done here
 
-**The corpus, and what it still cannot say.** Twelve runtimes were read in
-full, thirty-four rule components and one extension libraryCode file,
-across seventeen properties - fifteen identified by the hash in their
-path, plus two flat `launch-EN<id>.min.js` embeds whose url carries no
-property at all - and four of the pages that embed them. The counts are
-derived from the files rather than remembered: every rule component names
-its own url inside its `__registerScript` call, so the properties can be
-counted by reading them.
+**The corpus, and what it still cannot say.** Thirteen runtimes were read
+in full, thirty-eight rule components and one extension libraryCode file,
+across eighteen properties - sixteen identified by the hash in their path,
+plus two flat `launch-EN<id>.min.js` embeds whose url carries no property
+at all - and four of the pages that embed them. The counts are derived
+from the files rather than remembered: every rule component names its own
+url inside its `__registerScript` call, so the properties can be counted
+by reading them.
 
-All twelve runtimes are turbine 29.1.0 and carry the same `_satellite`
+All thirteen runtimes are turbine 29.1.0 and carry the same `_satellite`
 surface, checked three independent ways - the members each one references,
 the members each one assigns directly, and their own string literals
 rather than minified variable names. tealium and perimeterx were written
