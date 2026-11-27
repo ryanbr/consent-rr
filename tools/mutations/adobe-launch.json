@@ -208,8 +208,8 @@
   },
   {
    "name": "cookie set writes",
-   "from": "        set: ( ) => { },",
-   "to": "        set: (name, value) => { try { doc.cookie = name + '=' + value + '; path=/'; } catch ( ex ) { } },"
+   "from": "            if ( gone === false ) { return; }\n            cookie.remove(name, opts);",
+   "to": "            try { doc.cookie = name + '=' + value + '; path=/'; } catch ( ex ) { }"
   },
   {
    "name": "setCookie writes through",
@@ -390,6 +390,36 @@
    "name": "the first-party rule is widened to the path",
    "from": "//   ||lightning.cnn.com/launch/*/launch-*.min.js$script,redirect=adobe-launch.js",
    "to": "//   /launch/*/launch-*.min.js$script,redirect=adobe-launch.js"
+  },
+  {
+   "name": "set ignores a deletion",
+   "from": "            if ( gone === false ) { return; }\n            cookie.remove(name, opts);",
+   "to": "            void gone;"
+  },
+  {
+   "name": "set deletes whatever it is handed",
+   "from": "            if ( gone === false ) { return; }\n",
+   "to": ""
+  },
+  {
+   "name": "a bare day count is ignored",
+   "from": "            const bare = typeof options === 'number' ? options : undefined;",
+   "to": "            const bare = undefined;"
+  },
+  {
+   "name": "an empty value is not a deletion",
+   "from": "            let gone = value === '' || value === null || value === undefined;",
+   "to": "            let gone = false;"
+  },
+  {
+   "name": "a past expiry is not a deletion",
+   "from": "            if ( typeof at === 'number' && at <= Date.now() ) { gone = true; }",
+   "to": "            void at;"
+  },
+  {
+   "name": "a date is matched by instanceof",
+   "from": "            const at = expires !== null && typeof expires === 'object' &&\n                typeof expires.getTime === 'function'\n                ? expires.getTime()\n                : undefined;",
+   "to": "            const at = expires instanceof Date ? expires.getTime() : undefined;"
   }
  ]
 }

@@ -668,14 +668,24 @@ pins it.
 divergence from theirs for unknown names, and it is the difference between
 a page continuing and a page throwing.
 
-**`cookie.set` writes nothing, `cookie.remove` removes.** A write is the
-thing being removed - this is how their containers persist identifiers
-like `_dtm_cid_guid` and `s_ecid`. A removal only ever takes something
-away, so it is honoured. A read answers the page about state it already
-has, over no network, so it is honoured too. The asymmetry is deliberate,
-and the cost is real: a page that round-trips its own value through
-`_satellite.cookie` gets nothing back. `setCookie`, the deprecated alias,
-goes through the same no-op.
+**`cookie.set` writes nothing, but carries out a deletion.** A write is
+the thing being removed - this is how their containers persist identifiers
+like `_dtm_cid_guid` and `s_ecid` - so a `set` that keeps a value is
+ignored, and an existing cookie keeps the value it had. A deletion can
+only take data away, so it is honoured, in each of the three shapes real
+containers use: an empty value, `expires: 0`, and a bare negative day
+count, which is the DTM-era third argument their own js-cookie would not
+honour either. `remove` removes. A read answers the page about state it
+already has, over no network, so it is honoured too.
+
+**`environment.stage` is always `production`, and not derived.** The embed
+url can in principle name a staging or development build, and deriving the
+stage from it was considered and dropped: `stage` is `"production"` in
+every container read, and no `-staging` or `-development` embed url
+appears anywhere in the corpus. Reporting anything else would be
+inventing. The filters test asserts those two url shapes are covered by
+the rule, which is true of the pattern, but neither shape has been seen
+served.
 
 **Nothing about the property is invented.** `property.name`, `property.id`
 and `company.orgId` are empty strings, because they live in the container
@@ -695,10 +705,10 @@ record its own debug state would be writing storage.
 ## What it costs per page
 
 ```
-file on disk      10874 bytes
-injected          7930 bytes   (8742 before the pass described below)
-compile           0.049 ms (median of 200)
-boot              0.14 ms (median of 25, in jsdom)
+file on disk      11904 bytes
+injected          8960 bytes
+compile           0.063 ms (median of 200)
+boot              0.17 ms (median of 25, in jsdom)
 timers            0
 listeners         0
 cookie reads      0
@@ -707,9 +717,12 @@ storage calls     0
 requests          0
 ```
 
-Two passes took 812 bytes off the injected size, 9 per cent, and neither
-changed compile or boot - which is the expected shape, since what was
-removed was bytes rather than work.
+Those bytes went two ways and are worth separating. An optimisation pass
+took 812 off, 9 per cent; a compatibility change - the deletion-shaped
+`cookie.set` below - put 1030 back. Net 218 more than before either, and
+compile and boot are the same within the noise of measuring them. The
+trade was made knowingly: a page that clears a cookie through their api
+now has it cleared.
 
 The first was dead computation. The identity helper captured the property
 hash, the environment hash and the build from the redirected url, and only

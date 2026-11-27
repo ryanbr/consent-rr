@@ -138,7 +138,25 @@
             if ( where.domain ) { bits.push('domain=' + where.domain); }
             try { doc.cookie = bits.join('; '); } catch ( ex ) { }
         },
-        set: ( ) => { },
+        // A write is removed; a deletion is honoured. Three shapes, measured.
+        set: (name, value, options) => {
+            if ( typeof name !== 'string' || name === '' ) { return; }
+            const bare = typeof options === 'number' ? options : undefined;
+            const opts = options !== null && typeof options === 'object'
+                ? options
+                : {};
+            const expires = bare !== undefined ? bare : opts.expires;
+            let gone = value === '' || value === null || value === undefined;
+            if ( typeof expires === 'number' && expires <= 0 ) { gone = true; }
+            // Duck-typed: a Date from another realm fails instanceof.
+            const at = expires !== null && typeof expires === 'object' &&
+                typeof expires.getTime === 'function'
+                ? expires.getTime()
+                : undefined;
+            if ( typeof at === 'number' && at <= Date.now() ) { gone = true; }
+            if ( gone === false ) { return; }
+            cookie.remove(name, opts);
+        },
         withConverter: ( ) => cookie,
     };
     const satellite = existing !== null && typeof existing === 'object'

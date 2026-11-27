@@ -444,6 +444,60 @@ describe('extra/adobe-launch.js, cookies and callbacks', ( ) => {
         assert.equal(win.document.cookie, '');
     });
 
+    it('takes a deletion through set, in each shape a container asks', ( ) => {
+        // Measured on real containers: an empty value, expires 0, and a bare
+        // negative day count - the DTM-era third argument, which their own
+        // js-cookie would not honour either. A deletion can only take data
+        // away, so each one is carried out.
+        const win = boot({
+            before: "<script>document.cookie = 'a=1; path=/';" +
+                "document.cookie = 'b=2; path=/';" +
+                "document.cookie = 'c=3; path=/';" +
+                "document.cookie = 'd=4; path=/';</script>",
+        });
+        const cookie = win._satellite.cookie;
+        cookie.set('a', '', { path: '/' });
+        cookie.set('b', 'anything', { expires: 0, path: '/' });
+        cookie.set('c', '-', -1000);
+        cookie.set('d', 'x', { expires: new Date(Date.now() - 86400000),
+            path: '/' });
+        for ( const name of [ 'a', 'b', 'c', 'd' ] ) {
+            assert.equal(cookie.get(name), undefined, name);
+        }
+        assert.equal(win.document.cookie, '');
+    });
+
+    it('writes nothing, and removes nothing, when a value is kept', ( ) => {
+        // Seeded first: a set that is not deletion-shaped must leave the
+        // cookie exactly as it was. Asserting only that nothing was written
+        // cannot tell that apart from a set that deletes everything.
+        const win = boot({
+            before: "<script>document.cookie = 'keep=old; path=/';" +
+                "document.cookie = 'keep2=old; path=/';" +
+                "document.cookie = 'keep3=old; path=/';" +
+                "document.cookie = 'keep4=old; path=/';</script>",
+        });
+        const cookie = win._satellite.cookie;
+        cookie.set('keep', 'value');
+        cookie.set('keep2', 'value', { expires: 365 });
+        cookie.set('keep3', 'value', 30);
+        cookie.set('keep4', 'value',
+            { expires: new win.Date(Date.now() + 8640000) });
+        for ( const name of [ 'keep', 'keep2', 'keep3', 'keep4' ] ) {
+            assert.equal(cookie.get(name), 'old', name);
+        }
+        // And nothing new of its own.
+        assert.equal(win.document.cookie.includes('value'), false);
+    });
+
+    it('takes a deletion through the deprecated alias too', ( ) => {
+        const win = boot({
+            before: "<script>document.cookie = 'legacy=1; path=/';</script>",
+        });
+        win._satellite.setCookie('legacy', '', 0);
+        assert.equal(win._satellite.cookie.get('legacy'), undefined);
+    });
+
     it('removes a cookie, because that only takes something away', ( ) => {
         const win = boot({
             before: "<script>document.cookie = 'gone=yes; path=/';</script>",
