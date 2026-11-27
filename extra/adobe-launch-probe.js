@@ -361,7 +361,7 @@
     'use strict';
     const w = window;
     const doc = w.document;
-    const BUILD = '96cb5994';
+    const BUILD = '18e17282';
     const log = w.__probeLog = w.__probeLog || [];
     let where = 'top';
     try {
@@ -446,6 +446,13 @@
     // Taken AFTER wrapping, because the wrap replaces every function
     // on it: comparing against the pre-wrap identity never matches,
     // and said 'hydrated over' even when nothing had touched it.
+    // The other two surfaces this resource publishes. Wrapping
+    // only _satellite meant a log could say they were present and
+    // never once say what a page called on them or what it got -
+    // silent by construction about the likeliest stall there is,
+    // a visitor id or a Target offer that never comes back.
+    try { wrap(w.adobe, 'adobe'); } catch ( ex ) { }
+    try { wrap(w.Visitor, 'Visitor'); } catch ( ex ) { }
     let ours;
     let ourKeys = [];
     try {
@@ -494,6 +501,76 @@
             counts.push(( ) => name + '=' + reads);
         } catch ( ex ) {
         }
+    }
+    // A blocked fetch or XHR fires no error event on an element, so
+    // the handler below cannot see one. On a cleared profile that is
+    // most of what a page does before it will go on: consent, geo,
+    // session. Only failures and whatever never settled are logged,
+    // because logging every request buries the page's own calls.
+    const pending = new Map();
+    let seq = 0;
+    const began = (how, url) => {
+        seq += 1;
+        pending.set(seq, how + ' ' + String(url).slice(0, 110));
+        return seq;
+    };
+    const ended = (id, note) => {
+        const what = pending.get(id);
+        pending.delete(id);
+        if ( note !== '' && what !== undefined ) { say(note, what); }
+    };
+    const realFetch = w.fetch;
+    if ( typeof realFetch === 'function' ) {
+        w.fetch = (...args) => {
+            const first = args[0];
+            const url = first && first.url !== undefined
+                ? first.url
+                : first;
+            const id = began('fetch', url);
+            let answer;
+            try {
+                answer = realFetch.apply(w, args);
+            } catch ( ex ) {
+                ended(id, 'FETCH THREW ' + (ex && ex.message || ex));
+                throw ex;
+            }
+            return answer.then(res => {
+                ended(id, res && res.ok === false
+                    ? 'FETCH ' + res.status
+                    : '');
+                return res;
+            }, ex => {
+                ended(id, 'FETCH FAILED - blocked, or no network -');
+                throw ex;
+            });
+        };
+    }
+    const XHR = w.XMLHttpRequest;
+    if ( typeof XHR === 'function' && XHR.prototype ) {
+        const open = XHR.prototype.open;
+        const send = XHR.prototype.send;
+        XHR.prototype.open = function(method, url, ...rest) {
+            this.probeUrl = url;
+            return open.call(this, method, url, ...rest);
+        };
+        XHR.prototype.send = function(...args) {
+            const id = began('xhr', this.probeUrl || '(no url)');
+            this.addEventListener('load', ( ) => {
+                ended(id, this.status >= 200 && this.status < 400
+                    ? ''
+                    : 'XHR ' + this.status);
+            });
+            this.addEventListener('error', ( ) => {
+                ended(id, 'XHR FAILED - blocked, or no network -');
+            });
+            this.addEventListener('abort', ( ) => {
+                ended(id, 'XHR ABORTED');
+            });
+            this.addEventListener('timeout', ( ) => {
+                ended(id, 'XHR TIMED OUT');
+            });
+            return send.apply(this, args);
+        };
     }
     // Is the page hidden, and by what? That is the blank-page question.
     const state = ( ) => {
@@ -576,6 +653,21 @@
             if ( mine !== '' ) { parts.push('| ours only:', mine); }
             say(...parts);
         } catch ( ex ) { }
+        // What never came back. A page that stops halfway is usually
+        // waiting on one of these, and nothing else in a console says
+        // which, because an unsettled request prints nothing at all.
+        if ( pending.size !== 0 ) {
+            const waiting = [];
+            pending.forEach(what => waiting.push(what));
+            // Pushed, not passed: say() joins on a space, so an
+            // empty tail argument leaves the line trailing one.
+            const parts = [ 'never settled:', waiting.length, '-',
+                waiting.slice(0, 8).join(' | ') ];
+            if ( waiting.length > 8 ) {
+                parts.push('and', waiting.length - 8, 'more');
+            }
+            say(...parts);
+        }
         say('reads by global:', counts.map(f => f()).join(' '));
         say('lines so far', log.length,
             '- copy(__probeLog.join(String.fromCharCode(10)))');
