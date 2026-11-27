@@ -404,9 +404,14 @@ youtube-playback
 
 which is a property where the answer is not automatic: Target can
 personalise or redirect a page, and losing it changes what a visitor sees
-rather than only what is measured. A property carrying a consent, chat,
-survey, personalisation or tag-injection extension needs the rule written
-per site, or not at all. Searching its `RC<uuid>-source.min.js` files for
+rather than only what is measured. A property carrying something that is
+not measurement needs the rule
+written per site, or not at all - and the corpus holds four such
+extensions rather than hypothetical ones: `adobe-target-v2`, which
+personalises or redirects a page; `qualtrics-website-feedback`, which puts
+a survey in front of a visitor; `branch-mobile-growth`, which handles deep
+links into an app; and `adobegoogledatalayer`, which bridges a data layer
+the page may read itself. Searching its `RC<uuid>-source.min.js` files for
 `dispatchEvent`, `document.cookie`, `localStorage` and third-party script
 loaders finds the rest in minutes.
 
@@ -536,7 +541,7 @@ is the one the runtime that was read reports, 29.1.0.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the fourteen runtimes and the forty-two
+Every `_satellite` reference in the fifteen runtimes and the fifty-six
 rule components was counted and diffed against what this publishes. The
 union is exactly the 22 members here, plus one outlier:
 `_satellite.geVar`, a typo in one property's own custom code, which is
@@ -565,9 +570,17 @@ like a missing member. One property's container calls
 here assigns `_satellite.getQueryParam` - the two apparent definitions
 turn out to be AppMeasurement's own `s.Util.getQueryParam`, which hangs
 off `window.s`, and the `common-analytics-plugins` plugin module of the
-same name. So that call throws a TypeError against Adobe's own library
-too, in a data element gated on one path of one site, and matching theirs
-means not publishing it. A container migrated from DTM can carry calls its
+same name. So that call throws a TypeError against Adobe's own library too, and
+matching theirs means not publishing it. Two properties carry such a call
+now, and the second shows why nobody notices - it is inside a `try`:
+
+```
+try {
+    e = digitalData.page.attributes.productFindingMethod ||
+        _satellite.getQueryParam("view")
+} catch (e) { }
+```
+ A container migrated from DTM can carry calls its
 own runtime no longer answers.
 
 What the census did find is a second class of api, and it is deliberately
@@ -667,21 +680,21 @@ at once.
 
 ## What is not done here
 
-**The corpus, and what it still cannot say.** Fourteen runtimes were read
-in full, forty-two rule components and one extension libraryCode file,
-across nineteen properties - seventeen identified by the hash in their path,
-plus two flat `launch-EN<id>.min.js` embeds whose url carries no property
+**The corpus, and what it still cannot say.** Fifteen runtimes were read
+in full, fifty-six rule components and one extension libraryCode file,
+across twenty-one properties - eighteen identified by the hash in their
+path, plus three flat `launch-EN<id>.min.js` embeds whose url carries no property
 at all - and four of the pages that embed them. The counts are derived
 from the files rather than remembered: every rule component names its own
 url inside its `__registerScript` call, so the properties can be counted
 by reading them.
 
-All fourteen runtimes are turbine 29.1.0 and carry the same `_satellite`
+All fifteen runtimes are turbine 29.1.0 and carry the same `_satellite`
 surface, checked three independent ways - the members each one references,
 the members each one assigns directly, and their own string literals
 rather than minified variable names. tealium and perimeterx were written
 against dozens of builds each, so this is still the thinnest corpus of the
-four, and what it cannot tell is how a property unlike these nineteen
+four, and what it cannot tell is how a property unlike these twenty-one
 behaves.
 
 Two of those runtimes were worth reading for one line each: the sixth is
@@ -717,7 +730,7 @@ _satellite.safeCheck = function (obj) {
 }
 ```
 
-`safeCheck` is in one of fourteen runtimes. This is the boundary tealium's
+`safeCheck` is in one of fifteen runtimes. This is the boundary tealium's
 notes draw around per-tenant extension members, with one addition: a
 container can extend `_satellite` itself, so a member a census finds is
 not necessarily Adobe's.
