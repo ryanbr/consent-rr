@@ -807,6 +807,41 @@ The smaller child count is the pixel nodes their container appends, which
 is the blocking working rather than content missing; nothing in the log
 says anything is absent, and the body is visible with the listing present.
 
+Then the same property stopped working again after its cookies were
+cleared, and ten rounds went into it. What was established, each from a
+console run rather than from reasoning:
+
+```
+no consent manager anywhere      none of 20 globals, top frame or any iframe
+nothing Adobe is read            s, s_gi, adobeDataLayer, AppMeasurement,
+                                 alloy: every count 0, no call but pageBottom
+the data layer reaches {page,search}   and stops short of cpj, activity,
+                                 flag, internal, geolocation, form - the six
+                                 that arrive with the three track() calls
+every other cookie is present    jarvis-id, sessionId, globalAccessToken,
+                                 rl_anonymous_id, _ga, _gcl_au and 12 more
+their cookies                    none, and blocked they never come back
+```
+
+So the page is warm in every respect except Adobe, it asks this
+replacement for nothing, and it stops where enrichment that depends on
+their state would start. The one untested explanation left is that cookie:
+allow the library once so it writes AMCV and s_ecid, block it again
+without clearing, and see whether the page recovers.
+
+Until that is run, the honest answer for this one property is
+`domain=~tatacliq.com` on the blocking rule. The candidate fix - writing
+an `AMCV_<org>@AdobeOrg` with a synthetic MCMID - means inventing an
+identifier for every site that uses this resource, which is the one thing
+it was built not to do, and the org id is not knowable from a blocked url
+anyway.
+
+Four defects came out of those rounds and all of them were in this repo
+rather than on the page: the stand-down flag, a visitor id of null, a
+missing Target api and a missing Visitor global. Three more were in the
+probe, and one of those - patching fetch - invented a failure of its own.
+That is the return on the exercise; the site itself is unresolved.
+
 What actually caused the blank page was in here: this resource used to set
 `window.__satelliteLoaded`, their own double-init guard, which made a real
 library stand down while a stub that could not answer stood in for it. The
