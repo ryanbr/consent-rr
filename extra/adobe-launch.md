@@ -169,6 +169,12 @@ all four of their types now have a case: `MANAGED` is the
 is an arbitrary url, and `PREINSTALLED` is the page's own copy. Only the
 last is outside a replaced runtime's reach.
 
+A second one, from another property, is the same shape with different
+contents: it installs `window._uxa`, which is Contentsquare's queue, a
+global `s_doPlugins`, which is the hook AppMeasurement calls on every
+beacon, and `window.s_objectID` for ActivityMap. Both are `type: "custom"`
+in their containers.
+
 One caveat this shape raises and does not settle: an `EX` library installs
 globals in the page's namespace, so unlike a rule component it *could* be
 what page code calls. Nothing outside that container references the four
@@ -558,11 +564,14 @@ installed early is not thrown away.
 ### `buildInfo`
 
 `minified: true`, the turbine version, and empty build dates. The version
-is the one the runtime that was read reports, 29.1.0.
+is one a real runtime reports, 29.1.0. It varies: eighteen of the nineteen
+read say 29.1.0 and one says 28.0.0, so this is the modal answer rather
+than the only one, and a page that compares it against something exact
+will not find what it expects. Nothing read so far compares it at all.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the seventeen runtimes and the seventy-six
+Every `_satellite` reference in the nineteen runtimes and the seventy-nine
 rule components was counted and diffed against what this publishes. The
 union is exactly the 22 members here, plus two typos in properties' own
 custom code: `_satellite.geVar`, and `_satellite.looger.error(e)` inside a
@@ -702,22 +711,23 @@ at once.
 
 ## What is not done here
 
-**The corpus, and what it still cannot say.** Seventeen runtimes were read
-in full, seventy-six rule components and one extension libraryCode file,
-across twenty-four properties - twenty identified by the hash in their
+**The corpus, and what it still cannot say.** Nineteen runtimes were read
+in full, seventy-nine rule components and two extension libraryCode files,
+across twenty-seven properties - twenty-three identified by the hash in their
 path, plus four flat `launch-EN<id>.min.js` embeds whose url carries no property
 at all - and four of the pages that embed them. The counts are derived
 from the files rather than remembered: every rule component names its own
 url inside its `__registerScript` call, so the properties can be counted
 by reading them.
 
-All seventeen runtimes are turbine 29.1.0 and carry the same `_satellite`
-surface, checked three independent ways - the members each one references,
-the members each one assigns directly, and their own string literals
-rather than minified variable names. tealium and perimeterx were written
-against dozens of builds each, so this is still the thinnest corpus of the
-four, and what it cannot tell is how a property unlike these twenty-four
-behaves.
+All nineteen runtimes carry the same `_satellite` surface, checked three
+independent ways - the members each one references, the members each one
+assigns directly, and their own string literals rather than minified
+variable names. Eighteen are turbine 29.1.0 and one is 28.0.0, which is
+better evidence than a single version would have been: the surface is the
+same across two majors. tealium and perimeterx were written against dozens
+of builds each, so this is still the thinnest corpus of the four, and what
+it cannot tell is how a property unlike these twenty-seven behaves.
 
 Two of those runtimes were worth reading for one line each: the sixth is
 where `window.__satelliteLoaded` was found, and the eighth is where
@@ -757,7 +767,9 @@ Replacing the runtime is the only clean lever.
 **Nothing for a property's private additions.** Two routes were seen, both
 made by code that no longer runs once the runtime is replaced, and neither
 with a list to publish from. One container's scroll-depth trigger keeps
-its state on `_satellite._ags055`, created by the extension that reads it.
+its state on `_satellite._ags055`, created by the extension that reads it -
+`ags055-time-spent-and-scroll-depth-combined-event`, which is in two of
+the properties read.
 Another defines a helper on the object from a custom-code action with
 `global: true`, the author's comment included:
 
@@ -769,7 +781,7 @@ _satellite.safeCheck = function (obj) {
 }
 ```
 
-`safeCheck` is in one of seventeen runtimes. This is the boundary tealium's
+`safeCheck` is in one of nineteen runtimes. This is the boundary tealium's
 notes draw around per-tenant extension members, with one addition: a
 container can extend `_satellite` itself, so a member a census finds is
 not necessarily Adobe's.
