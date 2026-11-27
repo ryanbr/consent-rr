@@ -167,7 +167,14 @@ extensions: { core: { hostedLibFilesBaseUrl:
 ```
 
 So a replaced runtime asks for these as well, and they need no rule of
-their own - the same argument as the rule components. The exception is the
+their own - the same argument as the rule components. The tie is direct
+rather than inferred: a runtime read here carries
+`hostedLibFilesBaseUrl:
+"https://assets.adobedtm.com/extensions/EP31dbb9c60e404ba1aa6e746d49be6f29/"`
+under its `adobe-analytics` extension, which is the exact path those two
+files came from - and the same `EP` id appeared for a different property,
+because the id is the extension package rather than the property. The
+exception is the
 `PREINSTALLED` type, where the property uses an AppMeasurement the page
 installed itself: that copy is embedded by the page, usually from its own
 host, and nothing here touches it.
@@ -467,7 +474,7 @@ is the one the runtime that was read reports, 29.1.0.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the seven runtimes and the twenty-three
+Every `_satellite` reference in the eight runtimes and the twenty-four
 rule components was counted and diffed against what this publishes. The
 union is exactly the 22 members here, plus one outlier:
 `_satellite.geVar`, a typo in one property's own custom code, which is
@@ -478,6 +485,22 @@ The sub-objects were counted the same way: `cookie.get` 53 times,
 `cookie.set` 20, `cookie.remove` 4, `logger.log` 14, `logger.info` 4,
 `company.orgId` 6, `environment.stage` 7, `environment.id` 1,
 `property.name` 4, `buildInfo.buildDate` 1. All present.
+
+A second outlier is worth more than a mention, because it looks exactly
+like a missing member. One property's container calls
+
+```
+"doi" !== _satellite.getQueryParam("pageMode") ? ... : ...
+```
+
+`getQueryParam` was a DTM member and turbine dropped it. No runtime read
+here assigns `_satellite.getQueryParam` - the two apparent definitions
+turn out to be AppMeasurement's own `s.Util.getQueryParam`, which hangs
+off `window.s`, and the `common-analytics-plugins` plugin module of the
+same name. So that call throws a TypeError against Adobe's own library
+too, in a data element gated on one path of one site, and matching theirs
+means not publishing it. A container migrated from DTM can carry calls its
+own runtime no longer answers.
 
 What the census did find is a second class of api, and it is deliberately
 not here: the vendor libraries the runtime bundles install their own
@@ -576,12 +599,12 @@ at once.
 
 ## What is not done here
 
-**A thin corpus.** Seven runtimes were read in full and twenty-three rule
-components across eight properties - not the dozens of builds tealium and
-perimeterx were written against. All seven are turbine 29.1.0 and carry the
+**A thin corpus.** Eight runtimes were read in full and twenty-four rule
+components across nine properties - not the dozens of builds tealium and
+perimeterx were written against. All eight are turbine 29.1.0 and carry the
 same `_satellite` surface, checked by their own string literals rather than
 by minified variable names, so the api here is not guesswork; what a thin
-corpus cannot tell is how a property that looks unlike these seven behaves.
+corpus cannot tell is how a property that looks unlike these eight behaves.
 The sixth was worth reading anyway - it is where `window.__satelliteLoaded`
 was found.
 
