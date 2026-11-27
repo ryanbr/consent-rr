@@ -1138,7 +1138,16 @@ describe('filters, adobe-launch', ( ) => {
 
 describe('extra/adobe-launch-probe.js', ( ) => {
 
-    it('is the resource it claims to be, byte for byte', async ( ) => {
+    // Skipped while sweeping: this compares a generated file against the
+    // resource on disk, so it fails for EVERY mutation and would mark the
+    // whole sweep killed - a suite that credits a mutation for nothing is
+    // the same lie as sweeping a red suite, just better dressed. It was
+    // caught by four named equivalent mutants suddenly reporting as kills.
+    it('is the resource it claims to be, byte for byte', {
+        skip: process.env.MUTATE_SWEEP === '1'
+            ? 'a generated-file check, not behaviour'
+            : false,
+    }, async ( ) => {
         // The probe carries a copy of the resource. A copy drifts, and a
         // drifted probe is worse than none: six rounds of a field report
         // went into a probe whose embedded resource predated the fixes being

@@ -115,7 +115,14 @@ const runSuite = test => new Promise(resolve => {
         // clock than the other 136 together.
         '--test', '--test-force-exit',
         '--test-timeout=' + TEST_TIMEOUT, test,
-    ], { cwd: root, stdio: [ 'ignore', 'pipe', 'pipe' ] });
+    ], {
+        cwd: root,
+        stdio: [ 'ignore', 'pipe', 'pipe' ],
+        // A test that compares a generated file against its source fails for
+        // every mutation, so it would report a whole sweep killed and mean
+        // nothing by it. Such a test opts out on this.
+        env: { ...process.env, MUTATE_SWEEP: '1' },
+    });
     let stdout = '';
     let hung = false;
     child.stdout.on('data', chunk => { stdout += chunk; });
