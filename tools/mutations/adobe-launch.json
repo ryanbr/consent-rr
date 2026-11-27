@@ -380,6 +380,16 @@
    "name": "the object is sealed",
    "from": "    try { w.__satelliteLoaded = true; } catch ( ex ) { }",
    "to": "    try { w.__satelliteLoaded = true; } catch ( ex ) { }\n    Object.seal(satellite);"
+  },
+  {
+   "name": "the first-party rule goes missing",
+   "from": "//   ||lightning.cnn.com/launch/*/launch-*.min.js$script,redirect=adobe-launch.js\n",
+   "to": ""
+  },
+  {
+   "name": "the first-party rule is widened to the path",
+   "from": "//   ||lightning.cnn.com/launch/*/launch-*.min.js$script,redirect=adobe-launch.js",
+   "to": "//   /launch/*/launch-*.min.js$script,redirect=adobe-launch.js"
   }
  ]
 }

@@ -15,6 +15,12 @@
 //   ||assets.adobedtm.com/launch-*.min.js$script,redirect=adobe-launch.js
 //   ||assets.adobedtm.com/*/satelliteLib-*.js$script,redirect=adobe-launch.js
 //   ||assets.adobedtm.com/satelliteLib-*.js$script,redirect=adobe-launch.js
+//   ||lightning.cnn.com/launch/*/launch-*.min.js$script,redirect=adobe-launch.js
+// The last one is a site serving the runtime from its own host. There is no
+// generic rule for that - the path shape is Adobe's, the host is anybody's -
+// so each one is its own line, written against a url somebody has seen. It
+// is also where this matters most: the components and the Analytics library
+// are first-party there too, so nothing else can be reached by host.
 // The satelliteLib ones were checked against a served file: same turbine
 // version, same _satellite surface, same wording. Do not assume the name
 // means the old library.

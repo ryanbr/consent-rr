@@ -39,6 +39,7 @@ Platform Tags - and one global, `_satellite`. The runtime is served from
 ||assets.adobedtm.com/launch-*.min.js$script,redirect=adobe-launch.js
 ||assets.adobedtm.com/*/satelliteLib-*.js$script,redirect=adobe-launch.js
 ||assets.adobedtm.com/satelliteLib-*.js$script,redirect=adobe-launch.js
+||lightning.cnn.com/launch/*/launch-*.min.js$script,redirect=adobe-launch.js
 ```
 
 The first is the current shape,
@@ -729,12 +730,29 @@ covered is a page that embeds AppMeasurement itself, their `PREINSTALLED`
 library type: those `window.s` calls would meet a blocked script rather
 than this. That is a second resource, not a rule here.
 
-**No first-party deployment.** Launch can be served from a site's own
-host - self-hosted, which is not what Adobe's own "hosted library files"
-means - as ally.com appears to do, where the embed is not on
-`assets.adobedtm.com` at all there. There is no generic rule for that, the
-same problem the perimeterx notes describe, and it needs a per-site rule
-written against a url somebody has seen.
+**A self-hosted runtime needs its own line.** One is in the rules above. A
+site can serve the whole thing from its own host, and the layout is
+Adobe's mirrored exactly:
+
+```
+<host>/launch/<property>/<env>/launch-<build>.min.js
+<host>/launch/<property>/<env>/<build>/RC<id>-source.min.js
+<host>/launch/<property>/<env>/<build>/hostedLibFiles/EP<id>/AppMeasurement.min.js
+```
+
+The runtime read from one is turbine 29.1.0 with the same surface and
+nothing unpublished, so the resource is already right for it; what is
+missing is only a rule, and there is no generic one to write. The path
+shape is Adobe's and the host is anybody's, so a pattern over hosts would
+replace whatever else happened to use the same layout. Each site is its
+own line, written against a url somebody has seen, and a test asserts no
+rule here carries a wildcard in its host.
+
+It is also where this resource matters most. Everything that deployment
+fetches - the components, the Analytics library under its own
+`hostedLibFiles/EP<id>/` path - is first-party as well, so nothing else
+there can be reached by host without hitting the site's own scripts.
+Replacing the runtime is the only clean lever.
 
 **Nothing for a property's private additions.** Two routes were seen, both
 made by code that no longer runs once the runtime is replaced, and neither

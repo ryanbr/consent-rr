@@ -48,7 +48,7 @@ before(async ( ) => {
     // the notes - or missing, as the satelliteLib one was - is caught.
     rules = text.split('\n')
         .map(line => line.replace(/^\/\/\s*/, '').trim())
-        .filter(line => line.startsWith('||assets.adobedtm.com'))
+        .filter(line => line.startsWith('||') && line.includes('$script'))
         .map(line => line.split('$')[0]);
     assert.ok(rules.length !== 0, 'no rules in the header');
 });
@@ -666,6 +666,9 @@ describe('filters, adobe-launch', ( ) => {
         // _satellite surface, the same wording. A shape that is served and
         // not covered is a page that gets the block instead of the stub.
         const served = [
+            // a site serving the runtime from its own host, same layout
+            'https://lightning.cnn.com/launch/7be62238e4c3/97fa00444124/' +
+                'launch-2878c87af5e3.min.js',
             // the current nested shape, property and environment
             'https://assets.adobedtm.com/cd392cd56789/90967d1c21d0/' +
                 'launch-95431b44ee81.min.js',
@@ -703,6 +706,14 @@ describe('filters, adobe-launch', ( ) => {
         // carries on, so there is nothing to repair. The header says so;
         // this is the assertion that keeps a rule from drifting in.
         const components = [
+            // and the same shapes when a site serves them itself: the
+            // runtime rule for that host must not take its components or
+            // its copy of the Analytics library either.
+            'https://lightning.cnn.com/launch/7be62238e4c3/97fa00444124/' +
+                'c27ef2133b49/RC1234-source.min.js',
+            'https://lightning.cnn.com/launch/7be62238e4c3/97fa00444124/' +
+                'c27ef2133b49/hostedLibFiles/EP31dbb9c60e404ba1aa6e746d49be6f29/' +
+                'AppMeasurement.min.js',
             'https://assets.adobedtm.com/cd392cd56789/90967d1c21d0/' +
                 'f20f930aa04b/RCb2ca4786fca947278f4aca5265ba7fc6-source.min.js',
             'https://assets.adobedtm.com/cd392cd56789/90967d1c21d0/' +
@@ -716,9 +727,20 @@ describe('filters, adobe-launch', ( ) => {
         }
     });
 
-    it('names no other host', ( ) => {
+    it('names only hosts a url has been seen on', ( ) => {
+        // One line per host, and no wildcard host: the path shape is
+        // Adobe's but the host is anybody's, so a pattern over hosts would
+        // match whatever happened to use the same layout.
         for ( const rule of rules ) {
-            assert.match(rule, /^\|\|assets\.adobedtm\.com\//);
+            assert.match(
+                rule,
+                /^\|\|(assets\.adobedtm\.com|lightning\.cnn\.com)\//,
+                rule
+            );
+            // No wildcard in the host itself, which is the part that
+            // decides whose script this replaces.
+            const host = rule.slice(2, rule.indexOf('/', 2));
+            assert.equal(host.includes('*'), false, rule);
         }
     });
 
