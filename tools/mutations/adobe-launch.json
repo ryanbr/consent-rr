@@ -517,6 +517,46 @@
    "name": "sets their double-init flag",
    "from": "    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];",
    "to": "    try { w.__satelliteLoaded = true; } catch ( ex ) { }\n    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];"
+  },
+  {
+   "name": "no target api",
+   "from": "        if ( w.adobe.target === undefined ) { w.adobe.target = targetApi; }",
+   "to": "        void targetApi;"
+  },
+  {
+   "name": "target overwrites a real one",
+   "from": "        if ( w.adobe.target === undefined ) { w.adobe.target = targetApi; }",
+   "to": "        w.adobe.target = targetApi;"
+  },
+  {
+   "name": "getOffer calls no callback",
+   "from": "            const done = options && options.success;\n            if ( typeof done === 'function' ) {\n                try { done([]); } catch ( ex ) { }\n            }",
+   "to": "            void options;"
+  },
+  {
+   "name": "getOffers settles with nothing",
+   "from": "            return settle(offers);",
+   "to": "            return settle(undefined);"
+  },
+  {
+   "name": "triggerView is missing",
+   "from": "        triggerView: noopfn,",
+   "to": ""
+  },
+  {
+   "name": "no Visitor global",
+   "from": "            w.Visitor = Visitor;",
+   "to": "            void Visitor;"
+  },
+  {
+   "name": "Visitor overwrites a real one",
+   "from": "        if ( w.Visitor === undefined ) {",
+   "to": "        if ( true ) {"
+  },
+  {
+   "name": "adobe namespace clobbered",
+   "from": "        w.adobe = w.adobe !== null && typeof w.adobe === 'object'\n            ? w.adobe\n            : {};",
+   "to": "        w.adobe = {};"
   }
  ]
 }

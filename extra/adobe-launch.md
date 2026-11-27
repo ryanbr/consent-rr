@@ -431,7 +431,7 @@ replaced library would have done, by that library's own id, which can only
 reveal content. It is also the only reason this installs a listener: one,
 on `document`, for `DOMContentLoaded`, while the document is loading.
 
-### The check### The check
+### The check
 
 The container is inside the `launch-*.min.js` file, so what a property
 injects can be read before a rule is written for it. Fetch the embed and
@@ -609,7 +609,45 @@ On a property with no ECID extension the real `getVisitorId` does answer
 direction for the error: a missing member is a blank page, an extra one is
 an unused object.
 
-### `_container` and `container`### `_container` and `container`
+### The globals their extensions install
+
+`_satellite` is not the only
+thing a page reaches for. Their extensions put their own libraries on
+`window`, and a blocked runtime leaves those undefined - so a page guarded
+on one skips its work and a page that is not guarded throws. That is the
+shape that broke `getVisitorId`. These are the two most-called in the
+corpus:
+
+```
+adobe.target    VERSION applyOffer applyOffers event getOffer getOffers
+                registerExtension sendNotifications trackEvent triggerView
+Visitor         getInstance AuthState version
+```
+
+36 call sites for `adobe.target`, and an SPA calls `triggerView` on every
+route change. `Visitor.getInstance` is in the container of the very
+property that reported a page broken by this resource - `window.vsi =
+Visitor.getInstance("...@AdobeOrg")` - so a page can as easily do the
+same.
+
+Every call answers or settles. `getOffer` calls its `success` with an
+empty offer list; `getOffers` calls `success` and resolves with their
+response shape, `{ execute: { pageLoad: {}, mboxes: [] } }`; `applyOffers`
+and `sendNotifications` resolve; `triggerView`, `trackEvent` and
+`registerExtension` do nothing. A page waiting on a Target response that
+never comes is a blank page, which is the whole lesson of this file.
+
+Neither is installed over something already there: `window.adobe` is
+adopted if it exists, `adobe.target` filled only if absent, `Visitor` only
+if absent. In the scriptlet delivery form nothing is blocked, so the real
+library may load immediately afterwards and has to win.
+
+Not done: `window.s`, `s_gi` and `AppMeasurement`. That is Analytics' own
+library, a far larger surface, and nothing in the corpus shows a page
+calling it where the container does not. It is the obvious next one if a
+page turns up that needs it.
+
+### `_container` and `container`
 
 `_container` is a getter that warns once, with their wording - "may change
 at any time and should only be used for debugging" - and answers a
@@ -647,7 +685,7 @@ members - and wins, which is the right outcome for a page nobody asked to
 block. The note that used to be here said "it does mean this neutralises a
 copy it did not block", which was the bug written down as a curiosity.
 
-### `_monitors`### `_monitors`
+### `_monitors`
 
 A page or a debugger can set `window._satellite = { _monitors: [ ... ] }`
 before the library loads, and theirs keeps it, because it does

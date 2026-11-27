@@ -688,6 +688,64 @@ describe('extra/adobe-launch.js, cookies and callbacks', ( ) => {
         assert.equal(typeof win._satellite.getVar, 'function');
     });
 
+    it('publishes the target api their extension installs', async ( ) => {
+        // adobe.target is called 36 times across the corpus, and an SPA
+        // calls triggerView on every route change. A blocked library leaves
+        // window.adobe undefined, so a page guarded on it skips and a page
+        // that is not throws - the same shape that broke getVisitorId.
+        const win = boot();
+        const target = win.adobe.target;
+        assert.deepEqual(Object.keys(target).sort(), [
+            'VERSION', 'applyOffer', 'applyOffers', 'event', 'getOffer',
+            'getOffers', 'registerExtension', 'sendNotifications',
+            'trackEvent', 'triggerView',
+        ]);
+        // Every call answers or settles: a page waiting on Target is blank.
+        let offers;
+        target.getOffer({ mbox: 'target-global-mbox',
+            success: given => { offers = given; } });
+        // Through JSON: an array from the page's realm is not
+        // reference-equal to one of ours.
+        assert.deepEqual(JSON.parse(JSON.stringify(offers)), []);
+        const answer = await target.getOffers({ request: {} });
+        assert.deepEqual(JSON.parse(JSON.stringify(answer.execute)),
+            { pageLoad: {}, mboxes: [] });
+        await target.applyOffers({ response: answer });
+        await target.sendNotifications({});
+        assert.equal(target.triggerView('home'), undefined);
+        assert.equal(target.trackEvent({ mbox: 'x' }), undefined);
+    });
+
+    it('publishes Visitor, which a container asks for by name', ( ) => {
+        // The property that reported the breakage does
+        //   window.vsi = Visitor.getInstance("...@AdobeOrg")
+        // in its own custom code, and a page can do the same.
+        const win = boot();
+        assert.equal(typeof win.Visitor.getInstance, 'function');
+        assert.equal(
+            win.Visitor.getInstance('ORG@AdobeOrg').getMarketingCloudVisitorID(),
+            ''
+        );
+        assert.deepEqual(
+            JSON.parse(JSON.stringify(win.Visitor.AuthState)),
+            { UNKNOWN: 0, AUTHENTICATED: 1, LOGGED_OUT: 2 }
+        );
+    });
+
+    it('never takes a global something else already installed', ( ) => {
+        // If nothing blocked the real library it loads right after this, and
+        // in the scriptlet form nothing is blocked at all. Whatever is there
+        // first stays.
+        const win = boot({
+            before: '<script>window.adobe = { target: { mine: true } };' +
+                'window.Visitor = function Theirs() {};</script>',
+        });
+        assert.equal(win.adobe.target.mine, true);
+        assert.equal(win.adobe.target.triggerView, undefined);
+        assert.equal(win.Visitor.name, 'Theirs');
+        assert.equal(win.Visitor.getInstance, undefined);
+    });
+
     it('answers getVisitorId with a visitor, not with null', ( ) => {
         // Field evidence: the stub was worse than a block on a page whose
         // code is guarded on _satellite existing and then chains off this.

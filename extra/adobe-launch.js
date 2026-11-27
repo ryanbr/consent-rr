@@ -256,6 +256,64 @@
     satellite.__registerScript = ( ) => { };
     satellite._onCustomCodeSuccess = ( ) => { };
     satellite._onCustomCodeFailure = ( ) => { };
+    // The globals their extensions install, which a page can reach for as
+    // readily as _satellite - and which a blocked library leaves undefined,
+    // so a page guarded on them skips, while a page that is not throws.
+    // Members read off the bundled at.js and ECID library; every call either
+    // answers or settles, because a page waiting on Target is a blank page.
+    // Only installed when absent: a real library that nothing blocked must
+    // still win. See the .md.
+    const settle = value => {
+        try { return w.Promise.resolve(value); } catch ( ex ) { return value; }
+    };
+    const offers = { execute: { pageLoad: {}, mboxes: [] }, prefetch: {} };
+    const targetApi = {
+        VERSION: '',
+        event: {},
+        getOffer: options => {
+            const done = options && options.success;
+            if ( typeof done === 'function' ) {
+                try { done([]); } catch ( ex ) { }
+            }
+        },
+        getOffers: options => {
+            const done = options && options.success;
+            if ( typeof done === 'function' ) {
+                try { done(offers); } catch ( ex ) { }
+            }
+            return settle(offers);
+        },
+        applyOffer: options => {
+            const done = options && options.success;
+            if ( typeof done === 'function' ) {
+                try { done(); } catch ( ex ) { }
+            }
+        },
+        applyOffers: ( ) => settle(undefined),
+        sendNotifications: ( ) => settle(undefined),
+        triggerView: noopfn,
+        trackEvent: noopfn,
+        registerExtension: noopfn,
+    };
+    try {
+        w.adobe = w.adobe !== null && typeof w.adobe === 'object'
+            ? w.adobe
+            : {};
+        if ( w.adobe.target === undefined ) { w.adobe.target = targetApi; }
+    } catch ( ex ) {
+    }
+    try {
+        if ( w.Visitor === undefined ) {
+            const Visitor = ( ) => visitor;
+            Visitor.getInstance = ( ) => visitor;
+            Visitor.AuthState = {
+                UNKNOWN: 0, AUTHENTICATED: 1, LOGGED_OUT: 2,
+            };
+            Visitor.version = '';
+            w.Visitor = Visitor;
+        }
+    } catch ( ex ) {
+    }
     const container = {
         buildInfo: satellite.buildInfo,
         environment: satellite.environment,
