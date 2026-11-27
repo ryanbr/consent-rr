@@ -474,7 +474,7 @@ is the one the runtime that was read reports, 29.1.0.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the nine runtimes and the twenty-five
+Every `_satellite` reference in the eleven runtimes and the thirty-one
 rule components was counted and diffed against what this publishes. The
 union is exactly the 22 members here, plus one outlier:
 `_satellite.geVar`, a typo in one property's own custom code, which is
@@ -605,14 +605,25 @@ at once.
 
 ## What is not done here
 
-**A thin corpus.** Nine runtimes were read in full and twenty-five rule
-components across ten properties - not the dozens of builds tealium and
-perimeterx were written against. All nine are turbine 29.1.0 and carry the
-same `_satellite` surface, checked by their own string literals rather than
-by minified variable names, so the api here is not guesswork; what a thin
-corpus cannot tell is how a property that looks unlike these nine behaves.
-The sixth was worth reading anyway - it is where `window.__satelliteLoaded`
-was found.
+**The corpus, and what it still cannot say.** Eleven runtimes were read in
+full and thirty-one rule components, across sixteen properties - fourteen
+identified by the hash in their path, plus two flat `launch-EN<id>.min.js`
+embeds whose url carries no property at all - and four of the pages that
+embed them. The counts are derived from the files rather than remembered:
+every rule component names its own url inside its `__registerScript` call,
+so the properties can be counted by reading them.
+
+All eleven runtimes are turbine 29.1.0 and carry the same `_satellite`
+surface, checked three independent ways - the members each one references,
+the members each one assigns directly, and their own string literals
+rather than minified variable names. tealium and perimeterx were written
+against dozens of builds each, so this is still the thinner corpus of the
+four, and what it cannot tell is how a property unlike these sixteen
+behaves.
+
+Two of those runtimes were worth reading for one line each: the sixth is
+where `window.__satelliteLoaded` was found, and the eighth is where
+`_satellite.getQueryParam` turned out not to be missing.
 
 **No `s_code` or `AppMeasurement` stub.** This replaces the tag manager,
 not the Analytics library it fetches - and when the runtime is replaced
