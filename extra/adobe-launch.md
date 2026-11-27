@@ -25,6 +25,7 @@ strings and function bodies in this document are theirs.
 - [What it breaks, and the check before shipping a rule](#what-it-breaks-and-the-check-before-shipping-a-rule)
 - [What it publishes, and where each member came from](#what-it-publishes-and-where-each-member-came-from)
 - [The census, which is how the list above was closed](#the-census-which-is-how-the-list-above-was-closed)
+- [Field evidence, from the page that reported it broken](#field-evidence-from-the-page-that-reported-it-broken)
 - [The decisions](#the-decisions)
 - [What it costs per page](#what-it-costs-per-page)
 - [The mutation sweep](#the-mutation-sweep)
@@ -224,8 +225,9 @@ exception is the
 installed itself: that copy is embedded by the page, usually from its own
 host, and nothing here touches it.
 
-## How it has to be delivered, which changes what it may do On Firefox a
-`$redirect=` rule naming a user resource works. On Chromium it cannot: uBO
+## How it has to be delivered, which changes what it may do
+
+On Firefox a `$redirect=` rule naming a user resource works. On Chromium it cannot: uBO
 serves its own resources from the extension with a `warURL`, while a user
 resource has only its bytes, so the redirect becomes a `data:` URI and
 Chromium refuses it with `ERR_UNSAFE_REDIRECT` - the request fails and
@@ -768,6 +770,48 @@ code flattens its data layer into `setVar` calls and then **reassigns
 `_satellite.getVar`** with a wrapper of its own. A stub that published its
 members read-only would throw there, so the surface is writable and a test
 pins it.
+
+## Field evidence, from the page that reported it broken
+
+A product listing page on one property was reported as a blank page under
+this resource, and was the reason an exception was nearly shipped for it.
+Three console runs with the probe, same url, same session:
+
+```
+library allowed, no block    children 17 at DCL -> 43 at load
+                             _satellite at load is a real library, hydrated
+                             over it | members 21
+                             its rules ran: pixels, and one error of its own
+                             digitalData read 116 times
+
+blocked, this resource       DID NOT LOAD satelliteLib-5768eb8c....js
+                             children 14 at DCL -> 21 at load, body visible
+                             _satellite at load is still this replacement
+                             track("cpj_plp"), track("internal_campaign"),
+                             track("feedbackImpression") all answered
+                             nothing threw, digitalData read 21 times
+```
+
+So the page renders with the replacement in place and needs no exception.
+The smaller child count is the pixel nodes their container appends, which
+is the blocking working rather than content missing; nothing in the log
+says anything is absent, and the body is visible with the listing present.
+
+What actually caused the blank page was in here: this resource used to set
+`window.__satelliteLoaded`, their own double-init guard, which made a real
+library stand down while a stub that could not answer stood in for it. The
+notes recorded that the flag was set and even what it was for, three
+commits before the report came in, as a curiosity rather than a
+consequence.
+
+An error their own container throws - a Criteo custom-code action reading
+a property of something undefined - appears only in the runs where the
+library is allowed. Blocking it removes that error rather than causing
+one. It is worth knowing before the next report arrives naming it.
+
+The exception that was nearly shipped would also not have worked as
+written: `@@` does not disable a `##+js()` scriptlet, which needs `#@#`,
+and a `,important` block beats the `@@` anyway.
 
 ## The decisions
 
