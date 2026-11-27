@@ -19,6 +19,7 @@ strings and function bodies in this document are theirs.
 - [What this is, and the rule](#what-this-is-and-the-rule)
 - [Why the runtime and not the RC files](#why-the-runtime-and-not-the-rc-files)
 - [What a page keeps, and what it loses](#what-a-page-keeps-and-what-it-loses)
+- [And the extension's own library code](#and-the-extensions-own-library-code)
 - [The hosted library files stop too](#the-hosted-library-files-stop-too)
 - [What it breaks, and the check before shipping a rule](#what-it-breaks-and-the-check-before-shipping-a-rule)
 - [What it publishes, and where each member came from](#what-it-publishes-and-where-each-member-came-from)
@@ -137,6 +138,41 @@ Two details worth keeping: `__registerScript` keys the registry by
 by its first argument - the argument is only a regex fallback for finding
 the element. And the registry is checked before loading, so an RC file
 already in the page is never fetched twice.
+
+### And the extension's own library code
+
+A fourth shape, and the last of their four library types to turn up
+served:
+
+```
+assets.adobedtm.com/<property>/<env>/<build>/EX<id>-libraryCode_source.min.js
+```
+
+An `EX` file is an extension's library code, and unlike an `RC` component
+it is not wrapped in `__registerScript` at all - it is plain script that
+installs globals the extension's modules then call. The one read defines
+`_trackData`, `window.TMS_getQueryParam`, `window.TMS_AdobeInit` and a
+`#TMS_State` element.
+
+Its own container names who fetches it, and which library type it is:
+
+```
+"adobe-analytics": { settings: { libraryCode: {
+    type: "custom",
+    source: ".../9aeb474cc2a9/EX<id>-libraryCode_source.min.js" } } }
+```
+
+`type: "custom"` is the `CUSTOM` entry of the `LIB_TYPES` enum below, so
+all four of their types now have a case: `MANAGED` is the
+`/extensions/EP<id>/` files, `CUSTOM` is an `EX` file like this, `REMOTE`
+is an arbitrary url, and `PREINSTALLED` is the page's own copy. Only the
+last is outside a replaced runtime's reach.
+
+One caveat this shape raises and does not settle: an `EX` library installs
+globals in the page's namespace, so unlike a rule component it *could* be
+what page code calls. Nothing outside that container references the four
+above, but the site refuses an automated fetch of its pages, so page-level
+use there is unchecked rather than ruled out.
 
 ### The hosted library files stop too
 
@@ -474,7 +510,7 @@ is the one the runtime that was read reports, 29.1.0.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the eleven runtimes and the thirty-one
+Every `_satellite` reference in the twelve runtimes and the thirty-four
 rule components was counted and diffed against what this publishes. The
 union is exactly the 22 members here, plus one outlier:
 `_satellite.geVar`, a typo in one property's own custom code, which is
@@ -605,20 +641,21 @@ at once.
 
 ## What is not done here
 
-**The corpus, and what it still cannot say.** Eleven runtimes were read in
-full and thirty-one rule components, across sixteen properties - fourteen
-identified by the hash in their path, plus two flat `launch-EN<id>.min.js`
-embeds whose url carries no property at all - and four of the pages that
-embed them. The counts are derived from the files rather than remembered:
-every rule component names its own url inside its `__registerScript` call,
-so the properties can be counted by reading them.
+**The corpus, and what it still cannot say.** Twelve runtimes were read in
+full, thirty-four rule components and one extension libraryCode file,
+across seventeen properties - fifteen identified by the hash in their
+path, plus two flat `launch-EN<id>.min.js` embeds whose url carries no
+property at all - and four of the pages that embed them. The counts are
+derived from the files rather than remembered: every rule component names
+its own url inside its `__registerScript` call, so the properties can be
+counted by reading them.
 
-All eleven runtimes are turbine 29.1.0 and carry the same `_satellite`
+All twelve runtimes are turbine 29.1.0 and carry the same `_satellite`
 surface, checked three independent ways - the members each one references,
 the members each one assigns directly, and their own string literals
 rather than minified variable names. tealium and perimeterx were written
-against dozens of builds each, so this is still the thinner corpus of the
-four, and what it cannot tell is how a property unlike these sixteen
+against dozens of builds each, so this is still the thinnest corpus of the
+four, and what it cannot tell is how a property unlike these seventeen
 behaves.
 
 Two of those runtimes were worth reading for one line each: the sixth is
