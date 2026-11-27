@@ -536,7 +536,7 @@ is the one the runtime that was read reports, 29.1.0.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the thirteen runtimes and the thirty-eight
+Every `_satellite` reference in the fourteen runtimes and the forty-two
 rule components was counted and diffed against what this publishes. The
 union is exactly the 22 members here, plus one outlier:
 `_satellite.geVar`, a typo in one property's own custom code, which is
@@ -667,21 +667,21 @@ at once.
 
 ## What is not done here
 
-**The corpus, and what it still cannot say.** Thirteen runtimes were read
-in full, thirty-eight rule components and one extension libraryCode file,
-across eighteen properties - sixteen identified by the hash in their path,
+**The corpus, and what it still cannot say.** Fourteen runtimes were read
+in full, forty-two rule components and one extension libraryCode file,
+across nineteen properties - seventeen identified by the hash in their path,
 plus two flat `launch-EN<id>.min.js` embeds whose url carries no property
 at all - and four of the pages that embed them. The counts are derived
 from the files rather than remembered: every rule component names its own
 url inside its `__registerScript` call, so the properties can be counted
 by reading them.
 
-All thirteen runtimes are turbine 29.1.0 and carry the same `_satellite`
+All fourteen runtimes are turbine 29.1.0 and carry the same `_satellite`
 surface, checked three independent ways - the members each one references,
 the members each one assigns directly, and their own string literals
 rather than minified variable names. tealium and perimeterx were written
 against dozens of builds each, so this is still the thinnest corpus of the
-four, and what it cannot tell is how a property unlike these seventeen
+four, and what it cannot tell is how a property unlike these nineteen
 behaves.
 
 Two of those runtimes were worth reading for one line each: the sixth is
@@ -702,11 +702,25 @@ means - as ally.com appears to do, where the embed is not on
 same problem the perimeterx notes describe, and it needs a per-site rule
 written against a url somebody has seen.
 
-**Nothing for a property's private namespace.** One container's
-scroll-depth trigger keeps its state on `_satellite._ags055`, created by
-the extension that reads it. Per-property members like that are made by
-code which no longer runs, and there is no list of them to publish - the
-same boundary tealium's notes draw around per-tenant extension members.
+**Nothing for a property's private additions.** Two routes were seen, both
+made by code that no longer runs once the runtime is replaced, and neither
+with a list to publish from. One container's scroll-depth trigger keeps
+its state on `_satellite._ags055`, created by the extension that reads it.
+Another defines a helper on the object from a custom-code action with
+`global: true`, the author's comment included:
+
+```
+//utility function so you don't always have to do a bunch of
+//redundant typeof if statements
+_satellite.safeCheck = function (obj) {
+    ... _satellite.logger.warn("safeCheck error:" + e) ...
+}
+```
+
+`safeCheck` is in one of fourteen runtimes. This is the boundary tealium's
+notes draw around per-tenant extension members, with one addition: a
+container can extend `_satellite` itself, so a member a census finds is
+not necessarily Adobe's.
 
 **Nothing for the RC files, by choice.** See above: their loader resolves
 a failed one to `undefined` and the rule carries on.
