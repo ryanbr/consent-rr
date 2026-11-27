@@ -474,12 +474,18 @@ is the one the runtime that was read reports, 29.1.0.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the eight runtimes and the twenty-four
+Every `_satellite` reference in the nine runtimes and the twenty-five
 rule components was counted and diffed against what this publishes. The
 union is exactly the 22 members here, plus one outlier:
 `_satellite.geVar`, a typo in one property's own custom code, which is
 undefined against their library too - so matching theirs means not adding
 it.
+
+A cross-check that does not depend on counting references: the members a
+runtime assigns directly, as `_satellite.X = ...` rather than through its
+local alias, are `__registerScript`, `_onCustomCodeFailure`,
+`_onCustomCodeSuccess`, `container`, `getVisitorId`, `pageBottom` and
+`track`. All seven are published here.
 
 The sub-objects were counted the same way: `cookie.get` 53 times,
 `cookie.set` 20, `cookie.remove` 4, `logger.log` 14, `logger.info` 4,
@@ -599,12 +605,12 @@ at once.
 
 ## What is not done here
 
-**A thin corpus.** Eight runtimes were read in full and twenty-four rule
-components across nine properties - not the dozens of builds tealium and
-perimeterx were written against. All eight are turbine 29.1.0 and carry the
+**A thin corpus.** Nine runtimes were read in full and twenty-five rule
+components across ten properties - not the dozens of builds tealium and
+perimeterx were written against. All nine are turbine 29.1.0 and carry the
 same `_satellite` surface, checked by their own string literals rather than
 by minified variable names, so the api here is not guesswork; what a thin
-corpus cannot tell is how a property that looks unlike these eight behaves.
+corpus cannot tell is how a property that looks unlike these nine behaves.
 The sixth was worth reading anyway - it is where `window.__satelliteLoaded`
 was found.
 
