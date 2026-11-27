@@ -500,13 +500,13 @@
   },
   {
    "name": "the visitor api calls no callback",
-   "from": "        if ( typeof callback === 'function' ) {\n            try { callback(value); } catch ( ex ) { }\n        }",
+   "from": "        if ( typeof callback === 'function' ) {\n            try { callback(given); } catch ( ex ) { }\n        }",
    "to": "        void callback;"
   },
   {
    "name": "a callback that throws escapes",
-   "from": "            try { callback(value); } catch ( ex ) { }",
-   "to": "            callback(value);"
+   "from": "            try { callback(given); } catch ( ex ) { }",
+   "to": "            callback(given);"
   },
   {
    "name": "a visitor member goes missing",
@@ -517,6 +517,11 @@
    "name": "isClientSide answers true",
    "from": "        isClientSideMarketingCloudVisitorID: answer(false),",
    "to": "        isClientSideMarketingCloudVisitorID: answer(true),"
+  },
+  {
+   "name": "the same object is handed out twice",
+   "from": "        const given = value !== null && typeof value === 'object' ? {} : value;",
+   "to": "        const given = value;"
   }
  ]
 }

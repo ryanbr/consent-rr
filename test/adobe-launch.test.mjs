@@ -710,6 +710,20 @@ describe('extra/adobe-launch.js, cookies and callbacks', ( ) => {
         ]);
     });
 
+    it('builds a fresh object each time it answers with one', ( ) => {
+        // Theirs builds one per call. A shared object means a page that
+        // writes on the answer sees its own write come back later, which is
+        // the sort of thing that is impossible to find from the symptom.
+        const win = boot();
+        const visitor = win._satellite.getVisitorId();
+        const first = visitor.getVisitorValues();
+        first.mutated = true;
+        assert.equal(visitor.getVisitorValues().mutated, undefined);
+        assert.notEqual(visitor.getCustomerIDs(), visitor.getCustomerIDs());
+        // And a string answer is still the same value, not a copy of one.
+        assert.equal(visitor.getMarketingCloudVisitorID(), '');
+    });
+
     it('calls a callback the visitor api is handed', ( ) => {
         // Their getters take one. A page that waits for a callback which
         // never comes is the same blank page as a page that throws.

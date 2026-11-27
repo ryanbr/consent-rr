@@ -549,10 +549,36 @@ setCustomerIDs               setMarketingCloudVisitorID
 idSyncByURL                  resetState            version
 ```
 
-Every getter answers empty - `''`, or `{}` where theirs answers an object
-- and calls a callback it is handed, synchronously. Theirs takes one, and
-a page waiting for a callback that never comes is the same blank page as
-one that throws. The setters take their arguments and do nothing.
+Every getter answers empty - `''`, or a fresh `{}` where theirs answers an
+object - and calls a callback it is handed, synchronously. Theirs takes
+one, and a page waiting for a callback that never comes is the same blank
+page as one that throws. The object is built per call, as theirs is: a
+shared one means a page that writes on the answer sees its own write come
+back later, which is the sort of thing that cannot be found from the
+symptom. The setters take their arguments and do nothing.
+
+### The same question asked of the other answers `getVisitorId` was the
+case where an empty answer threw. The same census over every other stubbed
+answer says where it does not:
+
+```
+getVar()      .toLowerCase 59  .includes 30  .indexOf 23  .split 16
+              .toUpperCase 16  .length 12  .match 11  .replace 10
+              .join 12  .map 1  .getItem 2
+cookie.get()  .match 8  .indexOf 2
+```
+
+The string methods are all safe on `''`, which is 170-odd call sites
+arguing the empty string is the right answer. The twelve `.join` and one
+`.map` expect an array and would throw on it - but every one of those is
+container code, which no longer runs, and no page-level chain of that
+shape has been seen. `getVar` keeps answering `''`.
+
+`cookie.get` answers `undefined` for a cookie that is not there, which is
+what theirs answers, and ten call sites chain `.match` or `.indexOf` off
+it. Those would throw against the real library too on a first visit,
+before their own cookie has been written, so the chains are already
+fragile and the faithful answer is kept.
 
 On a property with no ECID extension the real `getVisitorId` does answer
 `null`, so this is more forgiving than theirs there. That is the right

@@ -191,10 +191,13 @@
     // page waiting for one that never comes is the same blank page.
     const answer = value => (callback, ...rest) => {
         void rest;
+        // A fresh object each call, as theirs builds one: a page that writes
+        // on the answer must not have that come back on the next call.
+        const given = value !== null && typeof value === 'object' ? {} : value;
         if ( typeof callback === 'function' ) {
-            try { callback(value); } catch ( ex ) { }
+            try { callback(given); } catch ( ex ) { }
         }
-        return value;
+        return given;
     };
     const noopfn = ( ) => { };
     const visitor = {
