@@ -285,8 +285,12 @@
     }
     satellite.container = container;
     w._satellite = satellite;
-    // Their double-init guard, set where theirs is. See the .md.
-    try { w.__satelliteLoaded = true; } catch ( ex ) { }
+    // Their double-init guard is deliberately NOT set. Theirs checks
+    // window.__satelliteLoaded before hydrating, so setting it makes a real
+    // library that arrives afterwards stand down - which breaks a page where
+    // nothing blocked that library, and the scriptlet form blocks nothing.
+    // Reported from the field as a page broken by the stub alone. The .md
+    // has it.
     // Their pre-hiding snippet goes in the page, hides the body, and waits
     // for at.js or alloy to take the style away. Neither runs now, so this
     // does what they would. The ids are theirs, and removing a style can

@@ -369,19 +369,9 @@
    "to": "    Object.defineProperty(satellite, 'getVar', { value: getVar, enumerable: true, writable: false });"
   },
   {
-   "name": "no loaded flag",
-   "from": "    try { w.__satelliteLoaded = true; } catch ( ex ) { }",
-   "to": "    void 0;"
-  },
-  {
-   "name": "the loaded flag is set before standing aside",
-   "from": "    const existing = w._satellite;\n    if ( existing && typeof existing.getVar === 'function' ) {\n        return;\n    }",
-   "to": "    const existing = w._satellite;\n    w.__satelliteLoaded = true;\n    if ( existing && typeof existing.getVar === 'function' ) {\n        return;\n    }"
-  },
-  {
    "name": "the object is sealed",
-   "from": "    try { w.__satelliteLoaded = true; } catch ( ex ) { }",
-   "to": "    try { w.__satelliteLoaded = true; } catch ( ex ) { }\n    Object.seal(satellite);"
+   "from": "    satellite.container = container;",
+   "to": "    satellite.container = container;\n    Object.seal(satellite);"
   },
   {
    "name": "the first-party rule goes missing",
@@ -522,6 +512,11 @@
    "name": "the same object is handed out twice",
    "from": "        const given = value !== null && typeof value === 'object' ? {} : value;",
    "to": "        const given = value;"
+  },
+  {
+   "name": "sets their double-init flag",
+   "from": "    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];",
+   "to": "    try { w.__satelliteLoaded = true; } catch ( ex ) { }\n    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];"
   }
  ]
 }

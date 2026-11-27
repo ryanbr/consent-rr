@@ -18,6 +18,7 @@ strings and function bodies in this document are theirs.
 
 - [What this is, and the rule](#what-this-is-and-the-rule)
 - [Why the runtime and not the RC files](#why-the-runtime-and-not-the-rc-files)
+- [How it has to be delivered, which changes what it may do](#how-it-has-to-be-delivered-which-changes-what-it-may-do)
 - [What a page keeps, and what it loses](#what-a-page-keeps-and-what-it-loses)
 - [And the extension's own library code](#and-the-extensions-own-library-code)
 - [The hosted library files stop too](#the-hosted-library-files-stop-too)
@@ -221,6 +222,29 @@ exception is the
 `PREINSTALLED` type, where the property uses an AppMeasurement the page
 installed itself: that copy is embedded by the page, usually from its own
 host, and nothing here touches it.
+
+## How it has to be delivered, which changes what it may do On Firefox a
+`$redirect=` rule naming a user resource works. On Chromium it cannot: uBO
+serves its own resources from the extension with a `warURL`, while a user
+resource has only its bytes, so the redirect becomes a `data:` URI and
+Chromium refuses it with `ERR_UNSAFE_REDIRECT` - the request fails and
+neither the real library nor the replacement loads. AGENTS.md has the
+mechanism. The symptom is a broken page and an empty console, because
+nothing ran.
+
+The form that works there is a scriptlet injection beside a blocking rule:
+
+```
+www.example.com##+js(user-adobe-launch)
+||assets.adobedtm.com/*/satelliteLib-*.js$script,important
+```
+
+Two consequences follow, and both have cost real time. There is no
+`document.currentScript` with the embed's url, so `environment.id` is
+empty - harmless. And the scriptlet runs whether or not anything is
+blocked, so the real library may load immediately afterwards: this must
+not do anything that stops it. That is why `window.__satelliteLoaded` is
+left alone, below.
 
 ## What a page keeps, and what it loses
 
@@ -593,11 +617,10 @@ container shaped like theirs: `buildInfo`, `environment`, `property`,
 `company`, `dataElements`, `rules`, `extensions`, with the collections
 empty.
 
-### `window.__satelliteLoaded`
+### `window.__satelliteLoaded`, which this does NOT set
 
-Not on the object, and the only global besides `_satellite` that this
-sets. Every runtime read does, at the point
-it hydrates the satellite object:
+Every runtime read sets it, at the point it hydrates the satellite object,
+and guards on it first:
 
 ```
 if ( container && !window.__satelliteLoaded ) {
@@ -605,18 +628,26 @@ if ( container && !window.__satelliteLoaded ) {
     ...
 ```
 
-It is their guard against a second copy of the library initialising over
-the first, so a page polling it for readiness gets the same answer it
-would from theirs. It is set here for the same reason and in the same
-place - after the object is published, and not at all when this stands
-aside for a real runtime.
+This used to set it too, for fidelity, and that was a defect reported from
+the field. The flag is how their library decides not to hydrate. A stub
+that sets it makes a real library arriving afterwards stand down - so a
+page where nothing blocked that library loses it anyway, and the page
+breaks with the stub alone.
 
-The consequence is worth stating: a real library arriving later, from a
-path no rule covers, reads the flag and stands down. That is what theirs
-does to any second copy, so it is faithful rather than a trick, but it
-does mean this neutralises a copy it did not block.
+Which is not a corner case, because of how a user resource has to be
+delivered. On Chromium a `$redirect=` to a user resource cannot work at
+all, so the working form is a scriptlet injection, and that blocks
+nothing: the real library loads right after the stub every time. Setting
+the flag turned every one of those pages into a page with no Launch at
+all.
 
-### `_monitors`
+So it is left alone. If the real library arrives it hydrates over this
+object - `window._satellite = window._satellite || {}` and then its own
+members - and wins, which is the right outcome for a page nobody asked to
+block. The note that used to be here said "it does mean this neutralises a
+copy it did not block", which was the bug written down as a curiosity.
+
+### `_monitors`### `_monitors`
 
 A page or a debugger can set `window._satellite = { _monitors: [ ... ] }`
 before the library loads, and theirs keeps it, because it does

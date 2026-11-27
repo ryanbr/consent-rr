@@ -281,7 +281,6 @@ describe('extra/adobe-launch.js, the object it publishes', ( ) => {
         new win.Function(code)();
         assert.equal(win._satellite, first);
         assert.equal(win._satellite.getVar('kept'), 'yes');
-        assert.equal(win.__satelliteLoaded, true);
     });
 
     it('takes the property and environment from the redirected src', ( ) => {
@@ -584,23 +583,28 @@ describe('extra/adobe-launch.js, cookies and callbacks', ( ) => {
         assert.match(notices[0], /_satellite\.cookie\.get\("legacy"\)/);
     });
 
-    it('sets the loaded flag their own library sets', ( ) => {
-        // Every runtime read does
-        //   if (container && !window.__satelliteLoaded) {
-        //       window.__satelliteLoaded = true; ...
-        // at the point it hydrates the satellite object, and a second copy
-        // of the real library reads it and stands down. A page polling it
-        // for readiness gets the same answer it would from theirs.
+    it('leaves the loaded flag alone, so a real library can still run', ( ) => {
+        // Field evidence: setting it broke a page where nothing blocked the
+        // real library. Theirs reads
+        //   if (container && !window.__satelliteLoaded) { ... hydrate ... }
+        // so a stub that sets it makes the real library stand down - and in
+        // the scriptlet delivery form, which is the only form Chromium
+        // allows for a user resource, nothing is blocked at all.
         const win = boot();
-        assert.equal(win.__satelliteLoaded, true);
+        assert.equal(win.__satelliteLoaded, undefined);
+        assert.equal(typeof win._satellite.getVar, 'function');
     });
 
-    it('does not set the loaded flag when it stands aside', ( ) => {
-        const win = boot({
-            before: '<script>window._satellite = { getVar: function() {' +
-                " return 'theirs'; } };</script>",
-        });
-        assert.equal(win.__satelliteLoaded, undefined);
+    it('lets a real library hydrate over it afterwards', ( ) => {
+        // What their library does when it finds an object already there:
+        // window._satellite = window._satellite || {}, then assigns its own
+        // members onto it. That has to win.
+        const win = boot();
+        const theirs = win._satellite;
+        theirs.getVar = ( ) => 'theirs';
+        theirs.track = ( ) => 'theirs';
+        assert.equal(win._satellite.getVar(), 'theirs');
+        assert.equal(win._satellite.track(), 'theirs');
     });
 
     it('calls the loaded callback a page defined for their embed', ( ) => {
