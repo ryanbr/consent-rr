@@ -38,18 +38,18 @@
   },
   {
    "name": "no identity at all",
-   "from": "    const ids = identity();",
-   "to": "    const ids = { property: '', environment: '', build: '' };"
+   "from": "    const environment = environmentId();",
+   "to": "    const environment = '';"
   },
   {
    "name": "no nested shape",
-   "from": "            const nested =\n                /\\/([0-9a-f]{6,})\\/([0-9a-f]{6,})\\/launch-([0-9A-Za-z]+)\\./\n                    .exec(src);",
-   "to": "            const nested = null;"
+   "from": "            const found =\n                /\\/[0-9a-f]{6,}\\/([0-9a-f]{6,})\\/launch-[0-9A-Za-z]+\\./\n                    .exec(src);",
+   "to": "            const found = null;"
   },
   {
-   "name": "property and environment swapped",
-   "from": "                    property: nested[1],\n                    environment: nested[2],",
-   "to": "                    property: nested[2],\n                    environment: nested[1],"
+   "name": "takes the property hash as the environment",
+   "from": "                /\\/[0-9a-f]{6,}\\/([0-9a-f]{6,})\\/launch-[0-9A-Za-z]+\\./",
+   "to": "                /\\/([0-9a-f]{6,})\\/[0-9a-f]{6,}\\/launch-[0-9A-Za-z]+\\./"
   },
   {
    "name": "no currentScript",
@@ -58,8 +58,8 @@
   },
   {
    "name": "environment is invented",
-   "from": "    satellite.environment = { id: ids.environment, stage: 'production' };",
-   "to": "    satellite.environment = { id: ids.environment || 'EN0', stage: 'production' };"
+   "from": "    satellite.environment = { id: environment, stage: 'production' };",
+   "to": "    satellite.environment = { id: environment || 'EN0', stage: 'production' };"
   },
   {
    "name": "stage is not production",
@@ -278,58 +278,58 @@
   },
   {
    "name": "writes a cookie",
-   "from": "    const ids = identity();",
-   "to": "    const ids = identity();\n    try { doc.cookie = 's_ecid=MCMID|1; path=/'; } catch ( ex ) { }"
+   "from": "    const environment = environmentId();",
+   "to": "    const environment = environmentId();\n    try { doc.cookie = 's_ecid=MCMID|1; path=/'; } catch ( ex ) { }"
   },
   {
    "name": "reads cookies at boot",
-   "from": "    const ids = identity();",
-   "to": "    const ids = identity();\n    void doc.cookie;"
+   "from": "    const environment = environmentId();",
+   "to": "    const environment = environmentId();\n    void doc.cookie;"
   },
   {
    "name": "writes storage",
-   "from": "    const ids = identity();",
-   "to": "    const ids = identity();\n    try { w.localStorage.setItem('com.adobe.reactor.dataElements', '{}'); } catch ( ex ) { }"
+   "from": "    const environment = environmentId();",
+   "to": "    const environment = environmentId();\n    try { w.localStorage.setItem('com.adobe.reactor.dataElements', '{}'); } catch ( ex ) { }"
   },
   {
    "name": "reads storage",
-   "from": "    const ids = identity();",
-   "to": "    const ids = identity();\n    try { w.localStorage.getItem('com.adobe.reactor.debug'); } catch ( ex ) { }"
+   "from": "    const environment = environmentId();",
+   "to": "    const environment = environmentId();\n    try { w.localStorage.getItem('com.adobe.reactor.debug'); } catch ( ex ) { }"
   },
   {
    "name": "beacons out",
-   "from": "    const ids = identity();",
-   "to": "    const ids = identity();\n    try { w.navigator.sendBeacon('https://example.demdex.net/id', '{}'); } catch ( ex ) { }"
+   "from": "    const environment = environmentId();",
+   "to": "    const environment = environmentId();\n    try { w.navigator.sendBeacon('https://example.demdex.net/id', '{}'); } catch ( ex ) { }"
   },
   {
    "name": "fetches a rule component",
-   "from": "    const ids = identity();",
-   "to": "    const ids = identity();\n    try { w.fetch('https://assets.adobedtm.com/a/b/c/RC1-source.min.js'); } catch ( ex ) { }"
+   "from": "    const environment = environmentId();",
+   "to": "    const environment = environmentId();\n    try { w.fetch('https://assets.adobedtm.com/a/b/c/RC1-source.min.js'); } catch ( ex ) { }"
   },
   {
    "name": "appends a script",
-   "from": "    const ids = identity();",
-   "to": "    const ids = identity();\n    try { const t = doc.createElement('script'); t.src = 'https://assets.adobedtm.com/a/b/c/RC1-source.min.js'; (doc.head || doc.documentElement).appendChild(t); } catch ( ex ) { }"
+   "from": "    const environment = environmentId();",
+   "to": "    const environment = environmentId();\n    try { const t = doc.createElement('script'); t.src = 'https://assets.adobedtm.com/a/b/c/RC1-source.min.js'; (doc.head || doc.documentElement).appendChild(t); } catch ( ex ) { }"
   },
   {
    "name": "adds a listener",
-   "from": "    const ids = identity();",
-   "to": "    const ids = identity();\n    w.addEventListener('message', ( ) => { });"
+   "from": "    const environment = environmentId();",
+   "to": "    const environment = environmentId();\n    w.addEventListener('message', ( ) => { });"
   },
   {
    "name": "leaves a timer",
-   "from": "    const ids = identity();",
-   "to": "    const ids = identity();\n    w.setInterval(( ) => { }, 1000);"
+   "from": "    const environment = environmentId();",
+   "to": "    const environment = environmentId();\n    w.setInterval(( ) => { }, 1000);"
   },
   {
    "name": "pollutes Object.prototype",
-   "from": "    const ids = identity();",
-   "to": "    const ids = identity();\n    Object.prototype.polluted = true;"
+   "from": "    const environment = environmentId();",
+   "to": "    const environment = environmentId();\n    Object.prototype.polluted = true;"
   },
   {
    "name": "wraps fetch",
-   "from": "    const ids = identity();",
-   "to": "    const ids = identity();\n    const of_ = w.fetch; w.fetch = (...a) => of_.apply(w, a);"
+   "from": "    const environment = environmentId();",
+   "to": "    const environment = environmentId();\n    const of_ = w.fetch; w.fetch = (...a) => of_.apply(w, a);"
   },
   {
    "name": "publishes unwritable",
@@ -343,8 +343,8 @@
   },
   {
    "name": "reads an environment out of the satelliteLib url",
-   "from": "                /\\/([0-9a-f]{6,})\\/([0-9a-f]{6,})\\/launch-([0-9A-Za-z]+)\\./\n                    .exec(src);",
-   "to": "                /\\/([0-9a-f]{6,})\\/(?:([0-9a-f]{6,})\\/)?(?:launch|satelliteLib)-([0-9A-Za-z]+)\\./\n                    .exec(src);"
+   "from": "                /\\/[0-9a-f]{6,}\\/([0-9a-f]{6,})\\/launch-[0-9A-Za-z]+\\./",
+   "to": "                /\\/[0-9a-f]{6,}\\/(?:([0-9a-f]{6,})\\/)?(?:launch|satelliteLib)-[0-9A-Za-z]+\\./"
   },
   {
    "name": "the satelliteLib rule goes missing",

@@ -695,10 +695,10 @@ record its own debug state would be writing storage.
 ## What it costs per page
 
 ```
-file on disk      11024 bytes
-injected          8540 bytes
-compile           0.052 ms (median of 200)
-boot              0.13 ms (median of 25, in jsdom)
+file on disk      10874 bytes
+injected          7930 bytes   (8742 before the pass described below)
+compile           0.049 ms (median of 200)
+boot              0.14 ms (median of 25, in jsdom)
 timers            0
 listeners         0
 cookie reads      0
@@ -706,6 +706,22 @@ cookie writes     0
 storage calls     0
 requests          0
 ```
+
+Two passes took 812 bytes off the injected size, 9 per cent, and neither
+changed compile or boot - which is the expected shape, since what was
+removed was bytes rather than work.
+
+The first was dead computation. The identity helper captured the property
+hash, the environment hash and the build from the redirected url, and only
+the environment is published: the other two would be inventing an id,
+which the decisions above say not to do. It captures one group now, and
+the two regex groups and the three-field object are gone.
+
+The second was the two-line comments inside the body, where uBO strips
+only the ones at column zero. There were twelve: eleven are a line each
+now and the twelfth went with the code it described. Eighteen comment
+lines ship, 1284 bytes of the 7930, and this file's reasoning is in this
+document anyway.
 
 Every zero is pinned by a test that wraps the accessor before any script
 runs, rather than reading the result afterwards: `document.cookie` both

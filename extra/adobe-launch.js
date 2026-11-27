@@ -54,32 +54,23 @@
         return;
     }
     const TURBINE_VERSION = '29.1.0';
-    // The redirected url is the only place the property identity survives.
-    const identity = ( ) => {
-        const blank = { property: '', environment: '', build: '' };
+    // The redirected url carries the property, environment and build, and
+    // the environment hash is the only one of them anything here publishes -
+    // the others would be inventing an id. The flat legacy embed has none.
+    const environmentId = ( ) => {
         try {
             const el = doc.currentScript;
             const src = el && el.src || '';
-            const nested =
-                /\/([0-9a-f]{6,})\/([0-9a-f]{6,})\/launch-([0-9A-Za-z]+)\./
+            const found =
+                /\/[0-9a-f]{6,}\/([0-9a-f]{6,})\/launch-[0-9A-Za-z]+\./
                     .exec(src);
-            if ( nested !== null ) {
-                return {
-                    property: nested[1],
-                    environment: nested[2],
-                    build: nested[3],
-                };
-            }
-            // The flat legacy embed, launch-EN<hex>.min.js, carries no
-            // property or environment at all, so it falls through to blank.
-            return blank;
+            return found !== null ? found[1] : '';
         } catch ( ex ) {
-            return blank;
+            return '';
         }
     };
-    const ids = identity();
-    // Their logger prints nothing until debug is turned on, and setDebug is
-    // the only thing here that turns it on.
+    const environment = environmentId();
+    // Silent until setDebug turns it on, which is theirs as well.
     let debugging = false;
     const say = (level, parts) => {
         if ( debugging === false ) { return; }
@@ -98,14 +89,13 @@
         debug: (...parts) => { say('debug', parts); },
         deprecation: (...parts) => { say('warn', parts); },
     };
-    // Custom vars live here: setVar writes one, getVar reads it back. A data
-    // element is the other thing getVar answers, and there are none.
+    // setVar writes one, getVar reads it back. Data elements are the other
+    // thing getVar answers, and there are none.
     const vars = new Map();
     const getVar = name => {
         if ( typeof name !== 'string' ) { return ''; }
         if ( vars.has(name) ) { return vars.get(name); }
-        // Their data elements carry a defaultValue, usually '', and container
-        // code calls string methods straight on the answer.
+        // Container code calls string methods straight on the answer.
         return '';
     };
     const setVar = (name, value) => {
@@ -118,8 +108,7 @@
         if ( typeof name !== 'string' ) { return; }
         vars.set(name, value);
     };
-    // Reading answers the page about its own document; writing is the thing
-    // being removed, so set is where this stops.
+    // Reading is the page's own document; writing is what is being removed.
     const cookie = {
         get: name => {
             if ( typeof name !== 'string' || name === '' ) { return undefined; }
@@ -155,8 +144,7 @@
     const satellite = existing !== null && typeof existing === 'object'
         ? existing
         : {};
-    // _monitors is set by a page or a debugger before the library loads, and
-    // theirs keeps whatever is there.
+    // Set by a page or a debugger before the library loads; theirs keeps it.
     if ( Array.isArray(satellite._monitors) === false ) {
         satellite._monitors = [];
     }
@@ -164,8 +152,7 @@
     satellite.setVar = setVar;
     satellite.cookie = cookie;
     satellite.logger = logger;
-    // With no rules of any kind, their own answer to every identifier is the
-    // one below, word for word.
+    // With no rules, theirs answers every identifier with the line below.
     satellite.track = (identifier, detail) => {
         const name = typeof identifier === 'string'
             ? identifier.trim()
@@ -173,13 +160,11 @@
         void detail;
         logger.log('"' + name + '" does not match any direct call identifiers.');
     };
-    // Nothing is waiting on the page-bottom trigger, and theirs is a no-op in
-    // the same situation.
+    // Nothing waits on the page-bottom trigger, and theirs no-ops too.
     satellite.pageBottom = ( ) => { };
     satellite.getVisitorId = ( ) => null;
     satellite.notify = (message, level) => {
-        // Their wording, less the backticks around _satellite.logger: a
-        // backtick in a resource is banned here, and this is debug-only text.
+        // Their wording, less the backticks this repo bans in a resource.
         logger.deprecation('_satellite.notify is deprecated. Please use the ' +
             '_satellite.logger API.');
         if ( level === 3 ) { logger.info(message); return; }
@@ -208,15 +193,14 @@
     satellite.setDebug = value => { debugging = value === true; };
     satellite.property = { name: '', id: '' };
     satellite.company = { orgId: '' };
-    satellite.environment = { id: ids.environment, stage: 'production' };
+    satellite.environment = { id: environment, stage: 'production' };
     satellite.buildInfo = {
         minified: true,
         buildDate: '',
         turbineBuildDate: '',
         turbineVersion: TURBINE_VERSION,
     };
-    // A rule component that is already in the page registers its code here
-    // and nothing ever asks for it again.
+    // A component already in the page registers here; nothing asks again.
     satellite.__registerScript = ( ) => { };
     satellite._onCustomCodeSuccess = ( ) => { };
     satellite._onCustomCodeFailure = ( ) => { };
@@ -249,11 +233,9 @@
     }
     satellite.container = container;
     w._satellite = satellite;
-    // Their own double-init guard, set where theirs sets it: a second copy
-    // of the real library checks this and stands down. See the .md.
+    // Their double-init guard, set where theirs is. See the .md.
     try { w.__satelliteLoaded = true; } catch ( ex ) { }
-    // Their own embed code calls this when the library has loaded, and some
-    // pages define it expecting the call.
+    // Their embed calls this on load, and some pages define it.
     if ( typeof w.__satelliteLoadedCallback === 'function' ) {
         try { w.__satelliteLoadedCallback(satellite); } catch ( ex ) { }
     }
