@@ -597,7 +597,7 @@ will not find what it expects. Nothing read so far compares it at all.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the twenty-one runtimes and the eighty-four
+Every `_satellite` reference in the twenty-one runtimes and the eighty-seven
 rule components was counted and diffed against what this publishes. The
 union is exactly the 22 members here, plus two typos in properties' own
 custom code: `_satellite.geVar`, and `_satellite.looger.error(e)` inside a
@@ -737,14 +737,18 @@ at once.
 
 ## What is not done here
 
-**The corpus, and what it still cannot say.** Twenty-one runtimes were read
-in full, eighty-four rule components and three extension libraryCode files,
-across twenty-nine properties - twenty-five identified by the hash in their
-path, plus four flat `launch-EN<id>.min.js` embeds whose url carries no property
-at all - and four of the pages that embed them. The counts are derived
-from the files rather than remembered: every rule component names its own
-url inside its `__registerScript` call, so the properties can be counted
-by reading them.
+**The corpus, and what it still cannot say.** Twenty-one runtimes were
+read in full, eighty-seven rule components and three extension libraryCode
+files, across thirty-one properties - twenty-seven identified by the hash
+in their path, plus four flat `launch-EN<id>.min.js` embeds whose url
+carries no property at all - and four of the pages that embed them.
+
+The counts are derived from the files rather than remembered: every rule
+component names its own url inside its `__registerScript` call, so the
+properties can be counted by reading them. Derived every time, too - one
+revision of these notes incremented the runtime figure by arithmetic
+instead of recounting, and stood a runtime ahead of its own evidence until
+the next batch happened to make it true.
 
 All twenty-one runtimes carry the same `_satellite` surface, checked three
 independent ways - the members each one references, the members each one
@@ -753,7 +757,7 @@ variable names. Twenty are turbine 29.1.0 and one is 28.0.0, which is
 better evidence than a single version would have been: the surface is the
 same across two majors. tealium and perimeterx were written against dozens
 of builds each, so this is still the thinnest corpus of the four, and what
-it cannot tell is how a property unlike these twenty-nine behaves.
+it cannot tell is how a property unlike these thirty-one behaves.
 
 Two of those runtimes were worth reading for one line each: the sixth is
 where `window.__satelliteLoaded` was found, and the eighth is where
