@@ -294,6 +294,32 @@ instead of `undefined`, and that none of the rule components is ever
 requested. A sample of four is also not a licence to assume every page
 guards its calls.
 
+### Ad-block detection: reported, not performed
+
+Worth knowing in this repo of all places. Twenty containers were searched
+for detection - the word itself, the known detector vendors, bait class
+names, the zero-height probe, `adsbygoogle`, `/ads.js` - and none of them
+detects anything. Two forward a verdict something else reached:
+
+```
+localStorage.getItem('adBlockStatus')  ->  dimensionContainer.adBlockStatus
+data element %adBlock%                 ->  eVar4, in the Web SDK payload
+```
+
+So replacing the runtime stops the reporting and cannot touch the
+detecting: whatever wrote that localStorage key, and whatever filled that
+data element, is page code or another tag, and would need its own rule.
+Nothing here should try to interfere with a value it did not compute - a
+stub that answered "no ad blocker" would be inventing an answer, and
+`getVar` already returns the empty string it returns for everything else.
+
+Two cautions from running that search. A container variable called `s_adb`
+is not ad-block detection: in the one read it is a second configured
+AppMeasurement instance, `s_adb = s_gi(s_account)`, parked on `window`.
+And every hit for a detector vendor was the substring `inStart` inside
+`taggingLoginStart`. Both were read before being believed, which is the
+only way to do this.
+
 ### The signals a container makes, which are the real loss
 
 The api survives a redirect; a signal the container invented does not. Two
@@ -564,14 +590,14 @@ installed early is not thrown away.
 ### `buildInfo`
 
 `minified: true`, the turbine version, and empty build dates. The version
-is one a real runtime reports, 29.1.0. It varies: eighteen of the nineteen
+is one a real runtime reports, 29.1.0. It varies: twenty of the twenty-one
 read say 29.1.0 and one says 28.0.0, so this is the modal answer rather
 than the only one, and a page that compares it against something exact
 will not find what it expects. Nothing read so far compares it at all.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the nineteen runtimes and the seventy-nine
+Every `_satellite` reference in the twenty-one runtimes and the eighty-four
 rule components was counted and diffed against what this publishes. The
 union is exactly the 22 members here, plus two typos in properties' own
 custom code: `_satellite.geVar`, and `_satellite.looger.error(e)` inside a
@@ -711,23 +737,23 @@ at once.
 
 ## What is not done here
 
-**The corpus, and what it still cannot say.** Nineteen runtimes were read
-in full, seventy-nine rule components and two extension libraryCode files,
-across twenty-seven properties - twenty-three identified by the hash in their
+**The corpus, and what it still cannot say.** Twenty-one runtimes were read
+in full, eighty-four rule components and three extension libraryCode files,
+across twenty-nine properties - twenty-five identified by the hash in their
 path, plus four flat `launch-EN<id>.min.js` embeds whose url carries no property
 at all - and four of the pages that embed them. The counts are derived
 from the files rather than remembered: every rule component names its own
 url inside its `__registerScript` call, so the properties can be counted
 by reading them.
 
-All nineteen runtimes carry the same `_satellite` surface, checked three
+All twenty-one runtimes carry the same `_satellite` surface, checked three
 independent ways - the members each one references, the members each one
 assigns directly, and their own string literals rather than minified
-variable names. Eighteen are turbine 29.1.0 and one is 28.0.0, which is
+variable names. Twenty are turbine 29.1.0 and one is 28.0.0, which is
 better evidence than a single version would have been: the surface is the
 same across two majors. tealium and perimeterx were written against dozens
 of builds each, so this is still the thinnest corpus of the four, and what
-it cannot tell is how a property unlike these twenty-seven behaves.
+it cannot tell is how a property unlike these twenty-nine behaves.
 
 Two of those runtimes were worth reading for one line each: the sixth is
 where `window.__satelliteLoaded` was found, and the eighth is where
@@ -781,7 +807,7 @@ _satellite.safeCheck = function (obj) {
 }
 ```
 
-`safeCheck` is in one of nineteen runtimes. This is the boundary tealium's
+`safeCheck` is in one of twenty-one runtimes. This is the boundary tealium's
 notes draw around per-tenant extension members, with one addition: a
 container can extend `_satellite` itself, so a member a census finds is
 not necessarily Adobe's.
