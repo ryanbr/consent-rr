@@ -664,9 +664,13 @@ pins it.
 
 ## The decisions
 
-**`getVar` answers `''`, not `undefined`.** The evidence is above. It is a
-divergence from theirs for unknown names, and it is the difference between
-a page continuing and a page throwing.
+**`getVar` answers `''` for a name it does not hold, not `undefined`.**
+The evidence is above. It is a divergence from theirs for unknown names,
+and it is the difference between a page continuing and a page throwing. It
+is not a coercion: a value the page stored through `setVar` comes back as
+it went in, including `undefined` and `null`, because that is what theirs
+does with what it was handed. The empty string is for names nothing has
+set.
 
 **`cookie.set` writes nothing, but carries out a deletion.** A write is
 the thing being removed - this is how their containers persist identifiers

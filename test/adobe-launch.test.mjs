@@ -48,15 +48,14 @@ before(async ( ) => {
     // the notes - or missing, as the satelliteLib one was - is caught.
     rules = text.split('\n')
         .map(line => line.replace(/^\/\/\s*/, '').trim())
-        .filter(line => line.startsWith('||') && line.includes('$script'))
-        .map(line => line.split('$')[0]);
+        .filter(line => line.startsWith('||'));
     assert.ok(rules.length !== 0, 'no rules in the header');
 });
 
 // uBO's own matching, as far as these rules use it: || anchors the scheme
 // and any subdomain, and * is any run of characters, including a slash.
 const matches = (rule, url) => {
-    const body = rule.slice(2);
+    const body = rule.slice(2).split('$')[0];
     const pattern = body
         .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
         .replace(/\*/g, '[\\s\\S]*');
@@ -240,10 +239,11 @@ describe('extra/adobe-launch.js, the object it publishes', ( ) => {
         assert.equal(typeof win._satellite.getVar, 'function');
     });
 
-    it('answers getVar with a string, never undefined', ( ) => {
+    it('answers getVar with a string for a name it does not hold', ( ) => {
         // Their container code calls string methods straight on the answer -
         // _satellite.getVar("OptanonConsent").toLowerCase() is in a real one -
-        // so undefined here is a TypeError on the page.
+        // so undefined for an unknown name is a TypeError on the page. A
+        // value the page stored itself comes back as it went in, below.
         const win = boot();
         assert.equal(win._satellite.getVar('OptanonConsent'), '');
         assert.equal(win._satellite.getVar('anything at all'), '');
@@ -260,9 +260,28 @@ describe('extra/adobe-launch.js, the object it publishes', ( ) => {
         win._satellite.setVar({ guid: 'g1', cif: 'c1' });
         assert.equal(win._satellite.getVar('guid'), 'g1');
         assert.equal(win._satellite.getVar('cif'), 'c1');
-        // A value that is not a string comes back as it went in.
+        // A value that is not a string comes back as it went in, including
+        // undefined: theirs stores and returns whatever it was handed, so
+        // the empty string is for names nothing has set, not a coercion.
         win._satellite.setVar('count', 3);
         assert.equal(win._satellite.getVar('count'), 3);
+        win._satellite.setVar('nothing', undefined);
+        assert.equal(win._satellite.getVar('nothing'), undefined);
+        win._satellite.setVar('nul', null);
+        assert.equal(win._satellite.getVar('nul'), null);
+    });
+
+    it('stands aside from a second copy of itself', ( ) => {
+        // uBO injects per matching request, and a page can carry two embeds
+        // this rule covers. The second run must find the first object and
+        // leave it, rather than publishing a fresh one over it.
+        const win = boot();
+        const first = win._satellite;
+        first.setVar('kept', 'yes');
+        new win.Function(code)();
+        assert.equal(win._satellite, first);
+        assert.equal(win._satellite.getVar('kept'), 'yes');
+        assert.equal(win.__satelliteLoaded, true);
     });
 
     it('takes the property and environment from the redirected src', ( ) => {
@@ -810,6 +829,19 @@ describe('filters, adobe-launch', ( ) => {
         }
     });
 
+    it('redirects every rule to this resource, and nothing else', ( ) => {
+        // Every || line in the header is a rule, and each one has to carry
+        // the same option string: a line that blocked instead of redirecting
+        // would leave _satellite undefined, which is the case this exists to
+        // avoid.
+        for ( const rule of rules ) {
+            assert.ok(
+                rule.endsWith('$script,redirect=adobe-launch.js'),
+                rule + ' does not redirect to this resource'
+            );
+        }
+    });
+
     it('names only hosts a url has been seen on', ( ) => {
         // One line per host, and no wildcard host: the path shape is
         // Adobe's but the host is anybody's, so a pattern over hosts would
@@ -823,6 +855,7 @@ describe('filters, adobe-launch', ( ) => {
             // No wildcard in the host itself, which is the part that
             // decides whose script this replaces.
             const host = rule.slice(2, rule.indexOf('/', 2));
+            assert.ok(host.length !== 0, rule);
             assert.equal(host.includes('*'), false, rule);
         }
     });

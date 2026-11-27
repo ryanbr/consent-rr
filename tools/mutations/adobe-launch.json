@@ -435,6 +435,16 @@
    "name": "removal expires the raw name only",
    "from": "            const names = [ encodeURIComponent(name) ];",
    "to": "            const names = [ name ];"
+  },
+  {
+   "name": "getVar coerces a stored value",
+   "from": "        if ( vars.has(name) ) { return vars.get(name); }",
+   "to": "        if ( vars.has(name) ) { return vars.get(name) || ''; }"
+  },
+  {
+   "name": "a rule blocks instead of redirecting",
+   "from": "//   ||assets.adobedtm.com/satelliteLib-*.js$script,redirect=adobe-launch.js",
+   "to": "//   ||assets.adobedtm.com/satelliteLib-*.js$script"
   }
  ]
 }
