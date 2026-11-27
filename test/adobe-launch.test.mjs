@@ -706,10 +706,105 @@ describe('extra/adobe-launch.js, cookies and callbacks', ( ) => {
 
 describe('extra/adobe-launch.js, what it does not do', ( ) => {
 
+    it('takes their pre-hiding style away, wherever the snippet sits', async ( ) => {
+        // Their snippet hides the body and waits for at.js or alloy to
+        // remove the style. Neither runs now, so a page that carries it
+        // stays blank until the snippet's own timer - if it has one. The
+        // ids are Adobe's, read out of at.js and alloy in the runtimes.
+        const style = id =>
+            `<style id="${id}">body { opacity: 0 !important }</style>`;
+        for ( const id of [ 'at-body-style', 'alloy-prehiding' ] ) {
+            const before = boot({ before: style(id) });
+            await settle(60);
+            assert.equal(before.document.getElementById(id), null,
+                id + ' before the embed');
+            // And when the snippet runs after the embed, which is where
+            // their own instructions put it.
+            const after = boot({ after: style(id) });
+            await settle(60);
+            assert.equal(after.document.getElementById(id), null,
+                id + ' after the embed');
+        }
+    });
+
+    it('takes the style away at once, not at the end of the head', ( ) => {
+        // A page that already carries the snippet should not stay blank
+        // until DOMContentLoaded: the boot pass is what makes the reveal
+        // immediate, and only an assertion before any settle can tell.
+        const win = boot({
+            before: '<style id="at-body-style">body { opacity: 0 }</style>',
+        });
+        assert.equal(win.document.getElementById('at-body-style'), null);
+    });
+
+    it('installs no watch when the document has already loaded', async ( ) => {
+        // Injected into a parsed document - the shape a redirect lands in
+        // when the embed is at the end of the body - there is nothing more
+        // to arrive, so there is nothing to watch for.
+        const seen = { observers: 0, listeners: [] };
+        const dom = new JSDOM(
+            '<!DOCTYPE html><html><head></head><body></body></html>',
+            {
+                runScripts: 'dangerously',
+                url: 'https://www.example.com/page',
+                virtualConsole: new VirtualConsole(),
+                beforeParse(win) {
+                    const Real = win.MutationObserver;
+                    win.MutationObserver = class extends Real {
+                        constructor(fn) { super(fn); seen.observers += 1; }
+                    };
+                    const add = win.document.addEventListener.bind(win.document);
+                    win.document.addEventListener = (type, ...rest) => {
+                        seen.listeners.push(type);
+                        return add(type, ...rest);
+                    };
+                },
+            }
+        );
+        await settle(40);
+        assert.equal(dom.window.document.readyState, 'complete');
+        new dom.window.Function(code)();
+        await settle(40);
+        assert.equal(seen.observers, 0);
+        assert.deepEqual(seen.listeners, []);
+        assert.equal(typeof dom.window._satellite.getVar, 'function');
+    });
+
+    it('stops watching once the head has arrived', async ( ) => {
+        // The watch is for the snippet beside the embed, which arrives
+        // during parsing. Past DOMContentLoaded it would be a live observer
+        // on every page for nothing, so it comes down - and a style the page
+        // adds afterwards is the page's own business.
+        const win = boot();
+        await settle(60);
+        const style = win.document.createElement('style');
+        style.id = 'at-body-style';
+        win.document.head.appendChild(style);
+        await settle(60);
+        assert.notEqual(win.document.getElementById('at-body-style'), null);
+    });
+
+    it('leaves a style of the page s own alone', async ( ) => {
+        // Only those two ids, and only the element: a page's other styles,
+        // and its body attributes, are not this resource's business.
+        const win = boot({
+            before: '<style id="page-style">body { color: red }</style>',
+            body: '<p id="content" style="opacity: 0">x</p>',
+        });
+        await settle(60);
+        assert.notEqual(win.document.getElementById('page-style'), null);
+        assert.equal(
+            win.document.getElementById('content').getAttribute('style'),
+            'opacity: 0'
+        );
+    });
+
     it('touches nothing of the page it was not asked to', async ( ) => {
         const { win, touched, baseline } = bootWatched();
         await settle(80);
-        assert.deepEqual(touched, []);
+        // One entry, and it is the pass that takes their pre-hiding style
+        // away: it listens for DOMContentLoaded and stops there.
+        assert.deepEqual(touched, [ 'document listener DOMContentLoaded' ]);
         assert.equal(win.fetch, baseline.fetch, 'fetch was wrapped');
         assert.deepEqual(
             Object.getOwnPropertyNames(win.Object.prototype),
@@ -726,9 +821,10 @@ describe('extra/adobe-launch.js, what it does not do', ( ) => {
         win._satellite.track('whatever');
         win._satellite.pageBottom();
         await settle(60);
-        assert.equal(
-            touched.filter(what => what !== 'cookie read').length, 0,
-            touched.join(', ')
+        assert.deepEqual(
+            touched.filter(what => what !== 'cookie read' &&
+                what !== 'document listener DOMContentLoaded'),
+            [], touched.join(', ')
         );
         assert.equal(win.document.querySelectorAll('script[src]').length, 0);
     });
@@ -771,6 +867,8 @@ describe('extra/adobe-launch.js, what it does not do', ( ) => {
         );
         await settle(80);
         assert.deepEqual(timers, []);
+        // Nothing on window. The one listener this installs is on document,
+        // for DOMContentLoaded, and it is the pre-hiding pass.
         assert.deepEqual(listeners, []);
         assert.equal(typeof dom.window._satellite.getVar, 'function');
     });

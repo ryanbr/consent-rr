@@ -3,7 +3,9 @@
  "test": "test/adobe-launch.test.mjs",
  "expected": {
   "setVar takes a non-string name": "getVar answers an empty string for a name that is not a string before it ever looks in the map, so a non-string key can be written but never read back - the guard is unreachable, and kept because the map would otherwise grow keys nothing can reach",
-  "calls a callback that is not one": "calling a __satelliteLoadedCallback that is not a function throws inside the try that is there for a callback which throws, so on its own this cannot be seen. Forced together with that try removed it is an uncaught error on the page, and that pair is killed"
+  "calls a callback that is not one": "calling a __satelliteLoadedCallback that is not a function throws inside the try that is there for a callback which throws, so on its own this cannot be seen. Forced together with that try removed it is an uncaught error on the page, and that pair is killed",
+  "no reveal at the end of the head": "the watch catches the snippet during parsing, so this second pass is reachable only when new MutationObserver threw - it is the belt under that, and nothing in a test can make it throw",
+  "no watch while the head arrives": "the watch reveals on the microtask after the snippet script, and the DOMContentLoaded pass reveals a tick later, so the two differ only in timing. jsdom does not drain microtasks between inline scripts while parsing, so the suite cannot see the difference - in a browser it is a blank page for a microtask rather than until the head is finished"
  },
  "mutations": [
   {
@@ -450,6 +452,41 @@
    "name": "a malformed escape escapes the decoder",
    "from": "        try { return decodeURIComponent(text); } catch ( ex ) { return text; }",
    "to": "        return decodeURIComponent(text);"
+  },
+  {
+   "name": "no reveal at all",
+   "from": "    reveal();\n    // The snippet usually sits beside the embed",
+   "to": "    // The snippet usually sits beside the embed"
+  },
+  {
+   "name": "only one of the two ids",
+   "from": "    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];",
+   "to": "    const HIDDEN = [ 'at-body-style' ];"
+  },
+  {
+   "name": "no watch while the head arrives",
+   "from": "            watch = new w.MutationObserver(reveal);",
+   "to": "            watch = null;"
+  },
+  {
+   "name": "no reveal at the end of the head",
+   "from": "        doc.addEventListener('DOMContentLoaded', ( ) => {\n            reveal();",
+   "to": "        doc.addEventListener('DOMContentLoaded', ( ) => {\n            void reveal;"
+  },
+  {
+   "name": "the watch is never stopped",
+   "from": "            if ( watch !== null ) { watch.disconnect(); watch = null; }",
+   "to": "            void watch;"
+  },
+  {
+   "name": "reveal takes a page style too",
+   "from": "    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];",
+   "to": "    const HIDDEN = [ 'at-body-style', 'alloy-prehiding', 'page-style' ];"
+  },
+  {
+   "name": "reveal watches after the document is ready",
+   "from": "    if ( doc.readyState === 'loading' ) {",
+   "to": "    if ( true ) {"
   }
  ]
 }

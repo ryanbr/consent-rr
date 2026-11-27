@@ -252,6 +252,38 @@
     w._satellite = satellite;
     // Their double-init guard, set where theirs is. See the .md.
     try { w.__satelliteLoaded = true; } catch ( ex ) { }
+    // Their pre-hiding snippet goes in the page, hides the body, and waits
+    // for at.js or alloy to take the style away. Neither runs now, so this
+    // does what they would. The ids are theirs, and removing a style can
+    // only reveal content. See the .md.
+    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];
+    const reveal = ( ) => {
+        for ( const id of HIDDEN ) {
+            try {
+                const el = doc.getElementById(id);
+                if ( el === null || el.parentNode === null ) { continue; }
+                el.parentNode.removeChild(el);
+            } catch ( ex ) { }
+        }
+    };
+    reveal();
+    // The snippet usually sits beside the embed, so it may not have run yet.
+    // Watch while the head is still arriving and stop at the end of it.
+    if ( doc.readyState === 'loading' ) {
+        let watch = null;
+        try {
+            watch = new w.MutationObserver(reveal);
+            watch.observe(doc.documentElement || doc, {
+                childList: true, subtree: true,
+            });
+        } catch ( ex ) {
+            watch = null;
+        }
+        doc.addEventListener('DOMContentLoaded', ( ) => {
+            reveal();
+            if ( watch !== null ) { watch.disconnect(); watch = null; }
+        }, { once: true });
+    }
     // Their embed calls this on load, and some pages define it.
     if ( typeof w.__satelliteLoadedCallback === 'function' ) {
         try { w.__satelliteLoadedCallback(satellite); } catch ( ex ) { }

@@ -368,70 +368,42 @@ alone.
 
 ### Body hiding, which is the one that would be a blank page
 
-The other property read here, a satelliteLib one, runs `adobe-target-v2`
-with
+Adobe Target and the Web SDK can hide the page until they answer. Two
+routes, and they end differently.
+
+Configured inside the extension, it never happens: one property read runs
+`adobe-target-v2` with `bodyHidingEnabled: true` and `bodyHiddenStyle:
+"body {opacity: 0}"`, and at.js is what applies that - bundled in the
+library being replaced, so with a stub in place the style is never added.
+
+The other route is the pre-hiding snippet their own instructions put **in
+the page**, beside the embed. It adds a style element and waits for at.js
+or alloy to take it away. Neither runs now, so a page carrying it stays
+hidden until the snippet's own timer - if it has one - which is a blank
+page somebody has to write an exception for.
+
+So this resource does what they would: it removes those style elements, by
+the ids their own libraries use.
 
 ```
-bodyHidingEnabled: true
-bodyHiddenStyle:   "body {opacity: 0}"
+at-body-style      at.js, in five of the runtimes read
+alloy-prehiding    the Web SDK, in five more
 ```
 
-Adobe Target hides the whole body until it answers, which is the worst
-thing a replacement could leave behind. It does not happen here: at.js is
-bundled **inside** the library being replaced, so with a stub in place the
-style is never applied at all.
+Three passes, because the snippet can sit either side of the embed: once
+at boot for a snippet already there, then a MutationObserver while the
+head is still arriving, and once more at DOMContentLoaded, where the watch
+comes down. Nothing is watched after that - a style the page adds later is
+the page's own business - and no watch is installed at all when the
+document has already loaded.
 
-The case to watch is the separate pre-hiding snippet Adobe recommends
-inlining in the page's own `<head>`. That one is not in this file's reach:
-it hides the body itself and reveals on its own timeout, so a page
-carrying it flashes blank for as long as that timeout. It is the same
-shape as the Alloy pre-hiding in tealium's `utag.sync.js`, described in
-`tealium.md`, and like that one it needs its own rule or scriptlet, not
-this.
+This is the one place the resource touches the page rather than only
+answering it, and the justification is that it is doing the removal the
+replaced library would have done, by that library's own id, which can only
+reveal content. It is also the only reason this installs a listener: one,
+on `document`, for `DOMContentLoaded`, while the document is loading.
 
-### Reading a consent manager is not deploying one
-
-The worst case above needs a sharper test than "is OneTrust mentioned".
-One property's components include a 251KB MetaRouter bundle, a customer
-data platform, whose settings are
-
-```
-privacy: {
-    consentProvider: "OneTrust",
-    cookieName: "OptanonConsent",
-    impliedConsent: true,
-    defaultGroupsValue: true
-}
-```
-
-That is MetaRouter *reading* OneTrust's state to decide what it may send.
-It does not load OneTrust, and no `otSDKStub`, `cdn.cookielaw` or
-`OptanonWrapper` appears anywhere in it. Replacing the runtime there
-removes MetaRouter and leaves the banner, which is the right way round.
-
-A property that injects the banner itself would carry the loader - the
-stub url or the host - and that is the string to search for, not the
-cookie name.
-
-A second property shows the same thing more plainly. One of its components
-is
-
-```
-"object" == typeof OneTrust &&
-"function" == typeof OneTrust.OnConsentChanged &&
-OneTrust.OnConsentChanged(function (e) {
-    ... alloy("setConsent", { consent: [ r ] }) ...
-})
-```
-
-It subscribes to OneTrust and forwards the answer to the Web SDK, gating
-what may be sent. No `otSDKStub`, no `cdn.cookielaw`, no `OptanonWrapper`,
-no `createElement` anywhere in it. Replacing the runtime removes the
-consumer and the Web SDK it gates, and leaves the banner - the direction
-every property read so far points in. It also guards every `_satellite`
-access with a `typeof` check, the same way the pages do.
-
-### The check
+### The check### The check
 
 The container is inside the `launch-*.min.js` file, so what a property
 injects can be read before a rule is written for it. Fetch the embed and
