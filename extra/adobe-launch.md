@@ -396,7 +396,8 @@ head is still arriving, and once more at DOMContentLoaded, where the watch
 comes down. The watch is on the head's own children, not the document's
 subtree - measured before narrowing it, a subtree watch made the engine
 build 12001 mutation records on a page of 8000 nodes, for two ids that can
-only appear in one place. A test counts the records now. Nothing is watched after that - a style the page adds later is
+only appear in one place. A test counts the records now. Nothing is
+watched after that - a style the page adds later is
 the page's own business - and no watch is installed at all when the
 document has already loaded.
 
@@ -519,11 +520,46 @@ the suggested replacement call with the arguments interpolated.
 
 ### `getVisitorId`
 
-`null`. Not a stand-in: the custom-script surface in their own runtime is
-`n.getVisitorId = function() { return null; }`, and the ECID extension
-replaces it with the real one when it loads.
+Answers a Visitor-shaped object, not `null`, and this is the one decision
+here taken on field evidence rather than on reading their code.
 
-### `_container` and `container`
+Their custom-script surface is `n.getVisitorId = function() { return null;
+}`, and the ECID extension replaces it with the real instance. On a
+property that carries that extension - and the one this came from does - a
+page sees an object, and page code chains off it.
+`getVisitorId().getMarketingCloudVisitorID()` appears 32 times across the
+corpus, five of them inside a satelliteLib runtime.
+
+So `null` was worse than the block it replaced: a page guarded on
+`_satellite` existing skips the whole branch when the script is blocked,
+and enters it when a stub answers - then throws on
+`null.getMarketingCloudVisitorID()`. That was reported from the field as a
+blank page needing a per-domain exception, on a rule that worked
+everywhere else.
+
+The members are read off the ECID library bundled in their runtimes,
+confirmed in three of them:
+
+```
+getMarketingCloudVisitorID   getVisitorValues      getAnalyticsVisitorID
+getAudienceManagerLocationHint                     getAudienceManagerBlob
+getLocationHint              getCustomerIDs        getSupplementalDataID
+isClientSideMarketingCloudVisitorID                getOptOut
+setCustomerIDs               setMarketingCloudVisitorID
+idSyncByURL                  resetState            version
+```
+
+Every getter answers empty - `''`, or `{}` where theirs answers an object
+- and calls a callback it is handed, synchronously. Theirs takes one, and
+a page waiting for a callback that never comes is the same blank page as
+one that throws. The setters take their arguments and do nothing.
+
+On a property with no ECID extension the real `getVisitorId` does answer
+`null`, so this is more forgiving than theirs there. That is the right
+direction for the error: a missing member is a blank page, an extra one is
+an unused object.
+
+### `_container` and `container`### `_container` and `container`
 
 `_container` is a getter that warns once, with their wording - "may change
 at any time and should only be used for debugging" - and answers a

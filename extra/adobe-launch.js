@@ -182,7 +182,39 @@
     };
     // Nothing waits on the page-bottom trigger, and theirs no-ops too.
     satellite.pageBottom = ( ) => { };
-    satellite.getVisitorId = ( ) => null;
+    // Their ECID extension replaces getVisitorId with the Visitor instance,
+    // and page code chains off it - getVisitorId().getMarketingCloudVisitorID()
+    // is in the corpus 32 times. null there is a TypeError on a page a block
+    // would have left alone, which is a blank page somebody writes an
+    // exception for. Members read off the library bundled in their runtimes.
+    // Every getter answers empty and calls a callback it is handed, because a
+    // page waiting for one that never comes is the same blank page.
+    const answer = value => (callback, ...rest) => {
+        void rest;
+        if ( typeof callback === 'function' ) {
+            try { callback(value); } catch ( ex ) { }
+        }
+        return value;
+    };
+    const noopfn = ( ) => { };
+    const visitor = {
+        getMarketingCloudVisitorID: answer(''),
+        getVisitorValues: answer({}),
+        getAnalyticsVisitorID: answer(''),
+        getAudienceManagerLocationHint: answer(''),
+        getAudienceManagerBlob: answer(''),
+        getLocationHint: answer(''),
+        getCustomerIDs: answer({}),
+        getSupplementalDataID: answer(''),
+        isClientSideMarketingCloudVisitorID: answer(false),
+        getOptOut: answer(''),
+        setCustomerIDs: noopfn,
+        setMarketingCloudVisitorID: noopfn,
+        idSyncByURL: noopfn,
+        resetState: noopfn,
+        version: '',
+    };
+    satellite.getVisitorId = ( ) => visitor;
     satellite.notify = (message, level) => {
         // Their wording, less the backticks this repo bans in a resource.
         logger.deprecation('_satellite.notify is deprecated. Please use the ' +

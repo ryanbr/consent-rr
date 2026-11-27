@@ -275,8 +275,8 @@
   },
   {
    "name": "getVisitorId invents an id",
-   "from": "    satellite.getVisitorId = ( ) => null;",
-   "to": "    satellite.getVisitorId = ( ) => '12345678901234567890123456789012345678';"
+   "from": "        getMarketingCloudVisitorID: answer(''),",
+   "to": "        getMarketingCloudVisitorID: answer('12345678901234567890123456789012345678'),"
   },
   {
    "name": "writes a cookie",
@@ -492,6 +492,31 @@
    "name": "the watch covers the parsing document",
    "from": "            watch.observe(doc.head || doc.documentElement || doc, {\n                childList: true,\n            });",
    "to": "            watch.observe(doc.documentElement || doc, {\n                childList: true, subtree: true,\n            });"
+  },
+  {
+   "name": "getVisitorId answers null again",
+   "from": "    satellite.getVisitorId = ( ) => visitor;",
+   "to": "    satellite.getVisitorId = ( ) => null;"
+  },
+  {
+   "name": "the visitor api calls no callback",
+   "from": "        if ( typeof callback === 'function' ) {\n            try { callback(value); } catch ( ex ) { }\n        }",
+   "to": "        void callback;"
+  },
+  {
+   "name": "a callback that throws escapes",
+   "from": "            try { callback(value); } catch ( ex ) { }",
+   "to": "            callback(value);"
+  },
+  {
+   "name": "a visitor member goes missing",
+   "from": "        getAnalyticsVisitorID: answer(''),",
+   "to": ""
+  },
+  {
+   "name": "isClientSide answers true",
+   "from": "        isClientSideMarketingCloudVisitorID: answer(false),",
+   "to": "        isClientSideMarketingCloudVisitorID: answer(true),"
   }
  ]
 }

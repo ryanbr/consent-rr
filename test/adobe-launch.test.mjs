@@ -684,9 +684,52 @@ describe('extra/adobe-launch.js, cookies and callbacks', ( ) => {
         assert.equal(typeof win._satellite.getVar, 'function');
     });
 
-    it('answers getVisitorId with null, as their own stub does', ( ) => {
+    it('answers getVisitorId with a visitor, not with null', ( ) => {
+        // Field evidence: the stub was worse than a block on a page whose
+        // code is guarded on _satellite existing and then chains off this.
+        // getVisitorId().getMarketingCloudVisitorID() is in the corpus 32
+        // times, and null there is a TypeError the block never caused.
         const win = boot();
-        assert.equal(win._satellite.getVisitorId(), null);
+        const visitor = win._satellite.getVisitorId();
+        assert.equal(typeof visitor, 'object');
+        assert.equal(visitor.getMarketingCloudVisitorID(), '');
+        assert.equal(visitor.getAnalyticsVisitorID(), '');
+        assert.equal(visitor.isClientSideMarketingCloudVisitorID(), false);
+        assert.deepEqual(
+            JSON.parse(JSON.stringify(visitor.getCustomerIDs())), {}
+        );
+        // Every member is one of theirs, read off the library bundled in
+        // their runtimes rather than guessed.
+        assert.deepEqual(Object.keys(visitor).sort(), [
+            'getAnalyticsVisitorID', 'getAudienceManagerBlob',
+            'getAudienceManagerLocationHint', 'getCustomerIDs',
+            'getLocationHint', 'getMarketingCloudVisitorID', 'getOptOut',
+            'getSupplementalDataID', 'getVisitorValues', 'idSyncByURL',
+            'isClientSideMarketingCloudVisitorID', 'resetState',
+            'setCustomerIDs', 'setMarketingCloudVisitorID', 'version',
+        ]);
+    });
+
+    it('calls a callback the visitor api is handed', ( ) => {
+        // Their getters take one. A page that waits for a callback which
+        // never comes is the same blank page as a page that throws.
+        const win = boot();
+        const visitor = win._satellite.getVisitorId();
+        const seen = [];
+        visitor.getMarketingCloudVisitorID(id => { seen.push(id); });
+        visitor.getVisitorValues(values => { seen.push(typeof values); });
+        visitor.getAudienceManagerBlob(blob => { seen.push(blob); });
+        visitor.getOptOut(status => { seen.push(status); });
+        assert.deepEqual(seen, [ '', 'object', '', '' ]);
+        // A callback that throws does not escape into the caller.
+        visitor.getMarketingCloudVisitorID(( ) => {
+            throw new Error('from a page callback');
+        });
+        // And the setters take their arguments without complaint.
+        visitor.setCustomerIDs({ email: 'a@b.c' });
+        visitor.setMarketingCloudVisitorID('x');
+        visitor.resetState();
+        assert.equal(visitor.getMarketingCloudVisitorID(), '');
     });
 
     it('takes a rule component that registers itself', async ( ) => {
