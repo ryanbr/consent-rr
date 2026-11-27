@@ -361,7 +361,7 @@
     'use strict';
     const w = window;
     const doc = w.document;
-    const BUILD = 'f1e7a03c';
+    const BUILD = 'e45abf3f';
     const log = w.__probeLog = w.__probeLog || [];
     let where = 'top';
     try {
@@ -507,6 +507,25 @@
     // most of what a page does before it will go on: consent, geo,
     // session. Only failures and whatever never settled are logged,
     // because logging every request buries the page's own calls.
+    //
+    // OFF by default, and that is not timidity. Patching these two is
+    // detectable - String(fetch) stops saying [native code] - and an
+    // anti-bot layer that looks will stop making api calls. It did:
+    // with this on, a product listing never issued its search request
+    // at all, in two runs read as the replacement breaking the page.
+    // An instrument that changes what it measures is worse than a
+    // blind spot, because the blind spot does not invent a defect.
+    let requests = false;
+    try {
+        requests = w.localStorage.getItem('probeRequests') === '1' ||
+            String(w.location.hash).indexOf('probeRequests') !== -1;
+    } catch ( ex ) {
+    }
+    say('request tracking', requests ? 'ON' : 'off',
+        requests
+            ? '- fetch and XHR are patched, which a site can detect'
+            : '- add #probeRequests to the url to see failed and' +
+                ' pending requests');
     const pending = new Map();
     let seq = 0;
     const began = (how, url) => {
@@ -520,7 +539,7 @@
         if ( note !== '' && what !== undefined ) { say(note, what); }
     };
     const realFetch = w.fetch;
-    if ( typeof realFetch === 'function' ) {
+    if ( requests && typeof realFetch === 'function' ) {
         w.fetch = (...args) => {
             const first = args[0];
             const url = first && first.url !== undefined
@@ -546,7 +565,7 @@
         };
     }
     const XHR = w.XMLHttpRequest;
-    if ( typeof XHR === 'function' && XHR.prototype ) {
+    if ( requests && typeof XHR === 'function' && XHR.prototype ) {
         const open = XHR.prototype.open;
         const send = XHR.prototype.send;
         XHR.prototype.open = function(method, url, ...rest) {
