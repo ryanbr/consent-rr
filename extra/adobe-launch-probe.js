@@ -361,7 +361,7 @@
     'use strict';
     const w = window;
     const doc = w.document;
-    const BUILD = '276cd9cf';
+    const BUILD = '9e4151fc';
     const log = w.__probeLog = w.__probeLog || [];
     let where = 'top';
     try {
@@ -447,10 +447,17 @@
     // on it: comparing against the pre-wrap identity never matches,
     // and said 'hydrated over' even when nothing had touched it.
     let ours;
-    try { ours = w._satellite && w._satellite.getVar; } catch ( ex ) { }
+    let ourKeys = [];
+    try {
+        ours = w._satellite && w._satellite.getVar;
+        ourKeys = Object.keys(w._satellite || {});
+    } catch ( ex ) { }
     // The globals their extensions install. A read of one the stub
     // cannot answer is the likeliest reason a replacement is worse
     // than a block, and nothing else on the page can see it.
+    // Caveat for reading the counts: a script that walks the window
+    // reads every accessor below exactly once, in this order, so one
+    // read each is an enumeration and not a page using anything.
     const counts = [];
     for ( const name of [ 's', 's_gi', 'adobe', 'adobeDataLayer',
         'Visitor', 'AppMeasurement', 'alloy', 'digitalData',
@@ -541,11 +548,28 @@
         // answer to every other question depends on which happened.
         try {
             const now = w._satellite && w._satellite.getVar;
+            const nowKeys = Object.keys(w._satellite || {});
+            const only = (a, b) => {
+                const names = a.filter(k => b.includes(k) === false);
+                return names.length <= 8
+                    ? names.join(',')
+                    : names.slice(0, 8).join(',') + ' and ' +
+                        (names.length - 8) + ' more';
+            };
+            // Which members, not just how many. A real library that
+            // hydrates over this one is the only census of their
+            // surface that comes from a live page rather than a
+            // bundled copy, and a name on their side that is missing
+            // here is the next thing a page can call and not find.
+            const theirs = only(nowKeys, ourKeys);
+            const mine = only(ourKeys, nowKeys);
             say('_satellite at load is',
                 now === undefined ? 'gone' :
                     now === ours ? 'still this replacement' :
                         'a real library, hydrated over it',
-                '| members', Object.keys(w._satellite || {}).length);
+                '| members', nowKeys.length,
+                theirs !== '' ? '| theirs only: ' + theirs : '',
+                mine !== '' ? '| ours only: ' + mine : '');
         } catch ( ex ) { }
         say('reads by global:', counts.map(f => f()).join(' '));
         say('lines so far', log.length,
