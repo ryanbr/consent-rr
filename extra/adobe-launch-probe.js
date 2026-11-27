@@ -361,7 +361,7 @@
     'use strict';
     const w = window;
     const doc = w.document;
-    const BUILD = 'e45abf3f';
+    const BUILD = 'd194650a';
     const log = w.__probeLog = w.__probeLog || [];
     let where = 'top';
     try {
@@ -591,6 +591,26 @@
             return send.apply(this, args);
         };
     }
+    // Which of their cookies exist. Reading document.cookie patches
+    // nothing and a page cannot tell, so this is always on. It is
+    // here because a page worked on a warm profile and stalled on a
+    // cleared one with the same bytes and the same rules, and their
+    // own libraries write AMCV_<org>@AdobeOrg, s_ecid and mbox while
+    // this replacement writes none: a first visit never gets what a
+    // later one inherits. Absent here on a cold profile and present
+    // on a warm one would be the whole explanation.
+    const theirCookies = ( ) => {
+        try {
+            const names = String(doc.cookie).split(';')
+                .map(one => one.split('=')[0].trim())
+                .filter(name => /^(AMCV_|AMCVS_|s_ecid|s_cc|s_sq|s_fid|mbox|at_)/
+                    .test(name));
+            return names.length === 0 ? 'none' : names.join(',');
+        } catch ( ex ) {
+            return '?';
+        }
+    };
+    say('their cookies now:', theirCookies());
     // Is the page hidden, and by what? That is the blank-page question.
     const state = ( ) => {
         for ( const id of [ 'at-body-style', 'alloy-prehiding' ] ) {
@@ -708,6 +728,7 @@
                 say(...late);
             }, 5000);
         }
+        say('their cookies at load:', theirCookies());
         say('reads by global:', counts.map(f => f()).join(' '));
         say('lines so far', log.length,
             '- copy(__probeLog.join(String.fromCharCode(10)))');
