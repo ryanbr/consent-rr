@@ -361,7 +361,7 @@
     'use strict';
     const w = window;
     const doc = w.document;
-    const BUILD = 'd194650a';
+    const BUILD = '88fc6e11';
     const log = w.__probeLog = w.__probeLog || [];
     let where = 'top';
     try {
@@ -729,6 +729,17 @@
             }, 5000);
         }
         say('their cookies at load:', theirCookies());
+        // The data layer's end state. Writes to its properties are
+        // invisible here - only whole-object assignment is seen - so
+        // without this the keys are known only when the page happens
+        // to read it, which is exactly what stops happening when it
+        // stalls. {page} alone against {page,search,cpj,...} is the
+        // difference between the two outcomes of this round.
+        try {
+            if ( w.digitalData !== undefined ) {
+                say('digitalData at load:', shorten(w.digitalData));
+            }
+        } catch ( ex ) { }
         say('reads by global:', counts.map(f => f()).join(' '));
         say('lines so far', log.length,
             '- copy(__probeLog.join(String.fromCharCode(10)))');
