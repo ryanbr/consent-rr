@@ -43,6 +43,9 @@
       node tools/mutate.mjs optimizely       one of them
       node tools/mutate.mjs optimizely poll  only mutations whose name matches
 
+    Each list's suite is run unmutated first and the sweep is refused if it
+    fails: a red suite kills every mutation by the failure already in it.
+
     MUTATE_TEST_TIMEOUT and MUTATE_RUN_TIMEOUT raise the two timeouts on a
     slow machine, in milliseconds.
 
@@ -155,6 +158,19 @@ for ( const name of lists ) {
 
     console.log('\n  ' + list.resource + ', ' + chosen.length + ' mutations, ' +
         list.test);
+
+    // The suite has to pass before breaking it means anything. A sweep over
+    // a red suite reports every mutation as killed, by the failure that was
+    // already there - which looked like a kill for a mutation whose own
+    // notes say it cannot be killed.
+    const unmutated = await runSuite(list.test);
+    if ( unmutated.fails !== 0 || unmutated.hung ) {
+        console.error('  the suite does not pass unmutated: ' +
+            unmutated.fails + ' failing' + (unmutated.hung ? ', and it hung' : '') +
+            '. Nothing was swept - fix the suite first, or every mutation ' +
+            'will look killed.');
+        process.exit(1);
+    }
 
     try {
         for ( const mutation of chosen ) {

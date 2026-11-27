@@ -51,7 +51,11 @@ pointed at it. The notes below are the things that have actually gone wrong.
   is one substitution whose `from` must occur exactly once; `expected` names
   the mutations that cannot be killed, with the reason, and every other
   survivor exits 1. It edits the resource in place and puts it back, including
-  on ctrl-c. `MUTATE_TEST_TIMEOUT` and `MUTATE_RUN_TIMEOUT` raise its two
+  on ctrl-c. It runs each suite unmutated first and refuses to sweep a red
+  one, because a sweep over a red suite reports every mutation as killed by
+  the failure already in it - which once looked like a kill for a mutation
+  whose own notes say it cannot be killed.
+  `MUTATE_TEST_TIMEOUT` and `MUTATE_RUN_TIMEOUT` raise its two
   timeouts on a slow machine: cutting a run short that was going to fail
   reads as a survivor, which is the one way it can lie about the code rather
   than about itself. `.github/workflows/mutate.yml` runs the three as a

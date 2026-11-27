@@ -117,7 +117,11 @@
             for ( const part of jar.split(';') ) {
                 const at = part.indexOf('=');
                 if ( at === -1 ) { continue; }
-                if ( part.slice(0, at).trim() !== name ) { continue; }
+                let found = part.slice(0, at).trim();
+                // Theirs decodes the name it reads, so a jar written by it
+                // is matched as well as one the page wrote raw.
+                try { found = decodeURIComponent(found); } catch ( ex ) { }
+                if ( found !== name ) { continue; }
                 try {
                     return decodeURIComponent(part.slice(at + 1).trim());
                 } catch ( ex ) {
@@ -130,13 +134,21 @@
         remove: (name, options) => {
             if ( typeof name !== 'string' || name === '' ) { return; }
             const where = options && typeof options === 'object' ? options : {};
-            const bits = [
-                encodeURIComponent(name) + '=',
-                'expires=Thu, 01 Jan 1970 00:00:01 GMT',
-                'path=' + (where.path || '/'),
-            ];
-            if ( where.domain ) { bits.push('domain=' + where.domain); }
-            try { doc.cookie = bits.join('; '); } catch ( ex ) { }
+            // Both spellings when they differ: theirs encodes the name it
+            // writes, so a cookie the page set raw survives a removal that
+            // only expires the encoded one. Expiring both can only take
+            // something away.
+            const names = [ encodeURIComponent(name) ];
+            if ( names[0] !== name ) { names.push(name); }
+            for ( const spelling of names ) {
+                const bits = [
+                    spelling + '=',
+                    'expires=Thu, 01 Jan 1970 00:00:01 GMT',
+                    'path=' + (where.path || '/'),
+                ];
+                if ( where.domain ) { bits.push('domain=' + where.domain); }
+                try { doc.cookie = bits.join('; '); } catch ( ex ) { }
+            }
         },
         // A write is removed; a deletion is honoured. Three shapes, measured.
         set: (name, value, options) => {

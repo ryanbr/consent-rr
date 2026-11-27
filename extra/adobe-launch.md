@@ -675,8 +675,17 @@ ignored, and an existing cookie keeps the value it had. A deletion can
 only take data away, so it is honoured, in each of the three shapes real
 containers use: an empty value, `expires: 0`, and a bare negative day
 count, which is the DTM-era third argument their own js-cookie would not
-honour either. `remove` removes. A read answers the page about state it
-already has, over no network, so it is honoured too.
+honour either. A read answers the page about state it already has, over no
+network, so it is honoured too.
+
+`remove` removes, and expires both spellings of the name when they differ.
+Theirs encodes the name it writes and decodes the name it reads, so a jar
+can hold either - one the page wrote raw, one their library wrote encoded
+- and a removal that expires only the encoded form leaves the raw one
+behind. It did, until a re-review reproduced it: `remove("a b")` wrote
+`a%20b=` and `a b=1` stayed in the jar. Expiring both can only take
+something away, and the read decodes for the same reason in the other
+direction.
 
 **`environment.stage` is always `production`, and not derived.** The embed
 url can in principle name a staging or development build, and deriving the
@@ -705,8 +714,8 @@ record its own debug state would be writing storage.
 ## What it costs per page
 
 ```
-file on disk      11904 bytes
-injected          8960 bytes
+file on disk      12598 bytes
+injected          9654 bytes
 compile           0.063 ms (median of 200)
 boot              0.17 ms (median of 25, in jsdom)
 timers            0
@@ -718,9 +727,10 @@ requests          0
 ```
 
 Those bytes went two ways and are worth separating. An optimisation pass
-took 812 off, 9 per cent; a compatibility change - the deletion-shaped
-`cookie.set` below - put 1030 back. Net 218 more than before either, and
-compile and boot are the same within the noise of measuring them. The
+took 812 off, 9 per cent; two compatibility changes -
+the deletion-shaped `cookie.set` and the two cookie-name spellings - put
+1724 back. Net 912 more than before any of them, and compile and boot are
+the same within the noise of measuring them. The
 trade was made knowingly: a page that clears a cookie through their api
 now has it cleared.
 

@@ -203,8 +203,8 @@
   },
   {
    "name": "cookie get matches a prefix",
-   "from": "                if ( part.slice(0, at).trim() !== name ) { continue; }",
-   "to": "                if ( part.slice(0, at).trim().indexOf(name) === -1 ) { continue; }"
+   "from": "                if ( found !== name ) { continue; }",
+   "to": "                if ( found.indexOf(name) === -1 ) { continue; }"
   },
   {
    "name": "cookie set writes",
@@ -420,6 +420,21 @@
    "name": "a date is matched by instanceof",
    "from": "            const at = expires !== null && typeof expires === 'object' &&\n                typeof expires.getTime === 'function'\n                ? expires.getTime()\n                : undefined;",
    "to": "            const at = expires instanceof Date ? expires.getTime() : undefined;"
+  },
+  {
+   "name": "the name it reads is not decoded",
+   "from": "                try { found = decodeURIComponent(found); } catch ( ex ) { }",
+   "to": "                void 0;"
+  },
+  {
+   "name": "removal expires the encoded name only",
+   "from": "            if ( names[0] !== name ) { names.push(name); }",
+   "to": "            void 0;"
+  },
+  {
+   "name": "removal expires the raw name only",
+   "from": "            const names = [ encodeURIComponent(name) ];",
+   "to": "            const names = [ name ];"
   }
  ]
 }

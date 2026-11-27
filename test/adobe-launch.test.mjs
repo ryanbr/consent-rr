@@ -92,7 +92,8 @@ const bootRedirected = (src = LAUNCH_URL) => {
         }
     );
     const win = dom.window;
-    const el = win.document.querySelector('script[src*="adobedtm"]');
+    // Any of the hosts, since a site can serve the runtime itself.
+    const el = win.document.querySelector('head script[src]');
     new win.Function('el', [
         "Object.defineProperty(document, 'currentScript',",
         '{ value: el, configurable: true });',
@@ -268,6 +269,17 @@ describe('extra/adobe-launch.js, the object it publishes', ( ) => {
         const win = bootRedirected();
         assert.equal(win._satellite.environment.id, '90967d1c21d0');
         assert.equal(win._satellite.environment.stage, 'production');
+    });
+
+    it('takes the environment from a first-party path too', ( ) => {
+        // The self-hosted layout puts /launch/ in front of the two hashes,
+        // which the pattern has to step over rather than capture.
+        const win = bootRedirected(
+            'https://lightning.cnn.com/launch/7be62238e4c3/97fa00444124/' +
+            'launch-2878c87af5e3.min.js'
+        );
+        assert.equal(win._satellite.environment.id, '97fa00444124');
+        assert.equal(typeof win._satellite.getVar, 'function');
     });
 
     it('says nothing it cannot know about the property', ( ) => {
@@ -488,6 +500,23 @@ describe('extra/adobe-launch.js, cookies and callbacks', ( ) => {
         }
         // And nothing new of its own.
         assert.equal(win.document.cookie.includes('value'), false);
+    });
+
+    it('reads and removes a cookie name in either spelling', ( ) => {
+        // Theirs encodes the name it writes and decodes the name it reads,
+        // so a jar can hold either spelling: one the page wrote raw, one
+        // their own library wrote encoded. A removal that expires only the
+        // encoded form leaves the raw one behind - which it did.
+        const win = boot({
+            before: '<script>document.cookie = "a b=1; path=/";' +
+                'document.cookie = "c%20d=2; path=/";</script>',
+        });
+        const cookie = win._satellite.cookie;
+        assert.equal(cookie.get('a b'), '1');
+        assert.equal(cookie.get('c d'), '2');
+        cookie.remove('a b');
+        cookie.remove('c d');
+        assert.equal(win.document.cookie, '');
     });
 
     it('takes a deletion through the deprecated alias too', ( ) => {
