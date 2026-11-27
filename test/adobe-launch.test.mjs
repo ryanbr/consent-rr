@@ -737,6 +737,44 @@ describe('extra/adobe-launch.js, what it does not do', ( ) => {
         assert.equal(win.document.getElementById('at-body-style'), null);
     });
 
+    it('watches the head, not the document it is parsing', async ( ) => {
+        // A subtree watch on the document makes the engine build a record
+        // for every node the page parses. Measured before narrowing it:
+        // 12001 records for a page of 8000 nodes, for two ids that can only
+        // appear in the head.
+        let records = 0;
+        const rows = Array.from({ length: 500 },
+            (unused, i) => '<div class="row"><span>' + i + '</span></div>'
+        ).join('');
+        const dom = new JSDOM(
+            `<!DOCTYPE html><html><head><script>${code}</script></head>` +
+            `<body>${rows}</body></html>`,
+            {
+                runScripts: 'dangerously',
+                url: 'https://www.example.com/page',
+                virtualConsole: new VirtualConsole(),
+                beforeParse(win) {
+                    const Real = win.MutationObserver;
+                    win.MutationObserver = class {
+                        constructor(fn) {
+                            this.inner = new Real((list, obs) => {
+                                records += list.length;
+                                fn(list, obs);
+                            });
+                        }
+                        observe(...args) { return this.inner.observe(...args); }
+                        disconnect() { return this.inner.disconnect(); }
+                        takeRecords() { return this.inner.takeRecords(); }
+                    };
+                },
+            }
+        );
+        await settle(80);
+        assert.equal(dom.window.document.querySelectorAll('div.row').length,
+            500);
+        assert.ok(records < 20, records + ' records for 500 rows');
+    });
+
     it('installs no watch when the document has already loaded', async ( ) => {
         // Injected into a parsed document - the shape a redirect lands in
         // when the embed is at the end of the body - there is nothing more

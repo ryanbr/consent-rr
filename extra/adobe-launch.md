@@ -393,7 +393,10 @@ alloy-prehiding    the Web SDK, in five more
 Three passes, because the snippet can sit either side of the embed: once
 at boot for a snippet already there, then a MutationObserver while the
 head is still arriving, and once more at DOMContentLoaded, where the watch
-comes down. Nothing is watched after that - a style the page adds later is
+comes down. The watch is on the head's own children, not the document's
+subtree - measured before narrowing it, a subtree watch made the engine
+build 12001 mutation records on a page of 8000 nodes, for two ids that can
+only appear in one place. A test counts the records now. Nothing is watched after that - a style the page adds later is
 the page's own business - and no watch is installed at all when the
 document has already loaded.
 

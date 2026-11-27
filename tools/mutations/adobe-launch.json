@@ -487,6 +487,11 @@
    "name": "reveal watches after the document is ready",
    "from": "    if ( doc.readyState === 'loading' ) {",
    "to": "    if ( true ) {"
+  },
+  {
+   "name": "the watch covers the parsing document",
+   "from": "            watch.observe(doc.head || doc.documentElement || doc, {\n                childList: true,\n            });",
+   "to": "            watch.observe(doc.documentElement || doc, {\n                childList: true, subtree: true,\n            });"
   }
  ]
 }

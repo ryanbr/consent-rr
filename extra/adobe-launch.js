@@ -271,10 +271,14 @@
     // Watch while the head is still arriving and stop at the end of it.
     if ( doc.readyState === 'loading' ) {
         let watch = null;
+        // The head only, and its own children only: their snippet goes
+        // there, and a subtree watch on the document makes the engine build
+        // a record for every node the page parses - 12000 of them on a page
+        // of 8000, for two ids that can only appear in one place.
         try {
             watch = new w.MutationObserver(reveal);
-            watch.observe(doc.documentElement || doc, {
-                childList: true, subtree: true,
+            watch.observe(doc.head || doc.documentElement || doc, {
+                childList: true,
             });
         } catch ( ex ) {
             watch = null;
