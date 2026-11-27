@@ -549,6 +549,23 @@ describe('extra/adobe-launch.js, cookies and callbacks', ( ) => {
         }
     });
 
+    it('lets a page hang its own members on the object', ( ) => {
+        // Measured: one container reads a data element at the path
+        // "_satellite.db.currentOPrAURL", so something outside the runtime
+        // writes `db` onto the object - and another reads `_satellite._db`
+        // defensively. A sealed or frozen object would break that silently
+        // in strict mode and loudly outside it.
+        const win = boot();
+        assert.equal(Object.isExtensible(win._satellite), true);
+        win._satellite.db = { currentOPrAURL: 'https://example.com/apply' };
+        assert.equal(win._satellite.db.currentOPrAURL,
+            'https://example.com/apply');
+        win._satellite._db = { actionLabel: 'continue' };
+        assert.equal(win._satellite._db.actionLabel, 'continue');
+        // And the api it was published with is still there beside them.
+        assert.equal(typeof win._satellite.getVar, 'function');
+    });
+
     it('answers getVisitorId with null, as their own stub does', ( ) => {
         const win = boot();
         assert.equal(win._satellite.getVisitorId(), null);

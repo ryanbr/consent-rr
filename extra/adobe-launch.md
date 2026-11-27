@@ -541,12 +541,13 @@ is the one the runtime that was read reports, 29.1.0.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the fifteen runtimes and the fifty-six
+Every `_satellite` reference in the sixteen runtimes and the sixty-two
 rule components was counted and diffed against what this publishes. The
-union is exactly the 22 members here, plus one outlier:
-`_satellite.geVar`, a typo in one property's own custom code, which is
-undefined against their library too - so matching theirs means not adding
-it.
+union is exactly the 22 members here, plus two typos in properties' own
+custom code: `_satellite.geVar`, and `_satellite.looger.error(e)` inside a
+`catch`, which against the real library throws a second TypeError out of
+the error handler. Both are undefined against their library too, so
+matching theirs means not adding them.
 
 A cross-check that does not depend on counting references: the members a
 runtime assigns directly, as `_satellite.X = ...` rather than through its
@@ -680,21 +681,21 @@ at once.
 
 ## What is not done here
 
-**The corpus, and what it still cannot say.** Fifteen runtimes were read
-in full, fifty-six rule components and one extension libraryCode file,
-across twenty-one properties - eighteen identified by the hash in their
+**The corpus, and what it still cannot say.** Sixteen runtimes were read
+in full, sixty-two rule components and one extension libraryCode file,
+across twenty-two properties - nineteen identified by the hash in their
 path, plus three flat `launch-EN<id>.min.js` embeds whose url carries no property
 at all - and four of the pages that embed them. The counts are derived
 from the files rather than remembered: every rule component names its own
 url inside its `__registerScript` call, so the properties can be counted
 by reading them.
 
-All fifteen runtimes are turbine 29.1.0 and carry the same `_satellite`
+All sixteen runtimes are turbine 29.1.0 and carry the same `_satellite`
 surface, checked three independent ways - the members each one references,
 the members each one assigns directly, and their own string literals
 rather than minified variable names. tealium and perimeterx were written
 against dozens of builds each, so this is still the thinnest corpus of the
-four, and what it cannot tell is how a property unlike these twenty-one
+four, and what it cannot tell is how a property unlike these twenty-two
 behaves.
 
 Two of those runtimes were worth reading for one line each: the sixth is
@@ -730,10 +731,19 @@ _satellite.safeCheck = function (obj) {
 }
 ```
 
-`safeCheck` is in one of fifteen runtimes. This is the boundary tealium's
+`safeCheck` is in one of sixteen runtimes. This is the boundary tealium's
 notes draw around per-tenant extension members, with one addition: a
 container can extend `_satellite` itself, so a member a census finds is
 not necessarily Adobe's.
+
+A property can also *read* members that something outside the runtime
+wrote. One has a `javascriptVariable` data element whose path is
+`"_satellite.db.currentOPrAURL"`, and another reads `_satellite._db`
+defensively, falling back to `adobeDataLayer.getState()`. No runtime
+assigns either, so the writer is the page or another tag - which is why
+this publishes an extensible object, with a test pinning
+`Object.isExtensible` and both of those names. Sealing it would break that
+silently in strict mode and loudly outside it.
 
 **Nothing for the RC files, by choice.** See above: their loader resolves
 a failed one to `undefined` and the rule carries on.
