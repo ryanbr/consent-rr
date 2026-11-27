@@ -28,6 +28,7 @@ strings and function bodies in this document are theirs.
 - [Field evidence, from the page that reported it broken](#field-evidence-from-the-page-that-reported-it-broken)
 - [The decisions](#the-decisions)
 - [What it costs per page](#what-it-costs-per-page)
+- [The loaded callback, and when it can be called](#the-loaded-callback-and-when-it-can-be-called)
 - [The mutation sweep](#the-mutation-sweep)
 - [The probe, for a page that breaks under this](#the-probe-for-a-page-that-breaks-under-this)
 - [What is not done here](#what-is-not-done-here)
@@ -919,6 +920,41 @@ ways, all five methods on `Storage.prototype`, `fetch`, `sendBeacon`,
 `XMLHttpRequest`, script insertion, and `addEventListener` on window and
 document. The expected record is empty - unlike the other three, this one
 installs no listener at all, because it has no lifecycle to run.
+
+## The loaded callback, and when it can be called
+
+`window.__satelliteLoadedCallback` is a legacy hook a page defines to be
+told the library is up. No runtime in the corpus of 123 bundled files
+calls it, while 23 of them publish `pageBottom`, so it is a leftover
+rather than something live - but a page that defines it and is never
+called waits forever, which is the failure mode this whole file exists to
+avoid, so it is answered.
+
+When was wrong until now. The check ran once, at `document_start`, where
+the page below does not exist yet: an inline script that is about to
+define the callback has not run. So the call could only ever fire for the
+redirect delivery, which runs at the embed's own position after earlier
+inline scripts, and never for the scriptlet delivery - the delivery every
+Chromium user gets. That is the same mistake AGENTS.md records for tags a
+consent manager parks.
+
+It now runs twice, at install and again at `DOMContentLoaded`, at most
+once in total, and it rides the listener the pre-hiding reveal already
+registers instead of adding a second one, because a test asserts this file
+touches the page exactly once and that is worth keeping.
+
+One subtlety the sweep forced out: the guard has to be `typeof fn !==
+'function'` and not `fn === undefined`. Reaching the call with a number
+throws into the catch, which from the page looks the same - except the
+callback has been marked as told, so a real one defined a moment later
+never runs. A page that sets the property to something else first and the
+function afterwards is what tells them apart, and that is now a test. The
+equivalent mutant this replaced has been removed from the sweep's expected
+list.
+
+This does not fix the property that reported a stall. The probe showed
+that page never defines the callback at all. It is a gap for whichever
+page does.
 
 ## The mutation sweep
 

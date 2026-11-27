@@ -1,562 +1,576 @@
 {
- "resource": "extra/adobe-launch.js",
- "test": "test/adobe-launch.test.mjs",
- "expected": {
-  "setVar takes a non-string name": "getVar answers an empty string for a name that is not a string before it ever looks in the map, so a non-string key can be written but never read back - the guard is unreachable, and kept because the map would otherwise grow keys nothing can reach",
-  "calls a callback that is not one": "calling a __satelliteLoadedCallback that is not a function throws inside the try that is there for a callback which throws, so on its own this cannot be seen. Forced together with that try removed it is an uncaught error on the page, and that pair is killed",
-  "no reveal at the end of the head": "the watch catches the snippet during parsing, so this second pass is reachable only when new MutationObserver threw - it is the belt under that, and nothing in a test can make it throw",
-  "no watch while the head arrives": "the watch reveals on the microtask after the snippet script, and the DOMContentLoaded pass reveals a tick later, so the two differ only in timing. jsdom does not drain microtasks between inline scripts while parsing, so the suite cannot see the difference - in a browser it is a blank page for a microtask rather than until the head is finished"
- },
- "mutations": [
-  {
-   "name": "does not publish",
-   "from": "    w._satellite = satellite;",
-   "to": "    void satellite;"
-  },
-  {
-   "name": "no stand-aside for a real runtime",
-   "from": "    if ( existing && typeof existing.getVar === 'function' ) {\n        return;\n    }",
-   "to": "    if ( false ) {\n        return;\n    }"
-  },
-  {
-   "name": "stands aside for any object",
-   "from": "typeof existing.getVar === 'function' ) {",
-   "to": "existing !== undefined ) {"
-  },
-  {
-   "name": "drops the monitors a page set",
-   "from": "    const satellite = existing !== null && typeof existing === 'object'\n        ? existing\n        : {};",
-   "to": "    const satellite = {};"
-  },
-  {
-   "name": "no monitors array at all",
-   "from": "    if ( Array.isArray(satellite._monitors) === false ) {\n        satellite._monitors = [];\n    }",
-   "to": "    void 0;"
-  },
-  {
-   "name": "overwrites the monitors array",
-   "from": "    if ( Array.isArray(satellite._monitors) === false ) {",
-   "to": "    if ( true ) {"
-  },
-  {
-   "name": "no identity at all",
-   "from": "    const environment = environmentId();",
-   "to": "    const environment = '';"
-  },
-  {
-   "name": "no nested shape",
-   "from": "            const found =\n                /\\/[0-9a-f]{6,}\\/([0-9a-f]{6,})\\/launch-[0-9A-Za-z]+\\./\n                    .exec(src);",
-   "to": "            const found = null;"
-  },
-  {
-   "name": "takes the property hash as the environment",
-   "from": "                /\\/[0-9a-f]{6,}\\/([0-9a-f]{6,})\\/launch-[0-9A-Za-z]+\\./",
-   "to": "                /\\/([0-9a-f]{6,})\\/[0-9a-f]{6,}\\/launch-[0-9A-Za-z]+\\./"
-  },
-  {
-   "name": "no currentScript",
-   "from": "            const el = doc.currentScript;",
-   "to": "            const el = null;"
-  },
-  {
-   "name": "environment is invented",
-   "from": "    satellite.environment = { id: environment, stage: 'production' };",
-   "to": "    satellite.environment = { id: environment || 'EN0', stage: 'production' };"
-  },
-  {
-   "name": "stage is not production",
-   "from": "stage: 'production' };",
-   "to": "stage: 'development' };"
-  },
-  {
-   "name": "a property name is invented",
-   "from": "    satellite.property = { name: '', id: '' };",
-   "to": "    satellite.property = { name: 'property', id: ids.property };"
-  },
-  {
-   "name": "an org id is invented",
-   "from": "    satellite.company = { orgId: '' };",
-   "to": "    satellite.company = { orgId: 'ADBEORG@AdobeOrg' };"
-  },
-  {
-   "name": "buildInfo is not minified",
-   "from": "        minified: true,",
-   "to": "        minified: false,"
-  },
-  {
-   "name": "no turbine version",
-   "from": "        turbineVersion: TURBINE_VERSION,",
-   "to": "        turbineVersion: '',"
-  },
-  {
-   "name": "getVar answers undefined",
-   "from": "        if ( vars.has(name) ) { return vars.get(name); }",
-   "to": "        if ( vars.has(name) ) { return vars.get(name); }\n        return undefined;"
-  },
-  {
-   "name": "getVar throws on a bad name",
-   "from": "        if ( typeof name !== 'string' ) { return ''; }",
-   "to": "        if ( typeof name !== 'string' ) { return name.toString(); }"
-  },
-  {
-   "name": "getVar never reads a custom var",
-   "from": "        if ( vars.has(name) ) { return vars.get(name); }",
-   "to": "        void vars;"
-  },
-  {
-   "name": "setVar writes nothing",
-   "from": "        vars.set(name, value);",
-   "to": "        void value;"
-  },
-  {
-   "name": "setVar ignores the object form",
-   "from": "        if ( name !== null && typeof name === 'object' ) {\n            for ( const key of Object.keys(name) ) {\n                vars.set(key, name[key]);\n            }\n            return;\n        }",
-   "to": "        void 0;"
-  },
-  {
-   "name": "setVar takes a non-string name",
-   "from": "        if ( typeof name !== 'string' ) { return; }\n        vars.set(name, value);",
-   "to": "        vars.set(name, value);"
-  },
-  {
-   "name": "logs with debug off",
-   "from": "        if ( debugging === false ) { return; }",
-   "to": "        void 0;"
-  },
-  {
-   "name": "debug cannot be turned on",
-   "from": "    satellite.setDebug = value => { debugging = value === true; };",
-   "to": "    satellite.setDebug = ( ) => { };"
-  },
-  {
-   "name": "debug cannot be turned off",
-   "from": "    satellite.setDebug = value => { debugging = value === true; };",
-   "to": "    satellite.setDebug = ( ) => { debugging = true; };"
-  },
-  {
-   "name": "debug starts on",
-   "from": "    let debugging = false;",
-   "to": "    let debugging = true;"
-  },
-  {
-   "name": "track says nothing",
-   "from": "        logger.log('\"' + name + '\" does not match any direct call identifiers.');",
-   "to": "        void name;"
-  },
-  {
-   "name": "track does not trim",
-   "from": "        const name = typeof identifier === 'string'\n            ? identifier.trim()\n            : String(identifier);",
-   "to": "        const name = String(identifier);"
-  },
-  {
-   "name": "track throws on a bad call",
-   "from": "        const name = typeof identifier === 'string'\n            ? identifier.trim()\n            : String(identifier);",
-   "to": "        const name = identifier.trim();"
-  },
-  {
-   "name": "track claims a rule ran",
-   "from": "        logger.log('\"' + name + '\" does not match any direct call identifiers.');",
-   "to": "        logger.log('Rules using the direct call event type with identifier \"' + name + '\" have been triggered.');"
-  },
-  {
-   "name": "notify ignores its level",
-   "from": "        logger[LEVELS[level] || 'log'](message);",
-   "to": "        logger.log(message);"
-  },
-  {
-   "name": "notify maps three to warn",
-   "from": "    const LEVELS = { 3: 'info', 4: 'warn', 5: 'error' };",
-   "to": "    const LEVELS = { 3: 'warn', 4: 'warn', 5: 'error' };"
-  },
-  {
-   "name": "notify says nothing is deprecated",
-   "from": "        logger.deprecation('_satellite.notify is deprecated. Please use the ' +\n            '_satellite.logger API.');",
-   "to": "        void 0;"
-  },
-  {
-   "name": "the container warns every read",
-   "from": "                if ( warned === false ) {",
-   "to": "                if ( true ) {"
-  },
-  {
-   "name": "the container never warns",
-   "from": "                if ( warned === false ) {",
-   "to": "                if ( false ) {"
-  },
-  {
-   "name": "the container is not shaped like theirs",
-   "from": "        dataElements: {},\n        rules: [],\n        extensions: {},",
-   "to": "        dataElements: {},"
-  },
-  {
-   "name": "a logger level goes missing",
-   "from": "    for ( const level of [ 'log', 'info', 'warn', 'error', 'debug' ] ) {",
-   "to": "    for ( const level of [ 'log', 'info', 'error', 'debug' ] ) {"
-  },
-  {
-   "name": "cookie get reads nothing",
-   "from": "            try { jar = doc.cookie || ''; } catch ( ex ) { }",
-   "to": "            void doc;"
-  },
-  {
-   "name": "cookie get does not decode",
-   "from": "                return decode(part.slice(at + 1).trim());",
-   "to": "                return part.slice(at + 1).trim();"
-  },
-  {
-   "name": "cookie get matches a prefix",
-   "from": "                if ( decode(part.slice(0, at).trim()) !== name ) { continue; }",
-   "to": "                if ( decode(part.slice(0, at).trim()).indexOf(name) === -1 ) { continue; }"
-  },
-  {
-   "name": "cookie set writes",
-   "from": "            if ( gone ) { cookie.remove(name, opts); }",
-   "to": "            try { doc.cookie = name + '=' + value + '; path=/'; } catch ( ex ) { }"
-  },
-  {
-   "name": "setCookie writes through",
-   "from": "        cookie.set(name, value, days !== undefined ? { expires: days } : {});",
-   "to": "        try { doc.cookie = name + '=' + value + '; path=/'; } catch ( ex ) { }"
-  },
-  {
-   "name": "cookie remove does nothing",
-   "from": "                try { doc.cookie = line; } catch ( ex ) { }",
-   "to": "                void line;"
-  },
-  {
-   "name": "remove writes a value, not an expiry",
-   "from": "                let line = spelling + '=; expires=Thu, 01 Jan 1970 00:00:01' +\n                    ' GMT; path=' + (where.path || '/');",
-   "to": "                let line = spelling + '=; expires=Fri, 01 Jan 2100 00:00:01' +\n                    ' GMT; path=' + (where.path || '/');"
-  },
-  {
-   "name": "readCookie reads nothing",
-   "from": "        return cookie.get(name);",
-   "to": "        return undefined;"
-  },
-  {
-   "name": "removeCookie removes nothing",
-   "from": "        cookie.remove(name);",
-   "to": "        void name;"
-  },
-  {
-   "name": "the aliases say nothing about deprecation",
-   "from": "        logger.deprecation('_satellite.readCookie is deprecated. Please use ' +\n            '_satellite.cookie.get(\"' + name + '\").');",
-   "to": "        void 0;"
-  },
-  {
-   "name": "no loaded callback",
-   "from": "        try { w.__satelliteLoadedCallback(satellite); } catch ( ex ) { }",
-   "to": "        void satellite;"
-  },
-  {
-   "name": "a throwing callback escapes",
-   "from": "        try { w.__satelliteLoadedCallback(satellite); } catch ( ex ) { }",
-   "to": "        w.__satelliteLoadedCallback(satellite);"
-  },
-  {
-   "name": "calls a callback that is not one",
-   "from": "    if ( typeof w.__satelliteLoadedCallback === 'function' ) {",
-   "to": "    if ( w.__satelliteLoadedCallback !== undefined ) {"
-  },
-  {
-   "name": "registerScript runs the code",
-   "from": "    satellite.__registerScript = ( ) => { };",
-   "to": "    satellite.__registerScript = (url, source) => { void url; try { new w.Function(source)(); } catch ( ex ) { } };"
-  },
-  {
-   "name": "no registerScript at all",
-   "from": "    satellite.__registerScript = ( ) => { };",
-   "to": "    void 0;"
-  },
-  {
-   "name": "pageBottom is missing",
-   "from": "    satellite.pageBottom = ( ) => { };",
-   "to": "    void 0;"
-  },
-  {
-   "name": "getVisitorId invents an id",
-   "from": "        getMarketingCloudVisitorID: answer(''),",
-   "to": "        getMarketingCloudVisitorID: answer('12345678901234567890123456789012345678'),"
-  },
-  {
-   "name": "writes a cookie",
-   "from": "    const environment = environmentId();",
-   "to": "    const environment = environmentId();\n    try { doc.cookie = 's_ecid=MCMID|1; path=/'; } catch ( ex ) { }"
-  },
-  {
-   "name": "reads cookies at boot",
-   "from": "    const environment = environmentId();",
-   "to": "    const environment = environmentId();\n    void doc.cookie;"
-  },
-  {
-   "name": "writes storage",
-   "from": "    const environment = environmentId();",
-   "to": "    const environment = environmentId();\n    try { w.localStorage.setItem('com.adobe.reactor.dataElements', '{}'); } catch ( ex ) { }"
-  },
-  {
-   "name": "reads storage",
-   "from": "    const environment = environmentId();",
-   "to": "    const environment = environmentId();\n    try { w.localStorage.getItem('com.adobe.reactor.debug'); } catch ( ex ) { }"
-  },
-  {
-   "name": "beacons out",
-   "from": "    const environment = environmentId();",
-   "to": "    const environment = environmentId();\n    try { w.navigator.sendBeacon('https://example.demdex.net/id', '{}'); } catch ( ex ) { }"
-  },
-  {
-   "name": "fetches a rule component",
-   "from": "    const environment = environmentId();",
-   "to": "    const environment = environmentId();\n    try { w.fetch('https://assets.adobedtm.com/a/b/c/RC1-source.min.js'); } catch ( ex ) { }"
-  },
-  {
-   "name": "appends a script",
-   "from": "    const environment = environmentId();",
-   "to": "    const environment = environmentId();\n    try { const t = doc.createElement('script'); t.src = 'https://assets.adobedtm.com/a/b/c/RC1-source.min.js'; (doc.head || doc.documentElement).appendChild(t); } catch ( ex ) { }"
-  },
-  {
-   "name": "adds a listener",
-   "from": "    const environment = environmentId();",
-   "to": "    const environment = environmentId();\n    w.addEventListener('message', ( ) => { });"
-  },
-  {
-   "name": "leaves a timer",
-   "from": "    const environment = environmentId();",
-   "to": "    const environment = environmentId();\n    w.setInterval(( ) => { }, 1000);"
-  },
-  {
-   "name": "pollutes Object.prototype",
-   "from": "    const environment = environmentId();",
-   "to": "    const environment = environmentId();\n    Object.prototype.polluted = true;"
-  },
-  {
-   "name": "wraps fetch",
-   "from": "    const environment = environmentId();",
-   "to": "    const environment = environmentId();\n    const of_ = w.fetch; w.fetch = (...a) => of_.apply(w, a);"
-  },
-  {
-   "name": "publishes unwritable",
-   "from": "    w._satellite = satellite;",
-   "to": "    Object.defineProperty(w, '_satellite', { value: satellite, writable: false, configurable: false });"
-  },
-  {
-   "name": "both callback guards forced",
-   "from": "    if ( typeof w.__satelliteLoadedCallback === 'function' ) {\n        try { w.__satelliteLoadedCallback(satellite); } catch ( ex ) { }\n    }",
-   "to": "    if ( w.__satelliteLoadedCallback !== undefined ) {\n        w.__satelliteLoadedCallback(satellite);\n    }"
-  },
-  {
-   "name": "reads an environment out of the satelliteLib url",
-   "from": "                /\\/[0-9a-f]{6,}\\/([0-9a-f]{6,})\\/launch-[0-9A-Za-z]+\\./",
-   "to": "                /\\/[0-9a-f]{6,}\\/(?:([0-9a-f]{6,})\\/)?(?:launch|satelliteLib)-[0-9A-Za-z]+\\./"
-  },
-  {
-   "name": "the satelliteLib rule goes missing",
-   "from": "//   ||assets.adobedtm.com/*/satelliteLib-*.js$script,redirect=adobe-launch.js\n",
-   "to": ""
-  },
-  {
-   "name": "the flat rule goes missing",
-   "from": "//   ||assets.adobedtm.com/launch-*.min.js$script,redirect=adobe-launch.js\n",
-   "to": ""
-  },
-  {
-   "name": "a rule is widened to the host",
-   "from": "//   ||assets.adobedtm.com/*/launch-*.min.js$script,redirect=adobe-launch.js",
-   "to": "//   ||assets.adobedtm.com/*$script,redirect=adobe-launch.js"
-  },
-  {
-   "name": "getVar is published read-only",
-   "from": "    satellite.getVar = getVar;",
-   "to": "    Object.defineProperty(satellite, 'getVar', { value: getVar, enumerable: true, writable: false });"
-  },
-  {
-   "name": "the object is sealed",
-   "from": "    satellite.container = container;",
-   "to": "    satellite.container = container;\n    Object.seal(satellite);"
-  },
-  {
-   "name": "the first-party rule goes missing",
-   "from": "//   ||lightning.cnn.com/launch/*/launch-*.min.js$script,redirect=adobe-launch.js\n",
-   "to": ""
-  },
-  {
-   "name": "the first-party rule is widened to the path",
-   "from": "//   ||lightning.cnn.com/launch/*/launch-*.min.js$script,redirect=adobe-launch.js",
-   "to": "//   /launch/*/launch-*.min.js$script,redirect=adobe-launch.js"
-  },
-  {
-   "name": "set ignores a deletion",
-   "from": "            if ( gone ) { cookie.remove(name, opts); }",
-   "to": "            void gone;"
-  },
-  {
-   "name": "set deletes whatever it is handed",
-   "from": "            if ( gone ) { cookie.remove(name, opts); }",
-   "to": "            cookie.remove(name, opts);"
-  },
-  {
-   "name": "a bare day count is ignored",
-   "from": "            const expires = typeof options === 'number' ? options : opts.expires;",
-   "to": "            const expires = opts.expires;"
-  },
-  {
-   "name": "an empty value is not a deletion",
-   "from": "            const gone = value === '' || value === null ||\n                value === undefined ||\n                (typeof expires === 'number' && expires <= 0) ||\n                (stamp !== undefined && stamp <= Date.now());",
-   "to": "            const gone = false ||\n                (typeof expires === 'number' && expires <= 0) ||\n                (stamp !== undefined && stamp <= Date.now());"
-  },
-  {
-   "name": "a past expiry is not a deletion",
-   "from": "            const gone = value === '' || value === null ||\n                value === undefined ||\n                (typeof expires === 'number' && expires <= 0) ||\n                (stamp !== undefined && stamp <= Date.now());",
-   "to": "            const gone = value === '' || value === null ||\n                value === undefined ||\n                (typeof expires === 'number' && expires <= 0) ||\n                false;"
-  },
-  {
-   "name": "a date is matched by instanceof",
-   "from": "            const stamp = expires && typeof expires.getTime === 'function'\n                ? expires.getTime()\n                : undefined;",
-   "to": "            const stamp = expires instanceof Date ? expires.getTime() : undefined;"
-  },
-  {
-   "name": "the name it reads is not decoded",
-   "from": "                if ( decode(part.slice(0, at).trim()) !== name ) { continue; }",
-   "to": "                if ( part.slice(0, at).trim() !== name ) { continue; }"
-  },
-  {
-   "name": "removal expires the encoded name only",
-   "from": "            if ( names[0] !== name ) { names.push(name); }",
-   "to": "            void 0;"
-  },
-  {
-   "name": "removal expires the raw name only",
-   "from": "            const names = [ encodeURIComponent(name) ];",
-   "to": "            const names = [ name ];"
-  },
-  {
-   "name": "getVar coerces a stored value",
-   "from": "        if ( vars.has(name) ) { return vars.get(name); }",
-   "to": "        if ( vars.has(name) ) { return vars.get(name) || ''; }"
-  },
-  {
-   "name": "a rule blocks instead of redirecting",
-   "from": "//   ||assets.adobedtm.com/satelliteLib-*.js$script,redirect=adobe-launch.js",
-   "to": "//   ||assets.adobedtm.com/satelliteLib-*.js$script"
-  },
-  {
-   "name": "a malformed escape escapes the decoder",
-   "from": "        try { return decodeURIComponent(text); } catch ( ex ) { return text; }",
-   "to": "        return decodeURIComponent(text);"
-  },
-  {
-   "name": "no reveal at all",
-   "from": "    reveal();\n    // The snippet usually sits beside the embed",
-   "to": "    // The snippet usually sits beside the embed"
-  },
-  {
-   "name": "only one of the two ids",
-   "from": "    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];",
-   "to": "    const HIDDEN = [ 'at-body-style' ];"
-  },
-  {
-   "name": "no watch while the head arrives",
-   "from": "            watch = new w.MutationObserver(reveal);",
-   "to": "            watch = null;"
-  },
-  {
-   "name": "no reveal at the end of the head",
-   "from": "        doc.addEventListener('DOMContentLoaded', ( ) => {\n            reveal();",
-   "to": "        doc.addEventListener('DOMContentLoaded', ( ) => {\n            void reveal;"
-  },
-  {
-   "name": "the watch is never stopped",
-   "from": "            if ( watch !== null ) { watch.disconnect(); watch = null; }",
-   "to": "            void watch;"
-  },
-  {
-   "name": "reveal takes a page style too",
-   "from": "    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];",
-   "to": "    const HIDDEN = [ 'at-body-style', 'alloy-prehiding', 'page-style' ];"
-  },
-  {
-   "name": "reveal watches after the document is ready",
-   "from": "    if ( doc.readyState === 'loading' ) {",
-   "to": "    if ( true ) {"
-  },
-  {
-   "name": "the watch covers the parsing document",
-   "from": "            watch.observe(doc.head || doc.documentElement || doc, {\n                childList: true,\n            });",
-   "to": "            watch.observe(doc.documentElement || doc, {\n                childList: true, subtree: true,\n            });"
-  },
-  {
-   "name": "getVisitorId answers null again",
-   "from": "    satellite.getVisitorId = ( ) => visitor;",
-   "to": "    satellite.getVisitorId = ( ) => null;"
-  },
-  {
-   "name": "the visitor api calls no callback",
-   "from": "        if ( typeof callback === 'function' ) {\n            try { callback(given); } catch ( ex ) { }\n        }",
-   "to": "        void callback;"
-  },
-  {
-   "name": "a callback that throws escapes",
-   "from": "            try { callback(given); } catch ( ex ) { }",
-   "to": "            callback(given);"
-  },
-  {
-   "name": "a visitor member goes missing",
-   "from": "        getAnalyticsVisitorID: answer(''),",
-   "to": ""
-  },
-  {
-   "name": "isClientSide answers true",
-   "from": "        isClientSideMarketingCloudVisitorID: answer(false),",
-   "to": "        isClientSideMarketingCloudVisitorID: answer(true),"
-  },
-  {
-   "name": "the same object is handed out twice",
-   "from": "        const given = value !== null && typeof value === 'object' ? {} : value;",
-   "to": "        const given = value;"
-  },
-  {
-   "name": "sets their double-init flag",
-   "from": "    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];",
-   "to": "    try { w.__satelliteLoaded = true; } catch ( ex ) { }\n    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];"
-  },
-  {
-   "name": "no target api",
-   "from": "        if ( w.adobe.target === undefined ) { w.adobe.target = targetApi; }",
-   "to": "        void targetApi;"
-  },
-  {
-   "name": "target overwrites a real one",
-   "from": "        if ( w.adobe.target === undefined ) { w.adobe.target = targetApi; }",
-   "to": "        w.adobe.target = targetApi;"
-  },
-  {
-   "name": "getOffer calls no callback",
-   "from": "            const done = options && options.success;\n            if ( typeof done === 'function' ) {\n                try { done([]); } catch ( ex ) { }\n            }",
-   "to": "            void options;"
-  },
-  {
-   "name": "getOffers settles with nothing",
-   "from": "            return settle(offers);",
-   "to": "            return settle(undefined);"
-  },
-  {
-   "name": "triggerView is missing",
-   "from": "        triggerView: noopfn,",
-   "to": ""
-  },
-  {
-   "name": "no Visitor global",
-   "from": "            w.Visitor = Visitor;",
-   "to": "            void Visitor;"
-  },
-  {
-   "name": "Visitor overwrites a real one",
-   "from": "        if ( w.Visitor === undefined ) {",
-   "to": "        if ( true ) {"
-  },
-  {
-   "name": "adobe namespace clobbered",
-   "from": "        w.adobe = w.adobe !== null && typeof w.adobe === 'object'\n            ? w.adobe\n            : {};",
-   "to": "        w.adobe = {};"
-  }
- ]
+    "resource": "extra/adobe-launch.js",
+    "test": "test/adobe-launch.test.mjs",
+    "expected": {
+        "setVar takes a non-string name": "getVar answers an empty string for a name that is not a string before it ever looks in the map, so a non-string key can be written but never read back - the guard is unreachable, and kept because the map would otherwise grow keys nothing can reach",
+        "no reveal at the end of the head": "the watch catches the snippet during parsing, so this second pass is reachable only when new MutationObserver threw - it is the belt under that, and nothing in a test can make it throw",
+        "no watch while the head arrives": "the watch reveals on the microtask after the snippet script, and the DOMContentLoaded pass reveals a tick later, so the two differ only in timing. jsdom does not drain microtasks between inline scripts while parsing, so the suite cannot see the difference - in a browser it is a blank page for a microtask rather than until the head is finished"
+    },
+    "mutations": [
+        {
+            "name": "does not publish",
+            "from": "    w._satellite = satellite;",
+            "to": "    void satellite;"
+        },
+        {
+            "name": "no stand-aside for a real runtime",
+            "from": "    if ( existing && typeof existing.getVar === 'function' ) {\n        return;\n    }",
+            "to": "    if ( false ) {\n        return;\n    }"
+        },
+        {
+            "name": "stands aside for any object",
+            "from": "typeof existing.getVar === 'function' ) {",
+            "to": "existing !== undefined ) {"
+        },
+        {
+            "name": "drops the monitors a page set",
+            "from": "    const satellite = existing !== null && typeof existing === 'object'\n        ? existing\n        : {};",
+            "to": "    const satellite = {};"
+        },
+        {
+            "name": "no monitors array at all",
+            "from": "    if ( Array.isArray(satellite._monitors) === false ) {\n        satellite._monitors = [];\n    }",
+            "to": "    void 0;"
+        },
+        {
+            "name": "overwrites the monitors array",
+            "from": "    if ( Array.isArray(satellite._monitors) === false ) {",
+            "to": "    if ( true ) {"
+        },
+        {
+            "name": "no identity at all",
+            "from": "    const environment = environmentId();",
+            "to": "    const environment = '';"
+        },
+        {
+            "name": "no nested shape",
+            "from": "            const found =\n                /\\/[0-9a-f]{6,}\\/([0-9a-f]{6,})\\/launch-[0-9A-Za-z]+\\./\n                    .exec(src);",
+            "to": "            const found = null;"
+        },
+        {
+            "name": "takes the property hash as the environment",
+            "from": "                /\\/[0-9a-f]{6,}\\/([0-9a-f]{6,})\\/launch-[0-9A-Za-z]+\\./",
+            "to": "                /\\/([0-9a-f]{6,})\\/[0-9a-f]{6,}\\/launch-[0-9A-Za-z]+\\./"
+        },
+        {
+            "name": "no currentScript",
+            "from": "            const el = doc.currentScript;",
+            "to": "            const el = null;"
+        },
+        {
+            "name": "environment is invented",
+            "from": "    satellite.environment = { id: environment, stage: 'production' };",
+            "to": "    satellite.environment = { id: environment || 'EN0', stage: 'production' };"
+        },
+        {
+            "name": "stage is not production",
+            "from": "stage: 'production' };",
+            "to": "stage: 'development' };"
+        },
+        {
+            "name": "a property name is invented",
+            "from": "    satellite.property = { name: '', id: '' };",
+            "to": "    satellite.property = { name: 'property', id: ids.property };"
+        },
+        {
+            "name": "an org id is invented",
+            "from": "    satellite.company = { orgId: '' };",
+            "to": "    satellite.company = { orgId: 'ADBEORG@AdobeOrg' };"
+        },
+        {
+            "name": "buildInfo is not minified",
+            "from": "        minified: true,",
+            "to": "        minified: false,"
+        },
+        {
+            "name": "no turbine version",
+            "from": "        turbineVersion: TURBINE_VERSION,",
+            "to": "        turbineVersion: '',"
+        },
+        {
+            "name": "getVar answers undefined",
+            "from": "        if ( vars.has(name) ) { return vars.get(name); }",
+            "to": "        if ( vars.has(name) ) { return vars.get(name); }\n        return undefined;"
+        },
+        {
+            "name": "getVar throws on a bad name",
+            "from": "        if ( typeof name !== 'string' ) { return ''; }",
+            "to": "        if ( typeof name !== 'string' ) { return name.toString(); }"
+        },
+        {
+            "name": "getVar never reads a custom var",
+            "from": "        if ( vars.has(name) ) { return vars.get(name); }",
+            "to": "        void vars;"
+        },
+        {
+            "name": "setVar writes nothing",
+            "from": "        vars.set(name, value);",
+            "to": "        void value;"
+        },
+        {
+            "name": "setVar ignores the object form",
+            "from": "        if ( name !== null && typeof name === 'object' ) {\n            for ( const key of Object.keys(name) ) {\n                vars.set(key, name[key]);\n            }\n            return;\n        }",
+            "to": "        void 0;"
+        },
+        {
+            "name": "setVar takes a non-string name",
+            "from": "        if ( typeof name !== 'string' ) { return; }\n        vars.set(name, value);",
+            "to": "        vars.set(name, value);"
+        },
+        {
+            "name": "logs with debug off",
+            "from": "        if ( debugging === false ) { return; }",
+            "to": "        void 0;"
+        },
+        {
+            "name": "debug cannot be turned on",
+            "from": "    satellite.setDebug = value => { debugging = value === true; };",
+            "to": "    satellite.setDebug = ( ) => { };"
+        },
+        {
+            "name": "debug cannot be turned off",
+            "from": "    satellite.setDebug = value => { debugging = value === true; };",
+            "to": "    satellite.setDebug = ( ) => { debugging = true; };"
+        },
+        {
+            "name": "debug starts on",
+            "from": "    let debugging = false;",
+            "to": "    let debugging = true;"
+        },
+        {
+            "name": "track says nothing",
+            "from": "        logger.log('\"' + name + '\" does not match any direct call identifiers.');",
+            "to": "        void name;"
+        },
+        {
+            "name": "track does not trim",
+            "from": "        const name = typeof identifier === 'string'\n            ? identifier.trim()\n            : String(identifier);",
+            "to": "        const name = String(identifier);"
+        },
+        {
+            "name": "track throws on a bad call",
+            "from": "        const name = typeof identifier === 'string'\n            ? identifier.trim()\n            : String(identifier);",
+            "to": "        const name = identifier.trim();"
+        },
+        {
+            "name": "track claims a rule ran",
+            "from": "        logger.log('\"' + name + '\" does not match any direct call identifiers.');",
+            "to": "        logger.log('Rules using the direct call event type with identifier \"' + name + '\" have been triggered.');"
+        },
+        {
+            "name": "notify ignores its level",
+            "from": "        logger[LEVELS[level] || 'log'](message);",
+            "to": "        logger.log(message);"
+        },
+        {
+            "name": "notify maps three to warn",
+            "from": "    const LEVELS = { 3: 'info', 4: 'warn', 5: 'error' };",
+            "to": "    const LEVELS = { 3: 'warn', 4: 'warn', 5: 'error' };"
+        },
+        {
+            "name": "notify says nothing is deprecated",
+            "from": "        logger.deprecation('_satellite.notify is deprecated. Please use the ' +\n            '_satellite.logger API.');",
+            "to": "        void 0;"
+        },
+        {
+            "name": "the container warns every read",
+            "from": "                if ( warned === false ) {",
+            "to": "                if ( true ) {"
+        },
+        {
+            "name": "the container never warns",
+            "from": "                if ( warned === false ) {",
+            "to": "                if ( false ) {"
+        },
+        {
+            "name": "the container is not shaped like theirs",
+            "from": "        dataElements: {},\n        rules: [],\n        extensions: {},",
+            "to": "        dataElements: {},"
+        },
+        {
+            "name": "a logger level goes missing",
+            "from": "    for ( const level of [ 'log', 'info', 'warn', 'error', 'debug' ] ) {",
+            "to": "    for ( const level of [ 'log', 'info', 'error', 'debug' ] ) {"
+        },
+        {
+            "name": "cookie get reads nothing",
+            "from": "            try { jar = doc.cookie || ''; } catch ( ex ) { }",
+            "to": "            void doc;"
+        },
+        {
+            "name": "cookie get does not decode",
+            "from": "                return decode(part.slice(at + 1).trim());",
+            "to": "                return part.slice(at + 1).trim();"
+        },
+        {
+            "name": "cookie get matches a prefix",
+            "from": "                if ( decode(part.slice(0, at).trim()) !== name ) { continue; }",
+            "to": "                if ( decode(part.slice(0, at).trim()).indexOf(name) === -1 ) { continue; }"
+        },
+        {
+            "name": "cookie set writes",
+            "from": "            if ( gone ) { cookie.remove(name, opts); }",
+            "to": "            try { doc.cookie = name + '=' + value + '; path=/'; } catch ( ex ) { }"
+        },
+        {
+            "name": "setCookie writes through",
+            "from": "        cookie.set(name, value, days !== undefined ? { expires: days } : {});",
+            "to": "        try { doc.cookie = name + '=' + value + '; path=/'; } catch ( ex ) { }"
+        },
+        {
+            "name": "cookie remove does nothing",
+            "from": "                try { doc.cookie = line; } catch ( ex ) { }",
+            "to": "                void line;"
+        },
+        {
+            "name": "remove writes a value, not an expiry",
+            "from": "                let line = spelling + '=; expires=Thu, 01 Jan 1970 00:00:01' +\n                    ' GMT; path=' + (where.path || '/');",
+            "to": "                let line = spelling + '=; expires=Fri, 01 Jan 2100 00:00:01' +\n                    ' GMT; path=' + (where.path || '/');"
+        },
+        {
+            "name": "readCookie reads nothing",
+            "from": "        return cookie.get(name);",
+            "to": "        return undefined;"
+        },
+        {
+            "name": "removeCookie removes nothing",
+            "from": "        cookie.remove(name);",
+            "to": "        void name;"
+        },
+        {
+            "name": "the aliases say nothing about deprecation",
+            "from": "        logger.deprecation('_satellite.readCookie is deprecated. Please use ' +\n            '_satellite.cookie.get(\"' + name + '\").');",
+            "to": "        void 0;"
+        },
+        {
+            "name": "no loaded callback at install",
+            "from": "    tellLoaded();\n    const HIDDEN",
+            "to": "    const HIDDEN"
+        },
+        {
+            "name": "registerScript runs the code",
+            "from": "    satellite.__registerScript = ( ) => { };",
+            "to": "    satellite.__registerScript = (url, source) => { void url; try { new w.Function(source)(); } catch ( ex ) { } };"
+        },
+        {
+            "name": "no registerScript at all",
+            "from": "    satellite.__registerScript = ( ) => { };",
+            "to": "    void 0;"
+        },
+        {
+            "name": "pageBottom is missing",
+            "from": "    satellite.pageBottom = ( ) => { };",
+            "to": "    void 0;"
+        },
+        {
+            "name": "getVisitorId invents an id",
+            "from": "        getMarketingCloudVisitorID: answer(''),",
+            "to": "        getMarketingCloudVisitorID: answer('12345678901234567890123456789012345678'),"
+        },
+        {
+            "name": "writes a cookie",
+            "from": "    const environment = environmentId();",
+            "to": "    const environment = environmentId();\n    try { doc.cookie = 's_ecid=MCMID|1; path=/'; } catch ( ex ) { }"
+        },
+        {
+            "name": "reads cookies at boot",
+            "from": "    const environment = environmentId();",
+            "to": "    const environment = environmentId();\n    void doc.cookie;"
+        },
+        {
+            "name": "writes storage",
+            "from": "    const environment = environmentId();",
+            "to": "    const environment = environmentId();\n    try { w.localStorage.setItem('com.adobe.reactor.dataElements', '{}'); } catch ( ex ) { }"
+        },
+        {
+            "name": "reads storage",
+            "from": "    const environment = environmentId();",
+            "to": "    const environment = environmentId();\n    try { w.localStorage.getItem('com.adobe.reactor.debug'); } catch ( ex ) { }"
+        },
+        {
+            "name": "beacons out",
+            "from": "    const environment = environmentId();",
+            "to": "    const environment = environmentId();\n    try { w.navigator.sendBeacon('https://example.demdex.net/id', '{}'); } catch ( ex ) { }"
+        },
+        {
+            "name": "fetches a rule component",
+            "from": "    const environment = environmentId();",
+            "to": "    const environment = environmentId();\n    try { w.fetch('https://assets.adobedtm.com/a/b/c/RC1-source.min.js'); } catch ( ex ) { }"
+        },
+        {
+            "name": "appends a script",
+            "from": "    const environment = environmentId();",
+            "to": "    const environment = environmentId();\n    try { const t = doc.createElement('script'); t.src = 'https://assets.adobedtm.com/a/b/c/RC1-source.min.js'; (doc.head || doc.documentElement).appendChild(t); } catch ( ex ) { }"
+        },
+        {
+            "name": "adds a listener",
+            "from": "    const environment = environmentId();",
+            "to": "    const environment = environmentId();\n    w.addEventListener('message', ( ) => { });"
+        },
+        {
+            "name": "leaves a timer",
+            "from": "    const environment = environmentId();",
+            "to": "    const environment = environmentId();\n    w.setInterval(( ) => { }, 1000);"
+        },
+        {
+            "name": "pollutes Object.prototype",
+            "from": "    const environment = environmentId();",
+            "to": "    const environment = environmentId();\n    Object.prototype.polluted = true;"
+        },
+        {
+            "name": "wraps fetch",
+            "from": "    const environment = environmentId();",
+            "to": "    const environment = environmentId();\n    const of_ = w.fetch; w.fetch = (...a) => of_.apply(w, a);"
+        },
+        {
+            "name": "publishes unwritable",
+            "from": "    w._satellite = satellite;",
+            "to": "    Object.defineProperty(w, '_satellite', { value: satellite, writable: false, configurable: false });"
+        },
+        {
+            "name": "reads an environment out of the satelliteLib url",
+            "from": "                /\\/[0-9a-f]{6,}\\/([0-9a-f]{6,})\\/launch-[0-9A-Za-z]+\\./",
+            "to": "                /\\/[0-9a-f]{6,}\\/(?:([0-9a-f]{6,})\\/)?(?:launch|satelliteLib)-[0-9A-Za-z]+\\./"
+        },
+        {
+            "name": "the satelliteLib rule goes missing",
+            "from": "//   ||assets.adobedtm.com/*/satelliteLib-*.js$script,redirect=adobe-launch.js\n",
+            "to": ""
+        },
+        {
+            "name": "the flat rule goes missing",
+            "from": "//   ||assets.adobedtm.com/launch-*.min.js$script,redirect=adobe-launch.js\n",
+            "to": ""
+        },
+        {
+            "name": "a rule is widened to the host",
+            "from": "//   ||assets.adobedtm.com/*/launch-*.min.js$script,redirect=adobe-launch.js",
+            "to": "//   ||assets.adobedtm.com/*$script,redirect=adobe-launch.js"
+        },
+        {
+            "name": "getVar is published read-only",
+            "from": "    satellite.getVar = getVar;",
+            "to": "    Object.defineProperty(satellite, 'getVar', { value: getVar, enumerable: true, writable: false });"
+        },
+        {
+            "name": "the object is sealed",
+            "from": "    satellite.container = container;",
+            "to": "    satellite.container = container;\n    Object.seal(satellite);"
+        },
+        {
+            "name": "the first-party rule goes missing",
+            "from": "//   ||lightning.cnn.com/launch/*/launch-*.min.js$script,redirect=adobe-launch.js\n",
+            "to": ""
+        },
+        {
+            "name": "the first-party rule is widened to the path",
+            "from": "//   ||lightning.cnn.com/launch/*/launch-*.min.js$script,redirect=adobe-launch.js",
+            "to": "//   /launch/*/launch-*.min.js$script,redirect=adobe-launch.js"
+        },
+        {
+            "name": "set ignores a deletion",
+            "from": "            if ( gone ) { cookie.remove(name, opts); }",
+            "to": "            void gone;"
+        },
+        {
+            "name": "set deletes whatever it is handed",
+            "from": "            if ( gone ) { cookie.remove(name, opts); }",
+            "to": "            cookie.remove(name, opts);"
+        },
+        {
+            "name": "a bare day count is ignored",
+            "from": "            const expires = typeof options === 'number' ? options : opts.expires;",
+            "to": "            const expires = opts.expires;"
+        },
+        {
+            "name": "an empty value is not a deletion",
+            "from": "            const gone = value === '' || value === null ||\n                value === undefined ||\n                (typeof expires === 'number' && expires <= 0) ||\n                (stamp !== undefined && stamp <= Date.now());",
+            "to": "            const gone = false ||\n                (typeof expires === 'number' && expires <= 0) ||\n                (stamp !== undefined && stamp <= Date.now());"
+        },
+        {
+            "name": "a past expiry is not a deletion",
+            "from": "            const gone = value === '' || value === null ||\n                value === undefined ||\n                (typeof expires === 'number' && expires <= 0) ||\n                (stamp !== undefined && stamp <= Date.now());",
+            "to": "            const gone = value === '' || value === null ||\n                value === undefined ||\n                (typeof expires === 'number' && expires <= 0) ||\n                false;"
+        },
+        {
+            "name": "a date is matched by instanceof",
+            "from": "            const stamp = expires && typeof expires.getTime === 'function'\n                ? expires.getTime()\n                : undefined;",
+            "to": "            const stamp = expires instanceof Date ? expires.getTime() : undefined;"
+        },
+        {
+            "name": "the name it reads is not decoded",
+            "from": "                if ( decode(part.slice(0, at).trim()) !== name ) { continue; }",
+            "to": "                if ( part.slice(0, at).trim() !== name ) { continue; }"
+        },
+        {
+            "name": "removal expires the encoded name only",
+            "from": "            if ( names[0] !== name ) { names.push(name); }",
+            "to": "            void 0;"
+        },
+        {
+            "name": "removal expires the raw name only",
+            "from": "            const names = [ encodeURIComponent(name) ];",
+            "to": "            const names = [ name ];"
+        },
+        {
+            "name": "getVar coerces a stored value",
+            "from": "        if ( vars.has(name) ) { return vars.get(name); }",
+            "to": "        if ( vars.has(name) ) { return vars.get(name) || ''; }"
+        },
+        {
+            "name": "a rule blocks instead of redirecting",
+            "from": "//   ||assets.adobedtm.com/satelliteLib-*.js$script,redirect=adobe-launch.js",
+            "to": "//   ||assets.adobedtm.com/satelliteLib-*.js$script"
+        },
+        {
+            "name": "a malformed escape escapes the decoder",
+            "from": "        try { return decodeURIComponent(text); } catch ( ex ) { return text; }",
+            "to": "        return decodeURIComponent(text);"
+        },
+        {
+            "name": "no reveal at all",
+            "from": "    reveal();\n    // The snippet usually sits beside the embed",
+            "to": "    // The snippet usually sits beside the embed"
+        },
+        {
+            "name": "only one of the two ids",
+            "from": "    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];",
+            "to": "    const HIDDEN = [ 'at-body-style' ];"
+        },
+        {
+            "name": "no watch while the head arrives",
+            "from": "            watch = new w.MutationObserver(reveal);",
+            "to": "            watch = null;"
+        },
+        {
+            "name": "no reveal at the end of the head",
+            "from": "        doc.addEventListener('DOMContentLoaded', ( ) => {\n            reveal();",
+            "to": "        doc.addEventListener('DOMContentLoaded', ( ) => {\n            void reveal;"
+        },
+        {
+            "name": "the watch is never stopped",
+            "from": "            if ( watch !== null ) { watch.disconnect(); watch = null; }",
+            "to": "            void watch;"
+        },
+        {
+            "name": "reveal takes a page style too",
+            "from": "    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];",
+            "to": "    const HIDDEN = [ 'at-body-style', 'alloy-prehiding', 'page-style' ];"
+        },
+        {
+            "name": "reveal watches after the document is ready",
+            "from": "    if ( doc.readyState === 'loading' ) {",
+            "to": "    if ( true ) {"
+        },
+        {
+            "name": "the watch covers the parsing document",
+            "from": "            watch.observe(doc.head || doc.documentElement || doc, {\n                childList: true,\n            });",
+            "to": "            watch.observe(doc.documentElement || doc, {\n                childList: true, subtree: true,\n            });"
+        },
+        {
+            "name": "getVisitorId answers null again",
+            "from": "    satellite.getVisitorId = ( ) => visitor;",
+            "to": "    satellite.getVisitorId = ( ) => null;"
+        },
+        {
+            "name": "the visitor api calls no callback",
+            "from": "        if ( typeof callback === 'function' ) {\n            try { callback(given); } catch ( ex ) { }\n        }",
+            "to": "        void callback;"
+        },
+        {
+            "name": "a callback that throws escapes",
+            "from": "            try { callback(given); } catch ( ex ) { }",
+            "to": "            callback(given);"
+        },
+        {
+            "name": "a visitor member goes missing",
+            "from": "        getAnalyticsVisitorID: answer(''),",
+            "to": ""
+        },
+        {
+            "name": "isClientSide answers true",
+            "from": "        isClientSideMarketingCloudVisitorID: answer(false),",
+            "to": "        isClientSideMarketingCloudVisitorID: answer(true),"
+        },
+        {
+            "name": "the same object is handed out twice",
+            "from": "        const given = value !== null && typeof value === 'object' ? {} : value;",
+            "to": "        const given = value;"
+        },
+        {
+            "name": "sets their double-init flag",
+            "from": "    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];",
+            "to": "    try { w.__satelliteLoaded = true; } catch ( ex ) { }\n    const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];"
+        },
+        {
+            "name": "no target api",
+            "from": "        if ( w.adobe.target === undefined ) { w.adobe.target = targetApi; }",
+            "to": "        void targetApi;"
+        },
+        {
+            "name": "target overwrites a real one",
+            "from": "        if ( w.adobe.target === undefined ) { w.adobe.target = targetApi; }",
+            "to": "        w.adobe.target = targetApi;"
+        },
+        {
+            "name": "getOffer calls no callback",
+            "from": "            const done = options && options.success;\n            if ( typeof done === 'function' ) {\n                try { done([]); } catch ( ex ) { }\n            }",
+            "to": "            void options;"
+        },
+        {
+            "name": "getOffers settles with nothing",
+            "from": "            return settle(offers);",
+            "to": "            return settle(undefined);"
+        },
+        {
+            "name": "triggerView is missing",
+            "from": "        triggerView: noopfn,",
+            "to": ""
+        },
+        {
+            "name": "no Visitor global",
+            "from": "            w.Visitor = Visitor;",
+            "to": "            void Visitor;"
+        },
+        {
+            "name": "Visitor overwrites a real one",
+            "from": "        if ( w.Visitor === undefined ) {",
+            "to": "        if ( true ) {"
+        },
+        {
+            "name": "adobe namespace clobbered",
+            "from": "        w.adobe = w.adobe !== null && typeof w.adobe === 'object'\n            ? w.adobe\n            : {};",
+            "to": "        w.adobe = {};"
+        },
+        {
+            "name": "the loaded callback never fires after document_start",
+            "from": "            reveal();\n            tellLoaded();",
+            "to": "            reveal();"
+        },
+        {
+            "name": "the loaded callback fires every time",
+            "from": "        if ( told ) { return; }",
+            "to": "        if ( false ) { return; }"
+        },
+        {
+            "name": "the loaded callback is never marked as told",
+            "from": "        told = true;",
+            "to": "        told = false;"
+        },
+        {
+            "name": "a loaded callback that throws escapes",
+            "from": "        try { fn(satellite); } catch ( ex ) { }",
+            "to": "        fn(satellite);"
+        },
+        {
+            "name": "the loaded callback takes a value that is not a function",
+            "from": "        if ( typeof fn !== 'function' ) { return; }",
+            "to": "        if ( fn === undefined ) { return; }"
+        },
+        {
+            "name": "the loaded callback is handed nothing",
+            "from": "        try { fn(satellite); } catch ( ex ) { }\n    };",
+            "to": "        try { fn(); } catch ( ex ) { }\n    };"
+        }
+    ]
 }

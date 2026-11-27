@@ -353,6 +353,31 @@
     // for at.js or alloy to take the style away. Neither runs now, so this
     // does what they would. The ids are theirs, and removing a style can
     // only reveal content. See the .md.
+    // Some pages define this and wait to be called. Nothing in a corpus of
+    // 123 bundled runtimes calls it, and 23 of them publish pageBottom, so
+    // it is a legacy hook rather than a live one - but a page that defines
+    // it and is never called is the stall this whole file is about, so it
+    // is answered, at most once.
+    //
+    // The schedule is the point. At document_start the page below does not
+    // exist, so a callback an inline script is about to define cannot be
+    // seen yet: a single check here only ever fires for the redirect
+    // delivery, where this runs at the embed's own position after earlier
+    // inline scripts. For the scriptlet delivery it has to run again as the
+    // document arrives - the mistake AGENTS.md records for parked tags.
+    //
+    // It rides the DOMContentLoaded listener the reveal below already
+    // registers rather than adding a second one, because a test asserts
+    // this file touches the page exactly once and that is worth keeping.
+    let told = false;
+    const tellLoaded = ( ) => {
+        if ( told ) { return; }
+        const fn = w.__satelliteLoadedCallback;
+        if ( typeof fn !== 'function' ) { return; }
+        told = true;
+        try { fn(satellite); } catch ( ex ) { }
+    };
+    tellLoaded();
     const HIDDEN = [ 'at-body-style', 'alloy-prehiding' ];
     const reveal = ( ) => {
         for ( const id of HIDDEN ) {
@@ -382,11 +407,8 @@
         }
         doc.addEventListener('DOMContentLoaded', ( ) => {
             reveal();
+            tellLoaded();
             if ( watch !== null ) { watch.disconnect(); watch = null; }
         }, { once: true });
-    }
-    // Their embed calls this on load, and some pages define it.
-    if ( typeof w.__satelliteLoadedCallback === 'function' ) {
-        try { w.__satelliteLoadedCallback(satellite); } catch ( ex ) { }
     }
 })();

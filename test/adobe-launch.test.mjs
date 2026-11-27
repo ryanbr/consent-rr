@@ -1136,6 +1136,83 @@ describe('filters, adobe-launch', ( ) => {
 
 });
 
+describe('the loaded callback', ( ) => {
+
+    it('calls a callback the page defines after it, at DOMContentLoaded',
+    async ( ) => {
+        // The scriptlet runs at document_start, so a page's own inline
+        // script has not defined this yet. A single check at install can
+        // never see it, and a page that waits to be called waits forever.
+        const win = boot({
+            after: '<script>window.seen = [];' +
+                'window.__satelliteLoadedCallback = function(given) {' +
+                'window.seen.push(typeof given.track);' +
+                '};</script>',
+        });
+        assert.deepStrictEqual([ ...win.seen ], [],
+            'called before the document arrived');
+        await settle();
+        assert.deepStrictEqual([ ...win.seen ], [ 'function' ],
+            'not called once the document arrived, or called without the api');
+    });
+
+    it('calls it once when the page defined it first', async ( ) => {
+        // The redirect delivery runs at the embed's position, so it can be
+        // there already. It must not then be called a second time at
+        // DOMContentLoaded.
+        const win = boot({
+            before: '<script>window.count = 0;' +
+                'window.__satelliteLoadedCallback = function() {' +
+                'window.count += 1;' +
+                '};</script>',
+        });
+        assert.equal(win.count, 1, 'not called when it was already defined');
+        await settle();
+        assert.equal(win.count, 1, 'called twice');
+    });
+
+    it('survives a callback that throws', async ( ) => {
+        const win = boot({
+            after: '<script>window.__satelliteLoadedCallback = function() {' +
+                'window.ran = true; throw new Error("from the page");' +
+                '};</script>',
+        });
+        await settle();
+        assert.equal(win.ran, true);
+        // The api is still there, and still works.
+        assert.equal(typeof win._satellite.track, 'function');
+        assert.equal(win._satellite.getVar('x'), '');
+    });
+
+    it('ignores one that is not a function', async ( ) => {
+        const win = boot({
+            after: '<script>window.__satelliteLoadedCallback = 42;</script>',
+        });
+        await settle();
+        assert.equal(win.__satelliteLoadedCallback, 42);
+        assert.equal(typeof win._satellite.track, 'function');
+    });
+
+    it('does not let a value that is not a function use up the one call',
+    async ( ) => {
+        // Reaching the call with a number throws into the catch, which looks
+        // identical from the page - except that it has marked the callback
+        // as told, so the real one that arrives later never runs. Guarding
+        // on undefined instead of on typeof survives every other test here.
+        const win = boot({
+            before: '<script>window.__satelliteLoadedCallback = 42;</script>',
+            after: '<script>window.ran = 0;' +
+                'window.__satelliteLoadedCallback = function() {' +
+                'window.ran += 1;' +
+                '};</script>',
+        });
+        await settle();
+        assert.equal(win.ran, 1,
+            'a non-function at install consumed the only call');
+    });
+
+});
+
 describe('extra/adobe-launch-probe.js', ( ) => {
 
     // Skipped while sweeping: this compares a generated file against the
