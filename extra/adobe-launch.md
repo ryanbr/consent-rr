@@ -235,6 +235,13 @@ neither the real library nor the replacement loads. AGENTS.md has the
 mechanism. The symptom is a broken page and an empty console, because
 nothing ran.
 
+Measured on Chromium with a live `redirect=` rule naming a user resource:
+the request is not redirected AND not blocked. The real library loads and
+runs, with no error event on the script element, where the same rule
+written as a plain block always logs one. So the rule reads as protection
+and is doing nothing at all - worse than either outcome, because the page
+looks fine while the container runs.
+
 The form that works there is a scriptlet injection beside a blocking rule:
 
 ```
