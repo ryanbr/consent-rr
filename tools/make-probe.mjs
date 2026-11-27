@@ -19,6 +19,11 @@
     this script's output against the committed file, so a probe that no longer
     matches the resource fails the suite.
 
+    The build stamp it logs hashes the whole generated file - this script's own
+    instrumentation as well as the resource. Hashing only the resource is what
+    it did first and it defeats the purpose: the stamp then holds still across
+    a probe fix, and a log cannot tell a fresh copy from a stale one.
+
     Run: node tools/make-probe.mjs
 
 */
@@ -37,8 +42,6 @@ const codeOf = text => text.split('\n')
     .join('\n');
 
 export function buildProbe(resourceText) {
-    const stamp = createHash('sha1').update(resourceText).digest('hex')
-        .slice(0, 8);
     const head = [
         '/// adobe-launch-probe.js',
         '// A diagnostic build of adobe-launch.js. The same replacement, plus a',
@@ -60,7 +63,7 @@ export function buildProbe(resourceText) {
         "    'use strict';",
         "    const w = window;",
         "    const doc = w.document;",
-        "    const BUILD = '" + stamp + "';",
+        "    const BUILD = '{{STAMP}}';",
         "    const log = w.__probeLog = w.__probeLog || [];",
         "    let where = 'top';",
         "    try {",
@@ -252,7 +255,15 @@ export function buildProbe(resourceText) {
         "    }, { once: true });",
         "})();",
     ].join('\n');
-    return head + '\n' + codeOf(resourceText) + '\n' + tail + '\n';
+    const built = head + '\n' + codeOf(resourceText) + '\n' + tail + '\n';
+    // The stamp covers the WHOLE probe, placeholder and all, not just the
+    // resource. Hashing only the resource is what it did first, and that is
+    // useless for the one job a stamp has: two probe fixes shipped under one
+    // unchanged stamp, so a field log could not say the copy being tested
+    // was older than the fix, which is the exact failure the stamp exists to
+    // catch. It had already cost a round before, with the same excuse.
+    const stamp = createHash('sha1').update(built).digest('hex').slice(0, 8);
+    return built.replace('{{STAMP}}', stamp);
 }
 
 if ( process.argv[1] && process.argv[1].endsWith('make-probe.mjs') ) {

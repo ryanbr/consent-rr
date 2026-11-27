@@ -21,6 +21,7 @@ import { before, describe, it } from 'node:test';
 import { JSDOM, VirtualConsole } from 'jsdom';
 import { parseResources, settle } from './helpers.mjs';
 import { buildProbe, RESOURCE, PROBE } from '../tools/make-probe.mjs';
+import { createHash } from 'node:crypto';
 
 // The two shapes their embed takes: a property and environment pair with the
 // build in the filename, and the flat one from before that.
@@ -1147,6 +1148,24 @@ describe('extra/adobe-launch-probe.js', ( ) => {
         const committed = await fs.readFile(PROBE, 'utf8');
         assert.equal(committed, buildProbe(resource),
             'extra/adobe-launch-probe.js is stale - run node tools/make-probe.mjs');
+    });
+
+    it('stamps itself with a hash of the whole probe, not just the resource', async ( ) => {
+        // The one job a stamp has is telling a field log that the copy being
+        // tested is older than the fix. Hashing only the resource defeats it:
+        // two probe fixes then ship under one unchanged stamp, and a log
+        // cannot say which is running. That shipped once and cost a round, so
+        // this pins it rather than trusting a comment.
+        const resource = await fs.readFile(RESOURCE, 'utf8');
+        const built = buildProbe(resource);
+        const stamp = built.match(/const BUILD = '([0-9a-f]{8})'/)[1];
+        const sha = text => createHash('sha1').update(text).digest('hex')
+            .slice(0, 8);
+        assert.equal(stamp, sha(built.replace(stamp, '{{STAMP}}')),
+            'the stamp is not a hash of the generated file');
+        assert.notEqual(stamp, sha(resource),
+            'the stamp hashes only the resource, so it cannot move when the ' +
+            'instrumentation does - that is the bug, not the design');
     });
 
     it('is a resource uBO can read, and is not a filter-list resource', async ( ) => {
