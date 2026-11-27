@@ -12,7 +12,11 @@ name: mutate
 on:
   pull_request:
     paths:
-      - 'extra/**'
+      # The resources, not their notes: extra/*.md cannot change what a
+      # mutation does, and a notes-only commit used to fire the whole
+      # matrix - five of them in a row, each cancelling the last.
+      - 'extra/*.js'
+      - 'test/adobe-launch.test.mjs'
       - 'test/optimizely.test.mjs'
       - 'test/perimeterx.test.mjs'
       - 'test/tealium.test.mjs'
@@ -22,7 +26,11 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'extra/**'
+      # The resources, not their notes: extra/*.md cannot change what a
+      # mutation does, and a notes-only commit used to fire the whole
+      # matrix - five of them in a row, each cancelling the last.
+      - 'extra/*.js'
+      - 'test/adobe-launch.test.mjs'
       - 'test/optimizely.test.mjs'
       - 'test/perimeterx.test.mjs'
       - 'test/tealium.test.mjs'
