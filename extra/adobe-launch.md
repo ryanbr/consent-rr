@@ -307,11 +307,31 @@ listen for the event, and with the runtime replaced it gets neither.
 Nothing in the resource can help - the signal is the container's, not
 Adobe's, and there is no list of them.
 
+A third shape of the same risk, from another property: not an event or a
+flag but an api the container installs on `window`, with the `X = X || {}`
+idiom that augments whatever the page already made.
+
+```
+window.wgLaunch = window.wgLaunch || {};
+window.wgLaunch.ddEventControl = window.wgLaunch.ddEventControl || {};
+    ... registerEventListener, eventListeners, processingReady ...
+
+window.digitalData = window.digitalData || {};
+    ... page.pageInfo.pageTemplate, derived from location.pathname ...
+```
+
+Page code calling `wgLaunch.ddEventControl.registerEventListener(...)` or
+reading `digitalData.page.pageInfo.pageTemplate` loses it when the runtime
+goes, even though the object it hangs on survives because the page made
+it. That is harder to spot than a missing event, because the object is
+still there and only some of its contents are gone.
+
 Which makes the pre-flight grep worth running on a property's components
 before shipping a rule for its site: `dispatchEvent`, `new CustomEvent`,
-and `window.<name> =`. What turns up is either telemetry, which is the
-point of replacing the runtime, or a page signal, which is a reason to
-leave that site alone.
+and `window.<name> =`, that last one catching the augmenting idiom as
+well. What turns up is either telemetry, which is the point of replacing
+the runtime, or a page surface, which is a reason to leave that site
+alone.
 
 ### Body hiding, which is the one that would be a blank page
 
@@ -405,11 +425,11 @@ youtube-playback
 which is a property where the answer is not automatic: Target can
 personalise or redirect a page, and losing it changes what a visitor sees
 rather than only what is measured. A property carrying something that is
-not measurement needs the rule
-written per site, or not at all - and the corpus holds four such
-extensions rather than hypothetical ones: `adobe-target-v2`, which
-personalises or redirects a page; `qualtrics-website-feedback`, which puts
-a survey in front of a visitor; `branch-mobile-growth`, which handles deep
+not measurement needs the rule written per site, or not at all - and the
+corpus holds four such extensions rather than hypothetical ones:
+`adobe-target-v2`, which personalises or redirects a page;
+`qualtrics-website-feedback` and `medallia-for-adobe-launch`, which put a
+survey in front of a visitor; `branch-mobile-growth`, which handles deep
 links into an app; and `adobegoogledatalayer`, which bridges a data layer
 the page may read itself. Searching its `RC<uuid>-source.min.js` files for
 `dispatchEvent`, `document.cookie`, `localStorage` and third-party script
@@ -541,7 +561,7 @@ is the one the runtime that was read reports, 29.1.0.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the sixteen runtimes and the sixty-two
+Every `_satellite` reference in the seventeen runtimes and the seventy-six
 rule components was counted and diffed against what this publishes. The
 union is exactly the 22 members here, plus two typos in properties' own
 custom code: `_satellite.geVar`, and `_satellite.looger.error(e)` inside a
@@ -681,21 +701,21 @@ at once.
 
 ## What is not done here
 
-**The corpus, and what it still cannot say.** Sixteen runtimes were read
-in full, sixty-two rule components and one extension libraryCode file,
-across twenty-two properties - nineteen identified by the hash in their
-path, plus three flat `launch-EN<id>.min.js` embeds whose url carries no property
+**The corpus, and what it still cannot say.** Seventeen runtimes were read
+in full, seventy-six rule components and one extension libraryCode file,
+across twenty-four properties - twenty identified by the hash in their
+path, plus four flat `launch-EN<id>.min.js` embeds whose url carries no property
 at all - and four of the pages that embed them. The counts are derived
 from the files rather than remembered: every rule component names its own
 url inside its `__registerScript` call, so the properties can be counted
 by reading them.
 
-All sixteen runtimes are turbine 29.1.0 and carry the same `_satellite`
+All seventeen runtimes are turbine 29.1.0 and carry the same `_satellite`
 surface, checked three independent ways - the members each one references,
 the members each one assigns directly, and their own string literals
 rather than minified variable names. tealium and perimeterx were written
 against dozens of builds each, so this is still the thinnest corpus of the
-four, and what it cannot tell is how a property unlike these twenty-two
+four, and what it cannot tell is how a property unlike these twenty-four
 behaves.
 
 Two of those runtimes were worth reading for one line each: the sixth is
@@ -731,7 +751,7 @@ _satellite.safeCheck = function (obj) {
 }
 ```
 
-`safeCheck` is in one of sixteen runtimes. This is the boundary tealium's
+`safeCheck` is in one of seventeen runtimes. This is the boundary tealium's
 notes draw around per-tenant extension members, with one addition: a
 container can extend `_satellite` itself, so a member a census finds is
 not necessarily Adobe's.
