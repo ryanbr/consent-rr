@@ -361,7 +361,7 @@
     'use strict';
     const w = window;
     const doc = w.document;
-    const BUILD = '9e4151fc';
+    const BUILD = '96cb5994';
     const log = w.__probeLog = w.__probeLog || [];
     let where = 'top';
     try {
@@ -563,13 +563,18 @@
             // here is the next thing a page can call and not find.
             const theirs = only(nowKeys, ourKeys);
             const mine = only(ourKeys, nowKeys);
-            say('_satellite at load is',
+            // Built as a list and not as arguments with two that
+            // may be empty: say() joins on a space, so an absent one
+            // left trailing whitespace on every line of the common
+            // case, where the two surfaces match exactly.
+            const parts = [ '_satellite at load is',
                 now === undefined ? 'gone' :
                     now === ours ? 'still this replacement' :
                         'a real library, hydrated over it',
-                '| members', nowKeys.length,
-                theirs !== '' ? '| theirs only: ' + theirs : '',
-                mine !== '' ? '| ours only: ' + mine : '');
+                '| members', nowKeys.length ];
+            if ( theirs !== '' ) { parts.push('| theirs only:', theirs); }
+            if ( mine !== '' ) { parts.push('| ours only:', mine); }
+            say(...parts);
         } catch ( ex ) { }
         say('reads by global:', counts.map(f => f()).join(' '));
         say('lines so far', log.length,

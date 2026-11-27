@@ -792,7 +792,9 @@ blocked, this resource       DID NOT LOAD satelliteLib-5768eb8c....js
                              nothing threw, digitalData read 21 times
 ```
 
-So the page renders with the replacement in place and needs no exception.
+Reproduced on two separate runs, the second on a later build of the probe,
+with the same numbers each time. So the page renders with the replacement in
+place and needs no exception.
 The smaller child count is the pixel nodes their container appends, which
 is the blocking working rather than content missing; nothing in the log
 says anything is absent, and the body is visible with the listing present.
