@@ -590,14 +590,14 @@ installed early is not thrown away.
 ### `buildInfo`
 
 `minified: true`, the turbine version, and empty build dates. The version
-is one a real runtime reports, 29.1.0. It varies: twenty of the twenty-one
+is one a real runtime reports, 29.1.0. It varies: twenty-one of the twenty-two
 read say 29.1.0 and one says 28.0.0, so this is the modal answer rather
 than the only one, and a page that compares it against something exact
 will not find what it expects. Nothing read so far compares it at all.
 
 ### The census, which is how the list above was closed
 
-Every `_satellite` reference in the twenty-one runtimes and the eighty-seven
+Every `_satellite` reference in the twenty-two runtimes and the ninety-one
 rule components was counted and diffed against what this publishes. The
 union is exactly the 22 members here, plus two typos in properties' own
 custom code: `_satellite.geVar`, and `_satellite.looger.error(e)` inside a
@@ -737,10 +737,10 @@ at once.
 
 ## What is not done here
 
-**The corpus, and what it still cannot say.** Twenty-one runtimes were
-read in full, eighty-seven rule components and three extension libraryCode
-files, across thirty-one properties - twenty-seven identified by the hash
-in their path, plus four flat `launch-EN<id>.min.js` embeds whose url
+**The corpus, and what it still cannot say.** Twenty-two runtimes were
+read in full, ninety-one rule components and three extension libraryCode
+files, across thirty-three properties - twenty-eight identified by the
+hash in their path, plus five flat `launch-EN<id>.min.js` embeds whose url
 carries no property at all - and four of the pages that embed them.
 
 The counts are derived from the files rather than remembered: every rule
@@ -750,14 +750,14 @@ revision of these notes incremented the runtime figure by arithmetic
 instead of recounting, and stood a runtime ahead of its own evidence until
 the next batch happened to make it true.
 
-All twenty-one runtimes carry the same `_satellite` surface, checked three
+All twenty-two runtimes carry the same `_satellite` surface, checked three
 independent ways - the members each one references, the members each one
 assigns directly, and their own string literals rather than minified
-variable names. Twenty are turbine 29.1.0 and one is 28.0.0, which is
+variable names. Twenty-one are turbine 29.1.0 and one is 28.0.0, which is
 better evidence than a single version would have been: the surface is the
 same across two majors. tealium and perimeterx were written against dozens
 of builds each, so this is still the thinnest corpus of the four, and what
-it cannot tell is how a property unlike these thirty-one behaves.
+it cannot tell is how a property unlike these thirty-three behaves.
 
 Two of those runtimes were worth reading for one line each: the sixth is
 where `window.__satelliteLoaded` was found, and the eighth is where
@@ -811,7 +811,7 @@ _satellite.safeCheck = function (obj) {
 }
 ```
 
-`safeCheck` is in one of twenty-one runtimes. This is the boundary tealium's
+`safeCheck` is in one of twenty-two runtimes. This is the boundary tealium's
 notes draw around per-tenant extension members, with one addition: a
 container can extend `_satellite` itself, so a member a census finds is
 not necessarily Adobe's.
