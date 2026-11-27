@@ -718,8 +718,8 @@ record its own debug state would be writing storage.
 ## What it costs per page
 
 ```
-file on disk      12598 bytes
-injected          9654 bytes
+file on disk      12057 bytes
+injected          9113 bytes
 compile           0.063 ms (median of 200)
 boot              0.17 ms (median of 25, in jsdom)
 timers            0
@@ -730,13 +730,16 @@ storage calls     0
 requests          0
 ```
 
-Those bytes went two ways and are worth separating. An optimisation pass
-took 812 off, 9 per cent; two compatibility changes -
-the deletion-shaped `cookie.set` and the two cookie-name spellings - put
-1724 back. Net 912 more than before any of them, and compile and boot are
-the same within the noise of measuring them. The
-trade was made knowingly: a page that clears a cookie through their api
-now has it cleared.
+Those bytes went three ways and are worth separating. An optimisation pass
+took 812 off by deleting dead computation. Two compatibility changes - the
+deletion-shaped `cookie.set` and the two cookie-name spellings - put 1724
+back, knowingly: a page that clears a cookie through their api now has it
+cleared. A second optimisation pass took 541 off again without changing
+any behaviour, by writing the same thing in fewer statements: one decoder
+for the name and the value instead of two try/catches, one line per expiry
+instead of an array, the five logger levels generated rather than listed,
+and their notify mapping as a table. Net 371 more than before any of it,
+and compile and boot are the same within the noise of measuring them.
 
 The first was dead computation. The identity helper captured the property
 hash, the environment hash and the build from the redirected url, and only

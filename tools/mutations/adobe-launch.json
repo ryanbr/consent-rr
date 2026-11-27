@@ -158,13 +158,13 @@
   },
   {
    "name": "notify ignores its level",
-   "from": "        if ( level === 3 ) { logger.info(message); return; }",
-   "to": "        void level;"
+   "from": "        logger[LEVELS[level] || 'log'](message);",
+   "to": "        logger.log(message);"
   },
   {
    "name": "notify maps three to warn",
-   "from": "        if ( level === 3 ) { logger.info(message); return; }",
-   "to": "        if ( level === 3 ) { logger.warn(message); return; }"
+   "from": "    const LEVELS = { 3: 'info', 4: 'warn', 5: 'error' };",
+   "to": "    const LEVELS = { 3: 'warn', 4: 'warn', 5: 'error' };"
   },
   {
    "name": "notify says nothing is deprecated",
@@ -188,8 +188,8 @@
   },
   {
    "name": "a logger level goes missing",
-   "from": "        warn: (...parts) => { say('warn', parts); },",
-   "to": "        warn: undefined,"
+   "from": "    for ( const level of [ 'log', 'info', 'warn', 'error', 'debug' ] ) {",
+   "to": "    for ( const level of [ 'log', 'info', 'error', 'debug' ] ) {"
   },
   {
    "name": "cookie get reads nothing",
@@ -198,17 +198,17 @@
   },
   {
    "name": "cookie get does not decode",
-   "from": "                    return decodeURIComponent(part.slice(at + 1).trim());",
-   "to": "                    return part.slice(at + 1).trim();"
+   "from": "                return decode(part.slice(at + 1).trim());",
+   "to": "                return part.slice(at + 1).trim();"
   },
   {
    "name": "cookie get matches a prefix",
-   "from": "                if ( found !== name ) { continue; }",
-   "to": "                if ( found.indexOf(name) === -1 ) { continue; }"
+   "from": "                if ( decode(part.slice(0, at).trim()) !== name ) { continue; }",
+   "to": "                if ( decode(part.slice(0, at).trim()).indexOf(name) === -1 ) { continue; }"
   },
   {
    "name": "cookie set writes",
-   "from": "            if ( gone === false ) { return; }\n            cookie.remove(name, opts);",
+   "from": "            if ( gone ) { cookie.remove(name, opts); }",
    "to": "            try { doc.cookie = name + '=' + value + '; path=/'; } catch ( ex ) { }"
   },
   {
@@ -218,13 +218,13 @@
   },
   {
    "name": "cookie remove does nothing",
-   "from": "            try { doc.cookie = bits.join('; '); } catch ( ex ) { }",
-   "to": "            void bits;"
+   "from": "                try { doc.cookie = line; } catch ( ex ) { }",
+   "to": "                void line;"
   },
   {
    "name": "remove writes a value, not an expiry",
-   "from": "                'expires=Thu, 01 Jan 1970 00:00:01 GMT',",
-   "to": "                'expires=Fri, 01 Jan 2100 00:00:01 GMT',"
+   "from": "                let line = spelling + '=; expires=Thu, 01 Jan 1970 00:00:01' +\n                    ' GMT; path=' + (where.path || '/');",
+   "to": "                let line = spelling + '=; expires=Fri, 01 Jan 2100 00:00:01' +\n                    ' GMT; path=' + (where.path || '/');"
   },
   {
    "name": "readCookie reads nothing",
@@ -393,38 +393,38 @@
   },
   {
    "name": "set ignores a deletion",
-   "from": "            if ( gone === false ) { return; }\n            cookie.remove(name, opts);",
+   "from": "            if ( gone ) { cookie.remove(name, opts); }",
    "to": "            void gone;"
   },
   {
    "name": "set deletes whatever it is handed",
-   "from": "            if ( gone === false ) { return; }\n",
-   "to": ""
+   "from": "            if ( gone ) { cookie.remove(name, opts); }",
+   "to": "            cookie.remove(name, opts);"
   },
   {
    "name": "a bare day count is ignored",
-   "from": "            const bare = typeof options === 'number' ? options : undefined;",
-   "to": "            const bare = undefined;"
+   "from": "            const expires = typeof options === 'number' ? options : opts.expires;",
+   "to": "            const expires = opts.expires;"
   },
   {
    "name": "an empty value is not a deletion",
-   "from": "            let gone = value === '' || value === null || value === undefined;",
-   "to": "            let gone = false;"
+   "from": "            const gone = value === '' || value === null ||\n                value === undefined ||\n                (typeof expires === 'number' && expires <= 0) ||\n                (stamp !== undefined && stamp <= Date.now());",
+   "to": "            const gone = false ||\n                (typeof expires === 'number' && expires <= 0) ||\n                (stamp !== undefined && stamp <= Date.now());"
   },
   {
    "name": "a past expiry is not a deletion",
-   "from": "            if ( typeof at === 'number' && at <= Date.now() ) { gone = true; }",
-   "to": "            void at;"
+   "from": "            const gone = value === '' || value === null ||\n                value === undefined ||\n                (typeof expires === 'number' && expires <= 0) ||\n                (stamp !== undefined && stamp <= Date.now());",
+   "to": "            const gone = value === '' || value === null ||\n                value === undefined ||\n                (typeof expires === 'number' && expires <= 0) ||\n                false;"
   },
   {
    "name": "a date is matched by instanceof",
-   "from": "            const at = expires !== null && typeof expires === 'object' &&\n                typeof expires.getTime === 'function'\n                ? expires.getTime()\n                : undefined;",
-   "to": "            const at = expires instanceof Date ? expires.getTime() : undefined;"
+   "from": "            const stamp = expires && typeof expires.getTime === 'function'\n                ? expires.getTime()\n                : undefined;",
+   "to": "            const stamp = expires instanceof Date ? expires.getTime() : undefined;"
   },
   {
    "name": "the name it reads is not decoded",
-   "from": "                try { found = decodeURIComponent(found); } catch ( ex ) { }",
-   "to": "                void 0;"
+   "from": "                if ( decode(part.slice(0, at).trim()) !== name ) { continue; }",
+   "to": "                if ( part.slice(0, at).trim() !== name ) { continue; }"
   },
   {
    "name": "removal expires the encoded name only",
@@ -445,6 +445,11 @@
    "name": "a rule blocks instead of redirecting",
    "from": "//   ||assets.adobedtm.com/satelliteLib-*.js$script,redirect=adobe-launch.js",
    "to": "//   ||assets.adobedtm.com/satelliteLib-*.js$script"
+  },
+  {
+   "name": "a malformed escape escapes the decoder",
+   "from": "        try { return decodeURIComponent(text); } catch ( ex ) { return text; }",
+   "to": "        return decodeURIComponent(text);"
   }
  ]
 }

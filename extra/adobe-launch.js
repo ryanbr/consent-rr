@@ -54,6 +54,8 @@
         return;
     }
     const TURBINE_VERSION = '29.1.0';
+    // Their notify levels: 3 info, 4 warn, 5 error, anything else log.
+    const LEVELS = { 3: 'info', 4: 'warn', 5: 'error' };
     // The redirected url carries the property, environment and build, and
     // the environment hash is the only one of them anything here publishes -
     // the others would be inventing an id. The flat legacy embed has none.
@@ -81,14 +83,11 @@
         } catch ( ex ) {
         }
     };
-    const logger = {
-        log: (...parts) => { say('log', parts); },
-        info: (...parts) => { say('info', parts); },
-        warn: (...parts) => { say('warn', parts); },
-        error: (...parts) => { say('error', parts); },
-        debug: (...parts) => { say('debug', parts); },
-        deprecation: (...parts) => { say('warn', parts); },
-    };
+    const logger = {};
+    for ( const level of [ 'log', 'info', 'warn', 'error', 'debug' ] ) {
+        logger[level] = (...parts) => { say(level, parts); };
+    }
+    logger.deprecation = (...parts) => { say('warn', parts); };
     // setVar writes one, getVar reads it back. Data elements are the other
     // thing getVar answers, and there are none.
     const vars = new Map();
@@ -108,8 +107,13 @@
         if ( typeof name !== 'string' ) { return; }
         vars.set(name, value);
     };
+    const decode = text => {
+        try { return decodeURIComponent(text); } catch ( ex ) { return text; }
+    };
     // Reading is the page's own document; writing is what is being removed.
     const cookie = {
+        // The name is decoded as well as the value, as theirs does, so a jar
+        // their library wrote encoded matches one the page wrote raw.
         get: name => {
             if ( typeof name !== 'string' || name === '' ) { return undefined; }
             let jar = '';
@@ -117,16 +121,8 @@
             for ( const part of jar.split(';') ) {
                 const at = part.indexOf('=');
                 if ( at === -1 ) { continue; }
-                let found = part.slice(0, at).trim();
-                // Theirs decodes the name it reads, so a jar written by it
-                // is matched as well as one the page wrote raw.
-                try { found = decodeURIComponent(found); } catch ( ex ) { }
-                if ( found !== name ) { continue; }
-                try {
-                    return decodeURIComponent(part.slice(at + 1).trim());
-                } catch ( ex ) {
-                    return part.slice(at + 1).trim();
-                }
+                if ( decode(part.slice(0, at).trim()) !== name ) { continue; }
+                return decode(part.slice(at + 1).trim());
             }
             return undefined;
         },
@@ -135,39 +131,33 @@
             if ( typeof name !== 'string' || name === '' ) { return; }
             const where = options && typeof options === 'object' ? options : {};
             // Both spellings when they differ: theirs encodes the name it
-            // writes, so a cookie the page set raw survives a removal that
-            // only expires the encoded one. Expiring both can only take
-            // something away.
+            // writes, so one the page set raw survives expiring the other.
             const names = [ encodeURIComponent(name) ];
             if ( names[0] !== name ) { names.push(name); }
             for ( const spelling of names ) {
-                const bits = [
-                    spelling + '=',
-                    'expires=Thu, 01 Jan 1970 00:00:01 GMT',
-                    'path=' + (where.path || '/'),
-                ];
-                if ( where.domain ) { bits.push('domain=' + where.domain); }
-                try { doc.cookie = bits.join('; '); } catch ( ex ) { }
+                let line = spelling + '=; expires=Thu, 01 Jan 1970 00:00:01' +
+                    ' GMT; path=' + (where.path || '/');
+                if ( where.domain ) { line += '; domain=' + where.domain; }
+                try { doc.cookie = line; } catch ( ex ) { }
             }
         },
         // A write is removed; a deletion is honoured. Three shapes, measured.
         set: (name, value, options) => {
             if ( typeof name !== 'string' || name === '' ) { return; }
-            const bare = typeof options === 'number' ? options : undefined;
             const opts = options !== null && typeof options === 'object'
                 ? options
                 : {};
-            const expires = bare !== undefined ? bare : opts.expires;
-            let gone = value === '' || value === null || value === undefined;
-            if ( typeof expires === 'number' && expires <= 0 ) { gone = true; }
-            // Duck-typed: a Date from another realm fails instanceof.
-            const at = expires !== null && typeof expires === 'object' &&
-                typeof expires.getTime === 'function'
+            const expires = typeof options === 'number' ? options : opts.expires;
+            // Duck-typed: a Date from another realm fails instanceof. A day
+            // count stays separate from a timestamp - 30 is a number too.
+            const stamp = expires && typeof expires.getTime === 'function'
                 ? expires.getTime()
                 : undefined;
-            if ( typeof at === 'number' && at <= Date.now() ) { gone = true; }
-            if ( gone === false ) { return; }
-            cookie.remove(name, opts);
+            const gone = value === '' || value === null ||
+                value === undefined ||
+                (typeof expires === 'number' && expires <= 0) ||
+                (stamp !== undefined && stamp <= Date.now());
+            if ( gone ) { cookie.remove(name, opts); }
         },
         withConverter: ( ) => cookie,
     };
@@ -197,10 +187,7 @@
         // Their wording, less the backticks this repo bans in a resource.
         logger.deprecation('_satellite.notify is deprecated. Please use the ' +
             '_satellite.logger API.');
-        if ( level === 3 ) { logger.info(message); return; }
-        if ( level === 4 ) { logger.warn(message); return; }
-        if ( level === 5 ) { logger.error(message); return; }
-        logger.log(message);
+        logger[LEVELS[level] || 'log'](message);
     };
     // The three deprecated aliases, each with the wording theirs prints.
     satellite.setCookie = (name, value, days) => {

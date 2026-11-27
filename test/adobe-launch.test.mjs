@@ -521,6 +521,22 @@ describe('extra/adobe-launch.js, cookies and callbacks', ( ) => {
         assert.equal(win.document.cookie.includes('value'), false);
     });
 
+    it('reads a cookie a malformed escape would otherwise throw on', ( ) => {
+        // decodeURIComponent throws on a stray percent, and a jar is full of
+        // whatever anything on the page put there. The raw text comes back
+        // instead, for the name as well as the value.
+        const win = boot({
+            before: '<script>document.cookie = "bad=100%; path=/";' +
+                'document.cookie = "ok=fine; path=/";</script>',
+        });
+        const cookie = win._satellite.cookie;
+        assert.equal(cookie.get('bad'), '100%');
+        assert.equal(cookie.get('ok'), 'fine');
+        // And a name that cannot be decoded is still matched raw.
+        win.document.cookie = '%E0%A4%A=named; path=/';
+        assert.equal(cookie.get('%E0%A4%A'), 'named');
+    });
+
     it('reads and removes a cookie name in either spelling', ( ) => {
         // Theirs encodes the name it writes and decodes the name it reads,
         // so a jar can hold either spelling: one the page wrote raw, one
