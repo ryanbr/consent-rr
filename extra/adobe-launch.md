@@ -914,8 +914,8 @@ record its own debug state would be writing storage.
 ## What it costs per page
 
 ```
-file on disk      12057 bytes
-injected          9113 bytes
+file on disk      18622 bytes
+injected          13639 bytes
 compile           0.063 ms (median of 200)
 boot              0.17 ms (median of 25, in jsdom)
 timers            0
@@ -990,6 +990,25 @@ list.
 This does not fix the property that reported a stall. The probe showed
 that page never defines the callback at all. It is a gap for whichever
 page does.
+
+### The comment trim
+
+Injected was 15881 with 5042 of that comment - 32%, the highest in this
+directory and three times any sibling's absolute total. uBO strips only
+the comments at column zero, and only when followed by a space, so an
+indented one ships to every user. The long blocks moved into the header,
+where they cost nothing: 13639 injected, 2800 of comment, 21%.
+
+Nothing was lost. The three things that cost a field report - the
+double-init flag, the visitor id, the loaded callback's schedule - are
+written out at the top in more detail than they had beside the code, and
+39 one-line comments remain where an edit could go wrong. The code lines
+are byte-identical before and after, checked by comparing the non-comment
+lines, with the suite and the sweep re-run and the probe regenerated,
+since tools/make-probe.mjs builds it from this file.
+
+The cost block above had also gone stale at 12057 and 9113, from before
+several changes. It is measured now.
 
 ## The mutation sweep
 
