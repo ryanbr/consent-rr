@@ -26,6 +26,7 @@ versions, and the rule matches all four urls as written.
 - [The flag it must never set](#the-flag-it-must-never-set)
 - [How it has to be delivered](#how-it-has-to-be-delivered)
 - [What a page keeps, and what it loses](#what-a-page-keeps-and-what-it-loses)
+- [What it costs a page](#what-it-costs-a-page)
 - [The mutation sweep](#the-mutation-sweep)
 - [What is not done here](#what-is-not-done-here)
 
@@ -275,6 +276,31 @@ Loses: every experiment. No variation is applied, `VWO.data` is empty and
 `appliedCampaigns` is a list of none - a page that renders differently per
 variation renders its control. Anything a page queued is dropped rather
 than run.
+
+## What it costs a page
+
+```
+file on disk      7151 bytes
+injected          3108 bytes
+globals set       window.VWO only, as an array carrying its members
+listeners         one, DOMContentLoaded on the document
+observers         one, the head's own children, disconnected at that event
+requests          none
+```
+
+Injected was 7945 until the comments moved. Only a `//` at column zero is
+dropped by uBO, so an indented comment ships: 5616 of those 7945 bytes
+were comment text inside the function, for a 166-line resource whose code
+is 80 lines. The reasoning now lives in the header, which costs nothing
+because uBO drops it, and in this file; what stays beside the code is a
+line each where an edit could go wrong.
+
+The trim is comments only - the code lines are byte-identical before and
+after, which was checked rather than assumed, and the suite and the sweep
+were re-run against it. For scale, the siblings: optimizely ships 25625
+bytes with 1685 of comment, tealium 12622 with 1168, perimeterx 8971 with
+533. This one carried more comment bytes than optimizely at a sixth of its
+size, which is what prompted the second pass.
 
 ## The mutation sweep
 
