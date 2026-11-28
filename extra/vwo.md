@@ -76,13 +76,36 @@ The worker and tag files the payload would fetch (`vanj.js`,
 `edrv/va_gq-*.gz.js`, `tags.js_*`) are never asked for once this stands
 in, because the thing that asks for them is what was replaced.
 
-### Why the rules are $script and not $xhr,script
+### The portable form, and why widening a type list is the wrong lever
 
-Both entry points are fetched as script elements. `j.php` goes through
-`_vwo_code.load(...)`, which builds one, and there are 52
+Both entry points are fetched as script elements today. `j.php` goes
+through `_vwo_code.load(...)`, which builds one, and there are 52
 `createElement("script")` calls across the vendor files and no XHR of
-`j.php` in any of them. Every redirect rule in this repo is `$script` for
-the same reason.
+`j.php` in any of them.
+
+But a type list is the wrong thing to rely on, because a redirect that
+satisfies an XHR hands the fetcher this file as TEXT and a stub that never
+executes reveals nothing. So the recommended form takes the type out of
+the question entirely:
+
+```
+example.com##+js(vwo)
+||dev.visualwebsiteoptimizer.com/j.php$important
+||dev.visualwebsiteoptimizer.com/tag/*.js$important
+```
+
+The execution comes from the scriptlet and the network from a block that
+names no type, so `$xhr`, `ping`, `other` and whatever they move to next
+are all covered without listing any of them. This works because nothing in
+this file reads `document.currentScript` or its own `src` - a test asserts
+that - so it behaves identically injected. `extra/adobe-launch.js` cannot
+make the same claim: it takes the property and environment id off the
+element it replaced, which is context a scriptlet does not have.
+
+The redirect form is Firefox-only and `$script`-only, and the two forms
+should not be combined: an untyped `$important` block wins over the
+redirect, so the resource would never be served. Use one or the other, and
+the portable one if only one.
 
 Adding `$xhr` would be valid and would do nothing here, but the general
 point is worth keeping: this resource only helps if it EXECUTES. A

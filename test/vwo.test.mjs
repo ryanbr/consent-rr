@@ -340,11 +340,47 @@ describe('filters, vwo', ( ) => {
             .filter(line => line.startsWith('||'));
     });
 
+    it('offers a portable form that names no request type', ( ) => {
+        // The execution comes from the scriptlet and the network from a
+        // block with no type, so $xhr, ping, other and whatever they move
+        // to next are covered without listing any of them.
+        const blocks = rules.filter(rule => rule.endsWith('$important'));
+        assert.equal(blocks.length, 2, 'the portable rules moved');
+        for ( const rule of blocks ) {
+            assert.equal(/\$(script|xhr|xmlhttprequest|ping|other)/
+                .test(rule), false, 'a type crept back in: ' + rule);
+        }
+    });
+
     it('names the resource uBO will look for, with the .js', ( ) => {
-        assert.equal(rules.length, 2, 'the header rules moved');
-        for ( const rule of rules ) {
+        const redirects = rules.filter(rule => rule.includes('redirect='));
+        assert.equal(redirects.length, 2, 'the redirect rules moved');
+        for ( const rule of redirects ) {
             assert.ok(rule.endsWith('$script,redirect=vwo.js'), rule);
         }
+    });
+
+    it('runs identically as a scriptlet, which the portable form needs',
+    async ( ) => {
+        // No document.currentScript, no reading its own src: the only
+        // reason a resource can need the redirect form is context from the
+        // element it replaced, and this one takes none.
+        const text = await fs.readFile(HERE, 'utf8');
+        const body = parseResources(text).get('vwo.js');
+        assert.equal(/currentScript|document\.scripts/.test(body), false);
+        // And it reveals with no script element in sight.
+        const win = boot({
+            before: '<script>window._vwo_code = { finish: function() {' +
+                'window.finishCalls = 1; } };' +
+                'var s = document.createElement("style");' +
+                's.setAttribute("id", "_vis_opt_path_hides");' +
+                'document.head.appendChild(s);</script>',
+        });
+        await settle();
+        assert.equal(win.finishCalls, 1);
+        assert.equal(
+            win.document.getElementById('_vis_opt_path_hides'), null
+        );
     });
 
     it('covers both entry points as they have been seen served', ( ) => {
@@ -360,7 +396,9 @@ describe('filters, vwo', ( ) => {
         for ( const url of [
             'https://dev.visualwebsiteoptimizer.com/j.php?a=1072524&u=x&vn=2.1',
             'https://dev.visualwebsiteoptimizer.com/j.php?a=725143&u=x&f=1&vn=1.5',
+            'https://dev.visualwebsiteoptimizer.com/j.php?a=177644&u=x&f=1&r=0.9',
             'https://dev.visualwebsiteoptimizer.com/tag/1039738.js',
+            'https://dev.visualwebsiteoptimizer.com/tag/972639.js',
         ] ) {
             assert.ok(matches(url), 'not covered: ' + url);
         }

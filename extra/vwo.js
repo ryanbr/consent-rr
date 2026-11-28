@@ -14,12 +14,34 @@
 // they moved up here, which costs nothing.
 //
 // THE RULES
+// Two entry points. j.php is settings and library in one; /tag/<id>.js is
+// their newer unified tag, which fetches j.php, the lib, edrv and dcdn
+// itself. Both manage the page-hiding, so either one blocked on its own
+// hides the page, and both need covering.
+//
+// The portable form. Works in every browser AND for any request type,
+// because the execution comes from the scriptlet and the network from a
+// block that names no type:
+//   example.com##+js(vwo)
+//   ||dev.visualwebsiteoptimizer.com/j.php$important
+//   ||dev.visualwebsiteoptimizer.com/tag/*.js$important
+// Nothing in this file reads document.currentScript or its own src, so it
+// behaves identically injected as a scriptlet - which is why the type on
+// the blocking rule can be dropped entirely. $xhr, ping, other and
+// whatever they move to next are all covered by naming no type at all.
+//
+// The redirect form, Firefox only and $script only:
 //   ||dev.visualwebsiteoptimizer.com/j.php$script,redirect=vwo.js
 //   ||dev.visualwebsiteoptimizer.com/tag/*.js$script,redirect=vwo.js
-// Two entry points. j.php is settings and library in one; /tag/<id>.js is
-// their newer unified tag, 180KB, which fetches j.php, the lib, edrv and
-// dcdn itself. Both manage the page-hiding, so either one blocked on its
-// own hides the page.
+// On Chromium a redirect naming a USER resource neither injects nor blocks
+// - the request is simply allowed, measured - so a list shipping only this
+// leaves those users with no stub and no block. Do not pair it with an
+// untyped $important block: the block wins and the redirect never serves.
+// Use one form or the other, and the portable one if only one.
+//
+// Widening a redirect's type list does not help: a redirect that satisfies
+// an XHR hands the fetcher this file as TEXT, and a stub that is never
+// executed reveals nothing.
 // Their own answer when an account is stopped, served from both j.php
 // and /lib/<id>.js, is 110 bytes and does the first thing this does:
 //   /* VWO execution stopped */ try{let code=window._vwo_code||
