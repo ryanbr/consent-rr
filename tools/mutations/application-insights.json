@@ -1,0 +1,122 @@
+{
+    "resource": "extra/application-insights.js",
+    "test": "test/application-insights.test.mjs",
+    "expected": {},
+    "mutations": [
+        {
+            "name": "no api at all",
+            "from": "    Object.assign(sdk, {",
+            "to": "    void 0 && Object.assign(sdk, {"
+        },
+        {
+            "name": "trackEvent is missing",
+            "from": "        trackEvent: noopfn,",
+            "to": "        trackEventt: noopfn,"
+        },
+        {
+            "name": "getCookieMgr is missing",
+            "from": "        getCookieMgr: ( ) => cookieMgr,",
+            "to": "        getCookieMgrr: ( ) => cookieMgr,"
+        },
+        {
+            "name": "getCookieMgr answers nothing",
+            "from": "        getCookieMgr: ( ) => cookieMgr,",
+            "to": "        getCookieMgr: noopfn,"
+        },
+        {
+            "name": "the cookie manager has no get",
+            "from": "        get: ( ) => '',\n        del: ( ) => false,",
+            "to": "        del: ( ) => false,"
+        },
+        {
+            "name": "getTraceCtx answers nothing",
+            "from": "        getTraceCtx: ( ) => traceCtx,",
+            "to": "        getTraceCtx: noopfn,"
+        },
+        {
+            "name": "an initializer hands back nothing",
+            "from": "        addTelemetryInitializer: ( ) => handle,",
+            "to": "        addTelemetryInitializer: noopfn,"
+        },
+        {
+            "name": "getPlugin answers nothing",
+            "from": "        getPlugin: ( ) => ({",
+            "to": "        getPlugin: ( ) => undefined && ({"
+        },
+        {
+            "name": "no context",
+            "from": "    if ( sdk.context === undefined ) {",
+            "to": "    if ( false ) {"
+        },
+        {
+            "name": "the stand-down shape: version without initialize",
+            "from": "    sdk.initialize = true;",
+            "to": "    sdk.initialize = undefined;"
+        },
+        {
+            "name": "their config is thrown away",
+            "from": "    if ( sdk.config === undefined ) { sdk.config = {}; }",
+            "to": "    sdk.config = {};"
+        },
+        {
+            "name": "the object is replaced, not adopted",
+            "from": "    const sdk = existing !== null && typeof existing === 'object'\n        ? existing\n        : {};",
+            "to": "    const sdk = {};"
+        },
+        {
+            "name": "a live sdk is replaced",
+            "from": "        existing.core !== undefined\n    ) {\n        return;",
+            "to": "        existing.core !== undefined\n    ) {\n        void 0;"
+        },
+        {
+            "name": "the renamed global is ignored",
+            "from": "    const name = typeof w.appInsightsSDK === 'string' && w.appInsightsSDK !== ''\n        ? w.appInsightsSDK\n        : 'appInsights';",
+            "to": "    const name = 'appInsights';"
+        },
+        {
+            "name": "the queue is never drained",
+            "from": "    drain();\n    // Their namespace.",
+            "to": "    // Their namespace."
+        },
+        {
+            "name": "a later push is not drained",
+            "from": "        const count = push.apply(this, args);\n        drain();",
+            "to": "        const count = push.apply(this, args);"
+        },
+        {
+            "name": "the drain replays the whole queue",
+            "from": "        while ( drained < queue.length ) {",
+            "to": "        drained = 0;\n        while ( drained < queue.length ) {"
+        },
+        {
+            "name": "a queued call that throws stops the rest",
+            "from": "            try { entry(); } catch ( ex ) { }",
+            "to": "            entry();"
+        },
+        {
+            "name": "the queue is a new array",
+            "from": "    const queue = Array.isArray(sdk.queue) ? sdk.queue : [];",
+            "to": "    const queue = [];"
+        },
+        {
+            "name": "their namespace is clobbered",
+            "from": "    const ns = w.Microsoft !== null && typeof w.Microsoft === 'object'\n        ? w.Microsoft\n        : {};",
+            "to": "    const ns = {};"
+        },
+        {
+            "name": "an existing ApplicationInsights is replaced",
+            "from": "    if ( ns.ApplicationInsights === undefined ) {",
+            "to": "    if ( true ) {"
+        },
+        {
+            "name": "SeverityLevel off by one",
+            "from": "                Error: 3,",
+            "to": "                Error: 2,"
+        },
+        {
+            "name": "no namespace at all",
+            "from": "    w.Microsoft = ns;",
+            "to": "    void ns;"
+        }
+    ]
+}
