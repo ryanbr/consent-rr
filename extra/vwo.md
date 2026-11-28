@@ -564,19 +564,22 @@ than run.
 
 ```
 file on disk      7151 bytes
-injected          4816 bytes
+injected          4223 bytes
 globals set       window.VWO only, as an array carrying its members
 listeners         one, DOMContentLoaded on the document
 observers         one, the head's own children, disconnected at that event
 requests          none
 ```
 
-Injected was 7945 until the comments moved. Only a `//` at column zero is
-dropped by uBO, so an indented comment ships: 5616 of those 7945 bytes
-were comment text inside the function, for a 166-line resource whose code
-is 80 lines. The reasoning now lives in the header, which costs nothing
-because uBO drops it, and in this file; what stays beside the code is a
-line each where an edit could go wrong.
+Injected was 7945 at first, 3108 after the comments moved into the header,
+then 4816 once settling the queue was added, and 4223 after a second trim
+of the comments that came with it. Only a `//` followed by a SPACE is
+dropped by uBO, so an indented comment ships - and so does a bare `//`
+separator, which is not the same thing: nine of those were shipping from
+this file alone, and 27 across the six resources here. They are `// --`
+now. The reasoning lives in the header, which costs nothing, and in this
+file; what stays beside the code is a line each where an edit could go
+wrong.
 
 The trim is comments only - the code lines are byte-identical before and
 after, which was checked rather than assumed, and the suite and the sweep

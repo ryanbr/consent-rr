@@ -21,6 +21,7 @@ az416426.vo.msecnd.net/scripts/b/ai.2.min.js     123063   the older host,
 - [What it publishes, and where each came from](#what-it-publishes-and-where-each-came-from)
 - [Their snippet, and the queue](#their-snippet-and-the-queue)
 - [Is the coverage complete](#is-the-coverage-complete)
+- [What it costs a page](#what-it-costs-a-page)
 - [The mutation sweep](#the-mutation-sweep)
 - [What is not done here](#what-is-not-done-here)
 
@@ -236,6 +237,29 @@ Also checked: `IAppInsights`, the analytics interface, has 13 members and
 every one is published. The snippet's `aiMethod` list has 15 and the SDK's
 internal list 12, neither a subset of the other, and what is published
 covers both.
+
+## What it costs a page
+
+```
+file on disk      11688 bytes
+injected           5913 bytes
+globals set       window[appInsightsSDK || "appInsights"], adopted in
+                  place when their snippet made one, and
+                  window.Microsoft.ApplicationInsights
+listeners         none
+observers         none
+requests          none
+```
+
+Injected was 7439 until the comments moved into the header, which uBO
+drops. Only a `//` followed by a SPACE is dropped, which is worth stating
+because a bare `//` separator line is NOT - 27 of those were shipping
+across the six resources in this directory before this pass, and
+`extra/vwo.js` alone carried nine. They are `// --` now.
+
+The trim is comments only; the code lines are byte-identical before and
+after, which was checked rather than assumed, and the suite and the sweep
+were re-run against it.
 
 ## The mutation sweep
 

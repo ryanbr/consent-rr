@@ -11,7 +11,7 @@
 // between December 2018 and November 2026, 20kB to 1.4MB. Every one
 // publishes the same fifteen members in the same order. That list is
 // theirs: do not add to it, and do not reorder it.
-//
+// --
 // THE RULES. Both of their hosts in one line, .com and the .cn that serves
 // the same loaders:
 //   ||tags.tiqcdn.*/utag/*/utag.js$script,redirect=tealium.js
@@ -41,7 +41,7 @@
 // /utag/de/prod/utag.js and is really stepstone/stepstone-de, pluto has no
 // utag segment at all - so no account comes out of it and utag.id
 // publishes empty. Nothing else depends on it.
-//
+// --
 // THE DECISIONS, every one load-bearing. Reversing one needs the .md and
 // field evidence, not a tidy-up.
 //   Tags never load and extensions never run. Ninety-nine per cent of what
@@ -63,7 +63,7 @@
 //   the breakage this exists for, and a request answered at 200 is the
 //   other half of it.
 //   The console line stays.
-//
+// --
 // BEFORE COUNTING ANYTHING IN ONE OF THEIR FILES, use a reader that
 // ignores line length. Twelve of the forty-nine carry a line over 100k
 // characters, and a line-oriented search answers zero on those - three

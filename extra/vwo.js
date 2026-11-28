@@ -12,13 +12,13 @@
 // Only lines starting with // at column zero are dropped by uBO, so an
 // indented comment SHIPS - these were 5616 of 7945 injected bytes before
 // they moved up here, which costs nothing.
-//
+// --
 // THE RULES
 // Two entry points. j.php is settings and library in one; /tag/<id>.js is
 // their newer unified tag, which fetches j.php, the lib, edrv and dcdn
 // itself. Both manage the page-hiding, so either one blocked on its own
 // hides the page, and both need covering.
-//
+// --
 // The portable form. Works in every browser AND for any request type,
 // because the execution comes from the scriptlet and the network from a
 // block that names no type:
@@ -29,7 +29,7 @@
 // behaves identically injected as a scriptlet - which is why the type on
 // the blocking rule can be dropped entirely. $xhr, ping, other and
 // whatever they move to next are all covered by naming no type at all.
-//
+// --
 // No $important either, deliberately. A plain block composes with an
 // allowlist exception, and some sites need one: this applies no variation,
 // so a page whose UI only exists inside a VWO variation cannot be fixed
@@ -42,7 +42,7 @@
 // /ping_tpc.php, /dyn, /analysis/, ee.gif - are separate rules and most
 // lists already carry them; nothing here needs to repeat them, and once an
 // entry point is replaced nothing asks for them anyway.
-//
+// --
 // The redirect form, Firefox only:
 //   ||dev.visualwebsiteoptimizer.com/j.php$xhr,script,redirect=vwo.js
 //   ||dev.visualwebsiteoptimizer.com/tag/*.js$xhr,script,redirect=vwo.js
@@ -60,7 +60,7 @@
 // leaves those users with no stub and no block. Do not pair it with an
 // untyped $important block: the block wins and the redirect never serves.
 // Use one form or the other, and the portable one if only one.
-//
+// --
 // Which is why the portable form is the recommendation: it reveals the
 // page from the scriptlet whatever the request type turns out to be, and
 // the untyped block covers types nobody has seen yet.
@@ -80,7 +80,7 @@
 // not block: the request is simply allowed. There it has to be a scriptlet
 // beside a blocking rule - ##+js(vwo) with the rule above as $script,
 // important. Measured, see extra/adobe-launch.md.
-//
+// --
 // WHY AN ARRAY AND NOT AN OBJECT
 // Their snippet makes window.VWO = window.VWO || [], and their library,
 // vanj.js, is written to find that:
@@ -99,7 +99,13 @@
 // capture-and-wrap still works - var d = e.push; e.push = ... - and then
 // settles what was queued, which is the one thing absorbing it would not
 // do. A page waiting on a callback it pushed is a page that never renders.
-//
+// It settles at DOMContentLoaded and on every push after, never before the
+// document arrives, never while window._vwo_s says their library is up and
+// is draining the queue itself, once per entry with the index kept, and
+// with no arguments because there is no campaign data to hand over - a
+// callback that needs it throws into a catch, which still beats never
+// being called at all.
+// --
 // WHAT IT PUBLISHES, and why each member is there
 //   get           asked for "visitor.id" and nothing else, 15 times.
 //                 Empty string: what their guarded caller expects, and
@@ -116,7 +122,7 @@
 //                 this; _.domains and _.sD beside it
 // Left out because every call site of theirs guards them: initVWOLib,
 // consentState, WorkerRef, siteWideCode, caE, sTs, dNR, featureInfo.
-//
+// --
 // THE FLAGS IT MUST NEVER SET
 // window._VWO.sCL is the library's double-init guard: a payload that finds
 // it set logs dupCode and returns without applying anything.
@@ -129,7 +135,7 @@
 // window.__satelliteLoaded and took a field report to find.
 // Not publishing Wingify at all is what keeps the tag's guard passing;
 // their own call sites self-default it, as window.Wingify || [].
-//
+// --
 // A blank line ends the resource, so none may appear below.
 (function() {
     'use strict';
@@ -171,17 +177,13 @@
         },
     });
     w.VWO = api;
-    // Settling what a page queued, rather than only absorbing it: a page
-    // that pushed a callback and waits for it is the blank-page shape
-    // extra/adobe-launch.md keeps being about. Their own processEvent is
-    // what would have called it.
+    // Settled, not absorbed: a page waiting on a callback it pushed
+    // never renders. The header has the rules.
     let ready = false;
     let settled = 0;
     const drain = ( ) => {
-        // Not before the document arrives, and never when theirs is up:
-        // _vwo_s is their settings function and only exists once their
-        // library ran, and it processes the queue itself - settling here
-        // as well would call a page's callback twice.
+        // Never early, and never while _vwo_s says theirs is up and
+        // draining it - that would call a page back twice.
         if ( ready === false || w._vwo_s !== undefined ) { return; }
         while ( settled < api.length ) {
             const entry = api[settled];
@@ -189,10 +191,7 @@
             if ( Array.isArray(entry) === false ) { continue; }
             for ( const part of entry ) {
                 if ( typeof part !== 'function' ) { continue; }
-                // No arguments: theirs would hand over campaign data, and
-                // there is none to hand over. A callback that needs it
-                // throws into this catch, which is still better than one
-                // that is never called at all.
+                // No arguments: there is no campaign data to pass.
                 try { part(); } catch ( ex ) { }
             }
         }
@@ -203,9 +202,8 @@
         drain();
         return count;
     };
-    // Either snippet global: theirs are interchangeable, and their own
-    // minimal stub reads _vwo_code || _wingify_code.
-    // Once only: their finish guards itself, their overlay does not.
+    // Either snippet global, once only: their finish guards itself,
+    // their overlay does not.
     let toldThem = false;
     const theirExits = ( ) => {
         if ( toldThem ) { return; }

@@ -9,7 +9,7 @@
 // THE NOTES ARE IN extra/adobe-launch.md - what their runtime publishes,
 // where each member here came from, and what each decision traded.
 // The comments below are a line each; the reasoning for them is there.
-//
+// --
 // THE RULES
 //   ||assets.adobedtm.com/*/launch-*.min.js$script,redirect=adobe-launch.js
 //   ||assets.adobedtm.com/launch-*.min.js$script,redirect=adobe-launch.js
@@ -31,7 +31,7 @@
 // resolves a failed one to undefined and the rule carries on, so blocking
 // them breaks nothing and redirecting them buys nothing. The .md has the
 // source of their loader that says so.
-//
+// --
 // The page keeps a working window._satellite - getVar, setVar, track,
 // pageBottom, cookie, logger, notify, the deprecated cookie aliases, and
 // the property, company, environment and buildInfo objects - so page code
@@ -39,7 +39,7 @@
 // rule, data element and extension: no Analytics, no Target, no Audience
 // Manager, no ECID, no Web SDK, no direct-call rules, and no custom code
 // fetched from their CDN.
-//
+// --
 // A comment indented into the body ships to every user - uBO strips only
 // the ones at column zero - so keep those to one line and put the rest in
 // the .md.

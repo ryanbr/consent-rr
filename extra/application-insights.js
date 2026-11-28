@@ -8,7 +8,7 @@
 // THE NOTES ARE IN extra/application-insights.md - the snippet contract,
 // every member and where it came from, and what a page keeps and loses.
 // The comments below are a line each; the reasoning for them is there.
-//
+// --
 // THE RULES
 //   ||js.monitor.azure.com/scripts/$xhr,script,redirect=application-insights.js
 //   ||az416426.vo.msecnd.net/scripts/$xhr,script,redirect=application-insights.js
@@ -18,7 +18,7 @@
 // been. And it is a generic third-party SDK on thousands of sites: a
 // scriptlet needs a domain list, a redirect keys off the vendor's own url.
 // Both types, because a site can fetch a script itself.
-//
+// --
 // On Chromium a redirect naming a USER resource neither injects nor
 // blocks, so pair it with a plain block there:
 //   ||js.monitor.azure.com/scripts/
@@ -28,7 +28,7 @@
 // calls that return something, which is what this file is for.
 // No $important: a plain block composes with an allowlist exception for a
 // site that genuinely needs their SDK.
-//
+// --
 // A scriptlet IS worth it per-site, and does something a redirect cannot.
 // Their snippet opens with
 //   let aiSdk = win[aiName] || (function(){ ...everything... })(cfg.cfg)
@@ -37,7 +37,7 @@
 // even requested. What follows still runs, which is why the queue drain
 // below matters - the snippet ends with queue.push(_onInit) and
 // trackPageView({}).
-//
+// --
 // NOTHING HERE IS ABOUT HIDING A PAGE
 // Unlike VWO or Adobe Target, this SDK hides nothing and gates no render:
 // it is telemetry. So a block alone breaks very little, because their
@@ -46,7 +46,7 @@
 // getCookieMgr().get(...), getTraceCtx(), context.user.id - and any page
 // that loads the SDK with no snippet at all, where window.appInsights
 // never exists and the first call throws. That is what this is for.
-//
+// --
 // THE SHAPE IT MUST NOT TAKE
 // Their takeover test, read off ai.2.min.js:
 //   w[name] !== undefined
@@ -59,7 +59,7 @@
 // skip the page entirely - this vendor's stand-down shape. What is
 // published below therefore carries both, exactly as their own snippet
 // does, so an SDK that is not blocked still takes over and still works.
-//
+// --
 // WHAT IT PUBLISHES, and why
 //   the twelve their snippet proxies, which is the page-facing set:
 //     getCookieMgr trackEvent trackPageView trackPageViewPerformance
@@ -76,7 +76,7 @@
 // Objects are returned where theirs return one, because a page writing
 // getCookieMgr().get("ai_user") breaks on undefined exactly as it would
 // with no stub at all.
-//
+// --
 // A blank line ends the resource, so none may appear below.
 (function() {
     'use strict';
@@ -87,12 +87,8 @@
         ? w.appInsightsSDK
         : 'appInsights';
     const existing = w[name];
-    // Already handled: core belongs to a live SDK and the snippet only
-    // ever reads it, and getTraceCtx is on a live SDK and on what this
-    // publishes but is NOT one of the fifteen their snippet proxies - so
-    // this also stands aside on a second run of itself, which two matching
-    // requests on one page would otherwise give, re-running the drain over
-    // entries already run.
+    // core is a live SDK's, getTraceCtx is one too and is also ours -
+    // which is what makes a second run of this stand aside.
     if (
         existing !== null && existing !== undefined &&
         (
@@ -102,7 +98,7 @@
     ) {
         return;
     }
-    // Adopted in place: the snippet's own closures hold this object.
+    // In place: their closures hold this object.
     const sdk = existing !== null && typeof existing === 'object'
         ? existing
         : {};
@@ -125,9 +121,7 @@
         getTraceFlags: ( ) => undefined,
         setTraceFlags: noopfn,
     };
-    // Their IUnloadHook, which carries BOTH names - a page calling .rm()
-    // on what addTelemetryInitializer returned threw while this had only
-    // remove. It is what onCfgChange hands back as well.
+    // Their IUnloadHook carries BOTH names; onCfgChange returns one too.
     const handle = { remove: noopfn, rm: noopfn };
     Object.assign(sdk, {
         getCookieMgr: ( ) => cookieMgr,
@@ -160,14 +154,9 @@
             remove: noopfn,
         }),
         getTraceCtx: ( ) => traceCtx,
-        // In all three builds, and the documented manual setup is
-        // new Microsoft.ApplicationInsights.ApplicationInsights(cfg)
-        // followed by this.
+        // Their documented manual setup ends with this call.
         loadAppInsights: ( ) => sdk,
-        // The rest of their web SKU's public surface, from AISku.ts. Void
-        // returns are no-ops; the three that their own signatures declare
-        // as "| null" answer null, which is a value a page written
-        // against them already handles.
+        // The rest of AISku.ts: void is a no-op, "| null" answers null.
         setTraceCtx: noopfn,
         stopPollingInternalLogs: noopfn,
         updateCfg: noopfn,
@@ -181,11 +170,9 @@
         getActiveSpan: ( ) => null,
         getTraceProvider: ( ) => null,
     });
-    // Theirs keeps the snippet it was built from, and this IS that object.
+    // Theirs keeps the snippet it came from, and this is it.
     if ( sdk.snippet === undefined ) { sdk.snippet = sdk; }
-    // Their snippet puts this on the INSTANCE as well as the namespace -
-    // appInsights["SeverityLevel"] = { Verbose: 0, ... } - and a page
-    // passes it straight back into trackTrace.
+    // On the INSTANCE as well as the namespace, as their snippet does.
     const severity = {
         Verbose: 0,
         Information: 1,
@@ -194,8 +181,7 @@
         Critical: 4,
     };
     if ( sdk.SeverityLevel === undefined ) { sdk.SeverityLevel = severity; }
-    // State the snippet already carries is kept: config holds their
-    // instrumentation key and a page may read it back.
+    // Kept if the snippet has it: their key is in config.
     if ( sdk.config === undefined ) { sdk.config = {}; }
     if ( sdk.context === undefined ) {
         sdk.context = {
@@ -207,19 +193,15 @@
             telemetryTrace: { traceID: '', parentID: '', name: '' },
         };
     }
-    // Both, never one: version without initialize is the shape that makes
-    // their own SDK skip the page.
+    // Both, never one - see the header.
     sdk.initialize = true;
     if ( sdk.version === undefined ) { sdk.version = 2; }
     if ( sdk.sv === undefined ) { sdk.sv = ''; }
     const queue = Array.isArray(sdk.queue) ? sdk.queue : [];
     sdk.queue = queue;
     w[name] = sdk;
-    // Their queue holds closures the snippet pushed, each calling a method
-    // on this object - which is now one of the no-ops above, so draining
-    // runs them harmlessly and empties a queue nothing else will. It also
-    // carries their _onInit, pushed by the snippet's last lines, so a page
-    // that passed an onInit callback is answered rather than left waiting.
+    // Closures the snippet pushed, each calling a method above - now a
+    // no-op - and their _onInit, which answers a page waiting on it.
     let drained = 0;
     const drain = ( ) => {
         while ( drained < queue.length ) {
@@ -236,9 +218,7 @@
         return count;
     };
     drain();
-    // Their namespace. SeverityLevel is the one a page passes back in, to
-    // trackTrace and trackException; the identifiers and the endpoint are
-    // theirs and are published as the strings they are.
+    // Their namespace, with the constants a page passes back in.
     const ns = w.Microsoft !== null && typeof w.Microsoft === 'object'
         ? w.Microsoft
         : {};
@@ -256,9 +236,7 @@
             CoreUtils: {},
             Telemetry: {},
             RequestHeaders: {},
-            // new Microsoft.ApplicationInsights.ApplicationInsights(cfg)
-            // is their documented setup without a snippet, and the page
-            // then calls loadAppInsights() on what it got back.
+            // Their setup without a snippet; see the header.
             ApplicationInsights: function() { return sdk; },
         };
     }

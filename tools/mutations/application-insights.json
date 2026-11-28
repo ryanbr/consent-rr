@@ -75,8 +75,8 @@
         },
         {
             "name": "the queue is never drained",
-            "from": "    drain();\n    // Their namespace.",
-            "to": "    // Their namespace."
+            "from": "    drain();\n    // Their namespace, with the constants a page passes back in.",
+            "to": "    // Their namespace, with the constants a page passes back in."
         },
         {
             "name": "a later push is not drained",

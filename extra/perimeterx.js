@@ -6,7 +6,7 @@
 // THE NOTES ARE IN extra/perimeterx.md - the builds read, how the app id
 // is found, every member of their object, and what each decision traded.
 // What follows is only what is needed to change this file safely.
-//
+// --
 // THE RULES
 //   ||client.px-cloud.net/*/main.min.js$script,redirect=perimeterx.js
 // and the same client from a site's own host, where the path is the app id
@@ -28,12 +28,12 @@
 // One scriptlet line belongs with them, for a page that reads
 // navigator.brave to decide whether to collect:
 //   example.com##+js(set-constant, navigator.brave, undefined)
-//
+// --
 // NEVER BLOCK THE CHALLENGE. captcha.px-cloud.net and captcha.px-cdn.net
 // serve the page a visitor needs to get past a block, and blocking either
 // turns a solvable challenge into a dead end. The same goes for a served
 // block page's own html.
-//
+// --
 // THE DECISIONS, every one load-bearing. Reversing one needs the .md and
 // field evidence, not a tidy-up.
 //   No sensor is faked and no token is forged. This answers their api and

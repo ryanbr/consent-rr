@@ -8,7 +8,7 @@
 // THE NOTES ARE IN extra/optimizely.md - every member and what each
 // decision traded, what the file publishes, and what it costs a page.
 // The comments below are a line each; the reasoning for them is there.
-//
+// --
 // THE RULE
 //   ||cdn.optimizely.com/js/*.js$script,redirect=optimizely.js
 // A redirect leaves the script element carrying the url it was going to
@@ -17,7 +17,7 @@
 // here: the resource handles one if a rule is pointed at it, but no file
 // served from that path has been checked, and an operational line written
 // from memory is how the perimeterx rules went wrong once.
-//
+// --
 // A comment indented into the body ships to every user - uBO strips only
 // the ones at column zero - so keep those to one line and put the rest in
 // the .md. This file was once a quarter prose by weight.
