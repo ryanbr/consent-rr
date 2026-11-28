@@ -123,6 +123,8 @@
     };
     // Their IUnloadHook carries BOTH names; onCfgChange returns one too.
     const handle = { remove: noopfn, rm: noopfn };
+    // What addUnloadCb collects, and what unload() then calls.
+    const unloadCbs = [];
     Object.assign(sdk, {
         getCookieMgr: ( ) => cookieMgr,
         trackEvent: noopfn,
@@ -137,9 +139,34 @@
         startTrackEvent: noopfn,
         stopTrackEvent: noopfn,
         _onerror: noopfn,
-        flush: noopfn,
+        // flush(async?, callBack?) and unload(isAsync?, unloadComplete?)
+        // both take a completion callback, and a page calling
+        // flush(true, () => navigate()) waits for ever against a no-op.
+        // Answer or settle: there is nothing to flush, so say so at once.
+        flush: (isAsync, callBack) => {
+            if ( typeof callBack !== 'function' ) { return; }
+            try { callBack(); } catch ( ex ) { }
+        },
         onunloadFlush: noopfn,
-        unload: noopfn,
+        unload: (isAsync, unloadComplete) => {
+            // Their handlers first, as theirs does, then the completion
+            // with their ITelemetryUnloadState: reason 0 is
+            // ManualTeardown, which is what a page calling unload is.
+            while ( unloadCbs.length !== 0 ) {
+                const cb = unloadCbs.shift();
+                if ( typeof cb !== 'function' ) { continue; }
+                try { cb({ reason: 0, isAsync: isAsync !== false }); }
+                catch ( ex ) { }
+            }
+            if ( typeof unloadComplete !== 'function' ) { return; }
+            try {
+                unloadComplete({
+                    reason: 0,
+                    isAsync: isAsync !== false,
+                    flushComplete: true,
+                });
+            } catch ( ex ) { }
+        },
         pollInternalLogs: noopfn,
         addTelemetryInitializer: ( ) => handle,
         addDependencyInitializer: ( ) => handle,
@@ -161,7 +188,7 @@
         stopPollingInternalLogs: noopfn,
         updateCfg: noopfn,
         onCfgChange: ( ) => handle,
-        addUnloadCb: noopfn,
+        addUnloadCb: cb => { unloadCbs.push(cb); },
         addHousekeepingBeforeUnload: noopfn,
         updateSnippetDefinitions: noopfn,
         emptyQueue: noopfn,

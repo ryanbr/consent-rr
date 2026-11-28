@@ -217,6 +217,41 @@
             "name": "no cookie property",
             "from": "    if ( sdk.cookie === undefined ) { sdk.cookie = ''; }",
             "to": "    void 0;"
+        },
+        {
+            "name": "flush never calls back",
+            "from": "            if ( typeof callBack !== 'function' ) { return; }\n            try { callBack(); } catch ( ex ) { }",
+            "to": "            void callBack;"
+        },
+        {
+            "name": "unload never completes",
+            "from": "            try {\n                unloadComplete({",
+            "to": "            if ( true ) { return; }\n            try {\n                unloadComplete({"
+        },
+        {
+            "name": "unload reports the wrong reason",
+            "from": "                    reason: 0,\n                    isAsync: isAsync !== false,\n                    flushComplete: true,",
+            "to": "                    reason: 50,\n                    isAsync: isAsync !== false,\n                    flushComplete: true,"
+        },
+        {
+            "name": "unload says the flush did not complete",
+            "from": "                    flushComplete: true,",
+            "to": "                    flushComplete: false,"
+        },
+        {
+            "name": "addUnloadCb collects nothing",
+            "from": "        addUnloadCb: cb => { unloadCbs.push(cb); },",
+            "to": "        addUnloadCb: noopfn,"
+        },
+        {
+            "name": "the unload handlers run twice",
+            "from": "                const cb = unloadCbs.shift();",
+            "to": "                const cb = unloadCbs[0]; unloadCbs.pop();"
+        },
+        {
+            "name": "a throwing unload handler stops the rest",
+            "from": "                try { cb({ reason: 0, isAsync: isAsync !== false }); }\n                catch ( ex ) { }",
+            "to": "                cb({ reason: 0, isAsync: isAsync !== false });"
         }
     ]
 }

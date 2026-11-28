@@ -124,6 +124,62 @@ describe('extra/application-insights.js', ( ) => {
         assert.equal(win.appInsights.snippet, win.appInsights);
     });
 
+    it('answers the callbacks a page can wait on', async ( ) => {
+        // flush(async?, callBack?) and unload(isAsync?, unloadComplete?)
+        // both take a completion callback. A page calling
+        // flush(true, () => navigate()) against a no-op never navigates,
+        // which is the failure extra/vwo.md keeps being about.
+        const win = boot();
+        await settle();
+        const ai = win.appInsights;
+        let flushed = 0;
+        ai.flush(true, ( ) => { flushed += 1; });
+        assert.equal(flushed, 1, 'a page waiting on flush waits for ever');
+        let state = null;
+        ai.unload(true, s => { state = s; });
+        // Their ITelemetryUnloadState, and reason 0 is ManualTeardown -
+        // which is what a page calling unload() is.
+        assert.equal(state.reason, 0);
+        assert.equal(state.isAsync, true);
+        assert.equal(state.flushComplete, true);
+    });
+
+    it('runs the handlers addUnloadCb collected, on unload', async ( ) => {
+        const win = boot();
+        await settle();
+        const seen = [];
+        win.appInsights.addUnloadCb(s => seen.push(s.reason));
+        win.appInsights.addUnloadCb(( ) => seen.push('second'));
+        assert.deepEqual([ ...seen ], [], 'they ran before unload');
+        win.appInsights.unload();
+        assert.deepEqual([ ...seen ], [ 0, 'second' ],
+            'a handler registered with addUnloadCb never ran');
+        // And not twice.
+        win.appInsights.unload();
+        assert.equal(seen.length, 2);
+    });
+
+    it('takes flush and unload with no callback at all', async ( ) => {
+        const win = boot();
+        await settle();
+        win.appInsights.flush();
+        win.appInsights.flush(false);
+        win.appInsights.unload();
+        win.appInsights.addUnloadCb(undefined);
+        win.appInsights.unload(false);
+        assert.ok(true, 'a call with no callback threw');
+    });
+
+    it('survives a callback of theirs that throws', async ( ) => {
+        const win = boot();
+        await settle();
+        win.appInsights.addUnloadCb(( ) => { throw new Error('page'); });
+        let done = false;
+        win.appInsights.unload(true, ( ) => { done = true; });
+        assert.equal(done, true,
+            'one throwing handler stopped the completion');
+    });
+
     it('answers null where their signature says "| null"', async ( ) => {
         const win = boot();
         await settle();

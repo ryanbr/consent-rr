@@ -20,6 +20,7 @@ az416426.vo.msecnd.net/scripts/b/ai.2.min.js     123063   the older host,
 - [The shape it must not take](#the-shape-it-must-not-take)
 - [What it publishes, and where each came from](#what-it-publishes-and-where-each-came-from)
 - [Their snippet, and the queue](#their-snippet-and-the-queue)
+- [The calls a page can WAIT on](#the-calls-a-page-can-wait-on)
 - [Is the coverage complete](#is-the-coverage-complete)
 - [What it costs a page](#what-it-costs-a-page)
 - [The mutation sweep](#the-mutation-sweep)
@@ -198,6 +199,31 @@ those closures hold a reference to it, and it keeps their `config` - the
 instrumentation key is in there and a page may read it back. Pushes after
 the takeover drain as they arrive, once each, with the index kept.
 
+## The calls a page can WAIT on
+
+Publishing a member is not the same as answering it. Three of theirs take
+a callback, and a no-op leaves the page that passed one waiting for ever -
+the failure `extra/vwo.md` is about, in a different vendor:
+
+```
+flush(async?, callBack?)                 the callback runs at once: there
+                                         is nothing to flush, so say so
+unload(isAsync?, unloadComplete?, ...)   the handlers addUnloadCb collected
+                                         run first, as theirs do, then the
+                                         completion with their
+                                         ITelemetryUnloadState -
+                                         { reason, isAsync, flushComplete }
+                                         with reason 0, ManualTeardown,
+                                         which is what a page calling
+                                         unload() is
+addUnloadCb(handler)                     collected, and run once by unload
+```
+
+`flush(true, () => navigate())` is the one that matters: against a no-op
+the page never navigates. Each is tested, including a call with no
+callback at all, a handler that throws, and a second `unload()` that must
+not run the handlers again.
+
 ## Is the coverage complete
 
 Blocking the host outright is what breaks sites, so the question that
@@ -266,8 +292,8 @@ covers both.
 ## What it costs a page
 
 ```
-file on disk      11900 bytes
-injected           7375 bytes
+file on disk      13239 bytes
+injected           8714 bytes
 globals set       window[appInsightsSDK || "appInsights"], adopted in
                   place when their snippet made one, and
                   window.Microsoft.ApplicationInsights
@@ -292,7 +318,7 @@ were re-run against it.
 node tools/mutate.mjs application-insights
 ```
 
-43 mutations, 43 killed, no equivalents. One of them is their stand-down
+50 mutations, 50 killed, no equivalents. One of them is their stand-down
 shape and one is the drain replaying the queue.
 
 The filters test caught something worth repeating: a line in the header
