@@ -23,12 +23,25 @@
 // because the execution comes from the scriptlet and the network from a
 // block that names no type:
 //   example.com##+js(vwo)
-//   ||dev.visualwebsiteoptimizer.com/j.php$important
-//   ||dev.visualwebsiteoptimizer.com/tag/*.js$important
+//   ||dev.visualwebsiteoptimizer.com/j.php
+//   ||dev.visualwebsiteoptimizer.com/tag/*.js
 // Nothing in this file reads document.currentScript or its own src, so it
 // behaves identically injected as a scriptlet - which is why the type on
 // the blocking rule can be dropped entirely. $xhr, ping, other and
 // whatever they move to next are all covered by naming no type at all.
+//
+// No $important either, deliberately. A plain block composes with an
+// allowlist exception, and some sites need one: this applies no variation,
+// so a page whose UI only exists inside a VWO variation cannot be fixed
+// here - easylist#7880 was exactly that, a Delivery Method column that
+// disappeared at a checkout. On a domain with such an exception the block
+// loses, their library runs, and this stands aside because load_co is
+// already there. With $important the exception would be defeated and the
+// site broken again, so add it only where overriding one is the intent.
+// The collection paths - /edrv/, /collect/events/, /apm, /*/track-,
+// /ping_tpc.php, /dyn, /analysis/, ee.gif - are separate rules and most
+// lists already carry them; nothing here needs to repeat them, and once an
+// entry point is replaced nothing asks for them anyway.
 //
 // The redirect form, Firefox only:
 //   ||dev.visualwebsiteoptimizer.com/j.php$xhr,script,redirect=vwo.js

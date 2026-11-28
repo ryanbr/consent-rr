@@ -344,11 +344,14 @@ describe('filters, vwo', ( ) => {
         // The execution comes from the scriptlet and the network from a
         // block with no type, so $xhr, ping, other and whatever they move
         // to next are covered without listing any of them.
-        const blocks = rules.filter(rule => rule.endsWith('$important'));
+        const blocks = rules.filter(rule => rule.includes('$') === false);
         assert.equal(blocks.length, 2, 'the portable rules moved');
         for ( const rule of blocks ) {
-            assert.equal(/\$(script|xhr|xmlhttprequest|ping|other)/
-                .test(rule), false, 'a type crept back in: ' + rule);
+            // No type, so xhr, ping, other and whatever comes next are
+            // covered; and no $important, so an allowlist exception for a
+            // site whose UI is built by a variation still wins.
+            assert.equal(rule.includes('$'), false, 'an option crept in: ' +
+                rule);
         }
     });
 

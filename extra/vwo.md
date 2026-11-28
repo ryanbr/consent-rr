@@ -109,13 +109,28 @@ the type out of the question entirely:
 
 ```
 example.com##+js(vwo)
-||dev.visualwebsiteoptimizer.com/j.php$important
-||dev.visualwebsiteoptimizer.com/tag/*.js$important
+||dev.visualwebsiteoptimizer.com/j.php
+||dev.visualwebsiteoptimizer.com/tag/*.js
 ```
 
 The execution comes from the scriptlet and the network from a block that
 names no type, so `$xhr`, `ping`, `other` and whatever they move to next
-are all covered without listing any of them. This works because nothing in
+are all covered without listing any of them.
+
+No `$important` either, and that is deliberate. A plain block composes
+with an allowlist exception, and some sites need one: nothing here applies
+a variation, so a page whose UI only exists inside a VWO variation cannot
+be fixed by a stub - easylist#7880 was exactly that. On a domain carrying
+such an exception the block loses, their library runs, and this file
+stands aside because `load_co` is already there, which is the right
+outcome. `$important` would defeat the exception and break the site again,
+so it belongs only where overriding one is the intent.
+
+Nor does anything here need to repeat the collection rules - `/edrv/`,
+`/collect/events/`, `/apm`, `/*/track-`, `/ping_tpc.php`, `/dyn`,
+`/analysis/`, `ee.gif`. Most lists already carry them, they are separate
+paths from the two entry points, and once an entry point is replaced
+nothing asks for them anyway. This works because nothing in
 this file reads `document.currentScript` or its own `src` - a test asserts
 that - so it behaves identically injected. `extra/adobe-launch.js` cannot
 make the same claim: it takes the property and environment id off the
