@@ -1,0 +1,130 @@
+{
+    "resource": "extra/vwo.js",
+    "test": "test/vwo.test.mjs",
+    "expected": {
+        "no pass as the document arrives": "the head watch catches the style first, so this pass is the belt under it - reachable only when new MutationObserver threw, which nothing in a test can make it do. Removing both is killed",
+        "the timer is cleared before their finish runs": "the timer is gone either way, and the style removal already does what their finish would have done, so nothing a page can see depends on the order. Kept in the sweep because a future change that makes the reveal depend on their finish alone would make this killable"
+    },
+    "mutations": [
+        {
+            "name": "no api at all",
+            "from": "    w.VWO = api;",
+            "to": "    void api;"
+        },
+        {
+            "name": "push is missing",
+            "from": "        push: noopfn,",
+            "to": "        pushh: noopfn,"
+        },
+        {
+            "name": "collect is missing",
+            "from": "        collect: noopfn,",
+            "to": "        collectt: noopfn,"
+        },
+        {
+            "name": "load_co injects a script",
+            "from": "        load_co: noopfn,",
+            "to": "        load_co: url => { const el = doc.createElement('script'); el.src = url; doc.head.appendChild(el); },"
+        },
+        {
+            "name": "safeExecute loses the caller's this",
+            "from": "            sE: fn => function() {\n                try {\n                    return fn.apply(this, arguments);",
+            "to": "            sE: fn => function() {\n                try {\n                    return fn.apply(undefined, arguments);"
+        },
+        {
+            "name": "safeExecute lets a throw out",
+            "from": "                try {\n                    return fn.apply(this, arguments);\n                } catch ( ex ) {\n                }",
+            "to": "                return fn.apply(this, arguments);"
+        },
+        {
+            "name": "sets their dup-code flag",
+            "from": "    const api = {",
+            "to": "    w._VWO = { sCL: true };\n    const api = {"
+        },
+        {
+            "name": "takes over from their real library",
+            "from": "        typeof existing.load_co === 'function'\n    ) {\n        return;",
+            "to": "        typeof existing.load_co === 'function'\n    ) {\n        void 0;"
+        },
+        {
+            "name": "adopts nothing, so an array stays an array",
+            "from": "        Array.isArray(existing) === false &&",
+            "to": "        Array.isArray(existing) === true &&"
+        },
+        {
+            "name": "never calls their exits",
+            "from": "        theirExits();",
+            "to": "        void 0;"
+        },
+        {
+            "name": "calls their overlay on every pass",
+            "from": "        if ( toldThem ) { return; }",
+            "to": "        if ( false ) { return; }"
+        },
+        {
+            "name": "marks them told before finding the object",
+            "from": "        if ( code === null || typeof code !== 'object' ) { return; }\n        toldThem = true;",
+            "to": "        toldThem = true;\n        if ( code === null || typeof code !== 'object' ) { return; }"
+        },
+        {
+            "name": "no overlay call",
+            "from": "            try { code.removeLoaderAndOverlay(); } catch ( ex ) { }",
+            "to": "            void 0;"
+        },
+        {
+            "name": "no finish call",
+            "from": "            try { code.finish(); } catch ( ex ) { }",
+            "to": "            void 0;"
+        },
+        {
+            "name": "a finish that throws escapes",
+            "from": "            try { code.finish(); } catch ( ex ) { }",
+            "to": "            code.finish();"
+        },
+        {
+            "name": "only the first hiding style goes",
+            "from": "            const hides = doc.querySelectorAll('#_vis_opt_path_hides');",
+            "to": "            const hides = [ doc.getElementById('_vis_opt_path_hides') ];"
+        },
+        {
+            "name": "no style removal at all",
+            "from": "                el.parentNode.removeChild(el);",
+            "to": "                void el;"
+        },
+        {
+            "name": "the timer is left armed",
+            "from": "        try { w.clearTimeout(w._vwo_settings_timer); } catch ( ex ) { }",
+            "to": "        void 0;"
+        },
+        {
+            "name": "the timer is cleared before their finish runs",
+            "from": "    const release = ( ) => {\n        theirExits();",
+            "to": "    const release = ( ) => {\n        try { w.clearTimeout(w._vwo_settings_timer); } catch ( ex ) { }\n        theirExits();"
+        },
+        {
+            "name": "no pass at all",
+            "from": "    release();\n    // At document_start",
+            "to": "    // At document_start"
+        },
+        {
+            "name": "no watch while the head arrives",
+            "from": "            watch = new w.MutationObserver(release);",
+            "to": "            watch = null; void w.MutationObserver;"
+        },
+        {
+            "name": "no pass as the document arrives",
+            "from": "            release();\n            if ( watch !== null ) { watch.disconnect(); watch = null; }",
+            "to": "            if ( watch !== null ) { watch.disconnect(); watch = null; }"
+        },
+        {
+            "name": "the watch is never stopped",
+            "from": "            if ( watch !== null ) { watch.disconnect(); watch = null; }",
+            "to": "            void watch;"
+        },
+        {
+            "name": "the watch covers the parsing document",
+            "from": "            watch.observe(doc.head || doc.documentElement || doc, {\n                childList: true,\n            });",
+            "to": "            watch.observe(doc, { childList: true, subtree: true });"
+        }
+    ]
+}

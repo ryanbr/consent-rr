@@ -17,6 +17,7 @@ on:
       # matrix - five of them in a row, each cancelling the last.
       - 'extra/*.js'
       - 'test/adobe-launch.test.mjs'
+      - 'test/vwo.test.mjs'
       - 'test/optimizely.test.mjs'
       - 'test/perimeterx.test.mjs'
       - 'test/tealium.test.mjs'
@@ -31,6 +32,7 @@ on:
       # matrix - five of them in a row, each cancelling the last.
       - 'extra/*.js'
       - 'test/adobe-launch.test.mjs'
+      - 'test/vwo.test.mjs'
       - 'test/optimizely.test.mjs'
       - 'test/perimeterx.test.mjs'
       - 'test/tealium.test.mjs'
@@ -63,7 +65,7 @@ jobs:
       # whether optimizely is still clean.
       fail-fast: false
       matrix:
-        resource: [ adobe-launch, optimizely, perimeterx, tealium ]
+        resource: [adobe-launch, optimizely, perimeterx, tealium, vwo]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
