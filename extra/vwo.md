@@ -28,6 +28,15 @@ versions, and the rule matches all four urls as written.
 - [The mutation sweep](#the-mutation-sweep)
 - [What is not done here](#what-is-not-done-here)
 
+The `vn` parameter is the snippet version and it does not change what this
+file has to do. One account, 366687, asked seven ways - vn=2.1, 2.3, 2.4,
+2.5, 2.6, 3.0 and 3.1 - returns the same six contract markers at the same
+counts and the same 18 public members every time, and the five of those
+this file leaves out are the same five in all seven. The responses differ
+only by a fresh `visUuid` and a reordered campaign JSON, so their hashes
+never match while their surface always does. Changing `vn` is not a way to
+get a different api.
+
 ## What this is, and the rule
 
 One endpoint carries both the campaign settings and the library:
