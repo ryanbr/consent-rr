@@ -19,6 +19,7 @@ on:
       - 'test/adobe-launch.test.mjs'
       - 'test/vwo.test.mjs'
       - 'test/application-insights.test.mjs'
+      - 'test/fingerprint-probe.test.mjs'
       - 'test/optimizely.test.mjs'
       - 'test/perimeterx.test.mjs'
       - 'test/tealium.test.mjs'
@@ -35,6 +36,7 @@ on:
       - 'test/adobe-launch.test.mjs'
       - 'test/vwo.test.mjs'
       - 'test/application-insights.test.mjs'
+      - 'test/fingerprint-probe.test.mjs'
       - 'test/optimizely.test.mjs'
       - 'test/perimeterx.test.mjs'
       - 'test/tealium.test.mjs'
@@ -67,7 +69,7 @@ jobs:
       # whether optimizely is still clean.
       fail-fast: false
       matrix:
-        resource: [adobe-launch, application-insights, optimizely, perimeterx, tealium, vwo]
+        resource: [adobe-launch, application-insights, fingerprint-probe, optimizely, perimeterx, tealium, vwo]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

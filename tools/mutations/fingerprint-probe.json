@@ -1,0 +1,80 @@
+{
+    "resource": "extra/fingerprint-probe.js",
+    "test": "test/fingerprint-probe.test.mjs",
+    "expected": {
+        "it blames itself": "the skip only matters for the redirect delivery, where the resource has a url of its own carrying the name. As a scriptlet - the only form this is meant for - its frames carry the page url, so there is nothing to skip and the guard cannot be reached from a test",
+        "a missing api throws": "the body it guards is already inside a try/catch, so removing the guard changes nothing a page or a test can see. It is kept because the catch is there for the unexpected, not as the normal path for an api that is simply absent"
+    },
+    "mutations": [
+        {
+            "name": "it changes the answer it watches",
+            "from": "                get: function() { note(label); return real.call(this); },",
+            "to": "                get: function() { note(label); return undefined; },"
+        },
+        {
+            "name": "a watched call answers nothing",
+            "from": "            host[name] = function(...args) {\n                note(label);\n                return real.apply(this, args);",
+            "to": "            host[name] = function(...args) {\n                note(label);\n                return undefined;"
+        },
+        {
+            "name": "a watched listener is never registered",
+            "from": "                return add.call(this, type, ...rest);",
+            "to": "                return undefined;"
+        },
+        {
+            "name": "nothing is counted",
+            "from": "        entry.n += 1;",
+            "to": "        entry.n += 0;"
+        },
+        {
+            "name": "every event is counted as behaviour",
+            "from": "                if ( BEHAVIOUR.indexOf(type) !== -1 ) {",
+            "to": "                if ( true ) {"
+        },
+        {
+            "name": "no behaviour is counted",
+            "from": "                if ( BEHAVIOUR.indexOf(type) !== -1 ) {",
+            "to": "                if ( false ) {"
+        },
+        {
+            "name": "it blames itself",
+            "from": "                if ( url.indexOf('fingerprint-probe') !== -1 ) { continue; }",
+            "to": "                if ( false ) { continue; }"
+        },
+        {
+            "name": "no caller is recorded",
+            "from": "        if ( entry.who === '' ) { entry.who = blame(); }",
+            "to": "        void blame;"
+        },
+        {
+            "name": "navigator is not watched",
+            "from": "        watchProp(nav, name, 'navigator.' + name);",
+            "to": "        void name;"
+        },
+        {
+            "name": "the timezone is not watched",
+            "from": "    watchCall(w.Date && w.Date.prototype, 'getTimezoneOffset',\n        'Date.getTimezoneOffset');",
+            "to": "    void 0;"
+        },
+        {
+            "name": "canvas is not watched",
+            "from": "    watchCall(w.HTMLCanvasElement && w.HTMLCanvasElement.prototype,\n        'toDataURL', 'canvas.toDataURL');",
+            "to": "    void 0;"
+        },
+        {
+            "name": "it never reports",
+            "from": "    if ( doc.readyState === 'loading' ) {\n        doc.addEventListener('DOMContentLoaded', say, { once: true });",
+            "to": "    if ( doc.readyState === 'loading' ) {\n        void say;"
+        },
+        {
+            "name": "it never reports a second time",
+            "from": "    w.addEventListener('load', ( ) => { w.setTimeout(say, 5000); },",
+            "to": "    w.addEventListener('load', ( ) => { void say; },"
+        },
+        {
+            "name": "a missing api throws",
+            "from": "            if ( host === null || host === undefined ) { return; }\n            const real = host[name];",
+            "to": "            const real = host[name];"
+        }
+    ]
+}
