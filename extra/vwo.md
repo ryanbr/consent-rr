@@ -543,13 +543,19 @@ size, which is what prompted the second pass.
 node tools/mutate.mjs vwo
 ```
 
-45 mutations, 43 killed, 2 named equivalents with their reasons in
+45 mutations, 44 killed, 1 named equivalent with their reasons in
 `tools/mutations/vwo.json`. Three of those kills came from repairing tests
 that did not test what they claimed: a timer assertion that outlived
 nothing because a real tolerance is 2000ms and the suite finished first, a
 two-style check that passed only because a later pass cleaned up what the
 first missed, and a missing assertion that the observer is disconnected
 and watches the head alone.
+
+The DOMContentLoaded pass stopped being an equivalent mutant when the
+overlay tests arrived: their div can be attached to `documentElement`,
+which the head watch does not see, so that pass is the only thing that
+takes it - the entry has been removed from the sweep's expected list
+rather than left there claiming a gap that is now covered.
 
 One test was deleted rather than defended. It asserted that clearing their
 timer after their `finish` keeps a safety net when `finish` throws, and it

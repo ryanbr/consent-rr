@@ -2,7 +2,6 @@
     "resource": "extra/vwo.js",
     "test": "test/vwo.test.mjs",
     "expected": {
-        "no pass as the document arrives": "the head watch catches the style first, so this pass is the belt under it - reachable only when new MutationObserver threw, which nothing in a test can make it do. Removing both is killed",
         "the timer is cleared before their finish runs": "the timer is gone either way, and the style removal already does what their finish would have done, so nothing a page can see depends on the order. Kept in the sweep because a future change that makes the reveal depend on their finish alone would make this killable"
     },
     "mutations": [
