@@ -52,6 +52,28 @@
         // Injects a script element. Never, or the replacement fetches the
         // very library the rule above is there to keep off the page.
         load_co: noopfn,
+        // Asked for one key in four payloads and nothing else,
+        // "visitor.id", 15 times. An empty string is what their own
+        // guarded caller expects - VWO.get("visitor.id") || "" feeding
+        // an if - and it is what stops the UNGUARDED one throwing:
+        // window.VWO && window.VWO.get("visitor.id") tests that VWO is
+        // there and never that get is, so publishing the object without
+        // this member turned a safe short-circuit into a TypeError. A
+        // partial stub can be worse than no stub, which is the lesson
+        // extra/adobe-launch.md records for a null visitor id.
+        get: ( ) => '',
+        // Their consent integration calls this, unguarded, from a
+        // OneTrustGroupsUpdated listener - three of the four payloads
+        // carry it. A page with their site-wide code can do the same.
+        init: noopfn,
+        // They install this themselves if it is absent, as a function
+        // that pushes onto the queue, so a page may call it either way.
+        event: noopfn,
+        // Read as consentMode.cReady after their own || {} default, so a
+        // page reading it finds an object rather than throwing.
+        consentMode: {},
+        // Their literal, in all four payloads: server-side-testing meta.
+        ssMeta: { enabled: 0, noSS: 0 },
         nonce: '',
         visUuid: '',
         data: {},

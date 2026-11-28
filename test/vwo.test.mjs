@@ -120,6 +120,52 @@ describe('extra/vwo.js', ( ) => {
         assert.equal(vwo.appliedCampaigns.length, 0);
         assert.equal(typeof vwo._.sE, 'function');
         assert.equal(typeof vwo._.sD, 'function');
+        assert.equal(typeof vwo.get, 'function');
+        assert.equal(typeof vwo.init, 'function');
+        assert.equal(typeof vwo.event, 'function');
+        assert.deepEqual(Object.keys(vwo.consentMode), []);
+        assert.equal(vwo.ssMeta.enabled, 0);
+        assert.equal(vwo.ssMeta.noSS, 0);
+    });
+
+    it('answers get the way their own guarded caller expects', async ( ) => {
+        const win = boot();
+        await settle();
+        // The only key asked for across four payloads, 15 times.
+        assert.equal(win.VWO.get('visitor.id'), '');
+        assert.equal(win.VWO.get('anything.else'), '');
+    });
+
+    it('keeps the unguarded get caller from throwing', async ( ) => {
+        // Their shape: window.VWO && window.VWO.get("visitor.id") tests
+        // that VWO is there and never that get is. Publishing the object
+        // without the member turns a safe short-circuit into a TypeError,
+        // so a partial stub would be worse than none.
+        const win = boot({
+            after: '<script>try {' +
+                'window.got = window.VWO && window.VWO.get("visitor.id");' +
+                'window.threw = false;' +
+                '} catch ( ex ) { window.threw = true; }</script>',
+        });
+        await settle();
+        assert.equal(win.threw, false, 'their unguarded caller threw');
+        assert.equal(win.got, '');
+    });
+
+    it('takes their consent init without throwing', async ( ) => {
+        // Called unguarded from a OneTrustGroupsUpdated listener in three
+        // of the four payloads, with a number for the state.
+        const win = boot({
+            after: '<script>try {' +
+                'window.VWO.init(1);' +
+                'window.VWO.event("track", { a: 1 });' +
+                'window.ready = window.VWO.consentMode.cReady;' +
+                'window.threw = false;' +
+                '} catch ( ex ) { window.threw = true; }</script>',
+        });
+        await settle();
+        assert.equal(win.threw, false);
+        assert.equal(win.ready, undefined);
     });
 
     it('absorbs everything a page queues, and sends nothing', async ( ) => {

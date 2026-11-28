@@ -125,6 +125,41 @@
             "name": "the watch covers the parsing document",
             "from": "            watch.observe(doc.head || doc.documentElement || doc, {\n                childList: true,\n            });",
             "to": "            watch.observe(doc, { childList: true, subtree: true });"
+        },
+        {
+            "name": "get is missing",
+            "from": "        get: ( ) => '',",
+            "to": "        gett: ( ) => '',"
+        },
+        {
+            "name": "get answers undefined",
+            "from": "        get: ( ) => '',",
+            "to": "        get: ( ) => undefined,"
+        },
+        {
+            "name": "init is missing",
+            "from": "        init: noopfn,",
+            "to": "        initt: noopfn,"
+        },
+        {
+            "name": "event is missing",
+            "from": "        event: noopfn,",
+            "to": "        eventt: noopfn,"
+        },
+        {
+            "name": "consentMode is missing",
+            "from": "        consentMode: {},",
+            "to": "        consentModee: {},"
+        },
+        {
+            "name": "ssMeta reports server-side testing on",
+            "from": "        ssMeta: { enabled: 0, noSS: 0 },",
+            "to": "        ssMeta: { enabled: 1, noSS: 0 },"
+        },
+        {
+            "name": "ssMeta is missing",
+            "from": "        ssMeta: { enabled: 0, noSS: 0 },",
+            "to": "        ssMetaa: { enabled: 0, noSS: 0 },"
         }
     ]
 }
