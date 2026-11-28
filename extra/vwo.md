@@ -34,6 +34,7 @@ versions, and the rule matches all four urls as written.
 - [What it costs a page](#what-it-costs-a-page)
 - [The mutation sweep](#the-mutation-sweep)
 - [A tag-first account, and the two page-facing members not published](#a-tag-first-account-and-the-two-page-facing-members-not-published)
+- [Is the coverage complete](#is-the-coverage-complete)
 - [What is not done here](#what-is-not-done-here)
 
 The `vn` parameter is the snippet version and it does not change what this
@@ -451,6 +452,52 @@ a page calls a member of it, fails exactly as a missing member does - so
 it would buy nothing and claim more than is known. If a page ever reports
 this, its own call names the member and the shape, and that is the
 evidence to add it on.
+
+## Is the coverage complete
+
+Audited across 25 vendor files from eight accounts - both entry points,
+four library builds, the dcdn and dyn and info endpoints, and snippet
+versions 1.3 to 3.1. 82 distinct `window.VWO` members appear in them:
+
+```
+13   published here
+62   left out safely, by one of three tests:
+        nothing calls it - state they write and nobody reads
+        guarded at every call site - typeof, && or ||
+        they assign it before calling it, so ours is overwritten
+ 7   called without one of those guards, each checked by hand:
+        visitorNotEligible, isSampledOut   inside their own
+                                           _sG(() => ...) wrapper
+        phoenix                            window.VWO.phoenix &&
+                                           window.VWO.phoenix(...)
+        onVariationApplied, getVisitorProps, visitor, onEventReceive
+                                           internal plumbing in the tag,
+                                           assigned in module files that
+                                           never load once the entry point
+                                           is replaced
+```
+
+So for `window.VWO` it is complete with respect to that corpus, with the
+two deliberate exceptions above: `optOut` and `track`, left out because
+their shape cannot be read off the files.
+
+Three things are outside it, and none is an oversight:
+
+`window.Wingify` is not published at all, which is required: the tag
+early-returns on `window.Wingify && window.Wingify.tagLoaded`, so
+publishing the namespace risks standing their own code down for no gain.
+Their own call sites self-default it as `window.Wingify || []`.
+
+The 39 other globals their payloads write - `_vwo_acc_id`, `_vwo_cdn`,
+`_vwo_mt`, `vwo_ga4_uuid`, `VWOOmni` and the rest - are state, written by
+them and read by nothing in the corpus. `VWOOmni` is self-defaulting and
+empty in every payload seen.
+
+And the limit of the method: a census of their files finds what THEIR code
+touches. A member only one site's own custom code calls cannot appear in
+it, and no amount of reading their payloads will surface it. That is what
+a field report is for, and the probe pattern in
+`extra/adobe-launch-probe.js` is how to catch one if it matters.
 
 ## What is not done here
 
