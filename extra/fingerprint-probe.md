@@ -65,7 +65,7 @@ the ?v= build, three releases across six sites
   463b9099c212  471217   walgreens, kroger
   bc727907ac81  505170   kohls
 
-the _abck sensor, one per site
+the _abck sensor, one per site - seven sites, seven hashes
   c427bc8744d8  639080   bestbuy
   2dcaf343dcef  635257   macys
   fe6a50abb7b4  622807   lowes
@@ -73,6 +73,7 @@ the _abck sensor, one per site
   1e5e4823dc87  198846   kroger - a third of the others, so either a
                          different tier or a different script
   4e72547e691b  661304   kohls
+  d49fa32091c7  636631   cdw
 
 shared components, same bytes on different sites
   771ace96284f  104238   lowes and kohls, identical. No Bot Manager
