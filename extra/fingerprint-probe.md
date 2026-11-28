@@ -60,9 +60,10 @@ fe6a50abb7b4  622807   lowes only            _abck, bm_sz
 Five sites now, and the picture is settled:
 
 ```
-the ?v= build, two hashes and no more
+the ?v= build, three releases across six sites
   147340cdc406  476869   bestbuy, macys, lowes
   463b9099c212  471217   walgreens, kroger
+  bc727907ac81  505170   kohls
 
 the _abck sensor, one per site
   c427bc8744d8  639080   bestbuy
@@ -71,14 +72,35 @@ the _abck sensor, one per site
   084658e27724  621294   walgreens
   1e5e4823dc87  198846   kroger - a third of the others, so either a
                          different tier or a different script
+  4e72547e691b  661304   kohls
+
+shared components, same bytes on different sites
+  771ace96284f  104238   lowes and kohls, identical. No Bot Manager
+                         marker in the body, and the cookie it sets is
+                         per tenant: al_sess on lowes, vpusq on kohls
+  2712 bytes    text/css on the same path family - their CHALLENGE
+                         overlay: #sec-overlay, #sec-container,
+                         #sec-cpt-if, .funcaptcha, .crypto, .behavioral,
+                         .adaptive, .custom-branding
 ```
 
-So the `?v=` build is a release, not a tenant: two versions in the wild,
-each shared by several sites, and kroger landing exactly on walgreens'
-hash is what confirmed it. The first version of this note said it was
-identical across ALL sites, from three samples. A fourth disproved that
-and a fifth explained it - worth remembering before the next three-sample
-claim.
+So the `?v=` build is a release and not a tenant - three of them across
+six sites, with kroger landing exactly on walgreens' hash being what
+confirmed the grouping. The first version of this note said identical
+across ALL sites, from three samples; a fourth disproved it, a fifth
+explained it, and a sixth added a release nobody had seen. Worth
+remembering before the next three-sample claim.
+
+The 104KB file was recorded here as lowes-only. It is not: kohls serves
+the same bytes, and the cookie name is the part that is per tenant.
+
+And the same randomised path family serves a 2712-byte `text/css` file
+that styles their CHALLENGE - the overlay, the captcha iframe, funcaptcha,
+the proof-of-work and behavioural variants. A rule shaped to those paths
+would take the stylesheet too, so a challenged user gets an unstyled or
+invisible challenge instead of a solvable one: the page would look broken
+rather than ask a question. One more reason the path shape is the wrong
+thing to match on.
 
 Neither Akamai file rotates: fetched twice, the same bytes both times.
 
