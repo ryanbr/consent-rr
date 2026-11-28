@@ -99,6 +99,57 @@ describe('extra/application-insights.js', ( ) => {
         }
     });
 
+    it('publishes their whole web SKU surface, from AISku.ts', async ( ) => {
+        // Blocking the domain outright is what breaks sites, so what
+        // matters is that nothing a page can call is missing. These are
+        // the public members of their ApplicationInsights class.
+        const win = boot();
+        await settle();
+        const missing = [
+            '_onerror', 'addDependencyInitializer', 'addDependencyListener',
+            'addHousekeepingBeforeUnload', 'addPlugin',
+            'addTelemetryInitializer', 'addUnloadCb',
+            'clearAuthenticatedUserContext', 'emptyQueue', 'evtNamespace',
+            'flush', 'getActiveSpan', 'getCookieMgr', 'getPlugin',
+            'getTraceCtx', 'getTraceProvider', 'loadAppInsights',
+            'onCfgChange', 'onunloadFlush', 'pollInternalLogs',
+            'setAuthenticatedUserContext', 'setTraceCtx', 'startSpan',
+            'startTrackEvent', 'startTrackPage', 'stopPollingInternalLogs',
+            'stopTrackEvent', 'stopTrackPage', 'trackDependencyData',
+            'trackEvent', 'trackException', 'trackMetric', 'trackPageView',
+            'trackPageViewPerformance', 'trackTrace', 'unload', 'updateCfg',
+            'updateSnippetDefinitions',
+        ].filter(name => typeof win.appInsights[name] !== 'function');
+        assert.deepEqual(missing, [], 'a page could call these and throw');
+        assert.equal(win.appInsights.snippet, win.appInsights);
+    });
+
+    it('answers null where their signature says "| null"', async ( ) => {
+        const win = boot();
+        await settle();
+        const ai = win.appInsights;
+        assert.equal(ai.startSpan('x'), null);
+        assert.equal(ai.getActiveSpan(), null);
+        assert.equal(ai.getTraceProvider(), null);
+        assert.equal(ai.evtNamespace(), '');
+    });
+
+    it('hands back a hook carrying both of their names', async ( ) => {
+        // Their IUnloadHook has remove AND rm, and a page calling .rm()
+        // on what addTelemetryInitializer returned threw while this
+        // published only remove.
+        const win = boot();
+        await settle();
+        for ( const made of [
+            win.appInsights.addTelemetryInitializer(( ) => {}),
+            win.appInsights.addDependencyInitializer(( ) => {}),
+            win.appInsights.onCfgChange(( ) => {}),
+        ] ) {
+            assert.equal(typeof made.remove, 'function');
+            assert.equal(typeof made.rm, 'function');
+        }
+    });
+
     it('answers with objects where theirs do', async ( ) => {
         // A page writing getCookieMgr().get("ai_user") breaks on undefined
         // exactly as it would with no stub at all, so the shape matters

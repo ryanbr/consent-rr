@@ -147,6 +147,46 @@
             "name": "stands aside for a bare snippet too",
             "from": "            typeof existing.getTraceCtx === 'function'",
             "to": "            typeof existing.trackEvent === 'function'"
+        },
+        {
+            "name": "the unload hook has only remove",
+            "from": "    const handle = { remove: noopfn, rm: noopfn };",
+            "to": "    const handle = { remove: noopfn };"
+        },
+        {
+            "name": "no onCfgChange",
+            "from": "        onCfgChange: ( ) => handle,",
+            "to": "        onCfgChangee: ( ) => handle,"
+        },
+        {
+            "name": "startSpan answers undefined",
+            "from": "        startSpan: ( ) => null,",
+            "to": "        startSpan: noopfn,"
+        },
+        {
+            "name": "no setTraceCtx",
+            "from": "        setTraceCtx: noopfn,",
+            "to": "        setTraceCtxx: noopfn,"
+        },
+        {
+            "name": "no stopPollingInternalLogs",
+            "from": "        stopPollingInternalLogs: noopfn,",
+            "to": "        stopPollingInternalLogss: noopfn,"
+        },
+        {
+            "name": "no updateCfg",
+            "from": "        updateCfg: noopfn,",
+            "to": "        updateCfgg: noopfn,"
+        },
+        {
+            "name": "evtNamespace answers nothing",
+            "from": "        evtNamespace: ( ) => '',",
+            "to": "        evtNamespace: noopfn,"
+        },
+        {
+            "name": "no snippet back-reference",
+            "from": "    if ( sdk.snippet === undefined ) { sdk.snippet = sdk; }",
+            "to": "    void sdk;"
         }
     ]
 }

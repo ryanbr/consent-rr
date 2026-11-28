@@ -125,8 +125,10 @@
         getTraceFlags: ( ) => undefined,
         setTraceFlags: noopfn,
     };
-    // What addTelemetryInitializer and the two dependency ones hand back.
-    const handle = { remove: noopfn };
+    // Their IUnloadHook, which carries BOTH names - a page calling .rm()
+    // on what addTelemetryInitializer returned threw while this had only
+    // remove. It is what onCfgChange hands back as well.
+    const handle = { remove: noopfn, rm: noopfn };
     Object.assign(sdk, {
         getCookieMgr: ( ) => cookieMgr,
         trackEvent: noopfn,
@@ -162,7 +164,25 @@
         // new Microsoft.ApplicationInsights.ApplicationInsights(cfg)
         // followed by this.
         loadAppInsights: ( ) => sdk,
+        // The rest of their web SKU's public surface, from AISku.ts. Void
+        // returns are no-ops; the three that their own signatures declare
+        // as "| null" answer null, which is a value a page written
+        // against them already handles.
+        setTraceCtx: noopfn,
+        stopPollingInternalLogs: noopfn,
+        updateCfg: noopfn,
+        onCfgChange: ( ) => handle,
+        addUnloadCb: noopfn,
+        addHousekeepingBeforeUnload: noopfn,
+        updateSnippetDefinitions: noopfn,
+        emptyQueue: noopfn,
+        evtNamespace: ( ) => '',
+        startSpan: ( ) => null,
+        getActiveSpan: ( ) => null,
+        getTraceProvider: ( ) => null,
     });
+    // Theirs keeps the snippet it was built from, and this IS that object.
+    if ( sdk.snippet === undefined ) { sdk.snippet = sdk; }
     // Their snippet puts this on the INSTANCE as well as the namespace -
     // appInsights["SeverityLevel"] = { Verbose: 0, ... } - and a page
     // passes it straight back into trackTrace.

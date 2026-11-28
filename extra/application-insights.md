@@ -20,6 +20,7 @@ az416426.vo.msecnd.net/scripts/b/ai.2.min.js     123063   the older host,
 - [The shape it must not take](#the-shape-it-must-not-take)
 - [What it publishes, and where each came from](#what-it-publishes-and-where-each-came-from)
 - [Their snippet, and the queue](#their-snippet-and-the-queue)
+- [Is the coverage complete](#is-the-coverage-complete)
 - [The mutation sweep](#the-mutation-sweep)
 - [What is not done here](#what-is-not-done-here)
 
@@ -196,13 +197,53 @@ those closures hold a reference to it, and it keeps their `config` - the
 instrumentation key is in there and a page may read it back. Pushes after
 the takeover drain as they arrive, once each, with the index kept.
 
+## Is the coverage complete
+
+Blocking the host outright is what breaks sites, so the question that
+matters is whether anything a page can call is missing. Checked against
+their own source rather than the bundles - `AISku.ts`, the class
+`js.monitor.azure.com` ships - which declares 41 public members. All 38
+that are methods are published:
+
+```
+_onerror addDependencyInitializer addDependencyListener
+addHousekeepingBeforeUnload addPlugin addTelemetryInitializer addUnloadCb
+clearAuthenticatedUserContext emptyQueue evtNamespace flush getActiveSpan
+getCookieMgr getPlugin getTraceCtx getTraceProvider loadAppInsights
+onCfgChange onunloadFlush pollInternalLogs setAuthenticatedUserContext
+setTraceCtx startSpan startTrackEvent startTrackPage
+stopPollingInternalLogs stopTrackEvent stopTrackPage trackDependencyData
+trackEvent trackException trackMetric trackPageView
+trackPageViewPerformance trackTrace unload updateCfg
+updateSnippetDefinitions
+```
+
+Shapes come from their signatures. A `void` return is a no-op;
+`startSpan`, `getActiveSpan` and `getTraceProvider` are declared `| null`
+and answer null, which a page written against them already handles;
+`evtNamespace` answers a string; `onCfgChange` and the three initializers
+hand back their `IUnloadHook`, which carries BOTH `remove` and `rm` - a
+page calling `.rm()` threw while this published only `remove`.
+
+Two are deliberately left out, for the reason `extra/vwo.md` gives about
+`track`: their shape cannot be established, and a wrong shape fails
+exactly as a missing member does. `setActiveSpan` returns an `ISpanScope`
+that is not in the repo at the path its siblings are, and `getSender`
+returns a `Sender` whose surface is large and which nothing page-side was
+seen to call. If a page reports either, its own call names the shape.
+
+Also checked: `IAppInsights`, the analytics interface, has 13 members and
+every one is published. The snippet's `aiMethod` list has 15 and the SDK's
+internal list 12, neither a subset of the other, and what is published
+covers both.
+
 ## The mutation sweep
 
 ```
 node tools/mutate.mjs application-insights
 ```
 
-29 mutations, 29 killed, no equivalents. One of them is their stand-down
+37 mutations, 37 killed, no equivalents. One of them is their stand-down
 shape and one is the drain replaying the queue.
 
 The filters test caught something worth repeating: a line in the header
