@@ -124,10 +124,16 @@
                 return;
             }
             const real = own.get;
+            // Masked like the calls are: an unmasked getter answers its
+            // own source to String(descriptor.get), and its name is
+            // "get" where a native's is "get userAgent".
+            const watcher = mask({
+                get() { note(label); return real.call(this); },
+            }.get, real);
             Object.defineProperty(target, name, {
                 configurable: true,
                 enumerable: own.enumerable,
-                get: function() { note(label); return real.call(this); },
+                get: watcher,
                 set: own.set,
             });
         } catch ( ex ) {
@@ -138,11 +144,16 @@
             if ( host === null || host === undefined ) { return; }
             const real = host[name];
             if ( typeof real !== 'function' ) { return; }
-            host[name] = mask(function(...args) {
-                note(label);
-                // this || host: a bare call lands undefined here.
-                return real.apply(this || host, args);
-            }, real);
+            // A method shorthand, not a function expression: the latter
+            // carries an own prototype that a native method does not
+            // have, and Object.getOwnPropertyNames tells them apart.
+            host[name] = mask({
+                [name](...args) {
+                    note(label);
+                    // this || host: a bare call lands undefined here.
+                    return real.apply(this || host, args);
+                },
+            }[name], real);
         } catch ( ex ) {
         }
     };
@@ -216,13 +227,13 @@
     try {
         const match = w.matchMedia;
         if ( typeof match === 'function' ) {
-            w.matchMedia = mask(function(query) {
+            w.matchMedia = mask({ matchMedia(query) {
                 const text = String(query);
                 const feature = text.match(/[a-z-]*(?:gamut|contrast|colors|dynamic-range|monochrome|motion|transparency|scheme|pointer|hover|resolution)[a-z-]*/);
                 note('matchMedia ' + (feature === null ? 'other' : feature[0]));
                 // Bare calls land undefined here - see watchCall.
                 return match.call(this || w, query);
-            }, match);
+            } }.matchMedia, match);
         }
     } catch ( ex ) {
     }
@@ -252,7 +263,7 @@
         const proto = w.EventTarget && w.EventTarget.prototype;
         const add = proto && proto.addEventListener;
         if ( typeof add === 'function' ) {
-            proto.addEventListener = mask(function(type, ...rest) {
+            proto.addEventListener = mask({ addEventListener(type, ...rest) {
                 // Once, and used for both: a bare call lands undefined
                 // here, and testing that against the window misses the
                 // listener a page registered by writing
@@ -265,7 +276,7 @@
                     note('listens for ' + type);
                 }
                 return add.call(on, type, ...rest);
-            }, add);
+            } }.addEventListener, add);
         }
     } catch ( ex ) {
     }

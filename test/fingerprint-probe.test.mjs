@@ -114,6 +114,39 @@ describe('extra/fingerprint-probe.js', ( ) => {
         );
     });
 
+    it('leaves no own prototype on what it wraps', async ( ) => {
+        // A function expression carries an own prototype; a native
+        // method, not being a constructor, does not - so
+        // Object.getOwnPropertyNames tells them apart in one line. The
+        // wrappers are method shorthands for that reason.
+        const win = boot();
+        await settle();
+        const own = win.eval(
+            'Object.getOwnPropertyNames(Date.prototype.getTimezoneOffset)' +
+            '.sort().join(",")'
+        );
+        assert.equal(/prototype/.test(own), false,
+            'a wrapper is a constructor and a native is not: ' + own);
+        const getter = 'Object.getOwnPropertyDescriptor(' +
+            'Navigator.prototype, "userAgent").get';
+        assert.equal(
+            win.eval('Object.getOwnPropertyNames(' + getter +
+                ').filter(function(n) { return n === "prototype"; }).length'),
+            0, 'the watching getter is a constructor and a native is not'
+        );
+        // And it answers like one. [native code] cannot be the assertion
+        // here - jsdom implements its own getters in JavaScript, so even
+        // an unwrapped one does not say it - but the property that
+        // matters is portable: the wrapper must not answer its own
+        // source. In a browser the same code answers the native string.
+        assert.equal(win.eval(getter + '.name'), 'get userAgent',
+            'a native getter is named "get userAgent"');
+        const shown = win.eval('String(' + getter + ')');
+        assert.equal(/note\(/.test(shown), false,
+            'the getter showed the probe: ' + shown.slice(0, 60));
+        assert.equal(/fingerprint/i.test(shown), false, shown.slice(0, 60));
+    });
+
     it('counts listeners on the window and document, not on elements',
     async ( ) => {
         // The wrap is on EventTarget.prototype now, so every element goes

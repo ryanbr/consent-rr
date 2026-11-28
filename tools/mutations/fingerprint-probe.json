@@ -10,8 +10,8 @@
     "mutations": [
         {
             "name": "it changes the answer it watches",
-            "from": "                get: function() { note(label); return real.call(this); },",
-            "to": "                get: function() { note(label); return undefined; },"
+            "from": "                get() { note(label); return real.call(this); },",
+            "to": "                get() { note(label); return undefined; },"
         },
         {
             "name": "a watched call answers nothing",
@@ -135,8 +135,8 @@
         },
         {
             "name": "the accessor path drops enumerable",
-            "from": "                enumerable: own.enumerable,\n                get: function() { note(label); return real.call(this); },",
-            "to": "                get: function() { note(label); return real.call(this); },"
+            "from": "                enumerable: own.enumerable,\n                get: watcher,",
+            "to": "                get: watcher,"
         },
         {
             "name": "the wrapper answers its own source",
@@ -145,13 +145,13 @@
         },
         {
             "name": "no masking at all",
-            "from": "            }, real);",
-            "to": "            });"
+            "from": "            }[name], real);",
+            "to": "            }[name]);"
         },
         {
             "name": "the function name is lost",
-            "from": "            Object.defineProperty(made, 'name', {\n                configurable: true, value: real.name,\n            });",
-            "to": "            void 0;"
+            "from": "            }.get, real);",
+            "to": "            }.get, { name: \"\", length: 0, toString: real.toString.bind(real) });"
         },
         {
             "name": "the listener wrap goes on the window",
@@ -177,6 +177,16 @@
             "name": "it warns even while collecting",
             "from": "        if ( rows.length === 0 && theirs.length !== 0 ) {",
             "to": "        if ( theirs.length !== 0 ) {"
+        },
+        {
+            "name": "a wrapped call carries an own prototype",
+            "from": "            host[name] = mask({\n                [name](...args) {",
+            "to": "            host[name] = mask({\n                [name]: function(...args) {"
+        },
+        {
+            "name": "the watching getter carries an own prototype",
+            "from": "            const watcher = mask({\n                get() { note(label); return real.call(this); },\n            }.get, real);",
+            "to": "            const watcher = mask(function() { note(label); return real.call(this); }, real);"
         }
     ]
 }

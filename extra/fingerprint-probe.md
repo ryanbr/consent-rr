@@ -251,11 +251,25 @@ It is still detectable, and nothing here pretends otherwise:
 Function.prototype.toString.call(fn)   sees the real source - the masking
                                        is on the function, not on
                                        Function.prototype
-descriptor identity                    the getters are not the native ones
+an own toString on a wrapper           Object.getOwnPropertyNames(fn) gives
+                                       length,name,toString where a native
+                                       gives length,name. The residue of
+                                       masking, and the cheaper trade: a
+                                       wrapper that answers its own source
+                                       fails the far commoner check
 timing                                 a wrapped accessor is slower
 error stacks                           a sensor reading new Error().stack
                                        inside a getter sees an extra frame
 ```
+
+Two of those were worse until a re-review measured them. The wrappers were
+function expressions, which carry an own `prototype` that a native method
+- not being a constructor - does not, so `Object.getOwnPropertyNames` told
+them apart in one line; they are method shorthands now. And the
+accessor-path getters were not masked at all, so `String(descriptor.get)`
+answered the probe's own source and the getter was named `get` where a
+native is named `get userAgent`. Both are checked by tests, and the
+getters now match a native on own properties exactly.
 
 Which is the honest position for a diagnostic: quiet enough that a passing
 check does not flag it, and no match for a sensor that looks properly. Run
@@ -346,7 +360,7 @@ lines, with the suite and the sweep re-run.
 node tools/mutate.mjs fingerprint-probe
 ```
 
-34 mutations, 30 killed, 4 named equivalents in
+36 mutations, 32 killed, 4 named equivalents in
 `tools/mutations/fingerprint-probe.json`.
 
 Two of the four equivalents are about `enumerable`, and they are worth
