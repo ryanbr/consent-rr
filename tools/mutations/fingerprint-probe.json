@@ -3,7 +3,9 @@
     "test": "test/fingerprint-probe.test.mjs",
     "expected": {
         "it blames itself": "the skip only matters for the redirect delivery, where the resource has a url of its own carrying the name. As a scriptlet - the only form this is meant for - its frames carry the page url, so there is nothing to skip and the guard cannot be reached from a test",
-        "a missing api throws": "the body it guards is already inside a try/catch, so removing the guard changes nothing a page or a test can see. It is kept because the catch is there for the unexpected, not as the normal path for an api that is simply absent"
+        "a missing api throws": "the body it guards is already inside a try/catch, so removing the guard changes nothing a page or a test can see. It is kept because the catch is there for the unexpected, not as the normal path for an api that is simply absent",
+        "a watched property stops being enumerable": "redefining an existing property keeps the attributes a descriptor leaves out, and converting a data property to an accessor preserves enumerable and configurable - so naming it changes nothing. It is written out because the code reads as though it matters, and the next person should not spend the same hour on it",
+        "the accessor path drops enumerable": "the same: an existing accessor redefined without enumerable keeps the one it had"
     },
     "mutations": [
         {
@@ -13,12 +15,12 @@
         },
         {
             "name": "a watched call answers nothing",
-            "from": "            host[name] = function(...args) {\n                note(label);\n                return real.apply(this, args);",
-            "to": "            host[name] = function(...args) {\n                note(label);\n                return undefined;"
+            "from": "                return real.apply(this || host, args);",
+            "to": "                return undefined;"
         },
         {
             "name": "a watched listener is never registered",
-            "from": "                return add.call(this, type, ...rest);",
+            "from": "                return add.call(this || target, type, ...rest);",
             "to": "                return undefined;"
         },
         {
@@ -83,7 +85,7 @@
         },
         {
             "name": "matchMedia changes what it answers",
-            "from": "                return match.call(this, query);",
+            "from": "                return match.call(this || w, query);",
             "to": "                return { matches: false };"
         },
         {
@@ -110,6 +112,31 @@
             "name": "a property is watched on the wrong object",
             "from": "            const target = onProto !== undefined ? proto : host;",
             "to": "            const target = proto;"
+        },
+        {
+            "name": "a bare call loses its this",
+            "from": "                return real.apply(this || host, args);",
+            "to": "                return real.apply(this, args);"
+        },
+        {
+            "name": "matchMedia loses its this",
+            "from": "                return match.call(this || w, query);",
+            "to": "                return match.call(this, query);"
+        },
+        {
+            "name": "addEventListener loses its this",
+            "from": "                return add.call(this || target, type, ...rest);",
+            "to": "                return add.call(this, type, ...rest);"
+        },
+        {
+            "name": "a watched property stops being enumerable",
+            "from": "                    enumerable: own.enumerable,\n                    get: ( ) => { note(label); return held; },",
+            "to": "                    get: ( ) => { note(label); return held; },"
+        },
+        {
+            "name": "the accessor path drops enumerable",
+            "from": "                enumerable: own.enumerable,\n                get: function() { note(label); return real.call(this); },",
+            "to": "                get: function() { note(label); return real.call(this); },"
         }
     ]
 }

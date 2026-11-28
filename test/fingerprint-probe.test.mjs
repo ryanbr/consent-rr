@@ -225,6 +225,87 @@ describe('extra/fingerprint-probe.js', ( ) => {
         assert.equal(typeof win.uad, 'object');
     });
 
+    it('survives a bare call into a native that checks its this',
+    async ( ) => {
+        // matchMedia(q) is the usual form, and a bare call lands
+        // undefined as this inside a strict wrapper - which a native
+        // method rejects with Illegal invocation in Chrome. jsdom does
+        // not, so the stand-in here checks the way a browser would.
+        const strictNative = win => {
+            win.matchMedia = function(query) {
+                if ( this === undefined ) {
+                    throw new TypeError('Illegal invocation');
+                }
+                return { matches: false, media: String(query) };
+            };
+        };
+        const win = boot(
+            '<script>try { window.mm = matchMedia("(min-width: 1px)").media; }' +
+            'catch ( e ) { window.mm = "threw: " + e.message; }</script>',
+            strictNative
+        );
+        await settle();
+        assert.equal(win.mm, '(min-width: 1px)',
+            'a bare call through the wrapper broke');
+        assert.match(reportOf(win), /matchMedia other/);
+    });
+
+    it('keeps a bare window method working, and its listener too',
+    async ( ) => {
+        // openDatabase(...) and addEventListener(...) are called bare as
+        // a matter of course, and a bare call lands undefined as this
+        // inside a strict wrapper. Chrome's natives reject that; these
+        // stand-ins reject it the same way, because jsdom will not.
+        const strictNatives = win => {
+            win.openDatabase = function(name) {
+                if ( this === undefined ) {
+                    throw new TypeError('Illegal invocation');
+                }
+                return { name: String(name) };
+            };
+            const add = win.addEventListener.bind(win);
+            win.addEventListener = function(type, ...rest) {
+                if ( this === undefined ) {
+                    throw new TypeError('Illegal invocation');
+                }
+                return add(type, ...rest);
+            };
+        };
+        const win = boot(
+            '<script>try { window.db = openDatabase("d").name; }' +
+            'catch ( e ) { window.db = "threw: " + e.message; }' +
+            'try { addEventListener("mousemove", function(){});' +
+            'window.ev = "ok"; }' +
+            'catch ( e ) { window.ev = "threw: " + e.message; }</script>',
+            strictNatives
+        );
+        await settle();
+        assert.equal(win.db, 'd', 'a bare window method broke');
+        assert.equal(win.ev, 'ok', 'a bare addEventListener broke');
+        assert.match(reportOf(win), /openDatabase/);
+        assert.match(reportOf(win), /listens for mousemove/);
+    });
+
+    it('leaves a property as enumerable as it found it', async ( ) => {
+        // The value path redefines with a getter, and a definition that
+        // drops enumerable hides the property from for-in and
+        // Object.keys - a change to the page rather than a measurement.
+        const withOwn = win => {
+            Object.defineProperty(win.navigator, 'cpuClass', {
+                configurable: true,
+                enumerable: true,
+                writable: true,
+                value: 'x86',
+            });
+        };
+        const win = boot('<script>void navigator.cpuClass;</script>', withOwn);
+        await settle();
+        assert.equal(win.eval('Object.keys(navigator).includes("cpuClass")'),
+            true, 'it stopped being enumerable');
+        assert.equal(win.navigator.cpuClass, 'x86', 'it changed the value');
+        assert.match(reportOf(win), /1\s+navigator\.cpuClass/);
+    });
+
     it('watches a property carried by the instance, not the prototype',
     async ( ) => {
         // localStorage and userAgentData are the instance's own in some

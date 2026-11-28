@@ -149,14 +149,37 @@ the file is that, and a mutation that returns `undefined` from a watched
 getter is killed by it. A probe that alters what it measures is measuring
 itself, and on a bot-managed site it would also get the user blocked.
 
+### The bug a browser would have found and jsdom did not
+
+These wrappers are defined inside a strict IIFE, so a BARE call -
+`matchMedia(q)`, `openDatabase(d)`, `addEventListener(t, fn)`, which is
+how pages write them - lands `undefined` as `this` inside the wrapper.
+Passing that to a native method is `Illegal invocation` in Chrome. jsdom
+does not mind, so every test passed while the probe would have broken
+three window methods on a real page.
+
+They call through as `this || host` now, and the tests use stand-ins that
+reject an undefined `this` the way a browser does, because the only way to
+catch this in jsdom is to make the fixture as strict as the real thing.
+
+Found by reading the code rather than by running it, which is the only way
+it could have been found here.
+
 ## The mutation sweep
 
 ```
 node tools/mutate.mjs fingerprint-probe
 ```
 
-21 mutations, 19 killed, 2 named equivalents in
+26 mutations, 22 killed, 4 named equivalents in
 `tools/mutations/fingerprint-probe.json`.
+
+Two of the four equivalents are about `enumerable`, and they are worth
+reading before anyone 'fixes' them: redefining an existing property keeps
+the attributes a descriptor leaves out, and converting a data property to
+an accessor preserves `enumerable` and `configurable` by itself. Naming
+them changes nothing. The names are kept because the code reads as though
+they matter.
 
 One test needed rebuilding twice. The post-load pass waits five seconds,
 which is longer than the sweep's per-test cap, so waiting for it made the

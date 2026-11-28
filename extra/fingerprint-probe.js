@@ -70,6 +70,10 @@
                 let held = own.value;
                 Object.defineProperty(host, name, {
                     configurable: true,
+                    // Carried over: dropping it hides the property from
+                    // for-in and from Object.keys, which is a change to
+                    // the page rather than a measurement of it.
+                    enumerable: own.enumerable,
                     get: ( ) => { note(label); return held; },
                     set: value => { held = value; },
                 });
@@ -92,7 +96,12 @@
             if ( typeof real !== 'function' ) { return; }
             host[name] = function(...args) {
                 note(label);
-                return real.apply(this, args);
+                // this || host, because a bare call - f() rather than
+                // obj.f() - lands undefined here: these wrappers are
+                // strict, and a native method handed undefined throws
+                // Illegal invocation in Chrome. jsdom tolerates it, so
+                // only reasoning catches this one.
+                return real.apply(this || host, args);
             };
         } catch ( ex ) {
         }
@@ -178,7 +187,9 @@
                 const text = String(query);
                 const feature = text.match(/[a-z-]*(?:gamut|contrast|colors|dynamic-range|monochrome|motion|transparency|scheme|pointer|hover|resolution)[a-z-]*/);
                 note('matchMedia ' + (feature === null ? 'other' : feature[0]));
-                return match.call(this, query);
+                // matchMedia(q) is the usual form, and bare calls land
+                // undefined here - see watchCall above.
+                return match.call(this || w, query);
             };
         }
     } catch ( ex ) {
@@ -210,7 +221,7 @@
                 if ( BEHAVIOUR.indexOf(type) !== -1 ) {
                     note('listens for ' + type);
                 }
-                return add.call(this, type, ...rest);
+                return add.call(this || target, type, ...rest);
             };
         } catch ( ex ) {
         }
