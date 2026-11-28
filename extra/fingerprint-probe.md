@@ -44,6 +44,41 @@ are not enough to say how much, and unwrapping the rest means executing
 So this answers it from the page instead. Put it on the site, read the
 table, and the question stops being a guess.
 
+## What seven sensor urls across three sites show
+
+bestbuy.ca, macys.com and lowes.com, fetched 2026-11-28:
+
+```
+sha1          bytes    sites                 response sets
+c427bc8744d8  639080   bestbuy only          _abck, bm_sz
+2dcaf343dcef  635257   macys only            _abck, bm_sz
+fe6a50abb7b4  622807   lowes only            _abck, bm_sz
+147340cdc406  476869   ALL THREE, identical  bm_s, bm_so
+771ace96284f  104238   lowes only            al_sess
+```
+
+The `_abck` sensor is a per-tenant build: three sites, three different
+files, all about the same size. The `?v=<uuid>` one is not - it is byte
+for byte the same file on all three, so it is one artifact rather than a
+per-site one, and anything learned about it transfers. The 104KB lowes
+file shares the obfuscator of the others, `(function lZXCvmVlwT(){...}`
+against `(function xnrjUkVwcK(){...}`, carries none of the Bot Manager
+markers, and sets `al_sess` instead.
+
+The paths give a list nothing to hold on to. Each site has a constant
+prefix of four or five segments - `/x-WNe4/zHknCo/RwyTkux/Pne/CO/`,
+`/J7Hyp81fA/omtxB/IWqOu/O7V-yIac/`, `/TCrK2/e/6E/uz8v/iYQGwMvg/` - and
+then varying ones, with segment lengths from one character to sixteen.
+There is no cross-site shape that would not also match ordinary
+first-party urls, which is the mechanical reason no list carries a generic
+rule for this vendor, on top of the enforcement reason.
+
+The one distinctive marker is the query: `?v=` followed by a uuid, on the
+shared build. That is targetable by regex if anyone wants to, and the
+shared hash means the decision would be the same everywhere - but it is
+still the file whose response mints `bm_s`, so blocking it has the same
+consequence as blocking the rest.
+
 ## What it watches
 
 ```
