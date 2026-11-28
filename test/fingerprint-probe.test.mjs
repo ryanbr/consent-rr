@@ -161,10 +161,39 @@ describe('extra/fingerprint-probe.js', ( ) => {
         }
     });
 
+    it('says when a sensor ran but touched nothing it watches', async ( ) => {
+        // The reading that masking cannot give: their cookie is set by
+        // the edge in response to a payload, so a cookie with an empty
+        // table means the sensor probably noticed this and stopped - not
+        // that the page collects nothing.
+        const withTheirCookie = win => {
+            win.document.cookie = '_abck=x';
+            win.document.cookie = 'bm_sz=y';
+        };
+        const win = boot('', withTheirCookie);
+        await settle();
+        const report = reportOf(win);
+        assert.match(report, /their cookies: _abck,bm_sz/);
+        assert.match(report, /possibly detected, not as clean/);
+    });
+
+    it('does not cry detection when their cookie answers too', async ( ) => {
+        const win = boot('<script>void navigator.userAgent;</script>',
+            win2 => { win2.document.cookie = '_abck=x'; });
+        await settle();
+        const report = reportOf(win);
+        assert.match(report, /their cookies: _abck/);
+        assert.equal(/possibly detected/.test(report), false,
+            'it cried detection while it was plainly collecting');
+    });
+
     it('says nothing was touched when nothing was', async ( ) => {
         const win = boot();
         await settle();
         assert.match(reportOf(win), /0 surfaces touched/);
+        assert.match(reportOf(win), /their cookies: none/);
+        assert.equal(/possibly detected/.test(reportOf(win)), false,
+            'no sensor is not the same as a detected one');
     });
 
     it('survives a page where the apis are missing', async ( ) => {

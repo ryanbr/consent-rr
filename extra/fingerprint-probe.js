@@ -269,10 +269,36 @@
         }
     } catch ( ex ) {
     }
+    // Did their sensor actually run? Their cookies are set by the edge in
+    // response to a payload, so if none is here AND nothing was touched,
+    // the likeliest reading is that the sensor noticed this and stopped -
+    // not that the page collects nothing. Masking cannot make that
+    // question go away, so the report answers it instead of hiding it.
+    const VENDOR = [
+        '_abck', 'bm_sz', 'bm_s', 'bm_so', 'ak_bmsc', 'KP_UIDz', 'KP_UIDz-ssn',
+        'datadome', 'px-cookie', '_px3', 'reese84', 'incap_ses',
+    ];
+    const vendorCookies = ( ) => {
+        try {
+            const names = String(doc.cookie).split(';')
+                .map(one => one.split('=')[0].trim());
+            return VENDOR.filter(name => names.indexOf(name) !== -1);
+        } catch ( ex ) {
+            return [];
+        }
+    };
     const say = ( ) => {
         const rows = [ ...seen.entries() ].sort((a, b) => b[1].n - a[1].n);
+        const theirs = vendorCookies();
         const lines = [ '[fingerprint-probe] ' + rows.length +
-            ' surfaces touched on ' + doc.location.host ];
+            ' surfaces touched on ' + doc.location.host +
+            ' | their cookies: ' + (theirs.length === 0
+                ? 'none'
+                : theirs.join(',')) ];
+        if ( rows.length === 0 && theirs.length !== 0 ) {
+            lines.push('  a sensor has set its cookie and touched nothing' +
+                ' here - read that as possibly detected, not as clean');
+        }
         for ( const [ what, entry ] of rows ) {
             lines.push('  ' + String(entry.n).padStart(5) + '  ' +
                 what.padEnd(32) + '  first from ' + entry.who);

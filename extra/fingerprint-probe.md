@@ -257,11 +257,47 @@ error stacks                           a sensor reading new Error().stack
                                        inside a getter sees an extra frame
 ```
 
-Which is the honest position for a diagnostic: it is quiet enough that a
-passing check does not flag it, and it would not survive a sensor that
-looks properly. Run it in a session you do not mind having flagged, and
-read a report of zero surfaces as "it may have detected this", not as
-"nothing was collected".
+Which is the honest position for a diagnostic: quiet enough that a passing
+check does not flag it, and no match for a sensor that looks properly. Run
+it in a session you do not mind having flagged.
+
+### Where the masking stops, and why
+
+Three more things could be masked and are not:
+
+```
+Function.prototype.toString   patching it would cover the wrappers, and
+                              the patch is then visible in turn - the
+                              start of an arms race, not a diagnostic
+navigator.webdriver,          nothing here is automated. Spoofing these
+headless markers, cdc_,       makes a browser look like a different
+plugin arrays, canvas noise   browser, which is bot-evasion tooling and
+                              a different thing from an instrument that
+                              does not announce itself
+```
+
+The distinction this file holds to: masking its OWN footprint keeps the
+measurement honest, because the session really is a person in a real
+browser and the wrappers are the only thing that is not. Masking the
+BROWSER would be building something else.
+
+### Saying when the measurement may be void
+
+Since the masking cannot be complete, the report answers the question
+instead of hiding from it. Their cookies - `_abck`, `bm_sz`, `bm_s`,
+`bm_so`, `ak_bmsc`, `KP_UIDz`, `datadome`, `_px3`, `reese84`, `incap_ses`
+and the rest - are set by their edge in response to a payload, so:
+
+```
+surfaces touched, cookie present   a normal run, read the table
+NOTHING touched, cookie present    their sensor ran and touched none of
+                                   this: read it as possibly detected,
+                                   not as a clean page
+nothing touched, no cookie         no sensor here at all
+```
+
+Which is a better answer than deeper masking would have been: a
+measurement that reports its own validity beats one that quietly fails.
 
 ## What it must never do
 
@@ -310,7 +346,7 @@ lines, with the suite and the sweep re-run.
 node tools/mutate.mjs fingerprint-probe
 ```
 
-31 mutations, 27 killed, 4 named equivalents in
+34 mutations, 30 killed, 4 named equivalents in
 `tools/mutations/fingerprint-probe.json`.
 
 Two of the four equivalents are about `enumerable`, and they are worth

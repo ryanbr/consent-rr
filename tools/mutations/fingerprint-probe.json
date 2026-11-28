@@ -162,6 +162,21 @@
             "name": "every element listener is counted",
             "from": "                    BEHAVIOUR.indexOf(type) !== -1 &&\n                    (on === w || on === doc)",
             "to": "                    BEHAVIOUR.indexOf(type) !== -1"
+        },
+        {
+            "name": "the vendor cookies are not reported",
+            "from": "            ' | their cookies: ' + (theirs.length === 0",
+            "to": "            '' + ('' || (theirs.length === 0"
+        },
+        {
+            "name": "it never warns about a quiet table",
+            "from": "        if ( rows.length === 0 && theirs.length !== 0 ) {",
+            "to": "        if ( false ) {"
+        },
+        {
+            "name": "it warns even while collecting",
+            "from": "        if ( rows.length === 0 && theirs.length !== 0 ) {",
+            "to": "        if ( theirs.length !== 0 ) {"
         }
     ]
 }
