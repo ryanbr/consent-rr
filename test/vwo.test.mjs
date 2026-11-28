@@ -356,7 +356,11 @@ describe('filters, vwo', ( ) => {
         const redirects = rules.filter(rule => rule.includes('redirect='));
         assert.equal(redirects.length, 2, 'the redirect rules moved');
         for ( const rule of redirects ) {
-            assert.ok(rule.endsWith('$script,redirect=vwo.js'), rule);
+            assert.ok(rule.endsWith('redirect=vwo.js'), rule);
+            // Both types: a site can fetch the settings itself instead of
+            // letting their snippet build a script element, and $script
+            // alone does not match that request at all.
+            assert.ok(rule.includes('$xhr,script,'), 'xhr dropped: ' + rule);
         }
     });
 

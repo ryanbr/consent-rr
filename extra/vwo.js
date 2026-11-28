@@ -30,18 +30,27 @@
 // the blocking rule can be dropped entirely. $xhr, ping, other and
 // whatever they move to next are all covered by naming no type at all.
 //
-// The redirect form, Firefox only and $script only:
-//   ||dev.visualwebsiteoptimizer.com/j.php$script,redirect=vwo.js
-//   ||dev.visualwebsiteoptimizer.com/tag/*.js$script,redirect=vwo.js
+// The redirect form, Firefox only:
+//   ||dev.visualwebsiteoptimizer.com/j.php$xhr,script,redirect=vwo.js
+//   ||dev.visualwebsiteoptimizer.com/tag/*.js$xhr,script,redirect=vwo.js
+// $xhr is there because a site can fetch the settings itself rather than
+// let their snippet build a script element - dailymail does, and a rule
+// of $script alone does not match that request at all, so the real
+// settings arrive and they run in full. A type list on a redirect is
+// still the weaker lever: when the request is an XHR the fetcher gets
+// this file as TEXT, and whether it runs is then the page's business -
+// it does if the page evals or injects what it fetched, which is the
+// usual consent-gated pattern, and it does not if the page parses it as
+// data. The block in the portable form above needs no such luck.
 // On Chromium a redirect naming a USER resource neither injects nor blocks
 // - the request is simply allowed, measured - so a list shipping only this
 // leaves those users with no stub and no block. Do not pair it with an
 // untyped $important block: the block wins and the redirect never serves.
 // Use one form or the other, and the portable one if only one.
 //
-// Widening a redirect's type list does not help: a redirect that satisfies
-// an XHR hands the fetcher this file as TEXT, and a stub that is never
-// executed reveals nothing.
+// Which is why the portable form is the recommendation: it reveals the
+// page from the scriptlet whatever the request type turns out to be, and
+// the untyped block covers types nobody has seen yet.
 // Their own answer when an account is stopped, served from both j.php
 // and /lib/<id>.js, is 110 bytes and does the first thing this does:
 //   /* VWO execution stopped */ try{let code=window._vwo_code||

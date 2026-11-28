@@ -78,15 +78,32 @@ in, because the thing that asks for them is what was replaced.
 
 ### The portable form, and why widening a type list is the wrong lever
 
-Both entry points are fetched as script elements today. `j.php` goes
+Their own code fetches both entry points as script elements: `j.php` goes
 through `_vwo_code.load(...)`, which builds one, and there are 52
-`createElement("script")` calls across the vendor files and no XHR of
+`createElement("script")` calls across the vendor files with no XHR of
 `j.php` in any of them.
 
-But a type list is the wrong thing to rely on, because a redirect that
-satisfies an XHR hands the fetcher this file as TEXT and a stub that never
-executes reveals nothing. So the recommended form takes the type out of
-the question entirely:
+That is not the whole picture, and the first version of this section said
+it was. A SITE can fetch the settings itself instead of letting their
+snippet build the element, and at least one does - on dailymail, `j.php`
+is an XHR. A census of the vendor's files cannot show that, because the
+code doing it belongs to the page. So the redirect form needs both types:
+
+```
+||dev.visualwebsiteoptimizer.com/j.php$xhr,script,redirect=vwo.js
+||dev.visualwebsiteoptimizer.com/tag/*.js$xhr,script,redirect=vwo.js
+```
+
+Without `$xhr` that request is not matched at all, so the real settings
+arrive and they run in full - the rule reads as protection and does
+nothing, which is the same trap as a Chromium redirect to a user resource.
+
+A type list is still the weaker lever. When the request is an XHR the
+fetcher receives this file as TEXT, and whether it runs is the page's
+business: it does if the page evals or injects what it fetched, which is
+the usual consent-gated pattern, and it does not if the page parses it as
+data. The recommended form does not depend on that luck, because it takes
+the type out of the question entirely:
 
 ```
 example.com##+js(vwo)
