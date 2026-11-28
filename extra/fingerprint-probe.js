@@ -55,9 +55,15 @@
     const watchProp = (host, name, label) => {
         try {
             if ( host === null || host === undefined ) { return; }
+            // Whichever object actually carries it. Defining on the
+            // prototype when the descriptor is the instance's own leaves
+            // that own property shadowing the watcher, which is silence
+            // rather than an error - localStorage, indexedDB, cpuClass
+            // and userAgentData all went unseen that way.
             const proto = Object.getPrototypeOf(host) || host;
-            const own = Object.getOwnPropertyDescriptor(proto, name) ||
-                Object.getOwnPropertyDescriptor(host, name);
+            const onProto = Object.getOwnPropertyDescriptor(proto, name);
+            const target = onProto !== undefined ? proto : host;
+            const own = onProto || Object.getOwnPropertyDescriptor(host, name);
             if ( own === undefined || own.get === undefined ) {
                 // A value rather than an accessor: still worth counting.
                 if ( own === undefined ) { return; }
@@ -70,7 +76,7 @@
                 return;
             }
             const real = own.get;
-            Object.defineProperty(proto, name, {
+            Object.defineProperty(target, name, {
                 configurable: true,
                 enumerable: own.enumerable,
                 get: function() { note(label); return real.call(this); },
@@ -93,14 +99,25 @@
     };
     const nav = w.navigator;
     const scr = w.screen;
+    // Before the watchers below, deliberately: reaching through one of
+    // them to install this would count the probe's own read as a page's.
+    try {
+        watchCall(nav && nav.userAgentData, 'getHighEntropyValues',
+            'userAgentData.getHighEntropyValues');
+    } catch ( ex ) {
+    }
     for ( const name of [
         'userAgent', 'platform', 'language', 'languages', 'hardwareConcurrency',
         'deviceMemory', 'maxTouchPoints', 'vendor', 'webdriver', 'plugins',
         'mimeTypes', 'doNotTrack', 'cookieEnabled', 'appVersion', 'product',
-        'productSub', 'oscpu', 'pdfViewerEnabled',
+        'productSub', 'oscpu', 'pdfViewerEnabled', 'cpuClass',
+        'userAgentData', 'connection',
     ] ) {
         watchProp(nav, name, 'navigator.' + name);
     }
+    // getHighEntropyValues is wrapped above, before the watcher on
+    // userAgentData exists - it is the highest-entropy call of the lot,
+    // asking for platform, model and full browser version at once.
     for ( const name of [
         'width', 'height', 'availWidth', 'availHeight', 'colorDepth',
         'pixelDepth',
@@ -150,6 +167,34 @@
         'Date.getTimezoneOffset');
     watchCall(w.RTCPeerConnection && w.RTCPeerConnection.prototype,
         'createDataChannel', 'rtc.createDataChannel');
+    // One call, eight of the catalogue's signals: colour gamut, contrast,
+    // forced colours, hdr, inverted colours, monochrome, reduced motion
+    // and reduced transparency are all media queries. The feature is
+    // recorded rather than the whole query, so the report says which.
+    try {
+        const match = w.matchMedia;
+        if ( typeof match === 'function' ) {
+            w.matchMedia = function(query) {
+                const text = String(query);
+                const feature = text.match(/[a-z-]*(?:gamut|contrast|colors|dynamic-range|monochrome|motion|transparency|scheme|pointer|hover|resolution)[a-z-]*/);
+                note('matchMedia ' + (feature === null ? 'other' : feature[0]));
+                return match.call(this, query);
+            };
+        }
+    } catch ( ex ) {
+    }
+    // Storage probes: four of the catalogue's sources are no more than
+    // whether these can be reached.
+    watchProp(w, 'localStorage', 'localStorage');
+    watchProp(w, 'sessionStorage', 'sessionStorage');
+    watchProp(w, 'indexedDB', 'indexedDB');
+    watchCall(w, 'openDatabase', 'openDatabase');
+    watchProp(w, 'ApplePaySession', 'ApplePaySession');
+    watchCall(doc.fonts, 'check', 'fonts.check');
+    for ( const name of [ 'AudioContext', 'webkitAudioContext' ] ) {
+        watchProp(w[name] && w[name].prototype, 'baseLatency',
+            'audio.baseLatency');
+    }
     // Behaviour: what it listens for says as much as what it reads, so
     // the listener registrations are counted rather than the events.
     const BEHAVIOUR = [

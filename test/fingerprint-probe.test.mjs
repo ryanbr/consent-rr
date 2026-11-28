@@ -161,6 +161,81 @@ describe('extra/fingerprint-probe.js', ( ) => {
         assert.match(reportOf(win), /1\s+navigator\.userAgent/);
     });
 
+    // jsdom has neither matchMedia nor userAgentData, so a page that uses
+    // them has to be given them first - which is also the only way to
+    // check the probe wraps what a real browser carries.
+    const withModern = win => {
+        win.matchMedia = query => ({ matches: false, media: String(query) });
+        // One object, as a browser hands back: a getter that builds a new
+        // one each time means the probe wraps a throwaway, which is the
+        // fixture lying rather than the probe failing.
+        const uaData = { getHighEntropyValues: async ( ) => ({}) };
+        Object.defineProperty(win.navigator, 'userAgentData', {
+            configurable: true,
+            get: ( ) => uaData,
+        });
+    };
+
+    it('names the media feature, not just the query', async ( ) => {
+        // Eight of the catalogue's signals are media queries - colour
+        // gamut, contrast, forced colours, hdr, inverted colours,
+        // monochrome, reduced motion, reduced transparency - so the
+        // report has to say which was asked for.
+        const win = boot(
+            '<script>window.m = matchMedia("(prefers-color-scheme: dark)").matches;' +
+            'matchMedia("(color-gamut: p3)");' +
+            'matchMedia("(inverted-colors: inverted)");' +
+            'matchMedia("(min-width: 600px)");</script>',
+            withModern
+        );
+        await settle();
+        const report = reportOf(win);
+        // The fixture echoes the query back, so this catches a wrapper
+        // that answers for itself instead of passing the call through -
+        // checking only that .matches is a boolean does not.
+        assert.equal(typeof win.m, 'boolean', 'it changed what matchMedia said');
+        assert.equal(
+            win.eval('matchMedia("(color-gamut: p3)").media'),
+            '(color-gamut: p3)',
+            'the wrapper answered instead of passing the call through'
+        );
+        assert.match(report, /matchMedia prefers-color-scheme/);
+        assert.match(report, /matchMedia color-gamut/);
+        assert.match(report, /matchMedia inverted-colors/);
+        assert.match(report, /matchMedia other/);
+    });
+
+    it('counts the modern high-entropy call, and only the page', async ( ) => {
+        const win = boot(
+            // Through the saved reference, so the property is read once
+            // and the count is unambiguous - reading it again to make the
+            // call is what made the first version of this expect 1 and
+            // see 2, which was the page's doing and not the probe's.
+            '<script>window.uad = navigator.userAgentData;' +
+            'window.uad.getHighEntropyValues(["model"]);</script>',
+            withModern
+        );
+        await settle();
+        const report = reportOf(win);
+        // One read, not two: wrapping getHighEntropyValues has to happen
+        // before the watcher on userAgentData exists, or the probe counts
+        // its own reach-through as a page's read.
+        assert.match(report, /1\s+navigator\.userAgentData/);
+        assert.match(report, /userAgentData\.getHighEntropyValues/);
+        assert.equal(typeof win.uad, 'object');
+    });
+
+    it('watches a property carried by the instance, not the prototype',
+    async ( ) => {
+        // localStorage and userAgentData are the instance's own in some
+        // engines. Redefining on the prototype then leaves that own
+        // property shadowing the watcher, which is silence rather than an
+        // error - four surfaces went unseen that way.
+        const win = boot('<script>void window.localStorage;</script>');
+        await settle();
+        assert.match(reportOf(win), /1\s+localStorage/);
+    });
+
     it('counts the canvas and the clock', async ( ) => {
         const win = boot(
             '<script>var c = document.createElement("canvas");' +

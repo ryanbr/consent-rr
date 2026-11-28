@@ -75,6 +75,41 @@
             "name": "a missing api throws",
             "from": "            if ( host === null || host === undefined ) { return; }\n            const real = host[name];",
             "to": "            const real = host[name];"
+        },
+        {
+            "name": "matchMedia is not watched",
+            "from": "        if ( typeof match === 'function' ) {",
+            "to": "        if ( false ) {"
+        },
+        {
+            "name": "matchMedia changes what it answers",
+            "from": "                return match.call(this, query);",
+            "to": "                return { matches: false };"
+        },
+        {
+            "name": "the media feature is not named",
+            "from": "                note('matchMedia ' + (feature === null ? 'other' : feature[0]));",
+            "to": "                note('matchMedia');"
+        },
+        {
+            "name": "storage is not watched",
+            "from": "    watchProp(w, 'localStorage', 'localStorage');",
+            "to": "    void 0;"
+        },
+        {
+            "name": "the high-entropy call is not watched",
+            "from": "        watchCall(nav && nav.userAgentData, 'getHighEntropyValues',\n            'userAgentData.getHighEntropyValues');",
+            "to": "        void 0;"
+        },
+        {
+            "name": "it reaches through its own watcher",
+            "from": "        watchCall(nav && nav.userAgentData, ",
+            "to": "        watchCall(note('navigator.userAgentData') || nav && nav.userAgentData, "
+        },
+        {
+            "name": "a property is watched on the wrong object",
+            "from": "            const target = onProto !== undefined ? proto : host;",
+            "to": "            const target = proto;"
         }
     ]
 }

@@ -108,6 +108,39 @@ reports when the document is ready and again five seconds after load,
 because a sensor that waits for an idle moment is exactly the thing worth
 catching.
 
+## Is it watching everything
+
+Checked against the catalogue rather than from memory: FingerprintJS keeps
+one file per signal in `src/sources`, which is 41 of them. Where this
+stands against that list:
+
+```
+covered   audio canvas color_depth cookies_enabled cpu_class
+          date_time_locale device_memory hardware_concurrency languages
+          os_cpu pdf_viewer_enabled platform plugins screen_frame
+          screen_resolution timezone touch_support vendor webgl
+          indexed_db local_storage session_storage open_database
+          apple_pay audio_base_latency user_agent_data
+          and eight through matchMedia: color_gamut contrast
+          forced_colors hdr inverted_colors monochrome reduced_motion
+          reduced_transparency
+left out  fonts, font_preferences - the technique measures offsetWidth on
+          spans, and a page's own layout reads swamp the signal
+          math - Math.tan and friends, watchable but indistinguishable
+          from ordinary arithmetic
+          architecture - a typed-array ordering trick, not an api
+          dom_blockers - injects elements to detect an adblocker,
+          not an api call
+          private_click_measurement, vendor_flavors - property reads on
+          window and anchors that a page makes constantly
+```
+
+`navigator.userAgentData` and `matchMedia` were the two real gaps when
+this file was first written: the first is the highest-entropy call there
+is, asking for platform, model and full browser version at once, and the
+second covers eight signals by itself. Both are watched now, with the
+media feature named in the report rather than the whole query.
+
 ## What it must never do
 
 Change an answer. Every wrapper calls the real one and returns what it
@@ -122,7 +155,7 @@ itself, and on a bot-managed site it would also get the user blocked.
 node tools/mutate.mjs fingerprint-probe
 ```
 
-14 mutations, 12 killed, 2 named equivalents in
+21 mutations, 19 killed, 2 named equivalents in
 `tools/mutations/fingerprint-probe.json`.
 
 One test needed rebuilding twice. The post-load pass waits five seconds,
