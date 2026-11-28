@@ -302,8 +302,8 @@ covers both.
 ## What it costs a page
 
 ```
-file on disk      13239 bytes
-injected           8714 bytes
+file on disk      13495 bytes
+injected           7918 bytes
 globals set       window[appInsightsSDK || "appInsights"], adopted in
                   place when their snippet made one, and
                   window.Microsoft.ApplicationInsights

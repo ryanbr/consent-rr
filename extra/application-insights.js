@@ -67,6 +67,15 @@
 // published below therefore carries both, exactly as their own snippet
 // does, so an SDK that is not blocked still takes over and still works.
 // --
+// THE CALLS A PAGE CAN WAIT ON
+// flush(async?, callBack?) and unload(isAsync?, unloadComplete?) both take
+// a completion callback, and addUnloadCb(handler) collects one. A no-op
+// leaves a page that wrote flush(true, () => navigate()) waiting for ever,
+// so flush calls back at once - there is nothing to flush - and unload
+// runs the collected handlers first, as theirs does, then the completion
+// with their ITelemetryUnloadState: { reason, isAsync, flushComplete },
+// reason 0 being ManualTeardown, which is what a page calling unload is.
+// --
 // WHAT IT PUBLISHES, and why
 //   the twelve their snippet proxies, which is the page-facing set:
 //     getCookieMgr trackEvent trackPageView trackPageViewPerformance
@@ -94,8 +103,7 @@
         ? w.appInsightsSDK
         : 'appInsights';
     const existing = w[name];
-    // core is a live SDK's, getTraceCtx is one too and is also ours -
-    // which is what makes a second run of this stand aside.
+    // core is a live SDK's; getTraceCtx is one too, and also ours.
     if (
         existing !== null && existing !== undefined &&
         (
@@ -146,19 +154,14 @@
         startTrackEvent: noopfn,
         stopTrackEvent: noopfn,
         _onerror: noopfn,
-        // flush(async?, callBack?) and unload(isAsync?, unloadComplete?)
-        // both take a completion callback, and a page calling
-        // flush(true, () => navigate()) waits for ever against a no-op.
-        // Answer or settle: there is nothing to flush, so say so at once.
+        // Answers at once: there is nothing to flush.
         flush: (isAsync, callBack) => {
             if ( typeof callBack !== 'function' ) { return; }
             try { callBack(); } catch ( ex ) { }
         },
         onunloadFlush: noopfn,
         unload: (isAsync, unloadComplete) => {
-            // Their handlers first, as theirs does, then the completion
-            // with their ITelemetryUnloadState: reason 0 is
-            // ManualTeardown, which is what a page calling unload is.
+            // Their handlers first, as theirs does.
             while ( unloadCbs.length !== 0 ) {
                 const cb = unloadCbs.shift();
                 if ( typeof cb !== 'function' ) { continue; }
@@ -188,9 +191,8 @@
             remove: noopfn,
         }),
         getTraceCtx: ( ) => traceCtx,
-        // Their documented manual setup ends with this call.
         loadAppInsights: ( ) => sdk,
-        // The rest of AISku.ts: void is a no-op, "| null" answers null.
+        // The rest of AISku.ts: void is a no-op, "| null" is null.
         setTraceCtx: noopfn,
         stopPollingInternalLogs: noopfn,
         updateCfg: noopfn,
@@ -204,10 +206,8 @@
         getActiveSpan: ( ) => null,
         getTraceProvider: ( ) => null,
     });
-    // From their snippet's own type: cookie is captured there, extensions
-    // is the plugin list, and isInitialized answers a page that gates on
-    // it - true, because this IS the thing standing in, and a page told
-    // false may wait for something that is never coming.
+    // From their snippet's type. isInitialized answers true: a page
+    // told false may wait for something that is never coming.
     if ( sdk.cookie === undefined ) { sdk.cookie = ''; }
     if ( sdk.extensions === undefined ) { sdk.extensions = []; }
     if ( sdk.isInitialized === undefined ) { sdk.isInitialized = ( ) => true; }
@@ -273,9 +273,7 @@
             PropertiesPluginIdentifier: 'AppInsightsPropertiesPlugin',
             BreezeChannelIdentifier: 'AppInsightsChannelPlugin',
             DEFAULT_BREEZE_ENDPOINT: 'https://dc.services.visualstudio.com',
-            // Both are constructors in their namespace. create is
-            // declared "IPerfEvent | null | undefined", so null is their
-            // own answer, and IPerfEvent's members are theirs.
+            // Constructors of theirs; create answers their own null.
             PerfManager: function() {
                 return {
                     create: ( ) => null,

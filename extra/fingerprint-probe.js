@@ -20,6 +20,33 @@
 // is watching, and the script it is watching is often on a randomised
 // first-party path that no rule can name.
 // --
+// HOW IT KEEPS OUT OF THE WAY
+// Every wrapper calls the real thing and returns what it returned. Three
+// details make that true rather than nearly true:
+//   this || host - these wrappers are strict, so a BARE call, which is
+//     how pages write matchMedia(q), openDatabase(d) and
+//     addEventListener(t, fn), lands undefined as this. A native method
+//     handed undefined is Illegal invocation in Chrome. jsdom does not
+//     mind, so this was found by reading rather than by testing.
+//   a property is rewrapped on whichever object carries its descriptor.
+//     Defining on the prototype when the descriptor is the instance's own
+//     leaves that own property shadowing the watcher - silence, not an
+//     error, which is how localStorage, indexedDB, cpuClass and
+//     userAgentData went unseen.
+//   getHighEntropyValues is wrapped BEFORE the watcher on userAgentData
+//     exists, or reaching through it counts the probe's own read as a
+//     page's.
+// The enumerable carried on each definition is belt and braces: redefining
+// an existing property keeps the attributes a descriptor leaves out.
+// --
+// WHAT IT WATCHES
+// navigator (21 properties), screen, devicePixelRatio, canvas, webgl on
+// both context types, audio, mediaDevices, battery, gamepads, permissions,
+// voices, Intl, timezone, webrtc, storage, ApplePay, fonts.check, and
+// matchMedia - which is eight of FingerprintJS's catalogue by itself, so
+// the report names the feature rather than the query. The behavioural side
+// counts listener registrations, not events.
+// --
 // Only lines starting with // at column zero are dropped by uBO, so an
 // indented comment ships, and a blank line ends the resource.
 (function() {
@@ -28,8 +55,7 @@
     const doc = document;
     const log = w.__fpLog = w.__fpLog || [];
     const seen = new Map();
-    // Where the call came from. The first frame below this file is the
-    // caller, and its url is what attributes a read to a vendor.
+    // The first frame below this file: that url is the attribution.
     const blame = ( ) => {
         try {
             const frames = String(new Error().stack || '').split('\n');
@@ -50,16 +76,11 @@
         if ( entry.who === '' ) { entry.who = blame(); }
         seen.set(what, entry);
     };
-    // Reading a property: the wrapper answers exactly what the real one
-    // would, so nothing a page does changes.
+    // The wrapper answers exactly what the real one would.
     const watchProp = (host, name, label) => {
         try {
             if ( host === null || host === undefined ) { return; }
-            // Whichever object actually carries it. Defining on the
-            // prototype when the descriptor is the instance's own leaves
-            // that own property shadowing the watcher, which is silence
-            // rather than an error - localStorage, indexedDB, cpuClass
-            // and userAgentData all went unseen that way.
+            // Whichever object carries it - see the header.
             const proto = Object.getPrototypeOf(host) || host;
             const onProto = Object.getOwnPropertyDescriptor(proto, name);
             const target = onProto !== undefined ? proto : host;
@@ -70,9 +91,7 @@
                 let held = own.value;
                 Object.defineProperty(host, name, {
                     configurable: true,
-                    // Carried over: dropping it hides the property from
-                    // for-in and from Object.keys, which is a change to
-                    // the page rather than a measurement of it.
+                    // Belt and braces; a redefine keeps it anyway.
                     enumerable: own.enumerable,
                     get: ( ) => { note(label); return held; },
                     set: value => { held = value; },
@@ -96,11 +115,7 @@
             if ( typeof real !== 'function' ) { return; }
             host[name] = function(...args) {
                 note(label);
-                // this || host, because a bare call - f() rather than
-                // obj.f() - lands undefined here: these wrappers are
-                // strict, and a native method handed undefined throws
-                // Illegal invocation in Chrome. jsdom tolerates it, so
-                // only reasoning catches this one.
+                // this || host: a bare call lands undefined here.
                 return real.apply(this || host, args);
             };
         } catch ( ex ) {
@@ -108,8 +123,7 @@
     };
     const nav = w.navigator;
     const scr = w.screen;
-    // Before the watchers below, deliberately: reaching through one of
-    // them to install this would count the probe's own read as a page's.
+    // Before the watchers below, or this read counts as a page's.
     try {
         watchCall(nav && nav.userAgentData, 'getHighEntropyValues',
             'userAgentData.getHighEntropyValues');
@@ -124,9 +138,7 @@
     ] ) {
         watchProp(nav, name, 'navigator.' + name);
     }
-    // getHighEntropyValues is wrapped above, before the watcher on
-    // userAgentData exists - it is the highest-entropy call of the lot,
-    // asking for platform, model and full browser version at once.
+    // getHighEntropyValues is wrapped above, before its watcher.
     for ( const name of [
         'width', 'height', 'availWidth', 'availHeight', 'colorDepth',
         'pixelDepth',
@@ -134,8 +146,7 @@
         watchProp(scr, name, 'screen.' + name);
     }
     watchProp(w, 'devicePixelRatio', 'devicePixelRatio');
-    // Canvas, WebGL and audio: the three that identify a device rather
-    // than describe it.
+    // The three that identify a device rather than describe it.
     watchCall(w.HTMLCanvasElement && w.HTMLCanvasElement.prototype,
         'toDataURL', 'canvas.toDataURL');
     watchCall(w.HTMLCanvasElement && w.HTMLCanvasElement.prototype,
@@ -162,8 +173,7 @@
         watchCall(w[name] && w[name].prototype, 'createDynamicsCompressor',
             'audio.createDynamicsCompressor');
     }
-    // The device list, the battery, the voices and the permission state
-    // are each a handful of bits that rarely change.
+    // Each a handful of bits that rarely change.
     watchCall(nav && nav.mediaDevices, 'enumerateDevices',
         'mediaDevices.enumerateDevices');
     watchCall(nav, 'getBattery', 'navigator.getBattery');
@@ -176,10 +186,8 @@
         'Date.getTimezoneOffset');
     watchCall(w.RTCPeerConnection && w.RTCPeerConnection.prototype,
         'createDataChannel', 'rtc.createDataChannel');
-    // One call, eight of the catalogue's signals: colour gamut, contrast,
-    // forced colours, hdr, inverted colours, monochrome, reduced motion
-    // and reduced transparency are all media queries. The feature is
-    // recorded rather than the whole query, so the report says which.
+    // Eight of the catalogue's signals are media queries, so the
+    // feature is recorded rather than the whole query.
     try {
         const match = w.matchMedia;
         if ( typeof match === 'function' ) {
@@ -187,15 +195,13 @@
                 const text = String(query);
                 const feature = text.match(/[a-z-]*(?:gamut|contrast|colors|dynamic-range|monochrome|motion|transparency|scheme|pointer|hover|resolution)[a-z-]*/);
                 note('matchMedia ' + (feature === null ? 'other' : feature[0]));
-                // matchMedia(q) is the usual form, and bare calls land
-                // undefined here - see watchCall above.
+                // Bare calls land undefined here - see watchCall.
                 return match.call(this || w, query);
             };
         }
     } catch ( ex ) {
     }
-    // Storage probes: four of the catalogue's sources are no more than
-    // whether these can be reached.
+    // Four of the catalogue's sources are just whether these exist.
     watchProp(w, 'localStorage', 'localStorage');
     watchProp(w, 'sessionStorage', 'sessionStorage');
     watchProp(w, 'indexedDB', 'indexedDB');
@@ -206,8 +212,7 @@
         watchProp(w[name] && w[name].prototype, 'baseLatency',
             'audio.baseLatency');
     }
-    // Behaviour: what it listens for says as much as what it reads, so
-    // the listener registrations are counted rather than the events.
+    // What it listens for says as much as what it reads.
     const BEHAVIOUR = [
         'mousemove', 'mousedown', 'mouseup', 'click', 'keydown', 'keyup',
         'keypress', 'touchstart', 'touchmove', 'touchend', 'pointermove',
@@ -240,8 +245,7 @@
             try { w.console.log(line); } catch ( ex ) { }
         }
     };
-    // Twice, because a sensor that waits for an idle moment is the point:
-    // once when the document is there and once a few seconds later.
+    // Twice: a sensor that waits for an idle moment is the point.
     if ( doc.readyState === 'loading' ) {
         doc.addEventListener('DOMContentLoaded', say, { once: true });
     } else {

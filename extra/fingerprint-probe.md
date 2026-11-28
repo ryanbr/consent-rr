@@ -165,6 +165,23 @@ catch this in jsdom is to make the fixture as strict as the real thing.
 Found by reading the code rather than by running it, which is the only way
 it could have been found here.
 
+## What it costs a page
+
+```
+file on disk      12009 bytes
+injected           9114 bytes
+globals set       window.__fpLog, the buffer the console line names
+listeners         none of its own
+observers         none
+requests          none
+answers changed   none, which is the first test in the file
+```
+
+Injected was 10701 until the reasoning moved into the header, which uBO
+drops - comments are 11% of what ships now rather than 24%. The code lines
+are byte-identical before and after, checked by comparing the non-comment
+lines, with the suite and the sweep re-run.
+
 ## The mutation sweep
 
 ```
