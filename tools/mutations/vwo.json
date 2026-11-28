@@ -185,6 +185,16 @@
             "name": "sets tagLoaded on their object",
             "from": "        nonce: '',",
             "to": "        tagLoaded: 1,\n        nonce: '',"
+        },
+        {
+            "name": "only the _vwo_code snippet global",
+            "from": "        const code = w._vwo_code || w._wingify_code;",
+            "to": "        const code = w._vwo_code;"
+        },
+        {
+            "name": "only the _wingify_code snippet global",
+            "from": "        const code = w._vwo_code || w._wingify_code;",
+            "to": "        const code = w._wingify_code;"
         }
     ]
 }

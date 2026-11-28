@@ -436,6 +436,40 @@ describe('extra/vwo.js, taking the page back', ( ) => {
         );
     });
 
+    it('takes the page back through their Wingify-branded snippet too',
+    async ( ) => {
+        // _wingify_code is the other snippet global. Their own stub for a
+        // stopped account reads _vwo_code || _wingify_code, and their tag
+        // reads them the other way round, so they are interchangeable.
+        const win = boot({
+            before: '<script>window._wingify_code = (function() {' +
+                'var f = false;' +
+                'var code = {' +
+                'finish: function() { f = true;' +
+                'window.finishCalls = (window.finishCalls || 0) + 1;' +
+                'var e = document.getElementById("_vis_opt_path_hides");' +
+                'if ( e ) { e.parentNode.removeChild(e); } },' +
+                'finished: function() { return f; },' +
+                'removeLoaderAndOverlay: function() {' +
+                'window.overlayCalls = (window.overlayCalls || 0) + 1; },' +
+                '};' +
+                'var s = document.createElement("style");' +
+                's.setAttribute("id", "_vis_opt_path_hides");' +
+                'document.head.appendChild(s);' +
+                'return code;' +
+                '}());</script>',
+        });
+        await settle();
+        assert.equal(win.finishCalls, 1, 'their finish was never called');
+        assert.equal(win.overlayCalls, 1, 'the overlay was left up');
+        assert.equal(
+            win.document.getElementById('_vis_opt_path_hides'), null
+        );
+        assert.equal(win._wingify_code.finished(), true,
+            'a page asking finished() is told the wrong thing'
+        );
+    });
+
     it('reveals a style written after it, as the document arrives',
     async ( ) => {
         // The scriptlet runs at document_start: the snippet below has not

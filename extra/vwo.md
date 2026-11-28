@@ -9,6 +9,9 @@ a=1072524  vn=2.1 x=true     157063 bytes
 a=884728   vn=2.1 x=true      61059
 a=725143   vn=1.5 f=1         36870   their older snippet version
 a=645322   vn=1.3 f=1         39085   older still, 11 members only
+a=177644   f=1 r=<random>       110   no vn at all: execution stopped
+a=1216514  vn=2.2 ph=1 consent=2,2
+                                76504   a consent signal in the request
 a=833471   vn=2.1 x=true      62991
 ```
 
@@ -22,6 +25,7 @@ versions, and the rule matches all four urls as written.
 
 - [What this is, and the rule](#what-this-is-and-the-rule)
 - [Their second entry point, /tag/<id>.js](#their-second-entry-point-tagidjs)
+- [Their own answer, and the second snippet global](#their-own-answer-and-the-second-snippet-global)
 - [Why blocking it alone hides the page](#why-blocking-it-alone-hides-the-page)
 - [What it publishes, and where each member came from](#what-it-publishes-and-where-each-member-came-from)
 - [The flags it must never set](#the-flags-it-must-never-set)
@@ -130,6 +134,32 @@ opening lines. It then only DEFINES `dtc.js[ctId]`, and the thing that
 calls it is the library, so the tag loop that would reach for
 `VWO._.coreLib` never runs. Its own catch reports through `VWO.collect`,
 which is a no-op here, so a throw of theirs sends no pixel.
+
+## Their own answer, and the second snippet global
+
+Two of the urls tried returned this, 110 bytes, from `j.php?a=177644&...`
+and from `/lib/677629.js` - what they serve for an account whose execution
+is stopped:
+
+```
+/* VWO execution stopped */
+try{let code=window._vwo_code||window._wingify_code;code&&code.finish()}
+catch(e){}
+```
+
+Which is the first thing this file does, from the vendor themselves, and
+it named a gap: `_wingify_code` is the other snippet global, used by the
+Wingify-branded install. Their tag reads `window._wingify_code ||
+window._vwo_code` and their stub reads them the other way round, so the
+two are interchangeable. This file checked only `_vwo_code` until that
+turned up - the style-removal belt would still have unhidden such a page,
+but their `finish` would never have run, so `finished()` would have lied
+to a page that asked and the overlay would have stayed up. Both are read
+now, and a test covers the Wingify-branded snippet on its own.
+
+It also means `/lib/<id>.js` is a real path on their host. For a live
+account it serves the library; there is nothing for a replacement to do
+there, because the thing that requests it is what gets replaced.
 
 ## Why blocking it alone hides the page
 
@@ -268,6 +298,12 @@ whether they ASSIGN it or only CALL it. Everything here is assigned by
 them except `push` and `get` - 57 and 73 calls, no assignments - which is
 exactly why those two are the ones that can be inherited and do harm.
 
+Request parameters vary more than the surface does. `vn` from 1.3 to 3.1,
+`f=1`, `x=true`, `ph=1`, `st=<ms>`, `r=<random>`, `consent=2,2` and no
+`vn` at all have all been seen, and the 18-member surface and the six
+contract markers are the same in every live one. The `consent=2,2` payload
+mentions consent 30 times internally and publishes nothing new for it.
+
 ## The flags it must never set
 
 Their payload opens with this, and it is the whole reason the member list
@@ -331,7 +367,7 @@ than run.
 
 ```
 file on disk      7151 bytes
-injected          3108 bytes
+injected          3253 bytes
 globals set       window.VWO only, as an array carrying its members
 listeners         one, DOMContentLoaded on the document
 observers         one, the head's own children, disconnected at that event
@@ -358,7 +394,7 @@ size, which is what prompted the second pass.
 node tools/mutate.mjs vwo
 ```
 
-36 mutations, 34 killed, 2 named equivalents with their reasons in
+38 mutations, 36 killed, 2 named equivalents with their reasons in
 `tools/mutations/vwo.json`. Three of those kills came from repairing tests
 that did not test what they claimed: a timer assertion that outlived
 nothing because a real tolerance is 2000ms and the suite finished first, a

@@ -19,7 +19,15 @@
 // Two entry points. j.php is settings and library in one; /tag/<id>.js is
 // their newer unified tag, 180KB, which fetches j.php, the lib, edrv and
 // dcdn itself. Both manage the page-hiding, so either one blocked on its
-// own hides the page. Their snippet writes a style that
+// own hides the page.
+// Their own answer when an account is stopped, served from both j.php
+// and /lib/<id>.js, is 110 bytes and does the first thing this does:
+//   /* VWO execution stopped */ try{let code=window._vwo_code||
+//   window._wingify_code;code&&code.finish()}catch(e){}
+// Which is where the second snippet global comes from: _wingify_code is
+// the Wingify-branded install's, their tag reads window._wingify_code ||
+// window._vwo_code, and the two are interchangeable.
+// Their snippet writes a style that
 // hides hide_element, usually the body, and only takes it away when the
 // settings answer or a timer expires - so a block is a blank page for
 // settings_tolerance, 2000ms on a default install. This takes the hiding
@@ -118,11 +126,13 @@
         },
     });
     w.VWO = api;
+    // Either snippet global: theirs are interchangeable, and their own
+    // minimal stub reads _vwo_code || _wingify_code.
     // Once only: their finish guards itself, their overlay does not.
     let toldThem = false;
     const theirExits = ( ) => {
         if ( toldThem ) { return; }
-        const code = w._vwo_code;
+        const code = w._vwo_code || w._wingify_code;
         if ( code === null || typeof code !== 'object' ) { return; }
         toldThem = true;
         if ( typeof code.removeLoaderAndOverlay === 'function' ) {
