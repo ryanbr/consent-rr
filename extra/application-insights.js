@@ -170,6 +170,13 @@
         getActiveSpan: ( ) => null,
         getTraceProvider: ( ) => null,
     });
+    // From their snippet's own type: cookie is captured there, extensions
+    // is the plugin list, and isInitialized answers a page that gates on
+    // it - true, because this IS the thing standing in, and a page told
+    // false may wait for something that is never coming.
+    if ( sdk.cookie === undefined ) { sdk.cookie = ''; }
+    if ( sdk.extensions === undefined ) { sdk.extensions = []; }
+    if ( sdk.isInitialized === undefined ) { sdk.isInitialized = ( ) => true; }
     // Theirs keeps the snippet it came from, and this is it.
     if ( sdk.snippet === undefined ) { sdk.snippet = sdk; }
     // On the INSTANCE as well as the namespace, as their snippet does.
@@ -232,6 +239,33 @@
             PropertiesPluginIdentifier: 'AppInsightsPropertiesPlugin',
             BreezeChannelIdentifier: 'AppInsightsChannelPlugin',
             DEFAULT_BREEZE_ENDPOINT: 'https://dc.services.visualstudio.com',
+            // Both are constructors in their namespace. create is
+            // declared "IPerfEvent | null | undefined", so null is their
+            // own answer, and IPerfEvent's members are theirs.
+            PerfManager: function() {
+                return {
+                    create: ( ) => null,
+                    fire: noopfn,
+                    getCtx: ( ) => null,
+                    setCtx: noopfn,
+                };
+            },
+            PerfEvent: function() {
+                return {
+                    name: '',
+                    start: 0,
+                    payload: undefined,
+                    isAsync: false,
+                    isChildEvt: ( ) => false,
+                    getCtx: ( ) => null,
+                    setCtx: noopfn,
+                    complete: noopfn,
+                    childEvts: [],
+                    parent: undefined,
+                    exTime: 0,
+                    time: 0,
+                };
+            },
             Util: {},
             CoreUtils: {},
             Telemetry: {},

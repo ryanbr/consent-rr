@@ -187,6 +187,36 @@
             "name": "no snippet back-reference",
             "from": "    if ( sdk.snippet === undefined ) { sdk.snippet = sdk; }",
             "to": "    void sdk;"
+        },
+        {
+            "name": "no PerfManager",
+            "from": "            PerfManager: function() {",
+            "to": "            PerfManagerr: function() {"
+        },
+        {
+            "name": "no PerfEvent",
+            "from": "            PerfEvent: function() {",
+            "to": "            PerfEventt: function() {"
+        },
+        {
+            "name": "PerfManager.create answers undefined",
+            "from": "                    create: ( ) => null,",
+            "to": "                    create: noopfn,"
+        },
+        {
+            "name": "isInitialized answers false",
+            "from": "    if ( sdk.isInitialized === undefined ) { sdk.isInitialized = ( ) => true; }",
+            "to": "    if ( sdk.isInitialized === undefined ) { sdk.isInitialized = ( ) => false; }"
+        },
+        {
+            "name": "no extensions list",
+            "from": "    if ( sdk.extensions === undefined ) { sdk.extensions = []; }",
+            "to": "    void 0;"
+        },
+        {
+            "name": "no cookie property",
+            "from": "    if ( sdk.cookie === undefined ) { sdk.cookie = ''; }",
+            "to": "    void 0;"
         }
     ]
 }

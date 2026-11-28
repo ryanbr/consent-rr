@@ -260,6 +260,33 @@ describe('extra/application-insights.js', ( ) => {
         );
     });
 
+    it('publishes the namespace constructors a page can new', async ( ) => {
+        // PerfManager and PerfEvent are exported by both v2 and v3.
+        // create is declared "IPerfEvent | null | undefined", so null is
+        // their own answer rather than a shrug.
+        const win = boot();
+        await settle();
+        const ns = win.Microsoft.ApplicationInsights;
+        const mgr = new ns.PerfManager();
+        assert.equal(mgr.create('src'), null);
+        assert.equal(typeof mgr.fire, 'function');
+        const evt = new ns.PerfEvent();
+        assert.equal(evt.isChildEvt(), false);
+        assert.equal(typeof evt.complete, 'function');
+        assert.deepEqual([ ...evt.childEvts ], []);
+    });
+
+    it('carries the three their snippet type declares', async ( ) => {
+        // cookie, extensions and isInitialized are on the snippet object
+        // in their own type. isInitialized answers true: this IS the thing
+        // standing in, and a page told false may wait for nothing.
+        const win = boot();
+        await settle();
+        assert.equal(win.appInsights.cookie, '');
+        assert.deepEqual([ ...win.appInsights.extensions ], []);
+        assert.equal(win.appInsights.isInitialized(), true);
+    });
+
     it('leaves an ApplicationInsights namespace that is already there',
     async ( ) => {
         // Their own SDK fills this with 15 exports. Replacing it with the

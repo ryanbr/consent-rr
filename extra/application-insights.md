@@ -233,6 +233,31 @@ that is not in the repo at the path its siblings are, and `getSender`
 returns a `Sender` whose surface is large and which nothing page-side was
 seen to call. If a page reports either, its own call names the shape.
 
+The namespace took a second pass. v2 exports 15 names and v3 exports 13,
+and they are not the same 13 - v3 drops `Util`, `CoreUtils` and
+`Telemetry` and adds `EventPersistence`. Of the 16 across both, this
+publishes 14. `PerfManager` and `PerfEvent` are constructors a page can
+`new`, so they answer objects built from their own interfaces: `create` is
+declared `IPerfEvent | null | undefined` and answers null, and the event
+carries the twelve members `IPerfEvent` declares.
+
+`EventPersistence` is the one left out of the namespace. It is an enum
+whose values are not in the bundle in a readable form and whose source
+file is not where its siblings are, and a wrong enum is worse than a
+missing one - a page reading `EventPersistence.High` would get a number
+that means something else instead of undefined it can test for.
+
+Three properties from their snippet's own type are published too:
+`cookie`, `extensions` and `isInitialized`. That last answers TRUE,
+because this is the thing standing in and a page gating on it would
+otherwise wait for something that is never coming.
+
+`core` is deliberately absent, and it is the one place where being
+incomplete is the point: it is how this file recognises a live SDK and a
+second run of itself. A page reading `appInsights.core.logger` would throw
+- nothing observed does, and the alternative is a stub that cannot tell
+whether it has already run.
+
 Also checked: `IAppInsights`, the analytics interface, has 13 members and
 every one is published. The snippet's `aiMethod` list has 15 and the SDK's
 internal list 12, neither a subset of the other, and what is published
@@ -242,7 +267,7 @@ covers both.
 
 ```
 file on disk      11688 bytes
-injected           5913 bytes
+injected           6885 bytes
 globals set       window[appInsightsSDK || "appInsights"], adopted in
                   place when their snippet made one, and
                   window.Microsoft.ApplicationInsights
@@ -267,7 +292,7 @@ were re-run against it.
 node tools/mutate.mjs application-insights
 ```
 
-37 mutations, 37 killed, no equivalents. One of them is their stand-down
+43 mutations, 43 killed, no equivalents. One of them is their stand-down
 shape and one is the drain replaying the queue.
 
 The filters test caught something worth repeating: a line in the header
