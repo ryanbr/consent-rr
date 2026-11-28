@@ -24,6 +24,7 @@ versions, and the rule matches all four urls as written.
 ## Contents
 
 - [What this is, and the rule](#what-this-is-and-the-rule)
+- [What the lists do today, and what this changes](#what-the-lists-do-today-and-what-this-changes)
 - [The hide is two shapes, and one of them reached a P1 report](#the-hide-is-two-shapes-and-one-of-them-reached-a-p1-report)
 - [Their second entry point, /tag/<id>.js](#their-second-entry-point-tagidjs)
 - [Their own answer, and the second snippet global](#their-own-answer-and-the-second-snippet-global)
@@ -135,6 +136,48 @@ elsewhere - 16 `eval(` and 10 `new Function` across the libraries, on the
 `getSettings` and `dcdn` route - so if a settings path ever turns up being
 fetched that way it gets decided on its own evidence instead of by
 widening a rule.
+
+## What the lists do today, and what this changes
+
+Two lists, opposite trade-offs, and a report against each:
+
+```
+AdGuard      ||visualwebsiteoptimizer.com^$third-party
+             the whole host, settings included. Nothing answers the
+             snippet, so the page is hidden until settings_tolerance.
+             -> AdguardFilters#217216, a P1 white page on dominos.jp,
+                closed with a cosmetic rule on their overlay div
+
+EasyPrivacy  ||dev.visualwebsiteoptimizer.com/edrv/ and /cdn/edrv/
+             ||dev.visualwebsiteoptimizer.com/collect/events/, /apm,
+             /*/track-, /ping_tpc.php, /dyn, /analysis/, */ee.gif
+             the library and the collection, but NOT j.php and NOT
+             /tag/. Their own payload calls
+             _vwo_code.finish("&e=loading_failure:...") when the library
+             fails, so their failure path reveals the page.
+             -> no white page, but the settings request still happens
+```
+
+The settings request is not nothing: `j.php?a=<account>&u=<the full page
+url>` goes out on every page view and comes back with a `visUuid`.
+Allowing it to keep the page visible is a real cost, and it is the cost
+EasyPrivacy currently pays.
+
+This resource is what lets a list stop paying it. Block `j.php` and
+`/tag/` - no settings request, no library, no collection - and the reveal
+comes from here rather than from their failure path, immediately rather
+than after their timer.
+
+One caveat, and it is the lesson of easylist#7880 - merged 2021-05-30, an
+allowlist exception,
+`@@||dev.visualwebsiteoptimizer.com^$script,domain=internetorder.dominos.jp`,
+because blocking VWO made a Delivery Method column disappear at checkout.
+It was narrowed and then dropped, once the list stopped blocking the
+script that broke it. If a site renders UI from a VWO VARIATION, nothing
+here brings it back: this file applies no variation, so the control
+renders, and a site that only has the UI in the variation still needs an
+exception. A stub fixes the page that WAITS for VWO; it cannot fix the
+page that is BUILT by it.
 
 ## The hide is two shapes, and one of them reached a P1 report
 
