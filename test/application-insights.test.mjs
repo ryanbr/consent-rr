@@ -405,11 +405,17 @@ describe('filters, application-insights', ( ) => {
         }
     });
 
+    const matches = (rules, url) => rules.some(rule => {
+        const pattern = rule.slice(2).split('$')[0];
+        const [ head, tail ] = pattern.split('*');
+        const at = url.indexOf('//' + head);
+        if ( at === -1 ) { return false; }
+        return tail === undefined
+            ? true
+            : url.slice(at + head.length + 2).includes(tail);
+    });
+
     it('covers every build seen served, on both hosts', ( ) => {
-        const matches = url => rules.some(rule => {
-            const pattern = rule.slice(2).split('$')[0];
-            return url.includes('//' + pattern);
-        });
         for ( const url of [
             'https://js.monitor.azure.com/scripts/b/ai.3.gbl.min.js',
             'https://js.monitor.azure.com/scripts/b/ai.3.min.js',
@@ -417,7 +423,21 @@ describe('filters, application-insights', ( ) => {
             'https://js.monitor.azure.com/scripts/a/ai.0.js',
             'https://az416426.vo.msecnd.net/scripts/b/ai.2.min.js',
         ] ) {
-            assert.ok(matches(url), 'not covered: ' + url);
+            assert.ok(matches(rules, url), 'not covered: ' + url);
+        }
+    });
+
+    it('does NOT cover the other sdk on the same host', ( ) => {
+        // /scripts/c/ms.analytics-web-4.min.js is 1DS: 189084 bytes, its
+        // own oneDSWeb global, its own method list, and no mention of
+        // appInsights. Handing it this stub replaces one sdk with
+        // another, which is worse than leaving it alone.
+        for ( const url of [
+            'https://js.monitor.azure.com/scripts/c/ms.analytics-web-4.min.js',
+            'https://js.monitor.azure.com/scripts/c/ms.analytics-web-3.min.js',
+            'https://az416426.vo.msecnd.net/scripts/c/ms.analytics-web-4.min.js',
+        ] ) {
+            assert.equal(matches(rules, url), false, 'wrongly covered: ' + url);
         }
     });
 

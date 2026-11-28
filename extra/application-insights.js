@@ -10,8 +10,15 @@
 // The comments below are a line each; the reasoning for them is there.
 // --
 // THE RULES
-//   ||js.monitor.azure.com/scripts/$xhr,script,redirect=application-insights.js
-//   ||az416426.vo.msecnd.net/scripts/$xhr,script,redirect=application-insights.js
+//   ||js.monitor.azure.com/scripts/*/ai.$xhr,script,redirect=application-insights.js
+//   ||az416426.vo.msecnd.net/scripts/*/ai.$xhr,script,redirect=application-insights.js
+// /scripts/*/ai. and not /scripts/, because the same host serves a
+// DIFFERENT sdk: /scripts/c/ms.analytics-web-4.min.js is 1DS, 189084
+// bytes, with its own oneDSWeb global and its own method list -
+// trackPageAction, capturePageView, trackContentUpdate - and no mention
+// of appInsights anywhere in it. A rule on /scripts/ would hand that
+// sdk this stub, which is replacing one thing with another. The AI SKU
+// is under /scripts/a/ and /scripts/b/; c/ai.* is a 404.
 // A redirect, not a scriptlet, and unlike extra/vwo.js that is the right
 // way round here. Nothing is hidden, so there is no reason to run at
 // document_start - this only has to exist where their SDK would have
@@ -21,8 +28,8 @@
 // --
 // On Chromium a redirect naming a USER resource neither injects nor
 // blocks, so pair it with a plain block there:
-//   ||js.monitor.azure.com/scripts/
-//   ||az416426.vo.msecnd.net/scripts/
+//   ||js.monitor.azure.com/scripts/*/ai.
+//   ||az416426.vo.msecnd.net/scripts/*/ai.
 // A bare block is benign for this vendor - their snippet keeps stubbing
 // and queueing, and no page is hidden - so Chromium users lose only the
 // calls that return something, which is what this file is for.

@@ -32,9 +32,19 @@ Two hosts serve the same builds, so both need covering. A redirect, and
 unlike `extra/vwo.js` that is the right way round here:
 
 ```
-||js.monitor.azure.com/scripts/$xhr,script,redirect=application-insights.js
-||az416426.vo.msecnd.net/scripts/$xhr,script,redirect=application-insights.js
+||js.monitor.azure.com/scripts/*/ai.$xhr,script,redirect=application-insights.js
+||az416426.vo.msecnd.net/scripts/*/ai.$xhr,script,redirect=application-insights.js
 ```
+
+`/scripts/*/ai.` and not `/scripts/`, because the same hosts serve a
+DIFFERENT sdk. `/scripts/c/ms.analytics-web-4.min.js` is 1DS, 189084
+bytes, with its own `oneDSWeb` global and its own method list -
+`trackPageAction`, `capturePageView`, `trackContentUpdate` - and no
+mention of `appInsights` anywhere in it. A rule on `/scripts/` hands that
+sdk this stub, which is replacing one thing with another rather than
+standing in for it. The AI SKU is under `/scripts/a/` and `/scripts/b/`;
+`c/ai.*` is a 404. Both hosts serve the 1DS build, and a test asserts the
+rules do not reach it.
 
 Nothing here is hidden, so there is no reason to run at `document_start` -
 this only has to exist where their SDK would have been. And it is a
@@ -47,8 +57,8 @@ On Chromium a redirect naming a user resource neither injects nor blocks,
 so pair it with a plain block:
 
 ```
-||js.monitor.azure.com/scripts/
-||az416426.vo.msecnd.net/scripts/
+||js.monitor.azure.com/scripts/*/ai.
+||az416426.vo.msecnd.net/scripts/*/ai.
 ```
 
 A bare block is benign for this vendor - their snippet keeps stubbing and
@@ -349,3 +359,16 @@ in `extra/vwo.md` wrong.
 No instrumentation key handling, no `config` defaults beyond keeping
 theirs, and no ETW-style plugin surface: `getPlugin` answers a disabled
 handle rather than pretending a plugin is there.
+
+**1DS is out of scope.** `ms.analytics-web-*.min.js` on the same hosts is
+a different sdk with a different global and a different surface, and the
+rules deliberately exclude it. Their snippet supports both - `cfg.name ||
+"oneDSWeb"` with an `oneDsMethods` list - so a 1DS replacement is a
+sibling to this file rather than an extension of it, and it would need its
+own census.
+
+**No field evidence.** Everything here was read off their builds, their
+snippet source and their interface files, and exercised in jsdom. Unlike
+`extra/vwo.js` and `extra/adobe-launch.js`, no page has reported anything
+against this one, so what is written down is what their code says, not
+what a site did.
