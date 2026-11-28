@@ -87,10 +87,18 @@
         ? w.appInsightsSDK
         : 'appInsights';
     const existing = w[name];
-    // Their SDK is up already - core is theirs, the snippet never makes one.
+    // Already handled: core belongs to a live SDK and the snippet only
+    // ever reads it, and getTraceCtx is on a live SDK and on what this
+    // publishes but is NOT one of the fifteen their snippet proxies - so
+    // this also stands aside on a second run of itself, which two matching
+    // requests on one page would otherwise give, re-running the drain over
+    // entries already run.
     if (
         existing !== null && existing !== undefined &&
-        existing.core !== undefined
+        (
+            existing.core !== undefined ||
+            typeof existing.getTraceCtx === 'function'
+        )
     ) {
         return;
     }
@@ -150,7 +158,22 @@
             remove: noopfn,
         }),
         getTraceCtx: ( ) => traceCtx,
+        // In all three builds, and the documented manual setup is
+        // new Microsoft.ApplicationInsights.ApplicationInsights(cfg)
+        // followed by this.
+        loadAppInsights: ( ) => sdk,
     });
+    // Their snippet puts this on the INSTANCE as well as the namespace -
+    // appInsights["SeverityLevel"] = { Verbose: 0, ... } - and a page
+    // passes it straight back into trackTrace.
+    const severity = {
+        Verbose: 0,
+        Information: 1,
+        Warning: 2,
+        Error: 3,
+        Critical: 4,
+    };
+    if ( sdk.SeverityLevel === undefined ) { sdk.SeverityLevel = severity; }
     // State the snippet already carries is kept: config holds their
     // instrumentation key and a page may read it back.
     if ( sdk.config === undefined ) { sdk.config = {}; }
@@ -201,13 +224,7 @@
         : {};
     if ( ns.ApplicationInsights === undefined ) {
         ns.ApplicationInsights = {
-            SeverityLevel: {
-                Verbose: 0,
-                Information: 1,
-                Warning: 2,
-                Error: 3,
-                Critical: 4,
-            },
+            SeverityLevel: severity,
             LoggingSeverity: { CRITICAL: 1, WARNING: 2, DEBUG: 3 },
             DistributedTracingModes: { AI: 0, AI_AND_W3C: 1, W3C: 2 },
             DisabledPropertyName: 'Microsoft_ApplicationInsights_BypassAjaxInstrumentation',
@@ -219,7 +236,10 @@
             CoreUtils: {},
             Telemetry: {},
             RequestHeaders: {},
-            ApplicationInsights: noopfn,
+            // new Microsoft.ApplicationInsights.ApplicationInsights(cfg)
+            // is their documented setup without a snippet, and the page
+            // then calls loadAppInsights() on what it got back.
+            ApplicationInsights: function() { return sdk; },
         };
     }
     w.Microsoft = ns;

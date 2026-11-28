@@ -65,8 +65,8 @@
         },
         {
             "name": "a live sdk is replaced",
-            "from": "        existing.core !== undefined\n    ) {\n        return;",
-            "to": "        existing.core !== undefined\n    ) {\n        void 0;"
+            "from": "        existing !== null && existing !== undefined &&\n        (\n            existing.core !== undefined ||",
+            "to": "        existing !== null && existing !== undefined &&\n        (\n            false ||"
         },
         {
             "name": "the renamed global is ignored",
@@ -109,14 +109,44 @@
             "to": "    if ( true ) {"
         },
         {
-            "name": "SeverityLevel off by one",
-            "from": "                Error: 3,",
-            "to": "                Error: 2,"
+            "name": "SeverityLevel in the namespace is wrong",
+            "from": "            SeverityLevel: severity,",
+            "to": "            SeverityLevel: { Verbose: 0, Information: 1, Warning: 2, Error: 2, Critical: 4 },"
         },
         {
             "name": "no namespace at all",
             "from": "    w.Microsoft = ns;",
             "to": "    void ns;"
+        },
+        {
+            "name": "no SeverityLevel on the instance",
+            "from": "    if ( sdk.SeverityLevel === undefined ) { sdk.SeverityLevel = severity; }",
+            "to": "    void severity;"
+        },
+        {
+            "name": "SeverityLevel on the instance is wrong",
+            "from": "        Error: 3,",
+            "to": "        Error: 9,"
+        },
+        {
+            "name": "no loadAppInsights",
+            "from": "        loadAppInsights: ( ) => sdk,",
+            "to": "        loadAppInsightss: ( ) => sdk,"
+        },
+        {
+            "name": "their constructor hands back nothing",
+            "from": "            ApplicationInsights: function() { return sdk; },",
+            "to": "            ApplicationInsights: function() { },"
+        },
+        {
+            "name": "runs twice over its own queue",
+            "from": "            typeof existing.getTraceCtx === 'function'",
+            "to": "            false"
+        },
+        {
+            "name": "stands aside for a bare snippet too",
+            "from": "            typeof existing.getTraceCtx === 'function'",
+            "to": "            typeof existing.trackEvent === 'function'"
         }
     ]
 }

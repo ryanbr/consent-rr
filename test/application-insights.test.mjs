@@ -131,6 +131,49 @@ describe('extra/application-insights.js', ( ) => {
             'their own SDK would skip the page against this');
     });
 
+    it('carries their documented setup with no snippet at all', async ( ) => {
+        // new Microsoft.ApplicationInsights.ApplicationInsights(cfg)
+        // .loadAppInsights() is how a page sets this up without the
+        // snippet - and the page with no snippet is half the reason this
+        // file exists, since window.appInsights never exists for it.
+        const win = boot({
+            after: '<script>window.made = new Microsoft.ApplicationInsights' +
+                '.ApplicationInsights({ config: { instrumentationKey: "K" } })' +
+                '.loadAppInsights();' +
+                'window.made.trackEvent({ name: "x" });' +
+                'window.ok = typeof window.made.getCookieMgr().get;</script>',
+        });
+        await settle();
+        assert.equal(win.ok, 'function', 'their manual setup threw');
+        assert.equal(typeof win.made.trackPageView, 'function');
+    });
+
+    it('puts SeverityLevel on the instance, where their snippet puts it',
+    async ( ) => {
+        // appInsights["SeverityLevel"] = { Verbose: 0, ... } in their
+        // snippet, and a page passes it straight back into trackTrace.
+        const win = boot({
+            after: '<script>appInsights.trackTrace({ message: "x",' +
+                ' severityLevel: appInsights.SeverityLevel.Error });' +
+                'window.level = appInsights.SeverityLevel.Error;</script>',
+        });
+        await settle();
+        assert.equal(win.level, 3, 'a page reading it off the instance threw');
+    });
+
+    it('stands aside on a second run of itself', async ( ) => {
+        // Two matching requests on one page would run this twice, and a
+        // second drain would re-run entries the first already ran.
+        const win = boot({
+            before: SNIPPET +
+                '<script>appInsights.queue.push(function() {' +
+                'window.ran = (window.ran || 0) + 1; });</script>',
+            after: `<script>${code}</script>`,
+        });
+        await settle();
+        assert.equal(win.ran, 1, 'a queued call ran twice');
+    });
+
     it('stands aside for an SDK that already initialised', async ( ) => {
         // core is theirs: the snippet never makes one.
         const win = boot({

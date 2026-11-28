@@ -114,15 +114,27 @@ asserting the two fields, so it fails the way their loader would.
 
 ## What it publishes, and where each came from
 
-The twelve names their snippet proxies, taken from the list inside
-`ai.3.gbl.min.js` - this is the page-facing set, and `trackException` is
-the one their minifier had turned into a constant:
+Two lists, and they are not the same list. Inside `ai.3.gbl.min.js` the
+SDK carries twelve names, `trackException` among them as a minified
+constant:
 
 ```
-getCookieMgr trackEvent trackPageView trackPageViewPerformance
-trackException _onerror trackTrace trackMetric startTrackPage
-stopTrackPage startTrackEvent stopTrackEvent
+SDK, ai.3.gbl.min.js:
+  getCookieMgr trackEvent trackPageView trackPageViewPerformance
+  trackException _onerror trackTrace trackMetric startTrackPage
+  stopTrackPage startTrackEvent stopTrackEvent
+
+their snippet, aiSupport.ts aiMethod - fifteen, and a different set:
+  trackEvent trackException trackPageView trackPageViewPerformance
+  addTelemetryInitializer trackTrace trackDependencyData trackMetric
+  startTrackPage stopTrackPage startTrackEvent stopTrackEvent
+  setAuthenticatedUserContext clearAuthenticatedUserContext flush
 ```
+
+The snippet proxies `addTelemetryInitializer` and `flush`, which the SDK's
+own list leaves out, and leaves out `getCookieMgr` and `_onerror`, which
+it carries. What is published here is a superset of both, which is the
+only safe reading of two lists that disagree.
 
 Plus the rest of the instance a page can reach, quoted in the v2 and v3
 builds: `trackDependencyData`, `flush`, `onunloadFlush`, `unload`,
@@ -145,6 +157,32 @@ objects are `Util`, `CoreUtils`, `Telemetry` and `RequestHeaders`, which
 nothing observed reads from a page. An existing namespace is never
 replaced, because a live SDK fills it with far more than this.
 
+### What a re-review of this file found
+
+Three defects, all from reading their snippet source after the resource
+was written rather than before:
+
+**`SeverityLevel` was on the namespace only.** Their snippet also puts it
+on the INSTANCE - `appInsights["SeverityLevel"] = { Verbose: 0, ... }` -
+and a page passes it straight back into `trackTrace`, so
+`appInsights.SeverityLevel.Error` threw against this file.
+
+**The manual setup was broken.** `new
+Microsoft.ApplicationInsights.ApplicationInsights(cfg).loadAppInsights()`
+is their documented way to set up without a snippet - and the page with no
+snippet is half the reason this file exists. The namespace constructor
+answered a no-op and `loadAppInsights` was not published at all, though it
+is in all three builds.
+
+**It would run twice over its own queue.** The stand-aside test was
+`existing.core !== undefined`, which a live SDK has and this file does
+not, so two matching requests on one page would run it twice and the
+second drain would re-run entries the first already ran. It now also
+stands aside on `getTraceCtx`, which a live SDK has and this publishes,
+and which is NOT one of the fifteen their snippet proxies - so a bare
+snippet is still adopted. A mutation that widens it to `trackEvent` is
+killed by six tests.
+
 ## Their snippet, and the queue
 
 Their snippet builds the object, a `queue`, and one proxy per name above;
@@ -164,7 +202,7 @@ the takeover drain as they arrive, once each, with the index kept.
 node tools/mutate.mjs application-insights
 ```
 
-23 mutations, 23 killed, no equivalents. One of them is their stand-down
+29 mutations, 29 killed, no equivalents. One of them is their stand-down
 shape and one is the drain replaying the queue.
 
 The filters test caught something worth repeating: a line in the header
