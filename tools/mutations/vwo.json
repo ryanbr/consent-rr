@@ -12,11 +12,6 @@
             "to": "    void api;"
         },
         {
-            "name": "push is missing",
-            "from": "        push: noopfn,",
-            "to": "        pushh: noopfn,"
-        },
-        {
             "name": "collect is missing",
             "from": "        collect: noopfn,",
             "to": "        collectt: noopfn,"
@@ -38,18 +33,13 @@
         },
         {
             "name": "sets their dup-code flag",
-            "from": "    const api = {",
-            "to": "    w._VWO = { sCL: true };\n    const api = {"
+            "from": "    const api = Array.isArray(existing) ? existing : [];",
+            "to": "    w._VWO = { sCL: true };\n    const api = Array.isArray(existing) ? existing : [];"
         },
         {
             "name": "takes over from their real library",
             "from": "        typeof existing.load_co === 'function'\n    ) {\n        return;",
             "to": "        typeof existing.load_co === 'function'\n    ) {\n        void 0;"
-        },
-        {
-            "name": "adopts nothing, so an array stays an array",
-            "from": "        Array.isArray(existing) === false &&",
-            "to": "        Array.isArray(existing) === true &&"
         },
         {
             "name": "never calls their exits",
@@ -165,6 +155,26 @@
             "name": "the internal namespace is missing",
             "from": "        _: {",
             "to": "        __: {"
+        },
+        {
+            "name": "a plain object instead of their array shape",
+            "from": "    const api = Array.isArray(existing) ? existing : [];",
+            "to": "    const api = {};"
+        },
+        {
+            "name": "a new array, throwing away what the page queued",
+            "from": "    const api = Array.isArray(existing) ? existing : [];",
+            "to": "    const api = [];"
+        },
+        {
+            "name": "an absorbing push over the native one",
+            "from": "    Object.assign(api, {",
+            "to": "    Object.assign(api, {\n        push: noopfn,"
+        },
+        {
+            "name": "stands aside only for a non-array library",
+            "from": "        typeof existing.load_co === 'function'",
+            "to": "        Array.isArray(existing) === false && typeof existing.load_co === 'function'"
         }
     ]
 }

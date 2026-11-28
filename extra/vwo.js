@@ -29,9 +29,11 @@
     const existing = w.VWO;
     // Their own library is here already: do nothing. The scriptlet form
     // blocks nothing, so the real one may arrive right after this.
+    // load_co is the test because their settings payload assigns it and a
+    // bare queue from the snippet has it on neither shape - and it is not
+    // Array.isArray, because theirs stays an array once it is up.
     if (
         existing !== null && existing !== undefined &&
-        Array.isArray(existing) === false &&
         typeof existing.load_co === 'function'
     ) {
         return;
@@ -42,11 +44,30 @@
     // writes _VWO, for the reason extra/adobe-launch.md records at length:
     // setting the other vendor's double-init flag made a real library stand
     // down and left a stub that could not answer in its place.
-    const api = {
-        // Absorbs what a page queues. Nothing queued is run: these are
-        // their campaign and tracking calls, which is what is being
-        // replaced, and running a page's callbacks is not this file's job.
-        push: noopfn,
+    // An ARRAY carrying the members, which is the shape their snippet
+    // makes - window.VWO = window.VWO || [] - and the shape their library
+    // is written to find. Read off their library, vanj.js:
+    //
+    //   init: i || (i = window.VWO = window.VWO || []); process(c,e,i);
+    //         addPushListener(c,e,i)
+    //   process: for ( e.sort(...); d < e.length; ) ...
+    //   addPushListener: var d = e.push; e.push = function(a) {
+    //         d.apply(e, ...); e[e.length-1] === a && processEvent(...) }
+    //
+    // So a plain object here breaks them twice over when nothing blocked
+    // them and they load beside this: e.sort is not a function, and their
+    // push wrapper captures an absorbing push, so e[e.length-1] is never
+    // what was pushed and every page call is dropped on the floor. An
+    // array makes both work - sort is there, the captured push is the
+    // native one, and their listener sees what it appended. The same
+    // mistake as a double-init flag, found in their library this time
+    // rather than in a report.
+    //
+    // push is deliberately not a member: Array.prototype.push is better
+    // than anything written here. With nothing to drain the queue, a page
+    // pushing to it is absorbed anyway.
+    const api = Array.isArray(existing) ? existing : [];
+    Object.assign(api, {
         // Their pixel sender - s.gif, e.gif, c.gif, h.gif, l.gif, ee.gif.
         collect: noopfn,
         // Injects a script element. Never, or the replacement fetches the
@@ -91,7 +112,7 @@
             domains: {},
             sD: noopfn,
         },
-    };
+    });
     w.VWO = api;
     // Taking the page back. Their snippet, the element with id vwoCode,
     // writes a style with id _vis_opt_path_hides and arms a timer that

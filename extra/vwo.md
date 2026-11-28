@@ -134,7 +134,7 @@ object with the dup-code object's members, because `_VWO.sCL` contains
 
 ```
 published here, in 4 of 4 payloads
-  push                the queue a page reaches for
+  push                NOT a member - their array's own push, see below
   collect             their pixel sender - a no-op
   load_co             injects a script element - a no-op, or the
                       replacement fetches the library the rule keeps out
@@ -180,6 +180,50 @@ not this file is standing in.
 `push` absorbs and runs nothing. What a page queues are their campaign and
 tracking calls, which is the thing being replaced; running a page's queued
 callbacks is not this file's job.
+
+## The shape it has to be, and why it is an array
+
+This publishes an array with the members hung on it, not an object,
+because that is the shape their snippet makes - `window.VWO = window.VWO
+|| []` - and the shape their library is written to find. From `vanj.js`:
+
+```
+init:            i || (i = window.VWO = window.VWO || []);
+                 process(c, e, i); addPushListener(c, e, i)
+process:         for ( e.sort(fn); d < e.length; ) processEvent(e[d], ...)
+addPushListener: var d = e.push;
+                 e.push = function(a) {
+                     d.apply(e, [].slice.call(arguments));
+                     e[e.length-1] === a && processEvent(a, ...)
+                 }
+```
+
+A plain object breaks that twice over in the case this file has to survive
+- the scriptlet ran, nothing was blocked, and their library loads straight
+after. `e.sort` is not a function, so their init throws `TypeError`; and
+their push wrapper captures whatever `push` it finds, so an absorbing one
+leaves `e[e.length-1]` never equal to what was pushed and every page call
+is dropped. Both were measured before the fix, and both are tests now, one
+of them using their init in its own shape.
+
+So `push` is deliberately NOT a member here: `Array.prototype.push` is
+better than anything this file could write, and with nothing to drain the
+queue a page pushing to it is absorbed anyway. A queue the snippet already
+filled is adopted rather than replaced, and a test pins that both entries
+still reach their library, sorted with `config` first the way theirs does
+it.
+
+The stand-aside test is `typeof existing.load_co === 'function'` and not
+`Array.isArray`, because theirs stays an array once it is up - and so is
+this. Their settings payload assigns `load_co` 22 times across the
+payloads seen; a bare queue from the snippet has it on neither shape.
+
+This is the same class of mistake as a double-init flag, found by reading
+their library rather than from a report. The census that found it is worth
+repeating for any stub with a queue: for every member published, count
+whether they ASSIGN it or only CALL it. Everything here is assigned by
+them except `push` and `get` - 57 and 73 calls, no assignments - which is
+exactly why those two are the ones that can be inherited and do harm.
 
 ## The flag it must never set
 
@@ -238,7 +282,7 @@ than run.
 node tools/mutate.mjs vwo
 ```
 
-32 mutations, 30 killed, 2 named equivalents with their reasons in
+34 mutations, 32 killed, 2 named equivalents with their reasons in
 `tools/mutations/vwo.json`. Three of those kills came from repairing tests
 that did not test what they claimed: a timer assertion that outlived
 nothing because a real tolerance is 2000ms and the suite finished first, a

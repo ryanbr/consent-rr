@@ -90,6 +90,30 @@ const bootWatched = (options = {}) => {
     return { win: dom.window, counts, scope };
 };
 
+// Their library's own init, read off vanj.js and kept in its shape:
+//   init: i || (i = window.VWO = window.VWO || []); process(c,e,i);
+//         addPushListener(c,e,i)
+//   process: for ( e.sort(...); d < e.length; ) processEvent(e[d],...)
+//   addPushListener: var d = e.push; e.push = function(a) {
+//         d.apply(e, ...); e[e.length-1] === a && processEvent(...) }
+const THEIR_LIB = `<script>
+var handled = window.handled = [];
+var processEvent = function(entry) { handled.push(entry && entry[0]); return 1; };
+var e = window.VWO = window.VWO || [];
+try {
+    e.sort(function(a) { return 'config' === a[0] ? -1 : 0; });
+    window.sortOk = true;
+} catch ( ex ) {
+    window.sortThrew = ex.constructor.name + ': ' + ex.message;
+}
+for ( var d = 0; d < e.length; ) { processEvent(e[d]); d += 1; }
+var native = e.push;
+e.push = function(a) {
+    native.apply(e, [].slice.call(arguments));
+    if ( e[e.length - 1] === a ) { processEvent(a); }
+};
+</script>`;
+
 const boot = (options = {}) => {
     const head = (options.before || '') +
         `<script>${code}</script>` + (options.after || '');
@@ -227,25 +251,78 @@ describe('extra/vwo.js', ( ) => {
         assert.equal(win._vwo_mt, undefined, 'their mode was written');
     });
 
-    it('stands aside for their real library', async ( ) => {
-        const win = boot({
-            before: '<script>window.VWO = { load_co: function() {},' +
-                ' mine: true };</script>',
-        });
-        await settle();
-        assert.equal(win.VWO.mine, true, 'the real library was replaced');
-        assert.equal(win.VWO.push, undefined);
+    it('stands aside for their real library, whatever shape it is in',
+    async ( ) => {
+        // load_co is the test: their settings payload assigns it, and a
+        // bare queue from the snippet has it on neither shape. Not
+        // Array.isArray, because theirs stays an array once it is up -
+        // which is also what this file now is.
+        for ( const shape of [
+            '{ load_co: function() {}, mine: true }',
+            'Object.assign([], { load_co: function() {}, mine: true })',
+        ] ) {
+            const win = boot({
+                before: `<script>window.VWO = ${shape};</script>`,
+            });
+            await settle();
+            assert.equal(win.VWO.mine, true,
+                'the real library was replaced: ' + shape);
+            assert.equal(win.VWO.get, undefined, shape);
+        }
     });
 
-    it('adopts the queue array their snippet leaves', async ( ) => {
+    it('is the array shape their snippet makes', async ( ) => {
+        const win = boot();
+        await settle();
+        assert.equal(Array.isArray(win.VWO), true,
+            'a plain object breaks their library - see the test below');
+        assert.equal(win.VWO.length, 0);
+        // push is theirs, not ours: Array.prototype.push is what their
+        // own listener captures and wraps.
+        assert.equal(win.VWO.push, win.Array.prototype.push);
+    });
+
+    it('adopts the queue their snippet already filled', async ( ) => {
         // The snippet does window.VWO = window.VWO || [], so under the
-        // redirect delivery there is an array here already.
+        // redirect delivery there is an array here already, with whatever
+        // the page queued before it.
         const win = boot({
-            before: '<script>window.VWO = []; VWO.push(["early"]);</script>',
+            before: '<script>window.VWO = []; VWO.push(["early", 1]);</script>',
         });
         await settle();
-        assert.equal(Array.isArray(win.VWO), false, 'left as an array');
-        assert.equal(typeof win.VWO.push, 'function');
+        assert.equal(Array.isArray(win.VWO), true);
+        assert.equal(win.VWO.length, 1, 'what the page queued was thrown away');
+        assert.equal(win.VWO[0][0], 'early');
+        assert.equal(typeof win.VWO.get, 'function');
+    });
+
+    it('does not break their library when nothing blocked it', async ( ) => {
+        // The case this file has to survive: the scriptlet runs, nothing
+        // is blocked, and their real library loads straight after. It
+        // takes window.VWO as a queue, sorts it, drains it, then wraps
+        // push. A plain object here threw TypeError: e.sort is not a
+        // function, and its wrapper then dropped every page push because
+        // e[e.length-1] was never what was pushed.
+        const win = boot({ after: THEIR_LIB });
+        await settle();
+        assert.equal(win.sortThrew, undefined, 'their library threw');
+        assert.equal(win.sortOk, true);
+        win.VWO.push([ 'activate', 2 ]);
+        assert.deepEqual([ ...win.handled ], [ 'activate' ],
+            'their push listener never saw what a page queued');
+    });
+
+    it('hands their library a queue the page filled first', async ( ) => {
+        const win = boot({
+            before: '<script>window.VWO = []; VWO.push(["config", 1]);' +
+                'VWO.push(["track", 2]);</script>',
+            after: THEIR_LIB,
+        });
+        await settle();
+        // Theirs sorts config first, then drains: both entries reach it.
+        assert.deepEqual([ ...win.handled ], [ 'config', 'track' ],
+            'the queue did not survive to their library'
+        );
     });
 
 });
