@@ -1,9 +1,21 @@
 # extra/vwo.js
 
 Notes for the VWO replacement - Visual Website Optimizer, by Wingify.
-Every number and name here was read off a real payload,
-`dev.visualwebsiteoptimizer.com/j.php?a=1072524&u=...&vn=2.1&x=true`,
-157063 bytes fetched on 2026-11-28, and never from documentation.
+Every number and name here was read off real payloads and never from
+documentation. Four of them, fetched 2026-11-28:
+
+```
+a=1072524  vn=2.1 x=true     157063 bytes
+a=884728   vn=2.1 x=true      61059
+a=725143   vn=1.5 f=1         36870   their older snippet version
+a=833471   vn=2.1 x=true      62991
+```
+
+The page-hiding contract is identical in all four, the older snippet
+version included: `_vis_opt_path_hides`, `hide_element_style`,
+`removeLoaderAndOverlay`, `_vwo_settings_timer`, `_vwo_code.finish` and
+the `vwoCode` element are in every one, so one reveal covers both snippet
+versions, and the rule matches all four urls as written.
 
 ## Contents
 
@@ -76,24 +88,54 @@ makes.
 
 ## What it publishes, and where each member came from
 
-Counted by reference in that payload, highest first:
+Counted across the four payloads, keeping `window.VWO` apart from
+`window._VWO`. A census matching `VWO.(\w+)` alone credits the public
+object with the dup-code object's members, because `_VWO.sCL` contains
+`VWO.sCL` - it had to be redone that way:
 
 ```
-VWO._          52   their internal namespace; sE, domains and sD are here
-VWO.nonce       4   taken off their own script element
-VWO.collect     3   the pixel sender - a no-op here
-VWO.load_co     3   injects a script element - a no-op here, or the
-                    replacement fetches the library the rule keeps out
-VWO.visUuid     3   their visitor id
-VWO.data        3   campaign data a page can read
-VWO.push        2   the queue a page reaches for
-VWO.appliedCampaigns 2
+published here, in 4 of 4 payloads
+  push                the queue a page reaches for
+  collect             their pixel sender - a no-op
+  load_co             injects a script element - a no-op, or the
+                      replacement fetches the library the rule keeps out
+  nonce visUuid data appliedCampaigns
+  _                   sE, domains, sD
+published here, after the four-payload census
+  get         3/4     asked for one key only, "visitor.id", 15 times
+  init        3/4     called UNGUARDED from a OneTrustGroupsUpdated
+                      listener, so a missing one throws
+  event       2/4     they install it themselves when absent
+  consentMode 3/4     read as consentMode.cReady
+  ssMeta      4/4     their literal, { enabled: 0, noSS: 0 }
+left out, guarded at every call site seen
+  initVWOLib  3/4     window.VWO.initVWOLib && window.VWO.initVWOLib()
+  consentState 3/4    var e = window.VWO.consentState; return e && ...
+  WorkerRef   4/4     window.VWO.WorkerRef || window.Worker
+  siteWideCode 1/4    their own site-wide code, which they call
+  caE sTs     4/4     written by them, read by nothing observed
+on window._VWO, which this file never creates
+  sCL sCDD dcdnUrl fSeg _vis_nc_lib
 ```
 
 `_.sE` is their safeExecute: their first lines wrap everything in it, so
 anything of theirs arriving from a first-party proxy finds it. It is a
 regular function rather than an arrow so the caller keeps its `this`,
 which a test pins, and it swallows a throw the way theirs does.
+
+`get` returning an empty string is not a shrug. Their guarded caller is
+`window.VWO && window.VWO.get ? window.VWO.get("visitor.id") || "" : ""`
+feeding an `if`, so empty means no visitor and their GA4 bridge skips.
+Their other shape is `window.VWO && window.VWO.get("visitor.id")`, which
+tests that `VWO` is there and never that `get` is - so publishing this
+object without the member would turn a safe short-circuit into a
+TypeError. A partial stub can be worse than no stub, which is what
+`extra/adobe-launch.md` records for a visitor id that answered null.
+
+`init` is the other one a page can reach: three of the four payloads call it
+unguarded from a `OneTrustGroupsUpdated` listener with a number for the
+consent state, so a site carrying their integration code calls it whether or
+not this file is standing in.
 
 `push` absorbs and runs nothing. What a page queues are their campaign and
 tracking calls, which is the thing being replaced; running a page's queued
@@ -156,7 +198,7 @@ than run.
 node tools/mutate.mjs vwo
 ```
 
-24 mutations, 22 killed, 2 named equivalents with their reasons in
+31 mutations, 29 killed, 2 named equivalents with their reasons in
 `tools/mutations/vwo.json`. Three of those kills came from repairing tests
 that did not test what they claimed: a timer assertion that outlived
 nothing because a real tolerance is 2000ms and the suite finished first, a
