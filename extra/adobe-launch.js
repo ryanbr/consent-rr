@@ -41,8 +41,42 @@
 // fetched from their CDN.
 // --
 // A comment indented into the body ships to every user - uBO strips only
-// the ones at column zero - so keep those to one line and put the rest in
-// the .md.
+// the ones at column zero, and only when followed by a space - so keep
+// those to one line and put the rest here or in the .md.
+// --
+// THE THREE THINGS THAT COST A FIELD REPORT
+// window.__satelliteLoaded is deliberately NOT set. Theirs checks it
+//   before hydrating, so setting it makes a real library that arrives
+//   afterwards stand down - and the scriptlet form blocks nothing, so
+//   that library does arrive. Reported from the field as a page broken
+//   by the stub alone.
+// getVisitorId answers a Visitor instance, never null. Their ECID
+//   extension replaces it with one and page code chains off it:
+//   getVisitorId().getMarketingCloudVisitorID() is in the corpus 32
+//   times, so null there is a TypeError on a page a plain block would
+//   have left alone.
+// __satelliteLoadedCallback is answered at install AND again at
+//   DOMContentLoaded, at most once. At document_start the page below does
+//   not exist, so a callback an inline script is about to define cannot
+//   be seen: a single check only ever fires for the redirect delivery.
+//   It rides the listener the reveal already registers rather than adding
+//   a second one, because a test asserts this file touches the page
+//   exactly once. Nothing in a corpus of 123 runtimes calls that hook and
+//   23 publish pageBottom, so it is legacy - answered anyway, because a
+//   page that defines it and is never called is the stall this file is
+//   about.
+// --
+// WHAT IT PUBLISHES BESIDE _satellite
+// adobe.target and Visitor, because their extensions install them and a
+// blocked library leaves them undefined - a page guarded on one skips, a
+// page that is not throws. Members read off the bundled at.js and ECID
+// library; every call answers or settles, because a page waiting on
+// Target is a blank page. Installed only when absent, so a real library
+// that nothing blocked still wins.
+// --
+// The pre-hiding ids are theirs. Their snippet hides the body and waits
+// for at.js or alloy to take the style away; neither runs now, so this
+// does what they would, and removing a style can only reveal content.
 // The "///" line above is the resource header uBO reads, and a comment to
 // JavaScript. uBO drops these "//" lines when it parses.
 (function() {
@@ -182,13 +216,8 @@
     };
     // Nothing waits on the page-bottom trigger, and theirs no-ops too.
     satellite.pageBottom = ( ) => { };
-    // Their ECID extension replaces getVisitorId with the Visitor instance,
-    // and page code chains off it - getVisitorId().getMarketingCloudVisitorID()
-    // is in the corpus 32 times. null there is a TypeError on a page a block
-    // would have left alone, which is a blank page somebody writes an
-    // exception for. Members read off the library bundled in their runtimes.
-    // Every getter answers empty and calls a callback it is handed, because a
-    // page waiting for one that never comes is the same blank page.
+    // A Visitor instance, never null - see the header. Every getter
+    // answers empty and calls a callback it is handed.
     const answer = value => (callback, ...rest) => {
         void rest;
         // A fresh object each call, as theirs builds one: a page that writes
@@ -256,13 +285,7 @@
     satellite.__registerScript = ( ) => { };
     satellite._onCustomCodeSuccess = ( ) => { };
     satellite._onCustomCodeFailure = ( ) => { };
-    // The globals their extensions install, which a page can reach for as
-    // readily as _satellite - and which a blocked library leaves undefined,
-    // so a page guarded on them skips, while a page that is not throws.
-    // Members read off the bundled at.js and ECID library; every call either
-    // answers or settles, because a page waiting on Target is a blank page.
-    // Only installed when absent: a real library that nothing blocked must
-    // still win. See the .md.
+    // What their extensions install, only when absent - see the header.
     const settle = value => {
         try { return w.Promise.resolve(value); } catch ( ex ) { return value; }
     };
@@ -343,32 +366,10 @@
     }
     satellite.container = container;
     w._satellite = satellite;
-    // Their double-init guard is deliberately NOT set. Theirs checks
-    // window.__satelliteLoaded before hydrating, so setting it makes a real
-    // library that arrives afterwards stand down - which breaks a page where
-    // nothing blocked that library, and the scriptlet form blocks nothing.
-    // Reported from the field as a page broken by the stub alone. The .md
-    // has it.
-    // Their pre-hiding snippet goes in the page, hides the body, and waits
-    // for at.js or alloy to take the style away. Neither runs now, so this
-    // does what they would. The ids are theirs, and removing a style can
-    // only reveal content. See the .md.
-    // Some pages define this and wait to be called. Nothing in a corpus of
-    // 123 bundled runtimes calls it, and 23 of them publish pageBottom, so
-    // it is a legacy hook rather than a live one - but a page that defines
-    // it and is never called is the stall this whole file is about, so it
-    // is answered, at most once.
-    //
-    // The schedule is the point. At document_start the page below does not
-    // exist, so a callback an inline script is about to define cannot be
-    // seen yet: a single check here only ever fires for the redirect
-    // delivery, where this runs at the embed's own position after earlier
-    // inline scripts. For the scriptlet delivery it has to run again as the
-    // document arrives - the mistake AGENTS.md records for parked tags.
-    //
-    // It rides the DOMContentLoaded listener the reveal below already
-    // registers rather than adding a second one, because a test asserts
-    // this file touches the page exactly once and that is worth keeping.
+    // __satelliteLoaded is deliberately NOT set - see the header.
+    // Their pre-hiding ids - see the header.
+    // A legacy hook, answered anyway and at most once: at install and
+    // again as the document arrives - see the header for why both.
     let told = false;
     const tellLoaded = ( ) => {
         if ( told ) { return; }
