@@ -20,7 +20,7 @@
         },
         {
             "name": "a watched listener is never registered",
-            "from": "                return add.call(this || target, type, ...rest);",
+            "from": "                return add.call(on, type, ...rest);",
             "to": "                return undefined;"
         },
         {
@@ -30,13 +30,13 @@
         },
         {
             "name": "every event is counted as behaviour",
-            "from": "                if ( BEHAVIOUR.indexOf(type) !== -1 ) {",
-            "to": "                if ( true ) {"
+            "from": "                    BEHAVIOUR.indexOf(type) !== -1 &&",
+            "to": "                    true &&"
         },
         {
             "name": "no behaviour is counted",
-            "from": "                if ( BEHAVIOUR.indexOf(type) !== -1 ) {",
-            "to": "                if ( false ) {"
+            "from": "                    note('listens for ' + type);",
+            "to": "                    void type;"
         },
         {
             "name": "it blames itself",
@@ -125,8 +125,8 @@
         },
         {
             "name": "addEventListener loses its this",
-            "from": "                return add.call(this || target, type, ...rest);",
-            "to": "                return add.call(this, type, ...rest);"
+            "from": "                const on = this || w;",
+            "to": "                const on = this;"
         },
         {
             "name": "a watched property stops being enumerable",
@@ -137,6 +137,31 @@
             "name": "the accessor path drops enumerable",
             "from": "                enumerable: own.enumerable,\n                get: function() { note(label); return real.call(this); },",
             "to": "                get: function() { note(label); return real.call(this); },"
+        },
+        {
+            "name": "the wrapper answers its own source",
+            "from": "                value: ( ) => String(real),",
+            "to": "                value: ( ) => 'function () { [tampered] }',"
+        },
+        {
+            "name": "no masking at all",
+            "from": "            }, real);",
+            "to": "            });"
+        },
+        {
+            "name": "the function name is lost",
+            "from": "            Object.defineProperty(made, 'name', {\n                configurable: true, value: real.name,\n            });",
+            "to": "            void 0;"
+        },
+        {
+            "name": "the listener wrap goes on the window",
+            "from": "        const proto = w.EventTarget && w.EventTarget.prototype;",
+            "to": "        const proto = w;"
+        },
+        {
+            "name": "every element listener is counted",
+            "from": "                    BEHAVIOUR.indexOf(type) !== -1 &&\n                    (on === w || on === doc)",
+            "to": "                    BEHAVIOUR.indexOf(type) !== -1"
         }
     ]
 }

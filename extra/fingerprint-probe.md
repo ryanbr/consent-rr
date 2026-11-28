@@ -223,6 +223,46 @@ is, asking for platform, model and full browser version at once, and the
 second covers eight signals by itself. Both are watched now, with the
 media feature named in the report rather than the whole query.
 
+## Will it set the anti-bot off
+
+Probably, and that matters for the measurement as much as for the session:
+a sensor that spots a wrapper may stop collecting, and then this reports
+less than the page really does. Two one-line checks used to give it away
+outright, measured in jsdom with and without it:
+
+```
+String(Date.prototype.getTimezoneOffset)
+  .includes("[native code]")                 true -> false
+window.addEventListener
+  === EventTarget.prototype.addEventListener true -> false
+```
+
+Both pass now. Every wrapper carries the name, length and `toString` of
+what it replaced - and `toString` answers `String(real)`, so a native
+reports the `[native code]` string and a function something else had
+already wrapped reports theirs, which is truer than claiming native. The
+listener wrap moved from `window` and `document` onto
+`EventTarget.prototype`, so the identity check holds, with a filter
+keeping the counts to those two targets.
+
+It is still detectable, and nothing here pretends otherwise:
+
+```
+Function.prototype.toString.call(fn)   sees the real source - the masking
+                                       is on the function, not on
+                                       Function.prototype
+descriptor identity                    the getters are not the native ones
+timing                                 a wrapped accessor is slower
+error stacks                           a sensor reading new Error().stack
+                                       inside a getter sees an extra frame
+```
+
+Which is the honest position for a diagnostic: it is quiet enough that a
+passing check does not flag it, and it would not survive a sensor that
+looks properly. Run it in a session you do not mind having flagged, and
+read a report of zero surfaces as "it may have detected this", not as
+"nothing was collected".
+
 ## What it must never do
 
 Change an answer. Every wrapper calls the real one and returns what it
@@ -270,7 +310,7 @@ lines, with the suite and the sweep re-run.
 node tools/mutate.mjs fingerprint-probe
 ```
 
-26 mutations, 22 killed, 4 named equivalents in
+31 mutations, 27 killed, 4 named equivalents in
 `tools/mutations/fingerprint-probe.json`.
 
 Two of the four equivalents are about `enumerable`, and they are worth

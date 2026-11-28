@@ -55,6 +55,31 @@
     const doc = document;
     const log = w.__fpLog = w.__fpLog || [];
     const seen = new Map();
+    // A wrapper that answers its own source is a tamper signal, and a
+    // sensor that spots one may stop collecting - which makes the report
+    // say less than the page really does. This does not hide anything
+    // from a determined check, see the .md.
+    const mask = (made, real) => {
+        try {
+            Object.defineProperty(made, 'name', {
+                configurable: true, value: real.name,
+            });
+            Object.defineProperty(made, 'length', {
+                configurable: true, value: real.length,
+            });
+            Object.defineProperty(made, 'toString', {
+                // Whatever was there answers for itself: for a native
+                // that is the [native code] string, and for a function
+                // something else had already wrapped it is their source,
+                // which is truer than claiming native. The sweep found
+                // this: the mutation was better than what was written.
+                configurable: true, writable: true,
+                value: ( ) => String(real),
+            });
+        } catch ( ex ) {
+        }
+        return made;
+    };
     // The first frame below this file: that url is the attribution.
     const blame = ( ) => {
         try {
@@ -113,11 +138,11 @@
             if ( host === null || host === undefined ) { return; }
             const real = host[name];
             if ( typeof real !== 'function' ) { return; }
-            host[name] = function(...args) {
+            host[name] = mask(function(...args) {
                 note(label);
                 // this || host: a bare call lands undefined here.
                 return real.apply(this || host, args);
-            };
+            }, real);
         } catch ( ex ) {
         }
     };
@@ -191,13 +216,13 @@
     try {
         const match = w.matchMedia;
         if ( typeof match === 'function' ) {
-            w.matchMedia = function(query) {
+            w.matchMedia = mask(function(query) {
                 const text = String(query);
                 const feature = text.match(/[a-z-]*(?:gamut|contrast|colors|dynamic-range|monochrome|motion|transparency|scheme|pointer|hover|resolution)[a-z-]*/);
                 note('matchMedia ' + (feature === null ? 'other' : feature[0]));
                 // Bare calls land undefined here - see watchCall.
                 return match.call(this || w, query);
-            };
+            }, match);
         }
     } catch ( ex ) {
     }
@@ -219,17 +244,30 @@
         'pointerdown', 'scroll', 'wheel', 'deviceorientation', 'devicemotion',
         'focus', 'blur', 'visibilitychange',
     ];
-    for ( const target of [ w, doc ] ) {
-        try {
-            const add = target.addEventListener;
-            target.addEventListener = function(type, ...rest) {
-                if ( BEHAVIOUR.indexOf(type) !== -1 ) {
+    // On the prototype, not on window and document: replacing it there
+    // leaves window.addEventListener !== EventTarget.prototype.addEventListener,
+    // which is a one-line check. Only the two targets that matter are
+    // counted, so the signal is the same.
+    try {
+        const proto = w.EventTarget && w.EventTarget.prototype;
+        const add = proto && proto.addEventListener;
+        if ( typeof add === 'function' ) {
+            proto.addEventListener = mask(function(type, ...rest) {
+                // Once, and used for both: a bare call lands undefined
+                // here, and testing that against the window misses the
+                // listener a page registered by writing
+                // addEventListener(...) rather than window.addEventListener.
+                const on = this || w;
+                if (
+                    BEHAVIOUR.indexOf(type) !== -1 &&
+                    (on === w || on === doc)
+                ) {
                     note('listens for ' + type);
                 }
-                return add.call(this || target, type, ...rest);
-            };
-        } catch ( ex ) {
+                return add.call(on, type, ...rest);
+            }, add);
         }
+    } catch ( ex ) {
     }
     const say = ( ) => {
         const rows = [ ...seen.entries() ].sort((a, b) => b[1].n - a[1].n);

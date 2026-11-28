@@ -92,6 +92,43 @@ describe('extra/fingerprint-probe.js', ( ) => {
         assert.match(report, /first from https:\/\/shop\.example\.com/);
     });
 
+    it('does not announce itself to the thing it is watching', async ( ) => {
+        // A sensor that spots a wrapper may stop collecting, and then the
+        // report says less than the page really does. These are the two
+        // one-line checks that flipped before the masking went in.
+        const win = boot();
+        await settle();
+        assert.equal(
+            win.eval('String(Date.prototype.getTimezoneOffset)' +
+                '.includes("[native code]")'),
+            true, 'a wrapper answers its own source'
+        );
+        assert.equal(
+            win.eval('window.addEventListener === ' +
+                'EventTarget.prototype.addEventListener'),
+            true, 'the listener wrap moved off the prototype'
+        );
+        assert.equal(
+            win.eval('Date.prototype.getTimezoneOffset.name'),
+            'getTimezoneOffset', 'the function name was lost'
+        );
+    });
+
+    it('counts listeners on the window and document, not on elements',
+    async ( ) => {
+        // The wrap is on EventTarget.prototype now, so every element goes
+        // through it - the filter is what keeps the signal the same.
+        const win = boot(
+            '<script>document.addEventListener("mousemove", function(){});' +
+            'document.createElement("div")' +
+            '.addEventListener("mousemove", function(){});</script>'
+        );
+        await settle();
+        const report = reportOf(win);
+        assert.match(report, /1\s+listens for mousemove/,
+            'an element listener was counted, or the document one was not');
+    });
+
     it('counts the behaviour it listens for, and nothing else',
     async ( ) => {
         const win = boot(
@@ -263,12 +300,16 @@ describe('extra/fingerprint-probe.js', ( ) => {
                 }
                 return { name: String(name) };
             };
-            const add = win.addEventListener.bind(win);
-            win.addEventListener = function(type, ...rest) {
+            // On the prototype, where the probe now wraps: an own
+            // property on window would shadow that wrap and the call
+            // would never reach it.
+            const proto = win.EventTarget.prototype;
+            const add = proto.addEventListener;
+            proto.addEventListener = function(type, ...rest) {
                 if ( this === undefined ) {
                     throw new TypeError('Illegal invocation');
                 }
-                return add(type, ...rest);
+                return add.call(this, type, ...rest);
             };
         };
         const win = boot(
