@@ -13,9 +13,13 @@
 // indented comment SHIPS - these were 5616 of 7945 injected bytes before
 // they moved up here, which costs nothing.
 //
-// THE RULE
+// THE RULES
 //   ||dev.visualwebsiteoptimizer.com/j.php$script,redirect=vwo.js
-// Blocking this alone hides the page. Their snippet writes a style that
+//   ||dev.visualwebsiteoptimizer.com/tag/*.js$script,redirect=vwo.js
+// Two entry points. j.php is settings and library in one; /tag/<id>.js is
+// their newer unified tag, 180KB, which fetches j.php, the lib, edrv and
+// dcdn itself. Both manage the page-hiding, so either one blocked on its
+// own hides the page. Their snippet writes a style that
 // hides hide_element, usually the body, and only takes it away when the
 // settings answer or a timer expires - so a block is a blank page for
 // settings_tolerance, 2000ms on a default install. This takes the hiding
@@ -60,12 +64,18 @@
 // Left out because every call site of theirs guards them: initVWOLib,
 // consentState, WorkerRef, siteWideCode, caE, sTs, dNR, featureInfo.
 //
-// THE FLAG IT MUST NEVER SET
-// window._VWO.sCL is their double-init guard: a payload that finds it set
-// logs dupCode and returns without applying anything, so the library would
-// stand down and leave a stub that cannot answer in its place. Nothing
-// here writes _VWO. The same mistake shipped in extra/adobe-launch.js as
+// THE FLAGS IT MUST NEVER SET
+// window._VWO.sCL is the library's double-init guard: a payload that finds
+// it set logs dupCode and returns without applying anything.
+// window.Wingify.tagLoaded is the tag's: it early-returns on
+// window.Wingify && window.Wingify.tagLoaded. The tag sets
+// window.VWO.tagLoaded too, but reads only the Wingify one.
+// Either one set here would stand their code down and leave a stub that
+// cannot answer in its place, so nothing here writes _VWO, Wingify or
+// tagLoaded. The same mistake shipped in extra/adobe-launch.js as
 // window.__satelliteLoaded and took a field report to find.
+// Not publishing Wingify at all is what keeps the tag's guard passing;
+// their own call sites self-default it, as window.Wingify || [].
 //
 // A blank line ends the resource, so none may appear below.
 (function() {

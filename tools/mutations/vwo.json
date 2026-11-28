@@ -175,6 +175,16 @@
             "name": "stands aside only for a non-array library",
             "from": "        typeof existing.load_co === 'function'",
             "to": "        Array.isArray(existing) === false && typeof existing.load_co === 'function'"
+        },
+        {
+            "name": "sets the tag-loaded flag on Wingify",
+            "from": "    const api = Array.isArray(existing) ? existing : [];",
+            "to": "    w.Wingify = { tagLoaded: 1 };\n    const api = Array.isArray(existing) ? existing : [];"
+        },
+        {
+            "name": "sets tagLoaded on their object",
+            "from": "        nonce: '',",
+            "to": "        tagLoaded: 1,\n        nonce: '',"
         }
     ]
 }

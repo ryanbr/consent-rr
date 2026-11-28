@@ -339,19 +339,67 @@ describe('filters, vwo', ( ) => {
     });
 
     it('names the resource uBO will look for, with the .js', ( ) => {
-        assert.equal(rules.length, 1, 'the header rules moved');
+        assert.equal(rules.length, 2, 'the header rules moved');
         for ( const rule of rules ) {
             assert.ok(rule.endsWith('$script,redirect=vwo.js'), rule);
         }
     });
 
-    it('covers the endpoint a payload has been seen served from', ( ) => {
-        const served = 'https://dev.visualwebsiteoptimizer.com/j.php?a=' +
-            '1072524&u=https%3A%2F%2Fwww.example.com%2Fa.html&vn=2.1&x=true';
-        const pattern = rules[0].slice(2).split('$')[0];
-        const host = pattern.split('/')[0];
-        const rest = pattern.slice(host.length);
-        assert.ok(served.includes('//' + host + rest), served);
+    it('covers both entry points as they have been seen served', ( ) => {
+        const matches = url => rules.some(rule => {
+            const pattern = rule.slice(2).split('$')[0];
+            const [ head, tail ] = pattern.split('*');
+            const start = '//' + head;
+            if ( url.includes(start) === false ) { return false; }
+            return tail === undefined
+                ? true
+                : url.slice(url.indexOf(start) + start.length).includes(tail);
+        });
+        for ( const url of [
+            'https://dev.visualwebsiteoptimizer.com/j.php?a=1072524&u=x&vn=2.1',
+            'https://dev.visualwebsiteoptimizer.com/j.php?a=725143&u=x&f=1&vn=1.5',
+            'https://dev.visualwebsiteoptimizer.com/tag/1039738.js',
+        ] ) {
+            assert.ok(matches(url), 'not covered: ' + url);
+        }
+    });
+
+    it('does not set a flag that stands their own code down', async ( ) => {
+        // Two of them. window._VWO.sCL makes a settings payload log
+        // dupCode and return; window.Wingify.tagLoaded makes their tag
+        // early-return on window.Wingify && window.Wingify.tagLoaded. The
+        // tag sets window.VWO.tagLoaded as well but reads only Wingify's.
+        const win = boot();
+        await settle();
+        assert.equal(win._VWO, undefined, '_VWO was created');
+        assert.equal(win.Wingify, undefined, 'Wingify was created');
+        assert.equal(win.VWO.tagLoaded, undefined, 'tagLoaded was set');
+        assert.equal(win._vwo_mt, undefined, 'their mode was written');
+    });
+
+    it('lets their tag run when nothing blocked it', async ( ) => {
+        // Their tag's own opening guard, verbatim in shape. It must not
+        // find a reason to stand down, and the two members it only calls
+        // rather than assigns - get and push - have to answer.
+        const win = boot({
+            after: '<script>try {' +
+                'if ( window.Wingify && window.Wingify.tagLoaded ) {' +
+                'window.stoodDown = true;' +
+                '} else {' +
+                'window.ran = true;' +
+                'window.gotId = VWO.get("visitor.id");' +
+                'VWO.push(["tag", 1]);' +
+                'window.VWO.load_co = function() { window.loaded = true; };' +
+                '}} catch ( ex ) { window.threw = String(ex); }</script>',
+        });
+        await settle();
+        assert.equal(win.stoodDown, undefined, 'their tag stood down');
+        assert.equal(win.ran, true);
+        assert.equal(win.threw, undefined);
+        assert.equal(win.gotId, '');
+        // It assigns load_co over ours, as it does in the real file.
+        assert.equal(typeof win.VWO.load_co, 'function');
+        assert.equal(win.VWO.length, 1, 'its push did not reach the queue');
     });
 
     it('does not cover their collection endpoints, which are plain blocks',

@@ -21,9 +21,10 @@ versions, and the rule matches all four urls as written.
 ## Contents
 
 - [What this is, and the rule](#what-this-is-and-the-rule)
+- [Their second entry point, /tag/<id>.js](#their-second-entry-point-tagidjs)
 - [Why blocking it alone hides the page](#why-blocking-it-alone-hides-the-page)
 - [What it publishes, and where each member came from](#what-it-publishes-and-where-each-member-came-from)
-- [The flag it must never set](#the-flag-it-must-never-set)
+- [The flags it must never set](#the-flags-it-must-never-set)
 - [How it has to be delivered](#how-it-has-to-be-delivered)
 - [What a page keeps, and what it loses](#what-a-page-keeps-and-what-it-loses)
 - [What it costs a page](#what-it-costs-a-page)
@@ -53,12 +54,53 @@ label it, and it is one 157KB script: an error reporter, the tracking
 endpoints, the loader for their worker and tag files, and the campaign
 data.
 
+Two more of theirs, both JavaScript and both plain blocks rather than
+replacements, because the thing that requests them is what gets replaced:
+`/v2/dyn?a=<id>&uuid=<id>&d=<url>&scope=vis`, 921 bytes, which only
+defines `window.VWO.consentMode.vTC` and self-defaults `consentMode`
+first; and `/info?a=<id>`, 477 bytes, which fills `VWO.data.accountJSInfo`
+and a timestamp. Both decorate state beside this file without throwing,
+because `data` is an object here and `consentMode` is one too.
+
 The collection paths - `s.gif`, `e.gif`, `c.gif`, `h.gif`, `l.gif`,
 `ee.gif` on their host and on `collect.wingify.net` - are plain blocks,
 not replacements, and a test asserts the rule above does not reach them.
 The worker and tag files the payload would fetch (`vanj.js`,
 `edrv/va_gq-*.gz.js`, `tags.js_*`) are never asked for once this stands
 in, because the thing that asks for them is what was replaced.
+
+## Their second entry point, /tag/<id>.js
+
+`dev.visualwebsiteoptimizer.com/tag/1039738.js` is their newer unified
+tag, 180152 bytes, and it is an entry point rather than a companion: it
+fetches `j.php`, the lib, `edrv` and `dcdn` itself, and it manages the
+page-hiding, so blocking it on its own hides the page the same way. Hence
+the second rule.
+
+It lives on both namespaces - 223 `Wingify.*` references and 484 `VWO._` -
+and it reveals through `window._vwo_style ||
+document.getElementById("_vis_opt_path_hides")`, and in one place CREATES
+that style itself for its text-config feature. The reveal here removes
+every element with that id, so it covers both the snippet's and the tag's.
+
+Whether this file breaks it when nothing blocked it was settled the same
+way as for the library: for every member, does the tag assign it or only
+call it?
+
+```
+assigns load_co _sG modules data collect consentMode v_e _   ours overwritten
+calls   get   3 calls, 0 assignments      ours answers ''
+        push  2 calls, 0 assignments      the array's own push
+```
+
+Which is the array shape earning its keep a second time. A test runs their
+opening guard in its own shape and checks the tag is neither stood down
+nor thrown.
+
+It also carries an escape hatch worth knowing about:
+`/__(vwo|wingify)_disable__/.test(window.location.search)` makes the tag
+return immediately, so `?__vwo_disable__` on a url turns it off without
+any filter at all.
 
 ## Their other endpoint, /dcdn/settings.js
 
@@ -226,7 +268,7 @@ whether they ASSIGN it or only CALL it. Everything here is assigned by
 them except `push` and `get` - 57 and 73 calls, no assignments - which is
 exactly why those two are the ones that can be inherited and do harm.
 
-## The flag it must never set
+## The flags it must never set
 
 Their payload opens with this, and it is the whole reason the member list
 above is not longer:
@@ -236,6 +278,14 @@ if (window._VWO.sCL) { window._vwo_mt = 'dupCode'; ... return; }
 ...
 window._VWO.sCL = true;
 ```
+
+There are two. `_VWO.sCL` is the library's double-init guard, and
+`window.Wingify.tagLoaded` is the tag's - it early-returns on
+`window.Wingify && window.Wingify.tagLoaded`. The tag sets
+`window.VWO.tagLoaded` as well but reads only the Wingify one. Nothing
+here writes `_VWO`, `Wingify` or `tagLoaded`, and not publishing `Wingify`
+at all is what keeps the tag's guard passing; their own call sites
+self-default it as `window.Wingify || []`.
 
 `_VWO.sCL` is their double-init guard. A stub that sets it makes a real
 payload log `dupCode` and return without applying anything - so the
@@ -308,7 +358,7 @@ size, which is what prompted the second pass.
 node tools/mutate.mjs vwo
 ```
 
-34 mutations, 32 killed, 2 named equivalents with their reasons in
+36 mutations, 34 killed, 2 named equivalents with their reasons in
 `tools/mutations/vwo.json`. Three of those kills came from repairing tests
 that did not test what they claimed: a timer assertion that outlived
 nothing because a real tolerance is 2000ms and the suite finished first, a
