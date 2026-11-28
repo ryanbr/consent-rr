@@ -76,6 +76,25 @@ The worker and tag files the payload would fetch (`vanj.js`,
 `edrv/va_gq-*.gz.js`, `tags.js_*`) are never asked for once this stands
 in, because the thing that asks for them is what was replaced.
 
+### Why the rules are $script and not $xhr,script
+
+Both entry points are fetched as script elements. `j.php` goes through
+`_vwo_code.load(...)`, which builds one, and there are 52
+`createElement("script")` calls across the vendor files and no XHR of
+`j.php` in any of them. Every redirect rule in this repo is `$script` for
+the same reason.
+
+Adding `$xhr` would be valid and would do nothing here, but the general
+point is worth keeping: this resource only helps if it EXECUTES. A
+redirect that satisfies an XHR hands the fetcher the file as text, so
+nothing runs and nothing is revealed - for such a path a block, or a
+redirect to an empty resource, is the right treatment rather than a stub.
+The exception is a fetcher that evals what it got, which their code does
+elsewhere - 16 `eval(` and 10 `new Function` across the libraries, on the
+`getSettings` and `dcdn` route - so if a settings path ever turns up being
+fetched that way it gets decided on its own evidence instead of by
+widening a rule.
+
 ## Their second entry point, /tag/<id>.js
 
 `dev.visualwebsiteoptimizer.com/tag/1039738.js` is their newer unified
