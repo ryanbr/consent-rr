@@ -57,14 +57,30 @@ fe6a50abb7b4  622807   lowes only            _abck, bm_sz
 771ace96284f  104238   lowes only            al_sess
 ```
 
-A fourth site corrected the first reading of this. walgreens.com serves
-621294 bytes / 084658e27724 for the `_abck` sensor and 471217 bytes /
-463b9099c212 for the `?v=` one - so the `?v=` build is NOT one artifact
-everywhere. It is byte for byte identical on bestbuy, macys and lowes, and
-different on walgreens, which looks like a release boundary rather than
-per-tenant compilation. The first note here said identical across all,
-from three samples; a fourth was enough to disprove it, which is worth
-remembering before the next three-sample claim.
+Five sites now, and the picture is settled:
+
+```
+the ?v= build, two hashes and no more
+  147340cdc406  476869   bestbuy, macys, lowes
+  463b9099c212  471217   walgreens, kroger
+
+the _abck sensor, one per site
+  c427bc8744d8  639080   bestbuy
+  2dcaf343dcef  635257   macys
+  fe6a50abb7b4  622807   lowes
+  084658e27724  621294   walgreens
+  1e5e4823dc87  198846   kroger - a third of the others, so either a
+                         different tier or a different script
+```
+
+So the `?v=` build is a release, not a tenant: two versions in the wild,
+each shared by several sites, and kroger landing exactly on walgreens'
+hash is what confirmed it. The first version of this note said it was
+identical across ALL sites, from three samples. A fourth disproved that
+and a fifth explained it - worth remembering before the next three-sample
+claim.
+
+Neither Akamai file rotates: fetched twice, the same bytes both times.
 
 The `_abck` sensor is per-tenant, now four sites and four distinct files,
 all about the same size. The 104KB lowes file shares the obfuscator of the
@@ -103,6 +119,15 @@ place for the same reasons:
 readable members - `scriptStart` and `now` - which appear only in that
 first line, passing timing between their own two files. There is no api a
 page calls, so there is nothing to stand in for.
+
+Kasada rotates its payload, which Akamai does not. The same `p.js` url
+fetched three times in a row answered 154147 bytes, then 160387, then
+154147 again - it alternates between builds per request. costco.ca serving
+different bytes from costco.com is that rotation and not the domain, which
+is what the three fetches were for: the first reading of two samples would
+have been a per-site difference that does not exist. So a hash identifies
+nothing here, and the stable thing is the path - the two uuids are
+per-customer and the same on both of Costco's domains.
 
 And the gate is server-side again, in the clear this time: their requests
 carry `x-kpsdk-ct` and `x-kpsdk-cd` headers computed by the payload, with
