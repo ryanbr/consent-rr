@@ -8,6 +8,7 @@ documentation. Four of them, fetched 2026-11-28:
 a=1072524  vn=2.1 x=true     157063 bytes
 a=884728   vn=2.1 x=true      61059
 a=725143   vn=1.5 f=1         36870   their older snippet version
+a=645322   vn=1.3 f=1         39085   older still, 11 members only
 a=833471   vn=2.1 x=true      62991
 ```
 
@@ -57,6 +58,35 @@ not replacements, and a test asserts the rule above does not reach them.
 The worker and tag files the payload would fetch (`vanj.js`,
 `edrv/va_gq-*.gz.js`, `tags.js_*`) are never asked for once this stands
 in, because the thing that asks for them is what was replaced.
+
+## Their other endpoint, /dcdn/settings.js
+
+`dev.visualwebsiteoptimizer.com/dcdn/settings.js?a=<id>&settings_type=4&ts=
+<stamp>&dt=desktop&cc=<country>` is a companion settings file, not a
+second delivery of the library, and the rule above deliberately does not
+cover it:
+
+```
+_vis_opt_path_hides      0   it hides nothing, so a block is not a blank page
+_vwo_settings_timer      0
+vwoCode                  0
+needs _vwo_s()           2   the settings function only their library defines
+needs VWO._.coreLib      1   called as coreLib.lS(tag) in a tag loop
+```
+
+The library asks for it - the url is in `window._VWO.dcdnUrl` - so once
+`j.php` is replaced nothing requests it. A plain block is the right
+treatment if a site serves it directly; there is nothing for a replacement
+to do.
+
+It is worth knowing how it behaves beside this file, because it guards
+nothing. It opens on a bare `VWO._`, as `dtc = VWO._.dtc = VWO._.dtc || {
+ctId: ctId, js: {}, tag: [] }`, so the member has to be an object and not
+merely present - which it is here, and a test pins that with their own
+opening lines. It then only DEFINES `dtc.js[ctId]`, and the thing that
+calls it is the library, so the tag loop that would reach for
+`VWO._.coreLib` never runs. Its own catch reports through `VWO.collect`,
+which is a no-op here, so a throw of theirs sends no pixel.
 
 ## Why blocking it alone hides the page
 
@@ -123,6 +153,7 @@ left out, guarded at every call site seen
   WorkerRef   4/4     window.VWO.WorkerRef || window.Worker
   siteWideCode 1/4    their own site-wide code, which they call
   caE sTs     4/4     written by them, read by nothing observed
+  dNR featureInfo     vn=1.3 only, assigned once and read by nothing
 on window._VWO, which this file never creates
   sCL sCDD dcdnUrl fSeg _vis_nc_lib
 ```
@@ -207,7 +238,7 @@ than run.
 node tools/mutate.mjs vwo
 ```
 
-31 mutations, 29 killed, 2 named equivalents with their reasons in
+32 mutations, 30 killed, 2 named equivalents with their reasons in
 `tools/mutations/vwo.json`. Three of those kills came from repairing tests
 that did not test what they claimed: a timer assertion that outlived
 nothing because a real tolerance is 2000ms and the suite finished first, a

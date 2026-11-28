@@ -160,6 +160,11 @@
             "name": "ssMeta is missing",
             "from": "        ssMeta: { enabled: 0, noSS: 0 },",
             "to": "        ssMetaa: { enabled: 0, noSS: 0 },"
+        },
+        {
+            "name": "the internal namespace is missing",
+            "from": "        _: {",
+            "to": "        __: {"
         }
     ]
 }

@@ -191,6 +191,32 @@ describe('extra/vwo.js', ( ) => {
         assert.equal(bad(), undefined, 'the throw escaped safeExecute');
     });
 
+    it('carries their dcdn settings file, which guards nothing', async ( ) => {
+        // dev.visualwebsiteoptimizer.com/dcdn/settings.js opens on a bare,
+        // unguarded VWO._ - dtc = VWO._.dtc = VWO._.dtc || {...} - so the
+        // member has to be an object and not merely present. Its own
+        // catch then reports through VWO.collect, which is a no-op here,
+        // so a throw of theirs sends no pixel either.
+        const win = boot({
+            after: '<script>try { (function() {' +
+                'var ctId = +new Date();' +
+                'var dtc = VWO._.dtc = VWO._.dtc || ' +
+                '{ ctId: ctId, js: {}, tag: [] };' +
+                'dtc.js[ctId] = function() { window.libCalled = true; };' +
+                'dtc.sC = function() { return VWO.get("visitor.id"); };' +
+                'window.dcdnRan = true;' +
+                '}()); } catch ( ex ) { window.dcdnThrew = String(ex); }' +
+                '</script>',
+        });
+        await settle();
+        assert.equal(win.dcdnThrew, undefined, 'their settings file threw');
+        assert.equal(win.dcdnRan, true);
+        assert.equal(typeof win.VWO._.dtc, 'object');
+        // Nothing of theirs runs it, so the tag loop never looks for the
+        // coreLib this file does not publish.
+        assert.equal(win.libCalled, undefined);
+    });
+
     it('does NOT set their dup-code flag', async ( ) => {
         // window._VWO.sCL is what a real payload checks before applying
         // anything: set, it logs dupCode and returns. A stub that sets it
