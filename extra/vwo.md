@@ -24,6 +24,7 @@ versions, and the rule matches all four urls as written.
 ## Contents
 
 - [What this is, and the rule](#what-this-is-and-the-rule)
+- [The hide is two shapes, and one of them reached a P1 report](#the-hide-is-two-shapes-and-one-of-them-reached-a-p1-report)
 - [Their second entry point, /tag/<id>.js](#their-second-entry-point-tagidjs)
 - [Their own answer, and the second snippet global](#their-own-answer-and-the-second-snippet-global)
 - [Why blocking it alone hides the page](#why-blocking-it-alone-hides-the-page)
@@ -134,6 +135,34 @@ elsewhere - 16 `eval(` and 10 `new Function` across the libraries, on the
 `getSettings` and `dcdn` route - so if a settings path ever turns up being
 fetched that way it gets decided on its own evidence instead of by
 widening a rule.
+
+## The hide is two shapes, and one of them reached a P1 report
+
+`#_vis_opt_path_hides` is not always a `<style>`. Their own code branches
+on it - `_vwo_style.classList.contains("_vis_hide_layer")`, in 15 of the
+files collected - and the other shape is a full-screen white div:
+
+```
+<div id="_vis_opt_path_hides" class="_vis_hide_layer"
+     style="z-index: 2147483647 !important; position: fixed !important;
+            left: 0px !important; top: 0px !important;
+            width: 100% !important; height: 100% !important;
+            background: white !important; display: block !important;">
+```
+
+That is the element from AdguardFilters#217216, a P1 white page on
+dominos.jp reported 2025-11-07 and closed with a cosmetic hiding rule. The
+site carries the snippet with `hide_element = 'body'`, `hide_element_style
+= 'opacity:0 !important'` and `settings_tolerance = 2000`, so blocking
+their settings without a replacement is a white page until that timer -
+which is what the reporter described, and what a hiding rule treats the
+symptom of.
+
+This file removes by id with `querySelectorAll`, so it takes both shapes
+and takes them wherever they were attached - the style goes in the head,
+the overlay does not have to. Two tests pin it, one built from their
+element attribute for attribute, and narrowing the selector to
+`style#_vis_opt_path_hides` fails both.
 
 ## Their second entry point, /tag/<id>.js
 

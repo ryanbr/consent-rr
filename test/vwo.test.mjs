@@ -617,6 +617,70 @@ describe('extra/vwo.js, taking the page back', ( ) => {
         );
     });
 
+    it('takes away the full-screen div form, not just the style form',
+    async ( ) => {
+        // The same id carries two shapes - their own code branches on
+        // _vwo_style.classList.contains("_vis_hide_layer") - and the div
+        // is the one that reached AdguardFilters#217216 as a P1 white
+        // page on dominos.jp, where it was closed with a cosmetic hiding
+        // rule. Their element, attribute for attribute:
+        const win = boot({
+            before: '<script>var d = document.createElement("div");' +
+                'd.setAttribute("id", "_vis_opt_path_hides");' +
+                'd.setAttribute("class", "_vis_hide_layer");' +
+                'd.setAttribute("style", "z-index: 2147483647 !important;' +
+                ' position: fixed !important; left: 0px !important;' +
+                ' top: 0px !important; width: 100% !important;' +
+                ' height: 100% !important; background: white !important;' +
+                ' display: block !important;");' +
+                'document.documentElement.appendChild(d);</script>',
+        });
+        await settle();
+        assert.equal(
+            win.document.getElementById('_vis_opt_path_hides'), null,
+            'their white overlay was left covering the page'
+        );
+        assert.equal(
+            win.document.querySelectorAll('._vis_hide_layer').length, 0
+        );
+    });
+
+    it('takes it away wherever they attached it', async ( ) => {
+        // The style goes in the head, the overlay does not have to. The
+        // body case has to come from markup: a script in the head runs
+        // while document.body is still null, so appending there throws
+        // and the element never exists - which made the first version of
+        // this test pass against nothing.
+        const layer = '<div id="_vis_opt_path_hides" ' +
+            'class="_vis_hide_layer"></div>';
+        const build = place => `<script>var d = document.createElement("div");` +
+            `d.setAttribute("id", "_vis_opt_path_hides");` +
+            `d.setAttribute("class", "_vis_hide_layer");` +
+            `document.${place}.appendChild(d);` +
+            `window.built = (window.built || 0) + 1;</script>`;
+        const cases = [
+            { before: build('head'), where: 'head',
+                proof: win => win.built === 1 },
+            { body: layer + '<p id="content">x</p>', where: 'body markup',
+                proof: win => win.document.getElementById('content') !== null },
+            { after: build('documentElement'), where: 'documentElement',
+                proof: win => win.built === 1 },
+        ];
+        for ( const { where, proof, ...options } of cases ) {
+            const win = boot(options);
+            await settle();
+            // That the fixture built one cannot be checked after the
+            // fact - the install pass has already taken it by the time
+            // boot returns - so each fixture leaves its own proof.
+            assert.equal(proof(win), true, 'the fixture built nothing: ' +
+                where);
+            assert.equal(
+                win.document.getElementById('_vis_opt_path_hides'), null,
+                'survived in ' + where
+            );
+        }
+    });
+
     it('takes away both of the styles a page can carry', async ( ) => {
         // Their own cleanup indexes querySelectorAll because a page can
         // have two: getElementById only ever finds the first.
