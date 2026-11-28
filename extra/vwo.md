@@ -33,6 +33,7 @@ versions, and the rule matches all four urls as written.
 - [What a page keeps, and what it loses](#what-a-page-keeps-and-what-it-loses)
 - [What it costs a page](#what-it-costs-a-page)
 - [The mutation sweep](#the-mutation-sweep)
+- [A tag-first account, and the two page-facing members not published](#a-tag-first-account-and-the-two-page-facing-members-not-published)
 - [What is not done here](#what-is-not-done-here)
 
 The `vn` parameter is the snippet version and it does not change what this
@@ -408,6 +409,48 @@ failed: the timer is gone either way, and the style removal already does
 what `finish` would have. The comment in the resource claimed a property
 the code did not have, so the claim was corrected and the mutation is
 carried as an equivalent.
+
+## A tag-first account, and the two page-facing members not published
+
+Account 972639 is laid out the other way round from the others, and it is
+worth knowing the shape exists:
+
+```
+j.php          8968 bytes   a shim: 4 members, no _VWO.sCL, and it mentions
+                            Wingify.tagLoaded - it defers to the tag
+tag/972639.js  591568       45 members, the real entry point
+v2/dyn            914       4 members, all published here
+info              477       3 members
+```
+
+So on a newer install the tag is the primary and `j.php` is almost
+nothing. Both rules already cover it. One detail in that tag settles an
+earlier decision for good: it references `VWO.length`, which only makes
+sense against the array this file publishes - a plain object would have
+answered `undefined`.
+
+Its unguarded calls on members this file does not publish -
+`visitorNotEligible`, `config`, `isSampledOut`, `onEventReceive` - are all
+inside their own safe wrapper, as `window.VWO._sG(() =>
+window.VWO.config())`, so none of them can throw out of their code even
+when the member is missing.
+
+Two members are page-facing and deliberately NOT published: `optOut` and
+`track`. Both are assigned by the tag and by the libraries and called
+nowhere in any of the 27 vendor files collected, which is what page-facing
+looks like - their own code never needs to call them. The hazard from the
+`get` case applies: a page writing `window.VWO && window.VWO.optOut()`
+short-circuits safely with no stub at all, and throws against this one.
+
+They are left out because their shape cannot be read off the files with
+any confidence. The tag has `window.VWO.track || {}`, so `track` is a
+namespace object rather than a function, and nothing shows what is inside
+it; `optOut`'s definition is a fragment in both the library and the tag.
+Publishing a function where they have an object, or an empty object where
+a page calls a member of it, fails exactly as a missing member does - so
+it would buy nothing and claim more than is known. If a page ever reports
+this, its own call names the member and the shape, and that is the
+evidence to add it on.
 
 ## What is not done here
 
