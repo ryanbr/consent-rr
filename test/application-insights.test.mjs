@@ -205,22 +205,26 @@ describe('filters, application-insights', ( ) => {
             .filter(line => line.startsWith('||'));
     });
 
-    it('offers a portable form carrying no option at all', ( ) => {
-        const blocks = rules.filter(rule => rule.includes('$') === false);
-        assert.equal(blocks.length, 2, 'the portable rules moved');
-        for ( const rule of blocks ) {
-            assert.equal(rule.includes('$'), false, rule);
-        }
-    });
-
-    it('names the resource uBO looks for, for both types', ( ) => {
+    it('leads with the redirect, for both types', ( ) => {
+        // A redirect and not a scriptlet: nothing here is hidden, so there
+        // is no document_start requirement, and a generic third-party SDK
+        // on thousands of sites cannot be reached by a domain list.
         const redirects = rules.filter(rule => rule.includes('redirect='));
         assert.equal(redirects.length, 2);
+        assert.ok(rules.indexOf(redirects[0]) === 0, 'the redirect moved down');
         for ( const rule of redirects ) {
             assert.ok(
                 rule.endsWith('$xhr,script,redirect=application-insights.js'),
                 rule
             );
+        }
+    });
+
+    it('offers a plain block for Chromium, with no option at all', ( ) => {
+        const blocks = rules.filter(rule => rule.includes('$') === false);
+        assert.equal(blocks.length, 2, 'the Chromium rules moved');
+        for ( const rule of blocks ) {
+            assert.equal(rule.includes('$'), false, rule);
         }
     });
 
@@ -282,6 +286,28 @@ describe('extra/application-insights.js, their snippet', ( ) => {
         assert.equal(ran, 1, 'a later push was left sitting in the queue');
         win.appInsights.queue.push(( ) => { ran += 1; });
         assert.equal(ran, 2);
+    });
+
+    it('answers their onInit, which the snippet queues last', async ( ) => {
+        // From their snippet source: win[aiName] = aiSdk, then
+        //   if (aiSdk.queue && aiSdk.queue.length === 0) {
+        //       aiSdk.queue.push(_onInit); aiSdk.trackPageView({}); }
+        //   function _onInit() { if (cfg.onInit) { cfg.onInit(aiSdk); } }
+        // So a page that passed onInit is waiting on a queue entry, and
+        // the drain is what answers it.
+        const win = boot({
+            before: SNIPPET +
+                '<script>(function() {' +
+                'var cfg = { onInit: function(sdk) {' +
+                'window.initWith = typeof sdk.trackEvent; } };' +
+                'function _onInit() { if ( cfg.onInit ) { cfg.onInit(appInsights); } }' +
+                'if ( appInsights.queue && appInsights.queue.length === 0 ) {' +
+                'appInsights.queue.push(_onInit); appInsights.trackPageView({}); }' +
+                '}());</script>',
+        });
+        await settle();
+        assert.equal(win.initWith, 'function',
+            'a page waiting on onInit was left waiting');
     });
 
     it('survives a queued call that throws', async ( ) => {

@@ -10,16 +10,33 @@
 // The comments below are a line each; the reasoning for them is there.
 //
 // THE RULES
-// The portable form, every browser and any request type:
-//   example.com##+js(application-insights)
-//   ||js.monitor.azure.com/scripts/
-//   ||az416426.vo.msecnd.net/scripts/
-// The redirect form, Firefox only:
 //   ||js.monitor.azure.com/scripts/$xhr,script,redirect=application-insights.js
 //   ||az416426.vo.msecnd.net/scripts/$xhr,script,redirect=application-insights.js
+// A redirect, not a scriptlet, and unlike extra/vwo.js that is the right
+// way round here. Nothing is hidden, so there is no reason to run at
+// document_start - this only has to exist where their SDK would have
+// been. And it is a generic third-party SDK on thousands of sites: a
+// scriptlet needs a domain list, a redirect keys off the vendor's own url.
+// Both types, because a site can fetch a script itself.
+//
+// On Chromium a redirect naming a USER resource neither injects nor
+// blocks, so pair it with a plain block there:
+//   ||js.monitor.azure.com/scripts/
+//   ||az416426.vo.msecnd.net/scripts/
+// A bare block is benign for this vendor - their snippet keeps stubbing
+// and queueing, and no page is hidden - so Chromium users lose only the
+// calls that return something, which is what this file is for.
 // No $important: a plain block composes with an allowlist exception for a
-// site that genuinely needs their SDK. See extra/vwo.md for why that
-// matters, and extra/adobe-launch.md for the Chromium redirect measurement.
+// site that genuinely needs their SDK.
+//
+// A scriptlet IS worth it per-site, and does something a redirect cannot.
+// Their snippet opens with
+//   let aiSdk = win[aiName] || (function(){ ...everything... })(cfg.cfg)
+// so an object already on window short-circuits the whole body: no
+// proxies are made, no script element is created, and their SDK is never
+// even requested. What follows still runs, which is why the queue drain
+// below matters - the snippet ends with queue.push(_onInit) and
+// trackPageView({}).
 //
 // NOTHING HERE IS ABOUT HIDING A PAGE
 // Unlike VWO or Adobe Target, this SDK hides nothing and gates no render:
@@ -157,7 +174,9 @@
     w[name] = sdk;
     // Their queue holds closures the snippet pushed, each calling a method
     // on this object - which is now one of the no-ops above, so draining
-    // runs them harmlessly and empties a queue nothing else will.
+    // runs them harmlessly and empties a queue nothing else will. It also
+    // carries their _onInit, pushed by the snippet's last lines, so a page
+    // that passed an onInit callback is answered rather than left waiting.
     let drained = 0;
     const drain = ( ) => {
         while ( drained < queue.length ) {

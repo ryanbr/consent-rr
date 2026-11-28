@@ -25,26 +25,49 @@ az416426.vo.msecnd.net/scripts/b/ai.2.min.js     123063   the older host,
 
 ## What this is, and the rules
 
-Two hosts serve the same builds, so both need covering. The portable form,
-which works in every browser and for any request type:
-
-```
-example.com##+js(application-insights)
-||js.monitor.azure.com/scripts/
-||az416426.vo.msecnd.net/scripts/
-```
-
-and the redirect form, Firefox only, carrying both types because a site
-can fetch a script itself rather than let a snippet build an element - see
-`extra/vwo.md`, where that cost a correction:
+Two hosts serve the same builds, so both need covering. A redirect, and
+unlike `extra/vwo.js` that is the right way round here:
 
 ```
 ||js.monitor.azure.com/scripts/$xhr,script,redirect=application-insights.js
 ||az416426.vo.msecnd.net/scripts/$xhr,script,redirect=application-insights.js
 ```
 
-No `$important` on either: a plain block composes with an allowlist
+Nothing here is hidden, so there is no reason to run at `document_start` -
+this only has to exist where their SDK would have been. And it is a
+generic third-party SDK on thousands of sites: a scriptlet needs a domain
+list, a redirect keys off the vendor's own url. Both types, because a site
+can fetch a script itself rather than let a snippet build an element -
+`extra/vwo.md` records what that cost there.
+
+On Chromium a redirect naming a user resource neither injects nor blocks,
+so pair it with a plain block:
+
+```
+||js.monitor.azure.com/scripts/
+||az416426.vo.msecnd.net/scripts/
+```
+
+A bare block is benign for this vendor - their snippet keeps stubbing and
+queueing, and no page is hidden - so a Chromium user loses only the calls
+that return something, which is the narrow thing this file fixes. No
+`$important` on either form: a plain block composes with an allowlist
 exception for a site that genuinely needs their SDK.
+
+A scriptlet is still worth it per-site, and does something a redirect
+cannot. Their snippet opens with
+
+```
+let aiSdk = win[aiName] || (function (aiConfig, aiExtensions) {
+    ...everything: the object, the proxies, the script element...
+})(cfg.cfg);
+```
+
+so an object already on `window` short-circuits that whole body: no
+proxies are built, no script element is created, and their SDK is never
+requested at all. What follows the IIFE still runs, which is why the drain
+matters - the snippet's last lines are `queue.push(_onInit)` and
+`trackPageView({})`.
 
 ## Why a block alone breaks little
 
@@ -151,10 +174,23 @@ parsed by a test, so prose there cannot start that way.
 
 ## What is not done here
 
-No `onInit`. The snippet supports a config callback of that name but none
-of the three builds mentions it, so there is nothing measured to copy; a
-page waiting on one would still wait. It is the first thing to add if a
-page turns up that needs it.
+`onInit` is answered, and the first version of these notes said it was
+not. Counting `onInit` in the three SDK builds gives zero, which is true
+and beside the point: it lives in their SNIPPET, whose last lines are
+
+```
+if (aiSdk.queue && aiSdk.queue.length === 0) {
+    aiSdk.queue.push(_onInit);
+    aiSdk.trackPageView({});
+}
+function _onInit() { if (cfg.onInit) { cfg.onInit(aiSdk); } }
+```
+
+So a page that passed an `onInit` callback is waiting on a queue entry,
+and the drain here is what answers it. A test runs those lines in their
+own shape. Reading the vendor's bundles is not the same as reading their
+page-side snippet, which is the same blind spot that made the `$xhr` claim
+in `extra/vwo.md` wrong.
 
 No instrumentation key handling, no `config` defaults beyond keeping
 theirs, and no ETW-style plugin surface: `getPlugin` answers a disabled
