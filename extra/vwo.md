@@ -154,6 +154,54 @@ widening a rule.
 
 ## What the lists do today, and what this changes
 
+EasyPrivacy blocks thirteen VWO paths outright:
+
+```
+||dev.visualwebsiteoptimizer.com/*/track-
+||dev.visualwebsiteoptimizer.com/apm
+||dev.visualwebsiteoptimizer.com/cdn/edrv/
+||dev.visualwebsiteoptimizer.com/collect/events/
+||dev.visualwebsiteoptimizer.com/edrv/
+||dev.visualwebsiteoptimizer.com/ping_tpc.php
+||visualwebsiteoptimizer.com*/ee.gif
+||visualwebsiteoptimizer.com/analysis/
+||visualwebsiteoptimizer.com/cdn/analysis/
+||visualwebsiteoptimizer.com/dyn
+||visualwebsiteoptimizer.com/events/t?
+||visualwebsiteoptimizer.com/gv.gif?
+||visualwebsiteoptimizer.com/server-side/track-user?
+```
+
+Nothing in this file can reach any of them: `collect` and `load_co` are
+no-ops, and a test counts every way out of a page - fetch, sendBeacon,
+XMLHttpRequest, an Image src and an injected script element - and asserts
+none is used while a page pushes, collects and loads. Making `collect`
+send one pixel fails it, which was checked.
+
+Four gaps in that set turned up while reading the payloads, each from a
+url seen served:
+
+```
+/v2/dyn            ||visualwebsiteoptimizer.com/dyn is path-anchored, so
+                   it does not match /v2/dyn?a=<id>&uuid=<id>&scope=vis,
+                   which is what the payloads actually request
+/lib/<id>.js       the library, unblocked: /edrv/ and /cdn/edrv/ are
+                   covered but this path is not, and lib/1072524.js
+                   serves 610765 bytes for a live account
+collect.wingify.net  only edge.wingify.net is blocked. collect is where
+                   the pixels go - their domains.cl defaults to
+                   collect.wingify.net when the serve host is the edge
+dev. only          /*/track-, /apm, /edrv/, /cdn/edrv/, /collect/events/
+                   and /ping_tpc.php are pinned to the dev. subdomain,
+                   while the payloads also name r1, r3, dc-eu01 and
+                   dc-us01.visualwebsiteoptimizer.com
+```
+
+Those are observations for a list rather than work for this file - it
+needs none of them, because it makes no requests at all.
+
+
+
 Two lists, opposite trade-offs, and a report against each:
 
 ```

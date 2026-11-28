@@ -193,15 +193,59 @@ describe('extra/vwo.js', ( ) => {
     });
 
     it('absorbs everything a page queues, and sends nothing', async ( ) => {
-        const win = boot({
-            after: '<script>window.VWO.push(["activate", 1]);' +
-                'window.VWO.push(["track.revenueConversion", 9.99]);' +
-                'window.VWO.collect("s.gif?x=1", { path: 1 });' +
-                'window.VWO.load_co("vanj.js", { path: 1 });</script>',
-        });
+        // Every way out of a page, counted. Their collect sends s.gif,
+        // e.gif, c.gif, h.gif, l.gif and ee.gif by Image or fetch, and
+        // load_co builds a script element, so this is the assertion that
+        // none of the paths a list blocks can be reached from here.
+        const calls = [];
+        const dom = new JSDOM(
+            `<!DOCTYPE html><html><head><script>${code}</script>` +
+            '<script>window.VWO.push(["activate", 1]);' +
+            'window.VWO.push(["track.revenueConversion", 9.99]);' +
+            'window.VWO.collect("s.gif?x=1", { path: 1 });' +
+            'window.VWO.collect("ee.gif?e=x", { path: 1 });' +
+            'window.VWO.load_co("vanj.js", { path: 1 });' +
+            'window.VWO.init(1); window.VWO.event("x");</script>' +
+            '</head><body><p>x</p></body></html>',
+            {
+                runScripts: 'dangerously',
+                url: 'https://www.example.com/page',
+                virtualConsole: new VirtualConsole(),
+                beforeParse(win) {
+                    win.fetch = (...a) => {
+                        calls.push('fetch ' + a[0]);
+                        return Promise.resolve();
+                    };
+                    win.navigator.sendBeacon = url => {
+                        calls.push('beacon ' + url);
+                        return true;
+                    };
+                    const open = win.XMLHttpRequest.prototype.open;
+                    win.XMLHttpRequest.prototype.open = function(m, url) {
+                        calls.push('xhr ' + url);
+                        return open.apply(this, arguments);
+                    };
+                    const src = Object.getOwnPropertyDescriptor(
+                        win.HTMLImageElement.prototype, 'src'
+                    );
+                    Object.defineProperty(
+                        win.HTMLImageElement.prototype, 'src', {
+                            configurable: true,
+                            get: src.get,
+                            set(value) {
+                                calls.push('img ' + value);
+                                src.set.call(this, value);
+                            },
+                        }
+                    );
+                },
+            }
+        );
+        const win = dom.window;
         await settle();
-        // Nothing fetched, nothing injected: load_co builds a script element.
+        assert.deepEqual([ ...calls ], [], 'something was sent');
         assert.equal(win.document.querySelectorAll('script[src]').length, 0);
+        assert.equal(win.document.querySelectorAll('img').length, 0);
     });
 
     it('wraps a callback through safeExecute, keeping this and swallowing a throw',
