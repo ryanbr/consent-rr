@@ -57,13 +57,20 @@ fe6a50abb7b4  622807   lowes only            _abck, bm_sz
 771ace96284f  104238   lowes only            al_sess
 ```
 
-The `_abck` sensor is a per-tenant build: three sites, three different
-files, all about the same size. The `?v=<uuid>` one is not - it is byte
-for byte the same file on all three, so it is one artifact rather than a
-per-site one, and anything learned about it transfers. The 104KB lowes
-file shares the obfuscator of the others, `(function lZXCvmVlwT(){...}`
-against `(function xnrjUkVwcK(){...}`, carries none of the Bot Manager
-markers, and sets `al_sess` instead.
+A fourth site corrected the first reading of this. walgreens.com serves
+621294 bytes / 084658e27724 for the `_abck` sensor and 471217 bytes /
+463b9099c212 for the `?v=` one - so the `?v=` build is NOT one artifact
+everywhere. It is byte for byte identical on bestbuy, macys and lowes, and
+different on walgreens, which looks like a release boundary rather than
+per-tenant compilation. The first note here said identical across all,
+from three samples; a fourth was enough to disprove it, which is worth
+remembering before the next three-sample claim.
+
+The `_abck` sensor is per-tenant, now four sites and four distinct files,
+all about the same size. The 104KB lowes file shares the obfuscator of the
+others, `(function lZXCvmVlwT(){...}` against `(function
+xnrjUkVwcK(){...}`, carries none of the Bot Manager markers, and sets
+`al_sess` instead.
 
 The paths give a list nothing to hold on to. Each site has a constant
 prefix of four or five segments - `/x-WNe4/zHknCo/RwyTkux/Pne/CO/`,
@@ -78,6 +85,33 @@ shared build. That is targetable by regex if anyone wants to, and the
 shared hash means the decision would be the same everywhere - but it is
 still the file whose response mints `bm_s`, so blocking it has the same
 consequence as blocking the rest.
+
+## Kasada, the other vendor this probe is for
+
+costco.com serves Kasada rather than Akamai, and it lands in the same
+place for the same reasons:
+
+```
+/<uuid>/<uuid>/p.js     153311 bytes, the loader. No readable marker at
+                        all, and it creates the global by indirection
+/<uuid>/<uuid>/ips.js   770556 bytes, the payload, fetched with
+                        KP_UIDz=<token>&x-kpsdk-v=j-1.2.1020&x-kpsdk-im=...
+                        and opening with KPSDK.scriptStart = KPSDK.now()
+```
+
+`KPSDK` is the one page-visible global, and it carries exactly two
+readable members - `scriptStart` and `now` - which appear only in that
+first line, passing timing between their own two files. There is no api a
+page calls, so there is nothing to stand in for.
+
+And the gate is server-side again, in the clear this time: their requests
+carry `x-kpsdk-ct` and `x-kpsdk-cd` headers computed by the payload, with
+`KP_UIDz` as the cookie. A stub cannot compute those, so the site refuses
+the request rather than the page breaking visibly.
+
+Two vendors, two obfuscation schemes, one conclusion: measure with the
+probe, do not replace. The probe needs nothing vendor-specific to do that
+- it watches the surfaces, not the sensor.
 
 ## What it watches
 
