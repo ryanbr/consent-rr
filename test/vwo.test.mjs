@@ -277,9 +277,11 @@ describe('extra/vwo.js', ( ) => {
         assert.equal(Array.isArray(win.VWO), true,
             'a plain object breaks their library - see the test below');
         assert.equal(win.VWO.length, 0);
-        // push is theirs, not ours: Array.prototype.push is what their
-        // own listener captures and wraps.
-        assert.equal(win.VWO.push, win.Array.prototype.push);
+        // push wraps the array's own and appends with it, so their
+        // listener's capture-and-wrap still works.
+        assert.notEqual(win.VWO.push, win.Array.prototype.push);
+        assert.equal(win.VWO.push([ 'a' ]), 1, 'push stopped returning a count');
+        assert.equal(win.VWO[0][0], 'a', 'push stopped appending');
     });
 
     it('adopts the queue their snippet already filled', async ( ) => {
@@ -416,6 +418,95 @@ describe('filters, vwo', ( ) => {
                 assert.equal(url.includes(pattern), false, rule + ' | ' + url);
             }
         }
+    });
+
+});
+
+describe('extra/vwo.js, settling the queue', ( ) => {
+
+    const CALLBACK = '["onVariationApplied", function() {' +
+        'window.ran = (window.ran || 0) + 1; }]';
+
+    it('calls a callback the page queued before it', async ( ) => {
+        const win = boot({
+            before: `<script>window.VWO = []; VWO.push(${CALLBACK});</script>`,
+        });
+        assert.equal(win.ran, undefined, 'called before the document arrived');
+        await settle();
+        assert.equal(win.ran, 1, 'a page waiting on its callback waits still');
+    });
+
+    it('calls one the page queues after it, but not before the document',
+    async ( ) => {
+        const win = boot({ after: `<script>VWO.push(${CALLBACK});</script>` });
+        // Synchronously: the document has not arrived, so nothing may run
+        // yet. Settling at that point is what their library would never
+        // do, and a page can still be parsing the thing the callback
+        // wants to touch.
+        assert.equal(win.ran, undefined, 'settled before the document');
+        await settle();
+        assert.equal(win.ran, 1);
+    });
+
+    it('calls one the page queues long after the document arrived',
+    async ( ) => {
+        // The queue is drained at DOMContentLoaded, so a push after that
+        // has nothing left to drain it but push itself.
+        const win = boot();
+        await settle();
+        assert.equal(win.ran, undefined);
+        win.eval('VWO.push(["onVariationApplied", function() {' +
+            'window.first = (window.first || 0) + 1; }]);');
+        assert.equal(win.first, 1, 'a push after the document was absorbed');
+        // And a second push must not settle the first one again: the index
+        // has to carry across drains, or every push replays the whole
+        // queue and a page's analytics callback double-counts.
+        win.eval('VWO.push(["onVariationApplied", function() {' +
+            'window.second = (window.second || 0) + 1; }]);');
+        assert.equal(win.second, 1);
+        assert.equal(win.first, 1, 'the first callback was settled twice');
+    });
+
+    it('calls it once, not once per pass', async ( ) => {
+        const win = boot({ after: `<script>VWO.push(${CALLBACK});</script>` });
+        await settle(80);
+        assert.equal(win.ran, 1, 'the reveal passes settled it again');
+    });
+
+    it('leaves it alone when their library is up', async ( ) => {
+        // _vwo_s is their settings function and exists only once their
+        // library ran - and it processes the queue itself, so settling
+        // here as well would call a page's callback twice.
+        const win = boot({
+            before: `<script>window.VWO = []; VWO.push(${CALLBACK});</script>`,
+            after: '<script>window._vwo_s = function() { return {}; };</script>',
+        });
+        await settle();
+        assert.equal(win.ran, undefined,
+            'their library and this both called the page back');
+        assert.equal(win.VWO.length, 1, 'the queue was not left for them');
+    });
+
+    it('survives a callback that throws, and keeps going', async ( ) => {
+        const win = boot({
+            after: '<script>VWO.push(["a", function() {' +
+                'window.first = true; throw new Error("from the page"); }]);' +
+                'VWO.push(["b", function() { window.second = true; }]);' +
+                '</script>',
+        });
+        await settle();
+        assert.equal(win.first, true);
+        assert.equal(win.second, true, 'one throwing callback stopped the rest');
+    });
+
+    it('leaves an entry with no callback alone', async ( ) => {
+        const win = boot({
+            after: '<script>VWO.push(["track.revenueConversion", 9.99]);' +
+                'VWO.push("notAnArray");</script>',
+        });
+        await settle();
+        assert.equal(win.VWO.length, 2);
+        assert.equal(win.VWO[0][1], 9.99);
     });
 
 });

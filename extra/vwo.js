@@ -51,9 +51,10 @@
 // e.sort is not a function, and their push wrapper captures an absorbing
 // push so e[e.length-1] is never what was pushed and every page call is
 // dropped. Both were measured before and after the fix.
-// So push is NOT a member here: Array.prototype.push is what their
-// listener captures, and with nothing draining the queue a page pushing to
-// it is absorbed anyway.
+// push wraps the array's own: it appends with it, so their listener's
+// capture-and-wrap still works - var d = e.push; e.push = ... - and then
+// settles what was queued, which is the one thing absorbing it would not
+// do. A page waiting on a callback it pushed is a page that never renders.
 //
 // WHAT IT PUBLISHES, and why each member is there
 //   get           asked for "visitor.id" and nothing else, 15 times.
@@ -126,6 +127,38 @@
         },
     });
     w.VWO = api;
+    // Settling what a page queued, rather than only absorbing it: a page
+    // that pushed a callback and waits for it is the blank-page shape
+    // extra/adobe-launch.md keeps being about. Their own processEvent is
+    // what would have called it.
+    let ready = false;
+    let settled = 0;
+    const drain = ( ) => {
+        // Not before the document arrives, and never when theirs is up:
+        // _vwo_s is their settings function and only exists once their
+        // library ran, and it processes the queue itself - settling here
+        // as well would call a page's callback twice.
+        if ( ready === false || w._vwo_s !== undefined ) { return; }
+        while ( settled < api.length ) {
+            const entry = api[settled];
+            settled += 1;
+            if ( Array.isArray(entry) === false ) { continue; }
+            for ( const part of entry ) {
+                if ( typeof part !== 'function' ) { continue; }
+                // No arguments: theirs would hand over campaign data, and
+                // there is none to hand over. A callback that needs it
+                // throws into this catch, which is still better than one
+                // that is never called at all.
+                try { part(); } catch ( ex ) { }
+            }
+        }
+    };
+    const queue = api.push;
+    api.push = function(...args) {
+        const count = queue.apply(this, args);
+        drain();
+        return count;
+    };
     // Either snippet global: theirs are interchangeable, and their own
     // minimal stub reads _vwo_code || _wingify_code.
     // Once only: their finish guards itself, their overlay does not.
@@ -158,6 +191,7 @@
         try { w.clearTimeout(w._vwo_settings_timer); } catch ( ex ) { }
     };
     release();
+    if ( doc.readyState !== 'loading' ) { ready = true; drain(); }
     // At document_start their snippet has not run, so none of the above
     // exists yet: the pass runs again as the document arrives.
     if ( doc.readyState === 'loading' ) {
@@ -174,6 +208,8 @@
         }
         doc.addEventListener('DOMContentLoaded', ( ) => {
             release();
+            ready = true;
+            drain();
             if ( watch !== null ) { watch.disconnect(); watch = null; }
         }, { once: true });
     }

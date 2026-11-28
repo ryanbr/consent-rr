@@ -34,6 +34,7 @@ versions, and the rule matches all four urls as written.
 - [What it costs a page](#what-it-costs-a-page)
 - [The mutation sweep](#the-mutation-sweep)
 - [A tag-first account, and the two page-facing members not published](#a-tag-first-account-and-the-two-page-facing-members-not-published)
+- [What actually prevents breakage](#what-actually-prevents-breakage)
 - [Is the coverage complete](#is-the-coverage-complete)
 - [What is not done here](#what-is-not-done-here)
 
@@ -369,7 +370,7 @@ than run.
 
 ```
 file on disk      7151 bytes
-injected          3253 bytes
+injected          4816 bytes
 globals set       window.VWO only, as an array carrying its members
 listeners         one, DOMContentLoaded on the document
 observers         one, the head's own children, disconnected at that event
@@ -396,7 +397,7 @@ size, which is what prompted the second pass.
 node tools/mutate.mjs vwo
 ```
 
-38 mutations, 36 killed, 2 named equivalents with their reasons in
+45 mutations, 43 killed, 2 named equivalents with their reasons in
 `tools/mutations/vwo.json`. Three of those kills came from repairing tests
 that did not test what they claimed: a timer assertion that outlived
 nothing because a real tolerance is 2000ms and the suite finished first, a
@@ -452,6 +453,56 @@ a page calls a member of it, fails exactly as a missing member does - so
 it would buy nothing and claim more than is known. If a page ever reports
 this, its own call names the member and the shape, and that is the
 evidence to add it on.
+
+## What actually prevents breakage
+
+In the order that matters, which is not the order of api surface:
+
+**1. Delivery.** On Chromium a `$redirect=` naming a user resource neither
+injects nor blocks, so a list that ships only the redirect form leaves
+those users with no stub at all - and whichever entry point is blocked
+without one hides the page for `settings_tolerance`. Both forms have to
+ship: the two redirect rules for Firefox, and `##+js(vwo)` beside a
+blocking rule for Chromium. More members fix nothing if the file never
+runs.
+
+**2. The reveal.** This is what a blank page actually is: both snippet
+globals (`_vwo_code` and `_wingify_code`), their `finish` so `finished()`
+answers honestly, their overlay, every `#_vis_opt_path_hides` element and
+not just the first, their timer, and a second pass as the document arrives
+because a scriptlet runs before their snippet.
+
+**3. Settling the queue, not absorbing it.** A page that pushes a callback
+and waits for it never renders, which is the same failure as a visitor id
+that never comes back. `push` wraps the array's own: it appends with it,
+so their listener's capture-and-wrap still works, and then runs any
+function in the entry.
+
+```
+at DOMContentLoaded and on every push after it
+never before the document arrives   a page may still be parsing what the
+                                    callback wants to touch
+never when window._vwo_s exists     their library is up and processes the
+                                    queue itself: settling here too would
+                                    call a page's callback twice
+once per entry, index kept          or every push replays the queue and a
+                                    page's analytics double-counts
+callbacks called with no arguments  theirs would hand over campaign data
+                                    and there is none; one that needs it
+                                    throws into a catch, which still beats
+                                    never being called
+```
+
+**4. What no stub can fix.** No variation is applied, so a page renders
+its control. A page whose content only exists inside a VWO variation shows
+nothing, and that is the point of blocking rather than a defect.
+
+**5. The two members left out on purpose.** `optOut` and `track` are
+page-facing and unpublished because their shape is not readable from the
+files. For `track` specifically, publishing `{}` would be worse than
+nothing: a page writing `if (VWO.track)` would then proceed into a
+namespace with no members and throw deeper in, where absence makes it
+skip.
 
 ## Is the coverage complete
 

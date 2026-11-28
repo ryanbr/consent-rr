@@ -93,8 +93,8 @@
         },
         {
             "name": "no pass at all",
-            "from": "    release();\n    // At document_start",
-            "to": "    // At document_start"
+            "from": "    release();\n    if ( doc.readyState !== 'loading' )",
+            "to": "    if ( doc.readyState !== 'loading' )"
         },
         {
             "name": "no watch while the head arrives",
@@ -103,8 +103,8 @@
         },
         {
             "name": "no pass as the document arrives",
-            "from": "            release();\n            if ( watch !== null ) { watch.disconnect(); watch = null; }",
-            "to": "            if ( watch !== null ) { watch.disconnect(); watch = null; }"
+            "from": "            release();\n            ready = true;",
+            "to": "            ready = true;"
         },
         {
             "name": "the watch is never stopped",
@@ -195,6 +195,41 @@
             "name": "only the _wingify_code snippet global",
             "from": "        const code = w._vwo_code || w._wingify_code;",
             "to": "        const code = w._wingify_code;"
+        },
+        {
+            "name": "the queue is absorbed, never settled",
+            "from": "        const count = queue.apply(this, args);\n        drain();",
+            "to": "        const count = queue.apply(this, args);"
+        },
+        {
+            "name": "settles even when their library is up",
+            "from": "        if ( ready === false || w._vwo_s !== undefined ) { return; }",
+            "to": "        if ( ready === false ) { return; }"
+        },
+        {
+            "name": "settles before the document arrives",
+            "from": "        if ( ready === false || w._vwo_s !== undefined ) { return; }",
+            "to": "        if ( w._vwo_s !== undefined ) { return; }"
+        },
+        {
+            "name": "settles the same entry on every pass",
+            "from": "        while ( settled < api.length ) {",
+            "to": "        settled = 0;\n        while ( settled < api.length ) {"
+        },
+        {
+            "name": "a settled callback that throws stops the rest",
+            "from": "                try { part(); } catch ( ex ) { }",
+            "to": "                part();"
+        },
+        {
+            "name": "push stops appending",
+            "from": "        const count = queue.apply(this, args);",
+            "to": "        const count = api.length;"
+        },
+        {
+            "name": "no drain at DOMContentLoaded",
+            "from": "            ready = true;\n            drain();",
+            "to": "            ready = true;"
         }
     ]
 }
